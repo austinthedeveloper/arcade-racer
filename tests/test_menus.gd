@@ -1,0 +1,143 @@
+## Front end: menu input, the title / stage select / car select screens and the game flow.
+extends TestSuite
+
+
+static func menu_input(confirm := false, back := false, dir := 0) -> MenuInput:
+	var m := MenuInput.new()
+	m.confirm_pressed = confirm
+	m.back_pressed = back
+	m.left_pressed = dir < 0
+	m.right_pressed = dir > 0
+	return m
+
+
+func _game() -> Node:
+	var g: Node = load("res://scenes/main.tscn").instantiate()
+	g._ready()  # outside the tree, like TestSuite.new_race
+	_nodes.append(g)
+	return g
+
+
+func test_axis_push_fires_once_then_repeats() -> void:
+	var m := MenuInput.new()
+	m.step_axis(0.8, DT)
+	check(m.right_pressed and not m.left_pressed, "push right fires")
+	var fired := 0
+	for i in int(MenuInput.REPEAT_DELAY / DT) - 2:
+		m.step_axis(0.8, DT)
+		fired += int(m.right_pressed)
+	eq(fired, 0, "no repeat before the delay")
+	for i in 60:
+		m.step_axis(0.8, DT)
+		fired += int(m.right_pressed)
+	check(fired >= 5 and fired <= 8, "repeats while held (%d in a second)" % fired)
+	m.step_axis(0.0, DT)
+	check(not m.right_pressed, "letting go fires nothing")
+	m.step_axis(-1.0, DT)
+	check(m.left_pressed, "push left fires")
+	eq(m.step(), -1, "step is -1")
+
+
+func test_axis_has_hysteresis() -> void:
+	var m := MenuInput.new()
+	m.step_axis(0.6, DT)
+	check(m.right_pressed, "past PUSH presses")
+	m.step_axis(0.4, DT)
+	m.step_axis(0.6, DT)
+	check(not m.right_pressed, "wobbling between RELEASE and PUSH (a wheel held over) doesn't re-press")
+	m.step_axis(0.1, DT)
+	m.step_axis(0.6, DT)
+	check(m.right_pressed, "back under RELEASE, then out again, presses")
+	m.step_axis(0.0, DT)
+	m.step_axis(0.45, DT)
+	check(not m.right_pressed, "a light touch doesn't press")
+
+
+func test_stage_select_wraps_and_has_every_postcard() -> void:
+	var s := StageSelect.new()
+	eq(s.move(1), 1, "right")
+	eq(s.move(-2), Stages.count() - 1, "left wraps to the last stage")
+	eq(s.move(1), 0, "right wraps to the first")
+	eq(Stages.POSTCARDS.size(), Stages.count(), "a postcard per stage")
+	for i in Stages.count():
+		check(ResourceLoader.exists(Stages.postcard(i)), "postcard for " + Stages.stage_name(i))
+	s.free()
+
+
+func test_cars_list_the_vega() -> void:
+	eq(Cars.count(), 1, "only the Vega so far")
+	var v := Cars.get_car(0)
+	eq(v["name"], "Vega GT", "name")
+	eq([v["accel"], v["top_speed"], v["handling"]], [4, 5, 3], "stats from the design doc")
+	check(ResourceLoader.exists(v["picture"]), "showroom picture")
+	eq(Cars.get_car(5)["id"], "car_vega", "out of range clamps")
+	var c := CarSelect.new()
+	eq(c.move(1), 0, "one car: right stays on it")
+	c.free()
+
+
+func test_prompts_follow_the_device() -> void:
+	var keep: DriveInput = InputRouter.state
+	var inp := DriveInput.new()
+	InputRouter.state = inp
+	eq(TitleScreen.start_prompt(), "PRESS ENTER", "keyboard")
+	check(MenuScreen.hints(true).contains("Esc: back"), "keyboard hints")
+	inp.kind = DriveInput.Kind.GAMEPAD
+	eq(TitleScreen.start_prompt(), "PRESS START", "gamepad")
+	check(MenuScreen.hints(true).contains("A: select"), "gamepad hints")
+	inp.kind = DriveInput.Kind.WHEEL
+	check(TitleScreen.start_prompt().contains("GAS"), "wheel")
+	check(MenuScreen.hints(true).begins_with("Steer: choose"), "wheel hints")
+	check(not MenuScreen.hints(false).contains("choose"), "no choose hint with nothing to choose")
+	InputRouter.state = keep
+
+
+func test_menus_flow_into_the_race_and_back() -> void:
+	var g := _game()
+	eq(g.screen, g.Screen.TITLE, "boots to the title")
+	g.menu.handle(menu_input(false, true))
+	eq(g.screen, g.Screen.TITLE, "back on the title does nothing")
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.STAGES, "confirm: stage select")
+	g.menu.handle(menu_input(false, false, 1))
+	g.menu.handle(menu_input(false, false, 1))
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.CARS, "confirm: car select")
+	eq(g.stage_index, 2, "picked stage 3")
+	g.menu.handle(menu_input(false, true))
+	eq(g.screen, g.Screen.STAGES, "back: stage select")
+	eq(g.menu.index, 2, "still on stage 3")
+	g.menu.handle(menu_input(true))
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.RACE, "confirm: race")
+	check(g.menu == null, "menus gone")
+	if not check(g.race != null, "race started"):
+		return
+	TestSuite.ready_all(g.race)
+	eq(g.race.stage_index, 2, "on the chosen stage")
+	eq(g.race.track.name, Stages.stage_name(2), "track built for it")
+	eq(g.race.car_id, "car_vega", "in the chosen car")
+	g.race.stage_index = 3  # as if the tour went on
+	g.race.quit_requested.emit()
+	eq(g.screen, g.Screen.TITLE, "quit: back to the title")
+	check(g.race == null, "race dropped")
+	g.menu.handle(menu_input(true))
+	eq(g.menu.index, 3, "stage select opens where the tour got to")
+
+
+func test_quitting_needs_the_race_paused() -> void:
+	var r := race(false, false)
+	var quits := [0]
+	r.quit_requested.connect(func() -> void: quits[0] += 1)
+	var keep: MenuInput = InputRouter.menu
+	InputRouter.menu = menu_input(false, true)
+	drive(r, 1)
+	eq(quits[0], 0, "back while racing doesn't quit (it's the brake on a wheel or pad)")
+	var p := input()
+	p.pause_pressed = true
+	drive(r, 1, p)
+	eq(quits[0], 0, "Esc pauses rather than quitting")
+	check(r.paused, "paused")
+	drive(r, 1)
+	eq(quits[0], 1, "back while paused quits")
+	InputRouter.menu = keep

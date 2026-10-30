@@ -4,6 +4,8 @@ extends RefCounted
 
 const NAMES := ["Palm Coast Boulevard", "Redrock Canyon", "Neon Strip", "Timberline Pass",
 	"Bayou Causeway", "Harvest Valley", "Thunderhead Highway"]
+## Stage select pictures (tools/make_ui_sprites.py), in the same order.
+const POSTCARDS := ["palm_coast", "redrock", "neon", "timberline", "bayou", "harvest", "thunder"]
 
 
 static func count() -> int:
@@ -35,3 +37,7 @@ static func next(index: int) -> int:
 
 static func stage_name(index: int) -> String:
 	return NAMES[index]
+
+
+static func postcard(index: int) -> String:
+	return "res://assets/sprites/ui/postcard_%s.png" % POSTCARDS[index]

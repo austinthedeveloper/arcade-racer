@@ -1,5 +1,8 @@
 extends Node2D
 ## Race scene: owns the track, player, traffic, timer and checkpoints, and feeds the renderers.
+## The game (game.gd) starts it from the menus; quit_requested asks to go back to them.
+
+signal quit_requested
 
 enum State { COUNTDOWN, RACING, FINISHED, TIME_UP }
 
@@ -10,6 +13,7 @@ const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
 
 var track: Track
 var stage_index := 0  # into Stages
+var car_id := "car_vega"  # into Cars; the Vega is the only drivable car so far
 var player: PlayerCar
 var traffic: Traffic
 var state := State.COUNTDOWN
@@ -120,6 +124,9 @@ func _physics_process(dt: float) -> void:
 		return
 	if inp.pause_pressed:
 		paused = not paused
+	elif paused and InputRouter.menu.back_pressed:
+		quit_requested.emit()
+		return
 	if paused:
 		_redraw()
 		return

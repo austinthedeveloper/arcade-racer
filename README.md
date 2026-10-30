@@ -2,7 +2,7 @@
 
 An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports keyboard, gamepads, and steering wheels with pedals.
 
-**Status:** Milestone 1 prototype. Six stages are drivable back to back (Palm Coast Boulevard, Redrock Canyon, Neon Strip, Timberline Pass, Bayou Causeway, Harvest Valley, Thunderhead Highway), with traffic, checkpoints, a timer, nitro, jumps and crashes, with generated placeholder sound and music. Finish a stage and press Enter to go on to the next; after the last one the tour starts over. The art is placeholder: the backgrounds, roadside sprites and cars are cut from the concept art (the player drives the Vega).
+**Status:** Milestone 1 prototype. Seven stages are drivable back to back (Palm Coast Boulevard, Redrock Canyon, Neon Strip, Timberline Pass, Bayou Causeway, Harvest Valley, Thunderhead Highway), with traffic, checkpoints, a timer, nitro, jumps and crashes, with generated placeholder sound and music. The game opens on a title screen, then stage select (pick where the tour starts) and car select (just the Vega GT for now). Finish a stage and press Enter to go on to the next; after the last one the tour starts over. The art is placeholder: the backgrounds, roadside sprites and cars are cut from the concept art (the player drives the Vega).
 
 ## Running it
 
@@ -21,8 +21,19 @@ An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports
 | Pause | Esc or P | Start | |
 | Restart the stage | R | Back | |
 | Next stage (after a finish) | Enter | A | |
+| Quit to title (while paused) | Backspace | B | Brake pedal |
 | Input debug overlay | F1 | | |
 | Calibrate wheel | F2 | | |
+
+### Menus
+
+Menus go left and right only, so every device can drive them:
+
+| Menu action | Keyboard | Gamepad | Wheel |
+|---|---|---|---|
+| Choose | Left / Right or A / D | Left stick or D-pad | Turn the wheel |
+| Select / start | Enter | A or Start | Gas pedal or any wheel button |
+| Back | Esc or Backspace | B or Back | Brake pedal |
 
 ### Using a wheel
 
@@ -41,8 +52,9 @@ scripts/
   render/                   road renderer, background, car sprites
   car/                      player driving model, traffic
   input/                    InputRouter autoload, device profiles, DriveInput
+  core/game.gd              main scene: title, stage select, car select, then the race
   race/race.gd              race flow: countdown, checkpoints, timer, finish
-  ui/                       HUD, input debug overlay, calibration wizard
+  ui/                       menu screens, HUD, input debug overlay, calibration wizard
   audio/                    Audio autoload, SoundBank (cue -> file), RaceAudio (race -> cues)
 assets/sprites/             in-game sprites (placeholders for now)
 assets/audio/               generated placeholder sounds and music (how to swap: its README)
@@ -50,7 +62,7 @@ tests/                      test runner, suites, golden traces, end-to-end smoke
 tools/                      test.sh, sprite-cutting scripts, make_audio.py (placeholder sound)
 ```
 
-For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--no-traffic` removes traffic, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames.
+For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--no-traffic` removes traffic, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|stages|cars --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits.
 
 ## Tests
 
@@ -59,7 +71,7 @@ tools/test.sh                  # every suite, then the end-to-end input smoke
 tools/test.sh test_race        # only tests whose name contains "test_race"
 ```
 
-`test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, the driving model, traffic, race flow and renderer regressions. `tests/golden/` holds frame-by-frame traces of autodriven races (Palm Coast with and without traffic, every other stage with traffic). If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`. CI runs the same script on every push.
+`test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, menu input and the menu flow, the driving model, traffic, race flow and renderer regressions. The end-to-end smoke boots the game on the title screen and goes through stage and car select into the race. `tests/golden/` holds frame-by-frame traces of autodriven races (Palm Coast with and without traffic, every other stage with traffic). If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`. CI runs the same script on every push.
 
 ## Releases
 
