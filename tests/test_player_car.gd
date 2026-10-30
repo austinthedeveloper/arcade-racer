@@ -197,3 +197,16 @@ func test_roadside_sprite_crash_only_off_road() -> void:
 	p.offroad = true
 	p.collide(t)
 	check(p.crashed, "hit the palm")
+
+
+func test_tumbleweeds_never_crash_the_car() -> void:
+	var t := flat_track()
+	var p := _car(Cfg.MAX_SPEED)
+	var seg := t.find_segment(p.position + Cfg.PLAYER_Z)
+	var def: Dictionary = SpriteLibrary.defs["tumbleweed_a"]
+	var w_units: float = def["world_w"] / Cfg.ROAD_WIDTH
+	seg.sprites.append({"id": "tumbleweed_a", "offset": 1.1, "flip": false})
+	p.x = 1.1 + w_units / 2.0
+	p.offroad = true
+	p.collide(t)
+	check(not p.crashed, "drove straight through the tumbleweed")

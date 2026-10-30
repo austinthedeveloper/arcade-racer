@@ -33,7 +33,7 @@ func _draw() -> void:
 		var cx: float = bar.position.x + bar.size.x * clampf(d / race.finish_distance, 0.0, 1.0)
 		draw_rect(Rect2(cx - 1, bar.position.y - 3, 2, bar.size.y + 6), Color("#ffd23a"))
 	draw_rect(Rect2(bar.end.x - 2, bar.position.y - 3, 4, bar.size.y + 6), Color.WHITE)
-	_text(Vector2(bar.position.x, bar.end.y + 14), race.track.name.to_upper(), 9, Color(1, 1, 1, 0.85))
+	_text(Vector2(bar.position.x, bar.end.y + 14), ("STAGE %d  " % (race.stage_index + 1)) + race.track.name.to_upper(), 9, Color(1, 1, 1, 0.85))
 
 	# Nitro, top right
 	_text(Vector2(w - 92, 18), "NITRO", 10, Color("#ffd23a"))

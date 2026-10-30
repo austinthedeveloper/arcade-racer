@@ -2,7 +2,7 @@
 
 An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports keyboard, gamepads, and steering wheels with pedals.
 
-**Status:** Milestone 1 prototype. One stage (Palm Coast Boulevard) is drivable with traffic, checkpoints, a timer, nitro, jumps and crashes. The art is placeholder: the palms, background and cars are cut from the concept art (the player drives the Vega).
+**Status:** Milestone 1 prototype. Two stages are drivable back to back, Palm Coast Boulevard and then Redrock Canyon, with traffic, checkpoints, a timer, nitro, jumps and crashes. Finish a stage and press Enter to go on to the next; after the last one the tour starts over. The art is placeholder: the backgrounds, roadside sprites and cars are cut from the concept art (the player drives the Vega).
 
 ## Running it
 
@@ -19,7 +19,8 @@ An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports
 | Brake | Down or S | Left trigger, B or X | Brake pedal |
 | Nitro (3 per race) | Space or Shift | RB or Y | Button picked during calibration |
 | Pause | Esc or P | Start | |
-| Restart | R | Back | |
+| Restart the stage | R | Back | |
+| Next stage (after a finish) | Enter | A | |
 | Input debug overlay | F1 | | |
 | Calibrate wheel | F2 | | |
 
@@ -47,7 +48,7 @@ tests/                      test runner, suites, golden traces, end-to-end smoke
 tools/                      test.sh, and helper scripts that cut sprites from the concept art
 ```
 
-For a test drive without input, run `godot --path . -- --autodrive`. `--no-traffic` removes traffic, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames.
+For a test drive without input, run `godot --path . -- --autodrive`. `--stage=2` starts on Redrock Canyon, `--no-traffic` removes traffic, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames.
 
 ## Tests
 
@@ -56,7 +57,7 @@ tools/test.sh                  # every suite, then the end-to-end input smoke
 tools/test.sh test_race        # only tests whose name contains "test_race"
 ```
 
-`test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, the driving model, traffic, race flow and renderer regressions. `tests/golden/` holds frame-by-frame traces of two autodriven races. If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`. CI runs the same script on every push.
+`test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, the driving model, traffic, race flow and renderer regressions. `tests/golden/` holds frame-by-frame traces of three autodriven races (Palm Coast with and without traffic, Redrock with traffic). If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`. CI runs the same script on every push.
 
 ## Docs
 
