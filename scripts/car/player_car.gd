@@ -2,11 +2,16 @@ class_name PlayerCar
 extends RefCounted
 ## Arcade driving model in track space: z along the road, x across it (-1..1 is the road).
 
+const PITCH_SPAN := 400.0  # world units of road the car's pitch is measured over (about its length)
+const PITCH_FULL_DEG := 30.0
+const PITCH_RATE := 8.0
+
 var position := 0.0  # camera z, wrapped to the track length
 var distance := 0.0  # total distance driven, not wrapped
 var x := 0.0
 var speed := 0.0
 var steer := 0.0  # smoothed steering, for visuals
+var pitch := 0.0  # smoothed nose angle for visuals: 1 full nose-down (downhill), -1 full nose-up
 var braking := false
 var offroad := false
 
@@ -35,6 +40,7 @@ func reset(start_position: float = 0.0) -> void:
 	crash_time = 0.0
 	airborne = false
 	air_height = 0.0
+	pitch = 0.0
 	_vy = 0.0
 
 
@@ -98,6 +104,7 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	braking = brake > 0.1
 
 	_update_air(dt, track.height_at(position + Cfg.PLAYER_Z))
+	_update_pitch(dt, track)
 
 
 ## Leaves the road when it drops away faster than gravity can pull the car down.
@@ -120,6 +127,23 @@ func _update_air(dt: float, new_road_y: float) -> void:
 		_alt = new_road_y
 	road_y = new_road_y
 	air_height = maxf(0.0, _alt - road_y)
+
+
+## Follows the road's slope under the car, or the flight path in the air.
+func _update_pitch(dt: float, track: Track) -> void:
+	var slope := 0.0
+	if airborne:
+		slope = _vy / maxf(speed, 1.0)
+	else:
+		var z := position + Cfg.PLAYER_Z
+		slope = (track.height_at(z + PITCH_SPAN * 0.5) - track.height_at(z - PITCH_SPAN * 0.5)) / PITCH_SPAN
+	pitch = lerpf(pitch, pitch_for_slope(slope), minf(1.0, dt * PITCH_RATE))
+
+
+## Road slope (rise over run) to display pitch: downhill is positive, PITCH_FULL_DEG or
+## steeper is the most there is.
+static func pitch_for_slope(slope: float) -> float:
+	return clampf(-rad_to_deg(atan(slope)) / PITCH_FULL_DEG, -1.0, 1.0)
 
 
 ## Checks roadside sprites and traffic in the player's segment.

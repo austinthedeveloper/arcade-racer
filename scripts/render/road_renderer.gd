@@ -209,7 +209,7 @@ func _draw_player() -> void:
 	elif p.speed > 50.0 and not p.airborne:
 		y += roundf(randf_range(-1.0, 1.0) * (1.5 if p.offroad else 0.4) * p.speed / Cfg.MAX_SPEED)
 	CarSprites.draw_player(self, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking, p.nitro_time > 0.0,
-		time, roundf(lift))
+		time, roundf(lift), p.pitch)
 
 
 func _ground(theme: Dictionary, kind: int, b: int, fog: float) -> Color:

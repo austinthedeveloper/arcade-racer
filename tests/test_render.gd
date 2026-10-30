@@ -32,7 +32,28 @@ func test_steering_frames() -> void:
 
 
 func test_car_sprites_load() -> void:
-	check(CarSprites.player_tex != null, "player strip")
-	eq(int(CarSprites.player_cell.x) * CarSprites.PLAYER_FRAMES, CarSprites.player_tex.get_width(), "seven equal cells")
-	check(CarSprites.player_body_w > 0.0, "body width found")
+	for row: int in CarSprites.player_strips:
+		var strip: Dictionary = CarSprites.player_strips[row]
+		check(strip["tex"] != null, "player strip %d" % row)
+		eq(int(strip["cell"].x) * CarSprites.PLAYER_FRAMES, strip["tex"].get_width(), "seven equal cells in strip %d" % row)
+		check(strip["body_w"] > 0.0, "body width found in strip %d" % row)
+	check(CarSprites.player_strips.has(0), "level strip always there")
 	eq(CarSprites.traffic.size(), 13, "traffic vehicles")
+
+
+func test_pitch_rows() -> void:
+	eq(CarSprites.pitch_row(0.0), 0, "flat road is level")
+	eq(CarSprites.pitch_row(0.39), 0, "a gentle slope stays level")
+	eq(CarSprites.pitch_row(0.6), 1, "downhill is nose-down")
+	eq(CarSprites.pitch_row(-0.6), -1, "uphill is nose-up")
+	eq(CarSprites.pitch_row(0.6, [0]), 0, "no downhill strip falls back to level")
+	eq(CarSprites.pitch_row(-0.6, [0, 1]), 0, "no uphill strip falls back to level")
+
+
+func test_pitch_warp_shows_more_deck_downhill() -> void:
+	eq(CarSprites.pitch_warp(0.0), Vector2.ONE, "level is unscaled")
+	var down := CarSprites.pitch_warp(1.0)
+	var up := CarSprites.pitch_warp(-1.0)
+	check(down.x > 1.0 and down.y < 1.0, "nose-down: taller deck, shorter bumper")
+	check(up.x < 1.0 and up.y > 1.0, "nose-up: shorter deck, taller bumper")
+	eq(CarSprites.pitch_warp(3.0), down, "clamped")
