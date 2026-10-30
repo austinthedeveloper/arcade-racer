@@ -48,9 +48,7 @@ def make_player(concept_dir, out_path):
     frames = slice_sheet(os.path.join(concept_dir, "cars", "car_vega_steer_sheet_A_v2.png"))
     if len(frames) != 7:
         sys.exit("expected 7 Vega frames, found %d" % len(frames))
-    # The sheet runs from the car's left flank (nose turned right) to its right flank.
-    # Store it as hard left .. straight .. hard right steering.
-    frames.reverse()
+    # The sheet already runs hard left .. straight .. hard right: steering left shows the left flank.
     scale = PLAYER_BODY_WIDTH / frames[3].width
     frames = [pixelate_down(f, scale) for f in frames]
     cell_w = max(f.width for f in frames)
