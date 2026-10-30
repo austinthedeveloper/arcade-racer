@@ -210,3 +210,33 @@ func test_tumbleweeds_never_crash_the_car() -> void:
 	p.offroad = true
 	p.collide(t)
 	check(not p.crashed, "drove straight through the tumbleweed")
+
+
+func test_pitch_for_slope() -> void:
+	eq(PlayerCar.pitch_for_slope(0.0), 0.0, "flat")
+	check(PlayerCar.pitch_for_slope(-0.3) > 0.0, "downhill is nose-down (positive)")
+	check(PlayerCar.pitch_for_slope(0.3) < 0.0, "uphill is nose-up (negative)")
+	eq(PlayerCar.pitch_for_slope(-2.0), 1.0, "clamped nose-down")
+	eq(PlayerCar.pitch_for_slope(2.0), -1.0, "clamped nose-up")
+
+
+## A track that climbs at a steady `slope` (rise over run) after a flat run-up.
+func _ramp_track(slope: float) -> Track:
+	var t := Track.new()
+	for i in 600:
+		t.add_segment(0.0, 0.0 if i < 20 else t.last_y() + slope * Cfg.SEGMENT_LENGTH)
+	t.finish_building(590)
+	return t
+
+
+func test_pitch_follows_the_road() -> void:
+	var p := _car(Cfg.MAX_SPEED * 0.3)
+	_drive(p, flat_track(), 1.0, input(0.3))
+	check(absf(p.pitch) < 0.01, "level on a flat road (%.2f)" % p.pitch)
+	p = _car(Cfg.MAX_SPEED * 0.3)
+	_drive(p, _ramp_track(0.4), 2.0, input(0.3))
+	check(p.pitch < -0.5, "nose-up climbing (%.2f)" % p.pitch)
+	p = _car(Cfg.MAX_SPEED * 0.3)
+	_drive(p, _ramp_track(-0.4), 2.0, input(0.3))
+	check(p.pitch > 0.5, "nose-down descending (%.2f)" % p.pitch)
+	eq(p.airborne, false, "a steady descent keeps the wheels down")
