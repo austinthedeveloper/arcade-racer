@@ -6,7 +6,7 @@ An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports
 
 ## Running it
 
-1. Install **Godot 4.4 or newer** (standard build, not .NET).
+1. Install **Godot 4.7** (standard build, not .NET).
 2. Open Godot, choose **Import**, and pick `project.godot` in this folder.
 3. Press **F5** (or the Play button).
 
