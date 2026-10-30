@@ -137,7 +137,8 @@ func _draw_objects(seg: Segment) -> void:
 		var y0 := seg.s1.y - h
 		if h < 0.5 or x0 > Cfg.SCREEN_W or x0 + w < 0.0 or y0 >= seg.clip:
 			continue
-		var rect := Rect2(x0 + w, y0, -w, h) if sp["flip"] else Rect2(x0, y0, w, h)
+		# A negative width mirrors the texture within the same screen rect.
+		var rect := Rect2(x0, y0, -w, h) if sp["flip"] else Rect2(x0, y0, w, h)
 		draw_texture_rect(def["tex"], rect, false, tint)
 
 	for car in seg.cars:

@@ -55,6 +55,7 @@ For a test drive without input, run `godot --path . -- --autodrive`. `--no-traff
 - [Art direction](docs/03-art-direction.md): style options, sprite specs, palettes, UI
 - [Open questions](docs/04-open-questions.md): decisions needed before we build
 - [Concept review, round 1](docs/05-concept-review-round1.md)
+- [Concept review, round 2](docs/06-concept-review-round2.md)
 
 ## Concept art prompts
 
