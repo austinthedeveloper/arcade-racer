@@ -46,6 +46,10 @@ func test_harvest_run_matches_golden() -> void:
 	_check("harvest_autodrive_traffic")
 
 
+func test_thunder_run_matches_golden() -> void:
+	_check("thunder_autodrive_traffic")
+
+
 func test_runs_are_reproducible() -> void:
 	eq(Golden.run("autodrive_traffic", 900), Golden.run("autodrive_traffic", 900), "same input, same trace")
 

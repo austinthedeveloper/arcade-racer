@@ -80,6 +80,19 @@ STAGES = {
             ("harvest_plants_A_v1.png", 90, ["sunflowers", "corn", "farm_stand"]),
             ("harvest_props_A_v1.png", 100, ["hay_round", "hay_bale", "scarecrow", "farm_fence"]),
         ],
+    },    "thunder": {
+        "background": ("thunder_composite_A_v1.png", 630),
+        "sheets": [
+            ("thunder_buildings_A_v1.png", 160, ["truck_stop", "motel"]),
+            ("thunder_hazards_A_v1.png", 110, [
+                "jersey_barrier", "cone", "cone_tall", "barricade_post", "sawhorse", "drum",
+                "hazard_post", "a_frame"]),
+            ("thunder_poles_A_v1.png", 220, [
+                "pole_a", "pole_b", "pole_transformer", "pole_c", "pole_tanks", "pole_tall", "pylon"]),
+            ("thunder_props_A_v1.png", 110, [
+                "tree_windswept", "tree_snapped", "shrub_windswept", "puddle_a", "puddle_b",
+                "wrecked_sign"]),
+        ],
     },
 }
 
