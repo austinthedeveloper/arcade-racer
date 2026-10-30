@@ -43,10 +43,20 @@ scripts/
   race/race.gd              race flow: countdown, checkpoints, timer, finish
   ui/                       HUD, input debug overlay, calibration wizard
 assets/sprites/             in-game sprites (placeholders for now)
-tools/                      helper scripts that cut sprites from the concept art
+tests/                      test runner, suites, golden traces, end-to-end smoke
+tools/                      test.sh, and helper scripts that cut sprites from the concept art
 ```
 
 For a test drive without input, run `godot --path . -- --autodrive`. `--no-traffic` removes traffic, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames.
+
+## Tests
+
+```sh
+tools/test.sh                  # every suite, then the end-to-end input smoke
+tools/test.sh test_race        # only tests whose name contains "test_race"
+```
+
+`test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, the driving model, traffic, race flow and renderer regressions. `tests/golden/` holds frame-by-frame traces of two autodriven races. If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`. CI runs the same script on every push.
 
 ## Docs
 

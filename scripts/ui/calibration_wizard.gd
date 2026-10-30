@@ -92,7 +92,11 @@ func _process(dt: float) -> void:
 
 
 func _capture() -> void:
-	var axes := InputRouter.raw_axes(device)
+	capture(InputRouter.raw_axes(device))
+
+
+## Records the current step from a snapshot of the device's axes and moves on.
+func capture(axes: PackedFloat32Array) -> void:
 	message = ""
 	match step:
 		Step.REST:
@@ -108,8 +112,9 @@ func _capture() -> void:
 				step = Step.LEFT
 				return
 			profile = DeviceProfile.new()
-			profile.guid = Input.get_joy_guid(device)
-			profile.name = Input.get_joy_name(device)
+			if Input.get_connected_joypads().has(device):  # it may have been unplugged mid-way
+				profile.guid = Input.get_joy_guid(device)
+				profile.name = Input.get_joy_name(device)
 			profile.kind = DeviceProfile.Kind.WHEEL
 			profile.steer_axis = a
 			profile.steer_left = _left[a]

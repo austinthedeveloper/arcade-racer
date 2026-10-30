@@ -32,6 +32,7 @@ var calibration: CalibrationWizard
 
 var _shake := 0.0
 var _autodrive := false
+var _log_banners := false
 var _no_traffic := false
 var _screenshot_frames: Array[int] = []
 var _screenshot_dir := ""
@@ -168,7 +169,7 @@ func _banner(text: String, sub: String, seconds: float) -> void:
 	banner = text
 	banner_sub = sub
 	banner_time = seconds
-	if _autodrive:
+	if _log_banners:
 		print("[autodrive] %.1fs  %s  %s" % [race_time, text, sub])
 
 
@@ -191,6 +192,7 @@ func _parse_dev_args() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--autodrive":
 			_autodrive = true
+			_log_banners = true
 		elif arg == "--no-traffic":
 			_no_traffic = true
 		elif arg.begins_with("--screenshots="):
@@ -204,9 +206,34 @@ func _autodrive_input() -> DriveInput:
 	var inp := DriveInput.new()
 	var seg := track.find_segment(player.position + Cfg.PLAYER_Z + 3000.0)
 	inp.throttle = 1.0
-	inp.steer = clampf((seg.curve * 0.25) - player.x * 1.5, -1.0, 1.0)
+	inp.steer = clampf((seg.curve * 0.25) + (_autodrive_lane() - player.x) * 1.5, -1.0, 1.0)
 	inp.nitro_pressed = _frame % 600 == 300
 	return inp
+
+
+## The lane with the most open road ahead, keeping the current one on a tie.
+func _autodrive_lane() -> float:
+	const LOOKAHEAD := 40  # segments
+	var here := track.find_segment(player.position + Cfg.PLAYER_Z).index
+	var best: float = Traffic.LANE_OFFSETS[0]
+	var best_gap := -1
+	var lanes: Array = Traffic.LANE_OFFSETS.duplicate()
+	lanes.sort_custom(func(a: float, b: float) -> bool: return absf(a - player.x) < absf(b - player.x))
+	for lane: float in lanes:
+		var gap := LOOKAHEAD
+		for n in LOOKAHEAD:
+			var ahead := track.segments[(here + n) % track.segments.size()]
+			var blocked := false
+			for car in ahead.cars:
+				if absf(car.offset - lane) < 0.3 and car.speed < player.speed:
+					blocked = true
+			if blocked:
+				gap = n
+				break
+		if gap > best_gap:
+			best_gap = gap
+			best = lane
+	return best
 
 
 func _save_screenshot() -> void:

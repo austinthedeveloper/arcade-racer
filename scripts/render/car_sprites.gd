@@ -46,9 +46,7 @@ static func draw_player(ci: CanvasItem, base: Vector2, w: float, steer: float, b
 	var size := player_cell * k
 	var y := base.y - lift
 	_shadow(ci, base, w, clampf(1.0 - lift / (w * 0.6), 0.2, 1.0))
-	var half := PLAYER_FRAMES / 2
-	var frame := clampi(half + roundi(steer * half), 0, PLAYER_FRAMES - 1)
-	var src := Rect2(Vector2(frame * player_cell.x, 0.0), player_cell)
+	var src := Rect2(Vector2(steer_frame(steer) * player_cell.x, 0.0), player_cell)
 	ci.draw_texture_rect_region(player_tex, Rect2(roundf(base.x - size.x / 2.0), roundf(y - size.y), roundf(size.x), roundf(size.y)), src)
 	if brake:
 		# Glow over the triangle taillights
@@ -57,6 +55,12 @@ static func draw_player(ci: CanvasItem, base: Vector2, w: float, steer: float, b
 			ci.draw_rect(Rect2(base.x + side * w * 0.36 - w * 0.13, ly, w * 0.26, size.y * 0.12), Color(1.0, 0.25, 0.1, 0.35))
 	if nitro:
 		_flame(ci, Vector2(base.x, y - size.y * 0.24), w, t)
+
+
+## Strip frame for a steering value: 0 is hard left, the middle is straight, the last is hard right.
+static func steer_frame(steer: float) -> int:
+	var half := PLAYER_FRAMES / 2
+	return clampi(half + roundi(steer * half), 0, PLAYER_FRAMES - 1)
 
 
 static func draw_traffic(ci: CanvasItem, base: Vector2, w: float, id: String, tint: Color, fog: float) -> void:

@@ -1,0 +1,35 @@
+# Every Godot test suite plus the end-to-end input smoke, headless on
+# Linux, with the same script as a local run (tools/test.sh fails on
+# any failed test or SCRIPT ERROR).
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same ref supersedes a running check.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Godot tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-godot
+
+      - name: Import the project
+        # test.sh imports too, silently; this one shows its log.
+        run: godot --headless --path . --import
+
+      - name: Tests (suites + e2e)
+        run: tools/test.sh

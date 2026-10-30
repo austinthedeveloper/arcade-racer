@@ -133,12 +133,9 @@ func _draw_objects(seg: Segment) -> void:
 		var h: float = def["world_h"] * s * Cfg.PROJ
 		var offset: float = sp["offset"]
 		var sx := seg.s1.x + s * offset * Cfg.ROAD_WIDTH * Cfg.PROJ
-		var x0 := sx - w if offset < 0.0 else sx
-		var y0 := seg.s1.y - h
-		if h < 0.5 or x0 > Cfg.SCREEN_W or x0 + w < 0.0 or y0 >= seg.clip:
+		var rect := sprite_rect(sx, seg.s1.y, w, h, offset, sp["flip"])
+		if h < 0.5 or rect.position.x > Cfg.SCREEN_W or rect.position.x + w < 0.0 or rect.position.y >= seg.clip:
 			continue
-		# A negative width mirrors the texture within the same screen rect.
-		var rect := Rect2(x0, y0, -w, h) if sp["flip"] else Rect2(x0, y0, w, h)
 		draw_texture_rect(def["tex"], rect, false, tint)
 
 	for car in seg.cars:
@@ -150,6 +147,14 @@ func _draw_objects(seg: Segment) -> void:
 		if w < 1.0 or cy - w >= seg.clip or cx + w < 0.0 or cx - w > Cfg.SCREEN_W:
 			continue
 		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog)
+
+
+## Screen rect for a roadside sprite whose road-side edge is at sx: left-side sprites end at
+## sx, right-side ones start there. A flipped sprite gets a negative width, which mirrors the
+## texture within the same rect.
+static func sprite_rect(sx: float, base_y: float, w: float, h: float, offset: float, flip: bool) -> Rect2:
+	var x0 := sx - w if offset < 0.0 else sx
+	return Rect2(x0, base_y - h, -w if flip else w, h)
 
 
 func _draw_gantry(seg: Segment, tint: Color) -> void:

@@ -7,7 +7,6 @@ extends Node
 
 signal devices_changed
 
-const PROFILE_PATH := "user://input_profiles.cfg"
 const AXIS_COUNT := 10
 const BUTTON_COUNT := 24
 const WHEEL_NAME_HINTS := [
@@ -18,6 +17,8 @@ const WHEEL_NAME_HINTS := [
 const PAD_DEADZONE := 0.12
 const PAD_GAMMA := 1.6
 
+## Where wheel and pad profiles are saved. Tests point this at a scratch file.
+var profile_path := "user://input_profiles.cfg"
 var state := DriveInput.new()
 var speed_factor := 0.0  # set by the race each tick, for speed-sensitive pad steering
 var last_active_device := -1  # -1 is the keyboard
@@ -33,7 +34,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	process_physics_priority = -100
 	_register_actions()
-	_load_profiles()
+	load_profiles()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 
 
@@ -194,9 +195,10 @@ func pressed_buttons(device: int) -> Array[int]:
 	return out
 
 
-func _load_profiles() -> void:
+func load_profiles() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(PROFILE_PATH) != OK:
+	_saved.clear()
+	if cfg.load(profile_path) != OK:
 		return
 	for section in cfg.get_sections():
 		_saved[section] = DeviceProfile.load_from(cfg, section)
@@ -206,7 +208,7 @@ func _write_profiles() -> void:
 	var cfg := ConfigFile.new()
 	for guid in _saved:
 		(_saved[guid] as DeviceProfile).save_to(cfg)
-	cfg.save(PROFILE_PATH)
+	cfg.save(profile_path)
 
 
 func _on_joy_connection_changed(device: int, _connected: bool) -> void:
