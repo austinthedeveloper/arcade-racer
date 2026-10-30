@@ -1,33 +1,56 @@
 class_name CarSprites
 extends RefCounted
 ## Car sprites cut from the concept sheets (see tools/make_car_sprites.py): the player's
-## steering strip and the traffic vehicles, all seen from behind.
+## steering strips and the traffic vehicles, all seen from behind.
+##
+## The player has one steering strip per pitch: level, plus optional nose-up (uphill) and
+## nose-down (downhill) strips laid out the same way. A missing pitched strip falls back to
+## the level one, stretched to fake the pitch (pitch_warp).
 
 const PLAYER_STRIP := "res://assets/sprites/cars/vega_steer.png"
+const PLAYER_PITCH_STRIPS := {
+	-1: "res://assets/sprites/cars/vega_steer_up.png",
+	1: "res://assets/sprites/cars/vega_steer_down.png",
+}
 const PLAYER_FRAMES := 7
 const TRAFFIC_DIR := "res://assets/sprites/traffic/"
+
+# |pitch| at which a pitched strip takes over from the level one
+const PITCH_SWITCH := 0.4
+# Fraction of the car's height, from the top, that is roof and rear deck (above the taillights)
+const DECK_SPLIT := 0.55
+# Fallback stretch at full pitch: the deck grows this much nose-down and shrinks nose-up,
+# the bumper does the opposite at half the rate.
+const DECK_STRETCH := 0.35
 
 # World units per texture pixel. Each concept sheet was drawn at its own scale.
 const CAR_SCALE := 7.0
 const BIG_SCALE := 8.2
 
-static var player_tex: Texture2D
-static var player_cell := Vector2.ZERO
-static var player_body_w := 0.0  # opaque width of the straight-ahead frame
+## pitch row (-1 up, 0 level, 1 down) -> {"tex", "cell", "body_w"}
+static var player_strips: Dictionary = {}
 static var traffic: Dictionary = {}
 
 
 static func load_all() -> void:
-	if player_tex != null:
+	if not player_strips.is_empty():
 		return
-	player_tex = load(PLAYER_STRIP)
-	player_cell = Vector2(player_tex.get_width() / float(PLAYER_FRAMES), player_tex.get_height())
-	var straight := player_tex.get_image().get_region(Rect2i(Vector2i(int(player_cell.x) * (PLAYER_FRAMES / 2), 0), Vector2i(player_cell)))
-	player_body_w = straight.get_used_rect().size.x
+	player_strips[0] = _load_strip(PLAYER_STRIP)
+	for row: int in PLAYER_PITCH_STRIPS:
+		if ResourceLoader.exists(PLAYER_PITCH_STRIPS[row]):
+			player_strips[row] = _load_strip(PLAYER_PITCH_STRIPS[row])
 	for id in ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow", "surf_van", "taxi"]:
 		_add_traffic(id, CAR_SCALE)
 	for id in ["semi", "bus", "box_truck", "rv", "carrier"]:
 		_add_traffic(id, BIG_SCALE)
+
+
+static func _load_strip(path: String) -> Dictionary:
+	var tex: Texture2D = load(path)
+	var cell := Vector2(tex.get_width() / float(PLAYER_FRAMES), tex.get_height())
+	var straight := tex.get_image().get_region(Rect2i(Vector2i(int(cell.x) * (PLAYER_FRAMES / 2), 0), Vector2i(cell)))
+	# Opaque width of the straight-ahead frame
+	return {"tex": tex, "cell": cell, "body_w": float(straight.get_used_rect().size.x)}
 
 
 static func _add_traffic(id: String, world_per_px: float) -> void:
@@ -40,21 +63,54 @@ static func _add_traffic(id: String, world_per_px: float) -> void:
 
 ## base: bottom-center of the car on the road. w: on-screen body width.
 ## steer: -1 full left .. 1 full right; beyond that it keeps the hardest frame.
+## pitch: 1 full nose-down (downhill) .. -1 full nose-up (see PlayerCar.pitch).
 static func draw_player(ci: CanvasItem, base: Vector2, w: float, steer: float, brake: bool, nitro: bool,
-		t: float, lift: float = 0.0) -> void:
-	var k := w / player_body_w
-	var size := player_cell * k
+		t: float, lift: float = 0.0, pitch: float = 0.0) -> void:
+	var row := pitch_row(pitch, player_strips.keys())
+	var strip: Dictionary = player_strips[row]
+	var tex: Texture2D = strip["tex"]
+	var cell: Vector2 = strip["cell"]
+	var k := w / float(strip["body_w"])
+	var size := cell * k
 	var y := base.y - lift
 	_shadow(ci, base, w, clampf(1.0 - lift / (w * 0.6), 0.2, 1.0))
-	var src := Rect2(Vector2(steer_frame(steer) * player_cell.x, 0.0), player_cell)
-	ci.draw_texture_rect_region(player_tex, Rect2(roundf(base.x - size.x / 2.0), roundf(y - size.y), roundf(size.x), roundf(size.y)), src)
+	var src := Rect2(Vector2(steer_frame(steer) * cell.x, 0.0), cell)
+	var left := roundf(base.x - size.x / 2.0)
+	var warp := pitch_warp(pitch) if row == 0 else Vector2.ONE
+	# Deck (top) and bumper (bottom) slices, each scaled on its own, stacked up from the road
+	var deck_h := roundf(size.y * DECK_SPLIT * warp.x)
+	var bumper_h := roundf(size.y * (1.0 - DECK_SPLIT) * warp.y)
+	var split := roundf(cell.y * DECK_SPLIT)  # on a whole texel row
+	var deck_src := Rect2(src.position, Vector2(cell.x, split))
+	var bumper_src := Rect2(src.position + Vector2(0.0, split), Vector2(cell.x, cell.y - split))
+	var bumper_top := roundf(y - bumper_h)
+	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top, roundf(size.x), bumper_h), bumper_src)
+	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top - deck_h, roundf(size.x), deck_h), deck_src)
+	var h := deck_h + bumper_h
 	if brake:
 		# Glow over the triangle taillights
-		var ly := y - size.y * 0.58
+		var ly := y - h * 0.58
 		for side in [-1.0, 1.0]:
-			ci.draw_rect(Rect2(base.x + side * w * 0.36 - w * 0.13, ly, w * 0.26, size.y * 0.12), Color(1.0, 0.25, 0.1, 0.35))
+			ci.draw_rect(Rect2(base.x + side * w * 0.36 - w * 0.13, ly, w * 0.26, h * 0.12), Color(1.0, 0.25, 0.1, 0.35))
 	if nitro:
-		_flame(ci, Vector2(base.x, y - size.y * 0.24), w, t)
+		_flame(ci, Vector2(base.x, y - h * 0.24), w, t)
+
+
+## Which pitch strip to draw: -1 nose-up, 0 level, 1 nose-down, among the rows that exist.
+static func pitch_row(pitch: float, rows: Array = [-1, 0, 1]) -> int:
+	var want := 0
+	if pitch >= PITCH_SWITCH:
+		want = 1
+	elif pitch <= -PITCH_SWITCH:
+		want = -1
+	return want if want in rows else 0
+
+
+## Height scale of the (deck, bumper) slices that fakes a pitch on the level strip: nose-down
+## shows more roof and deck, nose-up more bumper.
+static func pitch_warp(pitch: float) -> Vector2:
+	var p := clampf(pitch, -1.0, 1.0)
+	return Vector2(1.0 + DECK_STRETCH * p, 1.0 - DECK_STRETCH * 0.5 * p)
 
 
 ## Strip frame for a steering value: 0 is hard left, the middle is straight, the last is hard right.
