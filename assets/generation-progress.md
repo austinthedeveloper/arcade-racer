@@ -1,14 +1,14 @@
 # Image Generation Completion Log
 
-Updated: 2026-10-29 (America/Chicago).
+Updated: 2026-10-30 (America/Chicago). Generation began 2026-10-29.
 
-**Saved: 66/137 images.** Covers all 133 source prompts plus four additional title/gameplay style comparisons.
+**Saved: 137/137 images.** Covers all 133 source prompts plus four additional title/gameplay style comparisons.
 
 **Main direction:** STYLE-A, high-color pixel art (confirmed by the user). STYLE-B and STYLE-C are comparison variants for KA-01 and KA-02 only.
 
-**Generator:** built-in image_gen. Source prompts are preserved. Every final prompt substitutes the exact chosen style block and adds aspect ratio plus constraints on original designs, full subjects, frame counts, and magenta key backgrounds. Exact submitted prompts and results: [generation-prompts.json](generation-prompts.json).
+**Generator:** built-in image_gen. Source prompts are preserved. Final prompts substitute the exact chosen style block and add aspect ratio, stage context, and layout constraints. Targeted correction prompts are recorded where used. Selected final prompts and results: [generation-prompts.json](generation-prompts.json).
 
-**Usage:** concept/reference images. Sprite sheets still need production cleanup, frame registration, keying/alpha conversion, and animation checks. Background layers need seam testing before use.
+**Usage:** concept/reference images. Sprite sheets still need production cleanup, frame registration, keying/alpha conversion, and animation checks. Background layers need seam testing before use. Wide layers are generally about 3:1, the width returned by the generator; actual dimensions are recorded below.
 
 ## Completion by round
 
@@ -16,7 +16,7 @@ Updated: 2026-10-29 (America/Chicago).
 |---|---:|---:|
 | 1 | 12 | 12 |
 | 2 | 47 | 47 |
-| 3 | 7 | 78 |
+| 3 | 78 | 78 |
 
 ## Round 1
 
@@ -98,74 +98,96 @@ Updated: 2026-10-29 (America/Chicago).
 | complete | [BG-HARVEST-01](prompts/backgrounds/harvest.md) | A | [harvest_composite_A_v1.png](concept/backgrounds/harvest_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
 | complete | [BG-HARVEST-02](prompts/backgrounds/harvest.md) | A | [harvest_l1_sky_A_v1.png](concept/backgrounds/harvest_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-HARVEST-03](prompts/backgrounds/harvest.md) | A | [harvest_l2_far_A_v1.png](concept/backgrounds/harvest_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
-| pending | [BG-HARVEST-04](prompts/backgrounds/harvest.md) | A | `concept/backgrounds/harvest_l3_near_A_v1.png` |  |
-| pending | [BG-SKYLINE-01](prompts/backgrounds/skyline.md) | A | `concept/backgrounds/skyline_composite_A_v1.png` |  |
-| pending | [BG-SKYLINE-02](prompts/backgrounds/skyline.md) | A | `concept/backgrounds/skyline_l1_sky_A_v1.png` |  |
-| pending | [BG-SKYLINE-03](prompts/backgrounds/skyline.md) | A | `concept/backgrounds/skyline_l2_far_A_v1.png` |  |
-| pending | [BG-SKYLINE-04](prompts/backgrounds/skyline.md) | A | `concept/backgrounds/skyline_l3_near_A_v1.png` |  |
-| pending | [BG-THUNDER-01](prompts/backgrounds/thunder.md) | A | `concept/backgrounds/thunder_composite_A_v1.png` |  |
-| pending | [BG-THUNDER-02](prompts/backgrounds/thunder.md) | A | `concept/backgrounds/thunder_l1_sky_A_v1.png` |  |
-| pending | [BG-THUNDER-03](prompts/backgrounds/thunder.md) | A | `concept/backgrounds/thunder_l2_far_A_v1.png` |  |
-| pending | [BG-THUNDER-04](prompts/backgrounds/thunder.md) | A | `concept/backgrounds/thunder_l3_near_A_v1.png` |  |
-| pending | [BG-TIMBER-01](prompts/backgrounds/timberline.md) | A | `concept/backgrounds/timberline_composite_A_v1.png` |  |
-| pending | [BG-TIMBER-02](prompts/backgrounds/timberline.md) | A | `concept/backgrounds/timberline_l1_sky_A_v1.png` |  |
-| pending | [BG-TIMBER-03](prompts/backgrounds/timberline.md) | A | `concept/backgrounds/timberline_l2_far_A_v1.png` |  |
-| pending | [BG-TIMBER-04](prompts/backgrounds/timberline.md) | A | `concept/backgrounds/timberline_l3_near_A_v1.png` |  |
-| pending | [CAR-BRUISER-04](prompts/cars/car_bruiser.md) | A | `concept/cars/car_bruiser_crash_sheet_A_v1.png` |  |
-| pending | [CAR-HAULER-01](prompts/cars/car_hauler.md) | A | `concept/cars/car_hauler_hero_A_v1.png` |  |
-| pending | [CAR-HAULER-02](prompts/cars/car_hauler.md) | A | `concept/cars/car_hauler_views_A_v1.png` |  |
-| pending | [CAR-HAULER-03](prompts/cars/car_hauler.md) | A | `concept/cars/car_hauler_steer_sheet_A_v1.png` |  |
-| pending | [CAR-HAULER-04](prompts/cars/car_hauler.md) | A | `concept/cars/car_hauler_crash_sheet_A_v1.png` |  |
-| pending | [CAR-KESTREL-04](prompts/cars/car_kestrel.md) | A | `concept/cars/car_kestrel_crash_sheet_A_v1.png` |  |
-| pending | [CAR-MESA-01](prompts/cars/car_mesa.md) | A | `concept/cars/car_mesa_hero_A_v1.png` |  |
-| pending | [CAR-MESA-02](prompts/cars/car_mesa.md) | A | `concept/cars/car_mesa_views_A_v1.png` |  |
-| pending | [CAR-MESA-03](prompts/cars/car_mesa.md) | A | `concept/cars/car_mesa_steer_sheet_A_v1.png` |  |
-| pending | [CAR-MESA-04](prompts/cars/car_mesa.md) | A | `concept/cars/car_mesa_crash_sheet_A_v1.png` |  |
-| pending | [CAR-PHANTOM-01](prompts/cars/car_phantom.md) | A | `concept/cars/car_phantom_hero_A_v1.png` |  |
-| pending | [CAR-PHANTOM-02](prompts/cars/car_phantom.md) | A | `concept/cars/car_phantom_views_A_v1.png` |  |
-| pending | [CAR-PHANTOM-03](prompts/cars/car_phantom.md) | A | `concept/cars/car_phantom_steer_sheet_A_v1.png` |  |
-| pending | [CAR-PHANTOM-04](prompts/cars/car_phantom.md) | A | `concept/cars/car_phantom_crash_sheet_A_v1.png` |  |
-| pending | [CAR-SOL-04](prompts/cars/car_sol.md) | A | `concept/cars/car_sol_crash_sheet_A_v1.png` |  |
-| pending | [CAR-VEGA-04](prompts/cars/car_vega.md) | A | `concept/cars/car_vega_crash_sheet_A_v1.png` |  |
-| pending | [CAR-ZENITH-01](prompts/cars/car_zenith.md) | A | `concept/cars/car_zenith_hero_A_v1.png` |  |
-| pending | [CAR-ZENITH-02](prompts/cars/car_zenith.md) | A | `concept/cars/car_zenith_views_A_v1.png` |  |
-| pending | [CAR-ZENITH-03](prompts/cars/car_zenith.md) | A | `concept/cars/car_zenith_steer_sheet_A_v1.png` |  |
-| pending | [CAR-ZENITH-04](prompts/cars/car_zenith.md) | A | `concept/cars/car_zenith_crash_sheet_A_v1.png` |  |
-| pending | [FX-03](prompts/fx/fx.md) | A | `concept/fx/fx03_sparks_A_v1.png` |  |
-| pending | [FX-04](prompts/fx/fx.md) | A | `concept/fx/fx04_surface_kickup_A_v1.png` |  |
-| pending | [FX-05](prompts/fx/fx.md) | A | `concept/fx/fx05_weather_A_v1.png` |  |
-| pending | [FX-06](prompts/fx/fx.md) | A | `concept/fx/fx06_celebration_A_v1.png` |  |
-| pending | [FX-07](prompts/fx/fx.md) | A | `concept/fx/fx07_speed_A_v1.png` |  |
-| pending | [KA-06](prompts/key-art/key-art.md) | A | `concept/key-art/ka06_map_A_v1.png` |  |
-| pending | [RS-BAYOU-01](prompts/roadside/bayou.md) | A | `concept/roadside/bayou_trees_A_v1.png` |  |
-| pending | [RS-BAYOU-02](prompts/roadside/bayou.md) | A | `concept/roadside/bayou_bridge_A_v1.png` |  |
-| pending | [RS-BAYOU-03](prompts/roadside/bayou.md) | A | `concept/roadside/bayou_buildings_A_v1.png` |  |
-| pending | [RS-BAYOU-04](prompts/roadside/bayou.md) | A | `concept/roadside/bayou_props_A_v1.png` |  |
-| pending | [RS-BAYOU-ROAD](prompts/roadside/bayou.md) | A | `concept/roadside/bayou_road_colors_A_v1.png` |  |
-| pending | [RS-HARVEST-01](prompts/roadside/harvest.md) | A | `concept/roadside/harvest_buildings_A_v1.png` |  |
-| pending | [RS-HARVEST-02](prompts/roadside/harvest.md) | A | `concept/roadside/harvest_props_A_v1.png` |  |
-| pending | [RS-HARVEST-03](prompts/roadside/harvest.md) | A | `concept/roadside/harvest_landmarks_A_v1.png` |  |
-| pending | [RS-HARVEST-04](prompts/roadside/harvest.md) | A | `concept/roadside/harvest_plants_A_v1.png` |  |
-| pending | [RS-HARVEST-ROAD](prompts/roadside/harvest.md) | A | `concept/roadside/harvest_road_colors_A_v1.png` |  |
-| pending | [RS-SKYLINE-01](prompts/roadside/skyline.md) | A | `concept/roadside/skyline_buildings_A_v1.png` |  |
-| pending | [RS-SKYLINE-02](prompts/roadside/skyline.md) | A | `concept/roadside/skyline_bridge_A_v1.png` |  |
-| pending | [RS-SKYLINE-03](prompts/roadside/skyline.md) | A | `concept/roadside/skyline_props_A_v1.png` |  |
-| pending | [RS-SKYLINE-04](prompts/roadside/skyline.md) | A | `concept/roadside/skyline_finish_A_v1.png` |  |
-| pending | [RS-SKYLINE-ROAD](prompts/roadside/skyline.md) | A | `concept/roadside/skyline_road_colors_A_v1.png` |  |
-| pending | [RS-THUNDER-01](prompts/roadside/thunder.md) | A | `concept/roadside/thunder_poles_A_v1.png` |  |
-| pending | [RS-THUNDER-02](prompts/roadside/thunder.md) | A | `concept/roadside/thunder_props_A_v1.png` |  |
-| pending | [RS-THUNDER-03](prompts/roadside/thunder.md) | A | `concept/roadside/thunder_buildings_A_v1.png` |  |
-| pending | [RS-THUNDER-04](prompts/roadside/thunder.md) | A | `concept/roadside/thunder_hazards_A_v1.png` |  |
-| pending | [RS-THUNDER-ROAD](prompts/roadside/thunder.md) | A | `concept/roadside/thunder_road_colors_A_v1.png` |  |
-| pending | [RS-TIMBER-01](prompts/roadside/timberline.md) | A | `concept/roadside/timberline_pines_A_v1.png` |  |
-| pending | [RS-TIMBER-02](prompts/roadside/timberline.md) | A | `concept/roadside/timberline_props_A_v1.png` |  |
-| pending | [RS-TIMBER-03](prompts/roadside/timberline.md) | A | `concept/roadside/timberline_buildings_A_v1.png` |  |
-| pending | [RS-TIMBER-04](prompts/roadside/timberline.md) | A | `concept/roadside/timberline_landmarks_A_v1.png` |  |
-| pending | [RS-TIMBERLINE-ROAD](prompts/roadside/timberline.md) | A | `concept/roadside/timberline_road_colors_A_v1.png` |  |
-| pending | [TRF-02](prompts/traffic/traffic.md) | A | `concept/traffic/trf02_cars_front_A_v1.png` |  |
-| pending | [TRF-04](prompts/traffic/traffic.md) | A | `concept/traffic/trf04_stage_specials_A_v1.png` |  |
-| pending | [HUD-03](prompts/ui/hud.md) | A | `concept/ui/hud03_icons_A_v1.png` |  |
-| pending | [HUD-05](prompts/ui/hud.md) | A | `concept/ui/hud05_countdown_A_v1.png` |  |
-| pending | [HUD-06](prompts/ui/hud.md) | A | `concept/ui/hud06_calibration_A_v1.png` |  |
-| pending | [UI-05](prompts/ui/logo-and-menus.md) | A | `concept/ui/ui05_stage_select_A_v1.png` |  |
-| pending | [UI-06](prompts/ui/logo-and-menus.md) | A | `concept/ui/ui06_results_A_v1.png` |  |
+| complete | [BG-HARVEST-04](prompts/backgrounds/harvest.md) | A | [harvest_l3_near_A_v1.png](concept/backgrounds/harvest_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-SKYLINE-01](prompts/backgrounds/skyline.md) | A | [skyline_composite_A_v1.png](concept/backgrounds/skyline_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
+| complete | [BG-SKYLINE-02](prompts/backgrounds/skyline.md) | A | [skyline_l1_sky_A_v1.png](concept/backgrounds/skyline_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-SKYLINE-03](prompts/backgrounds/skyline.md) | A | [skyline_l2_far_A_v1.png](concept/backgrounds/skyline_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-SKYLINE-04](prompts/backgrounds/skyline.md) | A | [skyline_l3_near_A_v1.png](concept/backgrounds/skyline_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-THUNDER-01](prompts/backgrounds/thunder.md) | A | [thunder_composite_A_v1.png](concept/backgrounds/thunder_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
+| complete | [BG-THUNDER-02](prompts/backgrounds/thunder.md) | A | [thunder_l1_sky_A_v1.png](concept/backgrounds/thunder_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-THUNDER-03](prompts/backgrounds/thunder.md) | A | [thunder_l2_far_A_v1.png](concept/backgrounds/thunder_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-THUNDER-04](prompts/backgrounds/thunder.md) | A | [thunder_l3_near_A_v1.png](concept/backgrounds/thunder_l3_near_A_v1.png) | 2092 × 752. Generated and visually reviewed as concept reference. |
+| complete | [BG-TIMBER-01](prompts/backgrounds/timberline.md) | A | [timberline_composite_A_v1.png](concept/backgrounds/timberline_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
+| complete | [BG-TIMBER-02](prompts/backgrounds/timberline.md) | A | [timberline_l1_sky_A_v1.png](concept/backgrounds/timberline_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-TIMBER-03](prompts/backgrounds/timberline.md) | A | [timberline_l2_far_A_v1.png](concept/backgrounds/timberline_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-TIMBER-04](prompts/backgrounds/timberline.md) | A | [timberline_l3_near_A_v1.png](concept/backgrounds/timberline_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [CAR-BRUISER-04](prompts/cars/car_bruiser.md) | A | [car_bruiser_crash_sheet_A_v1.png](concept/cars/car_bruiser_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-HAULER-01](prompts/cars/car_hauler.md) | A | [car_hauler_hero_A_v1.png](concept/cars/car_hauler_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| complete | [CAR-HAULER-02](prompts/cars/car_hauler.md) | A | [car_hauler_views_A_v1.png](concept/cars/car_hauler_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-HAULER-03](prompts/cars/car_hauler.md) | A | [car_hauler_steer_sheet_A_v1.png](concept/cars/car_hauler_steer_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-HAULER-04](prompts/cars/car_hauler.md) | A | [car_hauler_crash_sheet_A_v1.png](concept/cars/car_hauler_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-KESTREL-04](prompts/cars/car_kestrel.md) | A | [car_kestrel_crash_sheet_A_v1.png](concept/cars/car_kestrel_crash_sheet_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
+| complete | [CAR-MESA-01](prompts/cars/car_mesa.md) | A | [car_mesa_hero_A_v1.png](concept/cars/car_mesa_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| complete | [CAR-MESA-02](prompts/cars/car_mesa.md) | A | [car_mesa_views_A_v1.png](concept/cars/car_mesa_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-MESA-03](prompts/cars/car_mesa.md) | A | [car_mesa_steer_sheet_A_v1.png](concept/cars/car_mesa_steer_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-MESA-04](prompts/cars/car_mesa.md) | A | [car_mesa_crash_sheet_A_v1.png](concept/cars/car_mesa_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-PHANTOM-01](prompts/cars/car_phantom.md) | A | [car_phantom_hero_A_v1.png](concept/cars/car_phantom_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| complete | [CAR-PHANTOM-02](prompts/cars/car_phantom.md) | A | [car_phantom_views_A_v1.png](concept/cars/car_phantom_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-PHANTOM-03](prompts/cars/car_phantom.md) | A | [car_phantom_steer_sheet_A_v1.png](concept/cars/car_phantom_steer_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-PHANTOM-04](prompts/cars/car_phantom.md) | A | [car_phantom_crash_sheet_A_v1.png](concept/cars/car_phantom_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-SOL-04](prompts/cars/car_sol.md) | A | [car_sol_crash_sheet_A_v1.png](concept/cars/car_sol_crash_sheet_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
+| complete | [CAR-VEGA-04](prompts/cars/car_vega.md) | A | [car_vega_crash_sheet_A_v1.png](concept/cars/car_vega_crash_sheet_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [CAR-ZENITH-01](prompts/cars/car_zenith.md) | A | [car_zenith_hero_A_v1.png](concept/cars/car_zenith_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| complete | [CAR-ZENITH-02](prompts/cars/car_zenith.md) | A | [car_zenith_views_A_v1.png](concept/cars/car_zenith_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-ZENITH-03](prompts/cars/car_zenith.md) | A | [car_zenith_steer_sheet_A_v1.png](concept/cars/car_zenith_steer_sheet_A_v1.png) | 2117 × 743. Generated and visually reviewed as concept reference. |
+| complete | [CAR-ZENITH-04](prompts/cars/car_zenith.md) | A | [car_zenith_crash_sheet_A_v1.png](concept/cars/car_zenith_crash_sheet_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [FX-03](prompts/fx/fx.md) | A | [fx03_sparks_A_v1.png](concept/fx/fx03_sparks_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [FX-04](prompts/fx/fx.md) | A | [fx04_surface_kickup_A_v1.png](concept/fx/fx04_surface_kickup_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [FX-05](prompts/fx/fx.md) | A | [fx05_weather_A_v1.png](concept/fx/fx05_weather_A_v1.png) | 1672 × 940. Generated and visually reviewed as concept reference. |
+| complete | [FX-06](prompts/fx/fx.md) | A | [fx06_celebration_A_v1.png](concept/fx/fx06_celebration_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [FX-07](prompts/fx/fx.md) | A | [fx07_speed_A_v1.png](concept/fx/fx07_speed_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [KA-06](prompts/key-art/key-art.md) | A | [ka06_map_A_v1.png](concept/key-art/ka06_map_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-BAYOU-01](prompts/roadside/bayou.md) | A | [bayou_trees_A_v1.png](concept/roadside/bayou_trees_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-BAYOU-02](prompts/roadside/bayou.md) | A | [bayou_bridge_A_v1.png](concept/roadside/bayou_bridge_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-BAYOU-03](prompts/roadside/bayou.md) | A | [bayou_buildings_A_v1.png](concept/roadside/bayou_buildings_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-BAYOU-04](prompts/roadside/bayou.md) | A | [bayou_props_A_v1.png](concept/roadside/bayou_props_A_v1.png) | 1672 × 940. Generated and visually reviewed as concept reference. |
+| complete | [RS-BAYOU-ROAD](prompts/roadside/bayou.md) | A | [bayou_road_colors_A_v1.png](concept/roadside/bayou_road_colors_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-HARVEST-01](prompts/roadside/harvest.md) | A | [harvest_buildings_A_v1.png](concept/roadside/harvest_buildings_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-HARVEST-02](prompts/roadside/harvest.md) | A | [harvest_props_A_v1.png](concept/roadside/harvest_props_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-HARVEST-03](prompts/roadside/harvest.md) | A | [harvest_landmarks_A_v1.png](concept/roadside/harvest_landmarks_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-HARVEST-04](prompts/roadside/harvest.md) | A | [harvest_plants_A_v1.png](concept/roadside/harvest_plants_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-HARVEST-ROAD](prompts/roadside/harvest.md) | A | [harvest_road_colors_A_v1.png](concept/roadside/harvest_road_colors_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-SKYLINE-01](prompts/roadside/skyline.md) | A | [skyline_buildings_A_v1.png](concept/roadside/skyline_buildings_A_v1.png) | 1672 × 940. Generated and visually reviewed as concept reference. |
+| complete | [RS-SKYLINE-02](prompts/roadside/skyline.md) | A | [skyline_bridge_A_v1.png](concept/roadside/skyline_bridge_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-SKYLINE-03](prompts/roadside/skyline.md) | A | [skyline_props_A_v1.png](concept/roadside/skyline_props_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-SKYLINE-04](prompts/roadside/skyline.md) | A | [skyline_finish_A_v1.png](concept/roadside/skyline_finish_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-SKYLINE-ROAD](prompts/roadside/skyline.md) | A | [skyline_road_colors_A_v1.png](concept/roadside/skyline_road_colors_A_v1.png) | 1672 × 940. Generated and visually reviewed as concept reference. |
+| complete | [RS-THUNDER-01](prompts/roadside/thunder.md) | A | [thunder_poles_A_v1.png](concept/roadside/thunder_poles_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-THUNDER-02](prompts/roadside/thunder.md) | A | [thunder_props_A_v1.png](concept/roadside/thunder_props_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-THUNDER-03](prompts/roadside/thunder.md) | A | [thunder_buildings_A_v1.png](concept/roadside/thunder_buildings_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-THUNDER-04](prompts/roadside/thunder.md) | A | [thunder_hazards_A_v1.png](concept/roadside/thunder_hazards_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-THUNDER-ROAD](prompts/roadside/thunder.md) | A | [thunder_road_colors_A_v1.png](concept/roadside/thunder_road_colors_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-TIMBER-01](prompts/roadside/timberline.md) | A | [timberline_pines_A_v1.png](concept/roadside/timberline_pines_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-TIMBER-02](prompts/roadside/timberline.md) | A | [timberline_props_A_v1.png](concept/roadside/timberline_props_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
+| complete | [RS-TIMBER-03](prompts/roadside/timberline.md) | A | [timberline_buildings_A_v1.png](concept/roadside/timberline_buildings_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-TIMBER-04](prompts/roadside/timberline.md) | A | [timberline_landmarks_A_v1.png](concept/roadside/timberline_landmarks_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-TIMBERLINE-ROAD](prompts/roadside/timberline.md) | A | [timberline_road_colors_A_v1.png](concept/roadside/timberline_road_colors_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [TRF-02](prompts/traffic/traffic.md) | A | [trf02_cars_front_A_v1.png](concept/traffic/trf02_cars_front_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [TRF-04](prompts/traffic/traffic.md) | A | [trf04_stage_specials_A_v1.png](concept/traffic/trf04_stage_specials_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [HUD-03](prompts/ui/hud.md) | A | [hud03_icons_A_v1.png](concept/ui/hud03_icons_A_v1.png) | 2103 × 748. Generated and visually reviewed as concept reference. |
+| complete | [HUD-05](prompts/ui/hud.md) | A | [hud05_countdown_A_v1.png](concept/ui/hud05_countdown_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [HUD-06](prompts/ui/hud.md) | A | [hud06_calibration_A_v1.png](concept/ui/hud06_calibration_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [UI-05](prompts/ui/logo-and-menus.md) | A | [ui05_stage_select_A_v1.png](concept/ui/ui05_stage_select_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [UI-06](prompts/ui/logo-and-menus.md) | A | [ui06_results_A_v1.png](concept/ui/ui06_results_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+
+## Final verification
+
+All 133 source prompts are covered by 137 unique saved PNGs: 133 STYLE-A images plus four STYLE-B/STYLE-C comparisons for KA-01 and KA-02. All PNG chunk checksums, file hashes, dimensions, and 275 completion-log links passed validation.
+
+| Category | Saved images |
+|---|---:|
+| backgrounds | 32 |
+| cars | 32 |
+| key-art | 10 |
+| roadside | 40 |
+| ui | 12 |
+| fx | 7 |
+| traffic | 4 |
+
+Project image folder: `/Users/txdevs/Documents/Development/arcade racer/assets/concept`
+
+Completion document: `/Users/txdevs/Documents/Development/arcade racer/assets/generation-progress.md`
+
+Final prompt archive: `/Users/txdevs/Documents/Development/arcade racer/assets/generation-prompts.json`
+
+The source prompt documents were retained. Final names use the documented style and variation suffixes (`_A_v1`, with `_B_v1` and `_C_v1` for the comparison images). These remain concept/reference assets as specified by the project docs.
