@@ -18,13 +18,14 @@ func test_every_stage_builds() -> void:
 
 
 func test_stage_order_and_names() -> void:
-	eq(Stages.count(), 6, "six stages")
+	eq(Stages.count(), 7, "seven stages")
 	eq(Stages.build(0).name, "Palm Coast Boulevard", "stage 1")
 	eq(Stages.build(1).name, "Redrock Canyon", "stage 2")
 	eq(Stages.build(2).name, "Neon Strip", "stage 3")
 	eq(Stages.build(3).name, "Timberline Pass", "stage 4")
 	eq(Stages.build(4).name, "Bayou Causeway", "stage 5")
 	eq(Stages.build(5).name, "Harvest Valley", "stage 6")
+	eq(Stages.build(6).name, "Thunderhead Highway", "stage 7")
 	for i in Stages.count():
 		eq(Stages.stage_name(i), Stages.build(i).name, "listed name of stage %d" % (i + 1))
 	eq(Stages.next(0), 1, "Palm Coast leads to Redrock")
@@ -185,7 +186,8 @@ func test_bayou_fog_is_thicker() -> void:
 	check(BayouCauseway.theme()["fog_density"] > Cfg.FOG_DENSITY, "thicker fog than the default")
 	for i in Stages.count():
 		if i != 4:
-			check(not Stages.build(i).theme.has("fog_density"), Stages.stage_name(i) + " uses the default fog")
+			check(Stages.build(i).theme.get("fog_density", Cfg.FOG_DENSITY) < BayouCauseway.theme()["fog_density"],
+				Stages.stage_name(i) + " is clearer than the Bayou")
 
 
 func test_harvest_has_its_farm() -> void:
@@ -199,3 +201,23 @@ func test_harvest_has_its_farm() -> void:
 	for seg in t.segments:
 		top = maxf(top, seg.w2.y)
 	check(top >= Track.HILL_MEDIUM * Cfg.SEGMENT_LENGTH, "big rolling hills (top %.0f)" % top)
+
+
+func test_thunderhead_has_its_landmarks() -> void:
+	var t := Thunderhead.build()
+	var counts := _sprite_counts(t)
+	for id in ["pole_a", "pylon", "tree_windswept", "puddle_a", "cone", "jersey_barrier", "wrecked_sign"]:
+		check(counts.get(id, 0) > 0, "Thunderhead has a " + id)
+	for id in ["truck_stop", "motel"]:
+		eq(counts.get(id, 0), 1, "one " + id)
+	var poles_left := 0
+	for seg in t.segments:
+		for sp in seg.sprites:
+			if sp["id"].begins_with("pole_") and sp["offset"] < 0.0:
+				poles_left += 1
+	eq(poles_left, 0, "the power line stays on the right")
+
+
+func test_road_work_cones_never_crash_the_car() -> void:
+	for id in ["cone", "cone_tall", "drum"]:
+		eq(SpriteLibrary.defs[id]["collide"], 0.0, id + " gets knocked aside, not crashed into")
