@@ -5,3 +5,7 @@ export_presets.cfg
 /build/
 # OS
 .DS_Store
+
+# Concept art is reference only. Godot skips assets/concept (see its .gdignore),
+# so ignore any .import files an earlier editor session left there.
+assets/concept/**/*.import
