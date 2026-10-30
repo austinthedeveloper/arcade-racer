@@ -61,5 +61,7 @@ jobs:
 
           Keyboard, gamepads and wheels are supported; see the README for controls and wheel calibration (F2).
           NOTES
-          gh release create "$GITHUB_REF_NAME" build/release/*.zip \
+          # A tag like v0.2.0-alpha is marked as a pre-release.
+          pre=""; case "$VERSION" in *-*) pre="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" build/release/*.zip $pre \
             --title "Sundown Run $VERSION" --notes-file notes.md --verify-tag
