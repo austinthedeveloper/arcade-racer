@@ -146,6 +146,7 @@ A coast-to-coast run across an invented country. Each stage is point-to-point an
 
 - Remappable controls for every device, wheel calibration screen.
 - Steering assist toggle for gamepad, automatic braking assist for beginners.
+- Auto gas (built): the car accelerates on its own so a child can play by steering only; the brake still works.
 - Screen shake and flash intensity sliders (Thunderhead lightning).
 - Colorblind-safe HUD elements.
 - Subtitles for announcer lines.

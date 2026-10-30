@@ -8,7 +8,7 @@ tools/test.sh                                       # all Godot tests, headless 
 tools/test.sh test_player_car                       # one suite (filter on suite.test names; skips the e2e)
 godot --path .                                      # play
 godot --path . -- --autodrive --screenshots=200,700 --shot-dir=/tmp/shots   # hands-off run with screenshots (race flags skip the menus)
-godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, stages, cars)
+godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, options, stages, cars)
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
 python3 tools/make_stage_sprites.py assets/concept . neon      # rebuild a stage's background + roadside sprites
@@ -27,7 +27,8 @@ and also checks every stage's autodriven race finishes in time. CI (`.github/wor
 `.github/workflows/release.yml`: tests, `tools/export.sh`, then a GitHub Release with the zips.
 
 - Add or extend tests with every change.
-- Tests never touch the player's wheel profiles (`TestSuite.use_scratch_profiles`).
+- Tests never touch the player's wheel profiles or options (`TestSuite.use_scratch_profiles`,
+  `TestSuite.use_scratch_settings`). Golden traces run on the default options.
 - Logic that a test needs to reach goes in a plain function (see `RoadRenderer.sprite_rect`,
   `CarSprites.steer_frame`, `CalibrationWizard.capture`), not inside `_draw` or `_process`.
 

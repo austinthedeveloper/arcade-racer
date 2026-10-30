@@ -12,6 +12,7 @@ var _step := 0
 var _wait := 0
 var _fails := 0
 var _mark := 0.0
+var _settings: Node
 
 
 func _initialize() -> void:
@@ -20,6 +21,8 @@ func _initialize() -> void:
 	Engine.max_physics_steps_per_frame = 1
 	Engine.physics_jitter_fix = 0.0
 	TestSuite.use_scratch_profiles(root.get_node("InputRouter"))
+	_settings = root.get_node("Settings")  # autoloads aren't globals in a SceneTree script
+	TestSuite.use_scratch_settings(_settings)
 	_game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(_game)
 	physics_frame.connect(_tick)
@@ -30,6 +33,16 @@ func _menu_script() -> Array:
 	var g := _game
 	return [
 		["", func() -> bool: return g.screen == g.Screen.TITLE, "the game boots to the title screen"],
+		["steer_right", func() -> bool: return g.menu.index == 1, "right on the title picks OPTIONS"],
+		["confirm", func() -> bool: return g.screen == g.Screen.OPTIONS, "Enter opens the options"],
+		["confirm", func() -> bool: return _settings.auto_gas, "Enter on AUTO GAS turns it on"],
+		["brake", func() -> bool: return g.menu.index == g.menu.Row.TRAFFIC, "Down picks the next row"],
+		["steer_left", func() -> bool: return _settings.traffic == _settings.Traffic.LIGHT, "Left lowers the traffic"],
+		["steer_right", func() -> bool: return _settings.traffic == _settings.Traffic.NORMAL, "Right raises it back"],
+		["accelerate", func() -> bool: return g.menu.index == g.menu.Row.AUTO_GAS, "Up goes back a row"],
+		["confirm", func() -> bool: return not _settings.auto_gas, "Enter turns auto gas off again"],
+		["back", func() -> bool: return g.screen == g.Screen.TITLE and g.menu.index == 1, "Backspace goes back to the title, on OPTIONS"],
+		["steer_left", func() -> bool: return g.menu.index == 0, "left picks START"],
 		["confirm", func() -> bool: return g.screen == g.Screen.STAGES, "Enter on the title opens stage select"],
 		["steer_right", func() -> bool: return g.menu.index == 1, "right picks stage 2"],
 		["steer_left", func() -> bool: return g.menu.index == 0, "left goes back to stage 1"],
@@ -85,6 +98,10 @@ func _next(wait_frames: int = 0) -> void:
 
 func _tick() -> void:
 	_frame += 1
+	if _frame > 2500:  # first, so a script error in a step can't hang the run
+		printerr("  FAIL e2e timed out at step %d" % _step)
+		quit(1)
+		return
 	if _wait > 0:
 		_wait -= 1
 		return
@@ -189,10 +206,36 @@ func _tick() -> void:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES and _game.menu.index == 1,
 				"stage select opens on the stage the tour reached")
+			_settings.auto_gas = true  # (toggled through the options menu above)
+			_next(2)
+		17:
+			_send("confirm", true)
+			_next(2)
+		18:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.CARS, "car select")
+			_next(2)
+		19:
+			_send("confirm", true)
+			_next(2)
+		20:
+			_send("confirm", false)
+			_race = _game.race
+			_check(_race != null and _race.state == _race.State.COUNTDOWN, "a new race with auto gas on")
+			if _race == null:
+				quit(1)
+				return
+			_next(260)  # the countdown, then over a second of driving
+		21:
+			_check(_race.player.speed > Cfg.MAX_SPEED * 0.2, "auto gas: the car drives off with no key held")
+			_mark = _race.player.speed
+			_send("brake", true)
+			_next(30)
+		22:
+			_send("brake", false)
+			_check(_race.player.speed < _mark, "auto gas: brake still slows the car")
+			_settings.auto_gas = false
 			_next()
 		_:
 			print("\n%s" % ("e2e passed" if _fails == 0 else "e2e: %d failed" % _fails))
 			quit(1 if _fails > 0 else 0)
-	if _frame > 2000:
-		printerr("  FAIL e2e timed out at step %d" % _step)
-		quit(1)
