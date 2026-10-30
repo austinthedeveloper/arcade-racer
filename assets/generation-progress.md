@@ -2,13 +2,21 @@
 
 Updated: 2026-10-30 (America/Chicago). Generation began 2026-10-29.
 
-**Saved: 137/137 images.** Covers all 133 source prompts plus four additional title/gameplay style comparisons.
+**Saved: 140 images — 137 from the initial run plus 3 round-one review revisions.** The initial run covers 133 source prompts plus four style comparisons. Revised and reused concepts await user review; generation completion does not mean production approval.
 
 **Main direction:** STYLE-A, high-color pixel art (confirmed by the user). STYLE-B and STYLE-C are comparison variants for KA-01 and KA-02 only.
 
 **Generator:** built-in image_gen. Source prompts are preserved. Final prompts substitute the exact chosen style block and add aspect ratio, stage context, and layout constraints. Targeted correction prompts are recorded where used. Selected final prompts and results: [generation-prompts.json](generation-prompts.json).
 
 **Usage:** concept/reference images. Sprite sheets still need production cleanup, frame registration, keying/alpha conversion, and animation checks. Background layers need seam testing before use. Wide layers are generally about 3:1, the width returned by the generator; actual dimensions are recorded below.
+
+## Round 1 review follow-up — 2026-10-30
+
+**3 new v2 revisions saved; 7 requested existing concepts gathered for review.** [Review and current selections](generation-review-round1.md) · [Revised prompts and validation](generation-revisions-round1.json).
+
+KA-02 A is the visual target. New Vega/Bruiser heroes and the new Vega seven-frame sheet supersede their v1 counterparts for the next design review. Old Vega orthographic/crash and Bruiser orthographic/steering/crash images need design refreshes. KA-01/KA-02 retain mood/style value but show the prior Vega. Production keying, one pixel grid, steering geometry/registration and parallax seams remain outstanding. The proposed ~200 px player-car width is not locked.
+
+The round tables below document the **initial run**. The three additional files are listed in the review follow-up document. Their existence does not imply that all later source-prompt revisions have been regenerated.
 
 ## Completion by round
 
@@ -23,8 +31,8 @@ Updated: 2026-10-30 (America/Chicago). Generation began 2026-10-29.
 | Status | Prompt | Style | Output | Notes |
 |---|---|---|---|---|
 | complete | [BG-PALM-01](prompts/backgrounds/palm-coast.md) | A | [palm-coast_composite_A_v1.png](concept/backgrounds/palm-coast_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
-| complete | [CAR-BRUISER-01](prompts/cars/car_bruiser.md) | A | [car_bruiser_hero_A_v1.png](concept/cars/car_bruiser_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
-| complete | [CAR-VEGA-01](prompts/cars/car_vega.md) | A | [car_vega_hero_A_v1.png](concept/cars/car_vega_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| superseded by v2 | [CAR-BRUISER-01](prompts/cars/car_bruiser.md) | A | [car_bruiser_hero_A_v1.png](concept/cars/car_bruiser_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| superseded by v2 | [CAR-VEGA-01](prompts/cars/car_vega.md) | A | [car_vega_hero_A_v1.png](concept/cars/car_vega_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
 | complete | [KA-01](prompts/key-art/key-art.md) | A | [ka01_title_A_v1.png](concept/key-art/ka01_title_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [KA-01](prompts/key-art/key-art.md) | B | [ka01_title_B_v1.png](concept/key-art/ka01_title_B_v1.png) | 1672 × 940. Generated and visually reviewed as concept reference. |
 | complete | [KA-01](prompts/key-art/key-art.md) | C | [ka01_title_C_v1.png](concept/key-art/ka01_title_C_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
@@ -50,16 +58,16 @@ Updated: 2026-10-30 (America/Chicago). Generation began 2026-10-29.
 | complete | [BG-REDROCK-02](prompts/backgrounds/redrock.md) | A | [redrock_l1_sky_A_v1.png](concept/backgrounds/redrock_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-REDROCK-03](prompts/backgrounds/redrock.md) | A | [redrock_l2_far_A_v1.png](concept/backgrounds/redrock_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-REDROCK-04](prompts/backgrounds/redrock.md) | A | [redrock_l3_near_A_v1.png](concept/backgrounds/redrock_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
-| complete | [CAR-BRUISER-02](prompts/cars/car_bruiser.md) | A | [car_bruiser_views_A_v1.png](concept/cars/car_bruiser_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| complete | [CAR-BRUISER-03](prompts/cars/car_bruiser.md) | A | [car_bruiser_steer_sheet_A_v1.png](concept/cars/car_bruiser_steer_sheet_A_v1.png) | 2114 × 744. Generated and visually reviewed as concept reference. |
+| old design; refresh pending | [CAR-BRUISER-02](prompts/cars/car_bruiser.md) | A | [car_bruiser_views_A_v1.png](concept/cars/car_bruiser_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| old design; refresh pending | [CAR-BRUISER-03](prompts/cars/car_bruiser.md) | A | [car_bruiser_steer_sheet_A_v1.png](concept/cars/car_bruiser_steer_sheet_A_v1.png) | 2114 × 744. Generated and visually reviewed as concept reference. |
 | complete | [CAR-KESTREL-01](prompts/cars/car_kestrel.md) | A | [car_kestrel_hero_A_v1.png](concept/cars/car_kestrel_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
 | complete | [CAR-KESTREL-02](prompts/cars/car_kestrel.md) | A | [car_kestrel_views_A_v1.png](concept/cars/car_kestrel_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [CAR-KESTREL-03](prompts/cars/car_kestrel.md) | A | [car_kestrel_steer_sheet_A_v1.png](concept/cars/car_kestrel_steer_sheet_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
 | complete | [CAR-SOL-01](prompts/cars/car_sol.md) | A | [car_sol_hero_A_v1.png](concept/cars/car_sol_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
 | complete | [CAR-SOL-02](prompts/cars/car_sol.md) | A | [car_sol_views_A_v1.png](concept/cars/car_sol_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [CAR-SOL-03](prompts/cars/car_sol.md) | A | [car_sol_steer_sheet_A_v1.png](concept/cars/car_sol_steer_sheet_A_v1.png) | 2117 × 743. Generated and visually reviewed as concept reference. |
-| complete | [CAR-VEGA-02](prompts/cars/car_vega.md) | A | [car_vega_views_A_v1.png](concept/cars/car_vega_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| complete | [CAR-VEGA-03](prompts/cars/car_vega.md) | A | [car_vega_steer_sheet_A_v1.png](concept/cars/car_vega_steer_sheet_A_v1.png) | 2098 × 749. Generated and visually reviewed as concept reference. |
+| old design; refresh pending | [CAR-VEGA-02](prompts/cars/car_vega.md) | A | [car_vega_views_A_v1.png](concept/cars/car_vega_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by v2 | [CAR-VEGA-03](prompts/cars/car_vega.md) | A | [car_vega_steer_sheet_A_v1.png](concept/cars/car_vega_steer_sheet_A_v1.png) | 2098 × 749. Generated and visually reviewed as concept reference. |
 | complete | [FX-01](prompts/fx/fx.md) | A | [fx01_tire_smoke_A_v1.png](concept/fx/fx01_tire_smoke_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [FX-02](prompts/fx/fx.md) | A | [fx02_nitro_A_v1.png](concept/fx/fx02_nitro_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [KA-04](prompts/key-art/key-art.md) | A | [ka04_gameplay_canyon_A_v1.png](concept/key-art/ka04_gameplay_canyon_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
@@ -111,7 +119,7 @@ Updated: 2026-10-30 (America/Chicago). Generation began 2026-10-29.
 | complete | [BG-TIMBER-02](prompts/backgrounds/timberline.md) | A | [timberline_l1_sky_A_v1.png](concept/backgrounds/timberline_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-TIMBER-03](prompts/backgrounds/timberline.md) | A | [timberline_l2_far_A_v1.png](concept/backgrounds/timberline_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-TIMBER-04](prompts/backgrounds/timberline.md) | A | [timberline_l3_near_A_v1.png](concept/backgrounds/timberline_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
-| complete | [CAR-BRUISER-04](prompts/cars/car_bruiser.md) | A | [car_bruiser_crash_sheet_A_v1.png](concept/cars/car_bruiser_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| old design; refresh pending | [CAR-BRUISER-04](prompts/cars/car_bruiser.md) | A | [car_bruiser_crash_sheet_A_v1.png](concept/cars/car_bruiser_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [CAR-HAULER-01](prompts/cars/car_hauler.md) | A | [car_hauler_hero_A_v1.png](concept/cars/car_hauler_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
 | complete | [CAR-HAULER-02](prompts/cars/car_hauler.md) | A | [car_hauler_views_A_v1.png](concept/cars/car_hauler_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [CAR-HAULER-03](prompts/cars/car_hauler.md) | A | [car_hauler_steer_sheet_A_v1.png](concept/cars/car_hauler_steer_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
@@ -126,7 +134,7 @@ Updated: 2026-10-30 (America/Chicago). Generation began 2026-10-29.
 | complete | [CAR-PHANTOM-03](prompts/cars/car_phantom.md) | A | [car_phantom_steer_sheet_A_v1.png](concept/cars/car_phantom_steer_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [CAR-PHANTOM-04](prompts/cars/car_phantom.md) | A | [car_phantom_crash_sheet_A_v1.png](concept/cars/car_phantom_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [CAR-SOL-04](prompts/cars/car_sol.md) | A | [car_sol_crash_sheet_A_v1.png](concept/cars/car_sol_crash_sheet_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
-| complete | [CAR-VEGA-04](prompts/cars/car_vega.md) | A | [car_vega_crash_sheet_A_v1.png](concept/cars/car_vega_crash_sheet_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| old design; refresh pending | [CAR-VEGA-04](prompts/cars/car_vega.md) | A | [car_vega_crash_sheet_A_v1.png](concept/cars/car_vega_crash_sheet_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [CAR-ZENITH-01](prompts/cars/car_zenith.md) | A | [car_zenith_hero_A_v1.png](concept/cars/car_zenith_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
 | complete | [CAR-ZENITH-02](prompts/cars/car_zenith.md) | A | [car_zenith_views_A_v1.png](concept/cars/car_zenith_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [CAR-ZENITH-03](prompts/cars/car_zenith.md) | A | [car_zenith_steer_sheet_A_v1.png](concept/cars/car_zenith_steer_sheet_A_v1.png) | 2117 × 743. Generated and visually reviewed as concept reference. |
@@ -170,7 +178,7 @@ Updated: 2026-10-30 (America/Chicago). Generation began 2026-10-29.
 | complete | [UI-05](prompts/ui/logo-and-menus.md) | A | [ui05_stage_select_A_v1.png](concept/ui/ui05_stage_select_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [UI-06](prompts/ui/logo-and-menus.md) | A | [ui06_results_A_v1.png](concept/ui/ui06_results_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 
-## Final verification
+## Initial-run verification
 
 All 133 source prompts are covered by 137 unique saved PNGs: 133 STYLE-A images plus four STYLE-B/STYLE-C comparisons for KA-01 and KA-02. All PNG chunk checksums, file hashes, dimensions, and 275 completion-log links passed validation.
 

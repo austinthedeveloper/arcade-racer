@@ -1,0 +1,292 @@
+{
+  "review_source": "docs/05-concept-review-round1.md",
+  "date": "2026-10-30",
+  "generator": "built-in image_gen",
+  "jobs": [
+    {
+      "id": "CAR-VEGA-01",
+      "source": "assets/prompts/cars/car_vega.md",
+      "source_prompt": "Concept art of an original low, wide wedge supercar with a smooth wraparound canopy-style glass roof flowing into the rear deck, two short vertical tail fins instead of a rear wing, triangular taillight clusters joined by a glowing center bar, one large central exhaust, and smooth body sides with a single deep air scoop (no side strakes, no slats, no louvered engine cover), painted glossy candy red, seen from the rear three-quarter view on a sunny coastal road. Exaggerated arcade proportions: wide stance, big wheels, low roof. Clearly fictional design that does not resemble any real production car model. Fictional badge shapes only, no real brand or logo. {STYLE}",
+      "output": "assets/concept/cars/car_vega_hero_A_v2.png",
+      "style": "A",
+      "negative_prompt": "photorealistic, resembles a real production car model, real car brand, logo, badge, emblem, license plate text, watermark, signature, text, letters, blurry, muddy colors, desaturated, grunge, low contrast, extra wheels, distorted perspective, 3d polygon low-poly look, cropped subject",
+      "final_prompt": "Use case: stylized-concept. Asset: CAR-VEGA-01 for SUNDOWN RUN.\nConcept art of an original low, wide wedge supercar with a smooth wraparound canopy-style glass roof flowing into the rear deck, two short vertical tail fins instead of a rear wing, triangular taillight clusters joined by a glowing center bar, one large central exhaust, and smooth body sides with a single deep air scoop (no side strakes, no slats, no louvered engine cover), painted glossy candy red, seen from the rear three-quarter view on a sunny coastal road. Exaggerated arcade proportions: wide stance, big wheels, low roof. Clearly fictional design that does not resemble any real production car model. Fictional badge shapes only, no real brand or logo. high-color pixel art, 1990s 32-bit arcade racing game sprite style, crisp hard-edged pixels, no anti-aliasing blur, limited but rich palette, bold readable silhouettes, saturated sunny colors, clean dark outlines on key shapes, late-afternoon sun lighting from the upper left\nComposition: landscape 4:3, one complete car, rear three-quarter hero concept on a sunny coastal road. Input image 1 is a STYLE AND PALETTE reference only: match its crisp arcade pixel clusters, saturated turquoise/gold coastal setting and dark pixel outlines. Do not copy its car geometry, taillights, wing, louvers, exhausts, or badge. Use the new fictional design in the primary request exactly. One consistent hard-edged pixel scale across the entire car and scenery, no fine smooth rendering on the car, no anti-aliasing or soft edges. Clearly visible new rear identity. No lettering, badges, logos or license plate.\nAvoid: photorealistic, resembles a real production car model, real car brand, logo, badge, emblem, license plate text, watermark, signature, text, letters, blurry, muddy colors, desaturated, grunge, low contrast, extra wheels, distorted perspective, 3d polygon low-poly look, cropped subject. For Vega specifically, no horizontal rear wing, no side strakes, no slats, no louvered deck. For Bruiser, no winged badge, keep the specified three stacked light bars per side and ducktail.",
+      "reference_images": [
+        "/Users/txdevs/Documents/Development/arcade racer/assets/concept/key-art/ka02_gameplay_palm_A_v1.png"
+      ],
+      "generated_path": "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-007e44a8-1e85-4eb9-be38-6f0781c69de8.png",
+      "width": 1448,
+      "height": 1086,
+      "sha256": "045b2efcc47ad337ccc69c6cc399197240e6dacb2165cf48679754d2690e811b",
+      "status": "generated; awaiting user review",
+      "notes": "New canopy, two separate tail fins, triangular light clusters and connecting bar, smooth deck/sides, one central exhaust. Concept awaiting user review."
+    },
+    {
+      "id": "CAR-VEGA-03",
+      "source": "assets/prompts/cars/car_vega.md",
+      "source_prompt": "Sprite sheet for an arcade racing game: an original low, wide wedge supercar with a smooth wraparound canopy-style glass roof flowing into the rear deck, two short vertical tail fins instead of a rear wing, triangular taillight clusters joined by a glowing center bar, one large central exhaust, and smooth body sides with a single deep air scoop (no side strakes, no slats, no louvered engine cover), painted glossy candy red, seen from directly behind and slightly above, as the player car. Seven frames in one row showing it steering from hard left through straight to hard right, the body yawing and leaning slightly, front wheels visible turning on the outer frames. Consistent size and position in each frame, taillights glowing, isolated on a flat solid magenta #FF00FF background, no ground shadow. {STYLE}",
+      "output": "assets/concept/cars/car_vega_steer_sheet_A_v2.png",
+      "style": "A",
+      "negative_prompt": "photorealistic, resembles a real production car model, real car brand, logo, badge, emblem, license plate text, watermark, signature, text, letters, blurry, muddy colors, desaturated, grunge, low contrast, extra wheels, distorted perspective, 3d polygon low-poly look, cropped subject",
+      "final_prompt": "Use case: stylized-concept. Asset: CAR-VEGA-03 for SUNDOWN RUN.\nSprite sheet for an arcade racing game: an original low, wide wedge supercar with a smooth wraparound canopy-style glass roof flowing into the rear deck, two short vertical tail fins instead of a rear wing, triangular taillight clusters joined by a glowing center bar, one large central exhaust, and smooth body sides with a single deep air scoop (no side strakes, no slats, no louvered engine cover), painted glossy candy red, seen from directly behind and slightly above, as the player car. Seven frames in one row showing it steering from hard left through straight to hard right, the body yawing and leaning slightly, front wheels visible turning on the outer frames. Consistent size and position in each frame, taillights glowing, isolated on a flat solid magenta #FF00FF background, no ground shadow. high-color pixel art, 1990s 32-bit arcade racing game sprite style, crisp hard-edged pixels, no anti-aliasing blur, limited but rich palette, bold readable silhouettes, saturated sunny colors, clean dark outlines on key shapes, late-afternoon sun lighting from the upper left\nInput image 1 is the exact new Vega identity and pixel-art reference. Preserve its smooth candy-red body, continuous smoked-blue wraparound glass canopy flowing into a smooth rear deck, exactly TWO small separate vertical tail fins with no wing joining them, THREE small triangular lamps on each side linked by a thin glowing center bar, ONE large hexagonal central exhaust, and one deep side scoop. No badges, text, strakes, slats or louvers. Remove the coastal scene completely.\nComposition: EXACTLY SEVEN fully visible separate cars in ONE horizontal row, equal-sized invisible cells with clear magenta gutters, same ground-contact baseline, same car size, same fixed slightly elevated rear chase camera, full margin around every car. Left-to-right body yaw: hard left, medium left, slight left, straight rear, slight right, medium right, hard right. Center fourth is symmetric straight rear. Mild lean and steering of front wheels only where visible. This is a continuity test of ONE design; keep each taillight triangle count, two fins and single central exhaust consistent in every frame. Hard-edged pixel clusters and a shared pixel scale across the sheet. Flat solid exact #FF00FF background throughout; no scenery, shadows, reflections below the cars, labels, numbers, grid lines or duplicated extra frames. Landscape sprite sheet, prioritize fitting all seven frames uncut in one row. Avoid: photorealistic, resembles a real production car model, real car brand, logo, badge, emblem, license plate text, watermark, signature, text, letters, blurry, muddy colors, desaturated, grunge, low contrast, extra wheels, distorted perspective, 3d polygon low-poly look, cropped subject",
+      "reference_images": [
+        "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-007e44a8-1e85-4eb9-be38-6f0781c69de8.png"
+      ],
+      "generated_path": "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-ec201977-8ab5-4415-9752-9e169dcf4c6d.png",
+      "width": 2135,
+      "height": 736,
+      "sha256": "622424b14b78f1c49186bb45f1ca202ee3c1e742a4f80df09695a931fc938b85",
+      "status": "generated; awaiting user review",
+      "notes": "Seven separate frames retain the new Vega identity. Middle yaw steps are too similar; frame registration and pixel cleanup remain. Continuity test, not a production animation."
+    },
+    {
+      "id": "CAR-BRUISER-01",
+      "source": "assets/prompts/cars/car_bruiser.md",
+      "source_prompt": "Concept art of an original long-hood muscle coupe with a sloping fastback roof, a raised ducktail rear spoiler, twin snorkel hood scoops, fat rear tires, flared fenders, a full-width taillight panel with three stacked horizontal light bars on each side, and side-exit exhausts, painted deep metallic blue with two white racing stripes, seen from the rear three-quarter view on a sunny coastal road. Exaggerated arcade proportions: wide stance, big wheels, low roof. Clearly fictional design that does not resemble any real production car model. Fictional badge shapes only, no real brand or logo. {STYLE}",
+      "output": "assets/concept/cars/car_bruiser_hero_A_v2.png",
+      "style": "A",
+      "negative_prompt": "photorealistic, resembles a real production car model, real car brand, logo, badge, emblem, license plate text, watermark, signature, text, letters, blurry, muddy colors, desaturated, grunge, low contrast, extra wheels, distorted perspective, 3d polygon low-poly look, cropped subject",
+      "final_prompt": "Use case: stylized-concept. Asset: CAR-BRUISER-01 for SUNDOWN RUN.\nConcept art of an original long-hood muscle coupe with a sloping fastback roof, a raised ducktail rear spoiler, twin snorkel hood scoops, fat rear tires, flared fenders, a full-width taillight panel with three stacked horizontal light bars on each side, and side-exit exhausts, painted deep metallic blue with two white racing stripes, seen from the rear three-quarter view on a sunny coastal road. Exaggerated arcade proportions: wide stance, big wheels, low roof. Clearly fictional design that does not resemble any real production car model. Fictional badge shapes only, no real brand or logo. high-color pixel art, 1990s 32-bit arcade racing game sprite style, crisp hard-edged pixels, no anti-aliasing blur, limited but rich palette, bold readable silhouettes, saturated sunny colors, clean dark outlines on key shapes, late-afternoon sun lighting from the upper left\nComposition: landscape 4:3, one complete car, rear three-quarter hero concept on a sunny coastal road. Input image 1 is a STYLE AND PALETTE reference only: match its crisp arcade pixel clusters, saturated turquoise/gold coastal setting and dark pixel outlines. Do not copy its car geometry, taillights, wing, louvers, exhausts, or badge. Use the new fictional design in the primary request exactly. One consistent hard-edged pixel scale across the entire car and scenery, no fine smooth rendering on the car, no anti-aliasing or soft edges. Clearly visible new rear identity. No lettering, badges, logos or license plate.\nAvoid: photorealistic, resembles a real production car model, real car brand, logo, badge, emblem, license plate text, watermark, signature, text, letters, blurry, muddy colors, desaturated, grunge, low contrast, extra wheels, distorted perspective, 3d polygon low-poly look, cropped subject. For Vega specifically, no horizontal rear wing, no side strakes, no slats, no louvered deck. For Bruiser, no winged badge, keep the specified three stacked light bars per side and ducktail.",
+      "reference_images": [
+        "/Users/txdevs/Documents/Development/arcade racer/assets/concept/key-art/ka02_gameplay_palm_A_v1.png"
+      ],
+      "generated_path": "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-9a1dd9e6-5414-4017-bbef-983102670e53.png",
+      "prior_attempts": [
+        {
+          "generated_path": "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-aeb4a409-c7af-46ad-8968-ec798490400d.png",
+          "prompt": "Use case: stylized-concept. Asset: CAR-BRUISER-01 for SUNDOWN RUN.\nConcept art of an original long-hood muscle coupe with a sloping fastback roof, a raised ducktail rear spoiler, twin snorkel hood scoops, fat rear tires, flared fenders, a full-width taillight panel with three stacked horizontal light bars on each side, and side-exit exhausts, painted deep metallic blue with two white racing stripes, seen from the rear three-quarter view on a sunny coastal road. Exaggerated arcade proportions: wide stance, big wheels, low roof. Clearly fictional design that does not resemble any real production car model. Fictional badge shapes only, no real brand or logo. high-color pixel art, 1990s 32-bit arcade racing game sprite style, crisp hard-edged pixels, no anti-aliasing blur, limited but rich palette, bold readable silhouettes, saturated sunny colors, clean dark outlines on key shapes, late-afternoon sun lighting from the upper left\nComposition: landscape 4:3, one complete car, rear three-quarter hero concept on a sunny coastal road. Input image 1 is a STYLE AND PALETTE reference only: match its crisp arcade pixel clusters, saturated turquoise/gold coastal setting and dark pixel outlines. Do not copy its car geometry, taillights, wing, louvers, exhausts, or badge. Use the new fictional design in the primary request exactly. One consistent hard-edged pixel scale across the entire car and scenery, no fine smooth rendering on the car, no anti-aliasing or soft edges. Clearly visible new rear identity. No lettering, badges, logos or license plate.\nAvoid: photorealistic, resembles a real production car model, real car brand, logo, badge, emblem, license plate text, watermark, signature, text, letters, blurry, muddy colors, desaturated, grunge, low contrast, extra wheels, distorted perspective, 3d polygon low-poly look, cropped subject. For Vega specifically, no horizontal rear wing, no side strakes, no slats, no louvered deck. For Bruiser, no winged badge, keep the specified three stacked light bars per side and ducktail.",
+          "rejected_reason": "Only two taillight bars per side; updated design requires three."
+        }
+      ],
+      "edit_prompt": "Use case: precise-object-edit. Edit the attached Bruiser hero. Change ONLY its taillight panel: replace the two large bars on each side with EXACTLY THREE thinner, clearly separated glowing horizontal light bars stacked vertically on EACH side, six bars total. Their housing stays in the same full-width rear panel. Keep the blue paint, twin white stripes, roof shape, ducktail, two snorkel hood scoops, side-exit exhaust, car pose, wheels, original fictional design, pixel-art rendering, coastal background, composition and lighting unchanged. No badge, logo, lettering or license plate. Keep crisp pixel edges.",
+      "edit_references": [
+        "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-aeb4a409-c7af-46ad-8968-ec798490400d.png"
+      ],
+      "width": 1448,
+      "height": 1086,
+      "sha256": "95c5cbc56280d6501711072145910dbca75fd080c929648341422e991b04f69a",
+      "status": "generated; awaiting user review",
+      "notes": "Blue/white fastback with ducktail, side-exit exhaust and corrected three stacked light bars per side. Concept awaiting user review."
+    }
+  ],
+  "steering_test": {
+    "frame_count": 7,
+    "content_bounds_xyxy": [
+      [
+        11,
+        281,
+        333,
+        448
+      ],
+      [
+        342,
+        280,
+        629,
+        447
+      ],
+      [
+        651,
+        279,
+        905,
+        444
+      ],
+      [
+        936,
+        279,
+        1197,
+        444
+      ],
+      [
+        1227,
+        279,
+        1482,
+        444
+      ],
+      [
+        1505,
+        281,
+        1790,
+        447
+      ],
+      [
+        1798,
+        281,
+        2124,
+        448
+      ]
+    ],
+    "method": "Non-magenta column bands; RGB threshold r>190, g<70, b>190 treated as key background.",
+    "visual_assessment": "Two fins, canopy, six small triangular rear lamps and single central exhaust persist across seven frames. Middle yaw angles are weakly separated. This supports design continuity but does not establish reliable animation geometry.",
+    "production_recommendation": "Use a fixed-camera 3D model render or manual pixel construction for dependable steering geometry, then a shared pixel cleanup pass. Keep this generated sheet as concept reference.",
+    "baseline_range_px": [
+      444,
+      448
+    ],
+    "production_ready": false
+  },
+  "reused_assets": [
+    {
+      "id": "BG-PALM-02",
+      "title": "BG-PALM-02 Layer 1: sky",
+      "source": "assets/prompts/backgrounds/palm-coast.md",
+      "output": "assets/concept/backgrounds/palm-coast_l1_sky_A_v1.png",
+      "prompt": "Sky only for an arcade racing game background layer: turquoise-to-gold afternoon sky with fluffy cumulus clouds and a low golden sun. No ground, no land. Wide horizontal panorama, seamless left and right edges. {STYLE}",
+      "aspect": "4:1",
+      "round": 2,
+      "style": "A",
+      "status": "existing concept reused; awaiting user review",
+      "notes": "Existing sky-only panorama; turquoise/gold clouds and sun. Reused, awaiting user review. Seam and final pixel-scale checks remain.",
+      "key": "BG-PALM-02_A",
+      "saved_output": "assets/concept/backgrounds/palm-coast_l1_sky_A_v1.png",
+      "final_prompt": "Use case: stylized-concept\nAsset type: original arcade racing game concept/reference art\nRequested image aspect ratio: 4:1\nSky only for an arcade racing game background layer: turquoise-to-gold afternoon sky with fluffy cumulus clouds and a low golden sun. No ground, no land. Wide horizontal panorama, seamless left and right edges. high-color pixel art, 1990s 32-bit arcade racing game sprite style, crisp hard-edged pixels, no anti-aliasing blur, limited but rich palette, bold readable silhouettes, saturated sunny colors, clean dark outlines on key shapes, late-afternoon sun lighting from the upper left\nConstraints: original fictional designs only; no real brands, no watermarks or signatures. Follow the specified object/frame count and layout. Keep full subjects visible. No readable text except any placeholder word explicitly requested above. Magenta key backgrounds must be uniform solid #FF00FF, with no ground shadow. These are concept references, not production-ready sprites.",
+      "width": 2172,
+      "height": 724,
+      "sha256": "f08f5919e9b991c8284508e4e575f0e119810702b8bd57482a44ecd4cfc170f7",
+      "source_generated_file": "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-f0d22655-7d67-472e-a711-ea1cc65a9b13.png",
+      "current_source_prompt_matches_original": true
+    },
+    {
+      "id": "BG-PALM-03",
+      "title": "BG-PALM-03 Layer 2: far horizon",
+      "source": "assets/prompts/backgrounds/palm-coast.md",
+      "output": "assets/concept/backgrounds/palm-coast_l2_far_A_v1.png",
+      "prompt": "Background layer for an arcade racing game: a glittering ocean horizon with a distant rocky island and sailboats on the right, hazy coastal hills on the left, as a single horizontal band of silhouettes along the bottom of the image, with an empty flat solid magenta #FF00FF sky above for keying. Wide horizontal panorama, seamless left and right edges. {STYLE}",
+      "aspect": "4:1",
+      "round": 2,
+      "style": "A",
+      "status": "existing concept reused; awaiting user review",
+      "notes": "Existing far horizon with hills, rocky island and sailboats on magenta. Reused, awaiting user review. Keying and seam checks remain.",
+      "key": "BG-PALM-03_A",
+      "saved_output": "assets/concept/backgrounds/palm-coast_l2_far_A_v1.png",
+      "final_prompt": "Use case: stylized-concept\nAsset type: original arcade racing game concept/reference art\nRequested image aspect ratio: 4:1\nBackground layer for an arcade racing game: a glittering ocean horizon with a distant rocky island and sailboats on the right, hazy coastal hills on the left, as a single horizontal band of silhouettes along the bottom of the image, with an empty flat solid magenta #FF00FF sky above for keying. Wide horizontal panorama, seamless left and right edges. high-color pixel art, 1990s 32-bit arcade racing game sprite style, crisp hard-edged pixels, no anti-aliasing blur, limited but rich palette, bold readable silhouettes, saturated sunny colors, clean dark outlines on key shapes, late-afternoon sun lighting from the upper left\nConstraints: original fictional designs only; no real brands, no watermarks or signatures. Follow the specified object/frame count and layout. Keep full subjects visible. No readable text except any placeholder word explicitly requested above. Magenta key backgrounds must be uniform solid #FF00FF, with no ground shadow. These are concept references, not production-ready sprites.",
+      "width": 2172,
+      "height": 724,
+      "sha256": "f95541e226b530068de4d0319c825c02802c6e85c78a1527afb384a9a8185324",
+      "source_generated_file": "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-1af112c1-6026-4565-ac6c-024b88868281.png",
+      "current_source_prompt_matches_original": true
+    },
+    {
+      "id": "BG-PALM-04",
+      "title": "BG-PALM-04 Layer 3: near horizon",
+      "source": "assets/prompts/backgrounds/palm-coast.md",
+      "output": "assets/concept/backgrounds/palm-coast_l3_near_A_v1.png",
+      "prompt": "Background layer for an arcade racing game: low pastel beach hotels, a pier with a small ferris wheel, and rows of distant palm trees, as a single horizontal band along the bottom of the image, slightly more detailed and saturated than distant layers, with a flat solid magenta #FF00FF background above for keying. Wide horizontal panorama, seamless left and right edges. {STYLE}",
+      "aspect": "4:1",
+      "round": 2,
+      "style": "A",
+      "status": "existing concept reused; awaiting user review",
+      "notes": "Existing near horizon with hotels, palms, pier and ferris wheel on magenta. Reused, awaiting user review. Shared alignment, overlap and seam checks remain.",
+      "key": "BG-PALM-04_A",
+      "saved_output": "assets/concept/backgrounds/palm-coast_l3_near_A_v1.png",
+      "final_prompt": "Use case: stylized-concept\nAsset type: original arcade racing game concept/reference art\nRequested image aspect ratio: 4:1\nBackground layer for an arcade racing game: low pastel beach hotels, a pier with a small ferris wheel, and rows of distant palm trees, as a single horizontal band along the bottom of the image, slightly more detailed and saturated than distant layers, with a flat solid magenta #FF00FF background above for keying. Wide horizontal panorama, seamless left and right edges. high-color pixel art, 1990s 32-bit arcade racing game sprite style, crisp hard-edged pixels, no anti-aliasing blur, limited but rich palette, bold readable silhouettes, saturated sunny colors, clean dark outlines on key shapes, late-afternoon sun lighting from the upper left\nConstraints: original fictional designs only; no real brands, no watermarks or signatures. Follow the specified object/frame count and layout. Keep full subjects visible. No readable text except any placeholder word explicitly requested above. Magenta key backgrounds must be uniform solid #FF00FF, with no ground shadow. These are concept references, not production-ready sprites.",
+      "width": 2172,
+      "height": 724,
+      "sha256": "3b67017ab52428ba4289726887dc0b974da9815dca375a82a2234dbc1b5ac87f",
+      "source_generated_file": "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-d4c449de-e4a3-48bd-8e53-e7d9f1a6c746.png",
+      "current_source_prompt_matches_original": true
+    },
+    {
+      "id": "RS-PALM-02",
+      "title": "RS-PALM-02 Beach",
+      "source": "assets/prompts/roadside/palm-coast.md",
+      "output": "assets/concept/roadside/palm-coast_beach_A_v1.png",
+      "prompt": "Sprite sheet of roadside objects for an arcade racing game set in Palm Coast Boulevard (beach city, golden afternoon): A lifeguard tower, a beach umbrella cluster with towels, a surfboard rack, and a boardwalk lamp post. Arranged in a row, isolated on a flat solid magenta #FF00FF background, front-facing as seen from the road, consistent scale, no ground shadow, no readable text. {STYLE}",
+      "aspect": "16:9",
+      "round": 2,
+      "style": "A",
+      "status": "existing concept reused; awaiting user review",
+      "notes": "Existing lifeguard tower, umbrellas/towels, surfboard rack and lamp post. Reused, awaiting user review. Key fringe and pixel-scale cleanup remain.",
+      "key": "RS-PALM-02_A",
+      "saved_output": "assets/concept/roadside/palm-coast_beach_A_v1.png",
+      "final_prompt": "Use case: stylized-concept\nAsset type: original arcade racing game concept/reference art\nRequested image aspect ratio: 16:9\nSprite sheet of roadside objects for an arcade racing game set in Palm Coast Boulevard (beach city, golden afternoon): A lifeguard tower, a beach umbrella cluster with towels, a surfboard rack, and a boardwalk lamp post. Arranged in a row, isolated on a flat solid magenta #FF00FF background, front-facing as seen from the road, consistent scale, no ground shadow, no readable text. high-color pixel art, 1990s 32-bit arcade racing game sprite style, crisp hard-edged pixels, no anti-aliasing blur, limited but rich palette, bold readable silhouettes, saturated sunny colors, clean dark outlines on key shapes, late-afternoon sun lighting from the upper left\nConstraints: original fictional designs only; no real brands, no watermarks or signatures. Follow the specified object/frame count and layout. Keep full subjects visible. No readable text except any placeholder word explicitly requested above. Magenta key backgrounds must be uniform solid #FF00FF, with no ground shadow. These are concept references, not production-ready sprites.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "71cf3b166784a8b227d54614715354e42acbdeb45cb0979b0650154ba43f1e07",
+      "source_generated_file": "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-b9d71078-9e25-42dd-ac19-137805cadd48.png",
+      "current_source_prompt_matches_original": true
+    },
+    {
+      "id": "RS-PALM-03",
+      "title": "RS-PALM-03 Buildings",
+      "source": "assets/prompts/roadside/palm-coast.md",
+      "output": "assets/concept/roadside/palm-coast_buildings_A_v1.png",
+      "prompt": "Sprite sheet of roadside objects for an arcade racing game set in Palm Coast Boulevard (beach city, golden afternoon): A pastel art-deco hotel facade, a surf shop with a blank sign, a juice stand, and a beach volleyball net. Arranged in a row, isolated on a flat solid magenta #FF00FF background, front-facing as seen from the road, consistent scale, no ground shadow, no readable text. {STYLE}",
+      "aspect": "16:9",
+      "round": 2,
+      "style": "A",
+      "status": "existing concept reused; awaiting user review",
+      "notes": "Existing art-deco hotel, surf shop, juice stand and volleyball net. Reused, awaiting user review. Key fringe and pixel-scale cleanup remain.",
+      "key": "RS-PALM-03_A",
+      "saved_output": "assets/concept/roadside/palm-coast_buildings_A_v1.png",
+      "final_prompt": "Use case: stylized-concept\nAsset type: original arcade racing game concept/reference art\nRequested image aspect ratio: 16:9\nSprite sheet of roadside objects for an arcade racing game set in Palm Coast Boulevard (beach city, golden afternoon): A pastel art-deco hotel facade, a surf shop with a blank sign, a juice stand, and a beach volleyball net. Arranged in a row, isolated on a flat solid magenta #FF00FF background, front-facing as seen from the road, consistent scale, no ground shadow, no readable text. high-color pixel art, 1990s 32-bit arcade racing game sprite style, crisp hard-edged pixels, no anti-aliasing blur, limited but rich palette, bold readable silhouettes, saturated sunny colors, clean dark outlines on key shapes, late-afternoon sun lighting from the upper left\nConstraints: original fictional designs only; no real brands, no watermarks or signatures. Follow the specified object/frame count and layout. Keep full subjects visible. No readable text except any placeholder word explicitly requested above. Magenta key backgrounds must be uniform solid #FF00FF, with no ground shadow. These are concept references, not production-ready sprites.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "300f4cecc9ade41f711ce08c27021b4137d810c0dec8a61a559d070598ceffb7",
+      "source_generated_file": "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-b4b20179-6351-45b1-90fa-26090ccc7ba7.png",
+      "current_source_prompt_matches_original": true
+    },
+    {
+      "id": "RS-PALM-04",
+      "title": "RS-PALM-04 Billboards",
+      "source": "assets/prompts/roadside/palm-coast.md",
+      "output": "assets/concept/roadside/palm-coast_billboards_A_v1.png",
+      "prompt": "Sprite sheet of roadside objects for an arcade racing game set in Palm Coast Boulevard (beach city, golden afternoon): Two large blank roadside billboards with sunny abstract beach artwork and no readable text. Arranged in a row, isolated on a flat solid magenta #FF00FF background, front-facing as seen from the road, consistent scale, no ground shadow, no readable text. {STYLE}",
+      "aspect": "16:9",
+      "round": 2,
+      "style": "A",
+      "status": "existing concept reused; awaiting user review",
+      "notes": "Existing two beach-art billboards. Reused, awaiting user review. Key fringe and pixel-scale cleanup remain.",
+      "key": "RS-PALM-04_A",
+      "saved_output": "assets/concept/roadside/palm-coast_billboards_A_v1.png",
+      "final_prompt": "Use case: stylized-concept\nAsset type: original arcade racing game concept/reference art\nRequested image aspect ratio: 16:9\nSprite sheet of roadside objects for an arcade racing game set in Palm Coast Boulevard (beach city, golden afternoon): Two large blank roadside billboards with sunny abstract beach artwork and no readable text. Arranged in a row, isolated on a flat solid magenta #FF00FF background, front-facing as seen from the road, consistent scale, no ground shadow, no readable text. high-color pixel art, 1990s 32-bit arcade racing game sprite style, crisp hard-edged pixels, no anti-aliasing blur, limited but rich palette, bold readable silhouettes, saturated sunny colors, clean dark outlines on key shapes, late-afternoon sun lighting from the upper left\nConstraints: original fictional designs only; no real brands, no watermarks or signatures. Follow the specified object/frame count and layout. Keep full subjects visible. No readable text except any placeholder word explicitly requested above. Magenta key backgrounds must be uniform solid #FF00FF, with no ground shadow. These are concept references, not production-ready sprites.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "f052f6bb58a8852b5d543a48f0f9569b46245abad6e8b98520d8488e8791df97",
+      "source_generated_file": "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-d10f302d-cddd-4cb9-8838-cbd131d4e2a0.png",
+      "current_source_prompt_matches_original": true
+    },
+    {
+      "id": "UI-01",
+      "title": "UI-01 Logo direction",
+      "source": "assets/prompts/ui/logo-and-menus.md",
+      "output": "assets/concept/ui/ui01_logo_A_v1.png",
+      "prompt": "Arcade racing game logo concept: bold italic chrome lettering with a sunset gradient fill (gold to orange to magenta), thick dark outline, speed lines streaking behind, a setting sun half-circle with horizontal stripes behind the letters, and a small checkered flag accent. Placeholder word \"SUNDOWN RUN\". 1990s arcade attract-screen style, on a plain dark background. {STYLE}",
+      "aspect": "16:9",
+      "round": 1,
+      "style": "A",
+      "status": "existing concept reused; awaiting user review",
+      "notes": "Existing SUNDOWN RUN chrome/sunset/checkered logo concept. Reused, awaiting user review. Final lettering/vector cleanup remains.",
+      "key": "UI-01_A",
+      "saved_output": "assets/concept/ui/ui01_logo_A_v1.png",
+      "final_prompt": "Use case: stylized-concept\nAsset type: original arcade racing game concept/reference art\nRequested image aspect ratio: 16:9\nArcade racing game logo concept: bold italic chrome lettering with a sunset gradient fill (gold to orange to magenta), thick dark outline, speed lines streaking behind, a setting sun half-circle with horizontal stripes behind the letters, and a small checkered flag accent. Placeholder word \"SUNDOWN RUN\". 1990s arcade attract-screen style, on a plain dark background. high-color pixel art, 1990s 32-bit arcade racing game sprite style, crisp hard-edged pixels, no anti-aliasing blur, limited but rich palette, bold readable silhouettes, saturated sunny colors, clean dark outlines on key shapes, late-afternoon sun lighting from the upper left\nConstraints: original fictional designs only; no real brands, no watermarks or signatures. Follow the specified object/frame count and layout. Keep full subjects visible. No readable text except any placeholder word explicitly requested above. Magenta key backgrounds must be uniform solid #FF00FF, with no ground shadow. These are concept references, not production-ready sprites.",
+      "width": 1672,
+      "height": 941,
+      "sha256": "043cbfdabbe97496319da733688ae7d31cd123a059eed605e654959629fdafce",
+      "source_generated_file": "/Users/txdevs/.codex/generated_images/01a18af7-ca8b-75a2-9a2a-b28dabe1f0cb/exec-f8c94b77-5a2b-41a3-a2b9-73b3f91e8177.png",
+      "current_source_prompt_matches_original": true
+    }
+  ],
+  "style_target": "assets/concept/key-art/ka02_gameplay_palm_A_v1.png",
+  "style_target_role": "User-selected visual target; its old car and circuit minimap are not approved for production.",
+  "scope": "Three new v2 images plus seven unchanged existing concepts requested in the round-one next-round list. No user review verdict is inferred for these ten assets.",
+  "pending_followups": [
+    "Vega orthographic and crash sheets still use the old design.",
+    "Bruiser orthographic, steering and crash sheets still use the old design.",
+    "KA-01 and KA-02 keep their mood/style roles; any reroll must use the new Vega. KA-02 production HUD needs a point-to-point progress bar in place of the minimap.",
+    "Palms need a defined final sprite size, key-fringe cleanup and one pixel grid. Do not resize against an unconfirmed specification.",
+    "The roughly 200 px player-car width is a review proposal, not a locked spec change.",
+    "Harvest/Skyline can borrow KA-02 C sunset grading; their prior concepts have not been rerolled in this pass."
+  ],
+  "baseline_prompt_archive": "assets/generation-prompts.json",
+  "verification": {
+    "new_images": 3,
+    "reused_requested_images": 7,
+    "total_requested_items": 10,
+    "png_crc_checks": "passed",
+    "style_reference": {
+      "width": 1672,
+      "height": 941,
+      "sha256": "a4565633b3d9ea3c81bceefc1721bbc2563f0e37d2e37f6cc23f0b318a0404d1"
+    }
+  }
+}
