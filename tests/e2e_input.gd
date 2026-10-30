@@ -104,6 +104,22 @@ func _tick() -> void:
 			_send("restart", false)
 			_send("accelerate", false)
 			_check(_race.state == _race.State.COUNTDOWN and _race.player.distance == 0.0, "restart puts the car back on the grid")
+			_send("accelerate", true)
+			_next(200)
+		10:
+			# Jump to the finish line (driving there takes over a minute)
+			_check(_race.state == _race.State.RACING, "racing again")
+			p.distance = _race.finish_distance + 1.0
+			_next(2)
+		11:
+			_check(_race.state == _race.State.FINISHED, "crossing the line finishes the stage")
+			_send("accelerate", false)
+			_send("confirm", true)
+			_next(2)
+		12:
+			_send("confirm", false)
+			_check(_race.track.name == "Redrock Canyon" and _race.state == _race.State.COUNTDOWN,
+				"Enter after the finish goes on to Redrock Canyon")
 			_next()
 		_:
 			print("\n%s" % ("e2e passed" if _fails == 0 else "e2e: %d failed" % _fails))

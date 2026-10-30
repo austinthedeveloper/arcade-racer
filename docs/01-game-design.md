@@ -103,7 +103,7 @@ A coast-to-coast run across an invented country. Each stage is point-to-point an
 | 7 | **Thunderhead Highway** | Storm plains | Rain, lightning flashes, dramatic sky, slippery road. |
 | 8 | **Skyline Finale** | Big metro harbor, dusk | Suspension bridge, skyscrapers, finish under fireworks. |
 
-**MVP:** Stage 1 only, fully dressed. Stage 2 next, to prove biome swapping.
+**MVP:** Stage 1 only, fully dressed. Stage 2 next, to prove biome swapping. (Prototype, 2026-10-30: stages 1 and 2 are drivable back to back with placeholder art.)
 
 ### Road features (shared across stages)
 

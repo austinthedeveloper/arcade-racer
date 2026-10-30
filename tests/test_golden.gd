@@ -26,14 +26,24 @@ func test_clear_road_run_matches_golden() -> void:
 	_check("autodrive_clear_road")
 
 
+func test_redrock_run_matches_golden() -> void:
+	_check("redrock_autodrive_traffic")
+
+
 func test_runs_are_reproducible() -> void:
 	eq(Golden.run("autodrive_traffic", 900), Golden.run("autodrive_traffic", 900), "same input, same trace")
 
 
 func test_autodriven_race_finishes_in_time() -> void:
-	var r := race(true, true)
+	for stage in Stages.count():
+		_finishes_in_time(stage)
+
+
+func _finishes_in_time(stage: int) -> void:
+	var r := race(true, true, stage)
 	var ticks := run_until(r, func(): return r.state == r.State.FINISHED or r.state == r.State.TIME_UP, Golden.FRAMES)
-	check(ticks > 0, "the race ends")
-	eq(r.state, r.State.FINISHED, "finished, not timed out")
-	eq(r.next_checkpoint, r.checkpoint_distances.size(), "every checkpoint passed")
-	check(r.race_time > 60.0 and r.race_time < 120.0, "a believable lap time (%.1f s)" % r.race_time)
+	var name: String = r.track.name
+	check(ticks > 0, name + ": the race ends")
+	eq(r.state, r.State.FINISHED, name + ": finished, not timed out")
+	eq(r.next_checkpoint, r.checkpoint_distances.size(), name + ": every checkpoint passed")
+	check(r.race_time > 60.0 and r.race_time < 120.0, "%s: a believable lap time (%.1f s)" % [name, r.race_time])

@@ -28,9 +28,10 @@ static func flat_track(segments: int = 600) -> Track:
 
 
 ## The race scene, ready, outside the tree (nothing draws or ticks on its own; tests
-## call _physics_process). Autodrive and traffic as asked.
-static func new_race(autodrive := false, traffic := true) -> Node:
+## call _physics_process). Autodrive, traffic and stage (index into Stages) as asked.
+static func new_race(autodrive := false, traffic := true, stage := 0) -> Node:
 	var r: Node = load("res://scenes/main.tscn").instantiate()
+	r.set("stage_index", stage)
 	r.set("_autodrive", autodrive)
 	r.set("_no_traffic", not traffic)
 	r._ready()
@@ -41,8 +42,8 @@ static func new_race(autodrive := false, traffic := true) -> Node:
 
 
 ## A race for this suite, freed after it.
-func race(autodrive := false, traffic := true) -> Node:
-	var r := new_race(autodrive, traffic)
+func race(autodrive := false, traffic := true, stage := 0) -> Node:
+	var r := new_race(autodrive, traffic, stage)
 	_nodes.append(r)
 	return r
 

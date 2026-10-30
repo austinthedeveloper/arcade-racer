@@ -9,6 +9,7 @@ const BACKGROUND_SCROLL := 0.0006  # per segment travelled, per unit of curve
 const TRAFFIC_COUNT := 70
 
 var track: Track
+var stage_index := 0  # into Stages
 var player: PlayerCar
 var traffic: Traffic
 var state := State.COUNTDOWN
@@ -63,7 +64,7 @@ func _ready() -> void:
 
 
 func start_race() -> void:
-	track = PalmCoast.build()
+	track = Stages.build(stage_index)
 	player = PlayerCar.new()
 	player.reset()
 	player.road_y = track.height_at(Cfg.PLAYER_Z)
@@ -87,6 +88,12 @@ func start_race() -> void:
 	_update_wheel_hint()
 
 
+## After a finish: on to the next stage, or back to the first after the last.
+func continue_tour() -> void:
+	stage_index = maxi(0, Stages.next(stage_index))
+	start_race()
+
+
 func counting_down() -> bool:
 	return state == State.COUNTDOWN
 
@@ -105,8 +112,11 @@ func _physics_process(dt: float) -> void:
 	if calibration.visible:
 		_redraw()
 		return
-	if inp.restart_pressed or (inp.confirm_pressed and (state == State.FINISHED or state == State.TIME_UP)):
+	if inp.restart_pressed or (inp.confirm_pressed and state == State.TIME_UP):
 		start_race()
+		return
+	if inp.confirm_pressed and state == State.FINISHED:
+		continue_tour()
 		return
 	if inp.pause_pressed:
 		paused = not paused
@@ -165,7 +175,9 @@ func _check_progress() -> void:
 		state = State.FINISHED
 		var mins := int(race_time) / 60
 		var secs := fmod(race_time, 60.0)
-		_banner("FINISH!", "Time %d:%05.2f   Press R or Enter to race again" % [mins, secs], 999.0)
+		var next := Stages.next(stage_index)
+		var prompt := "Enter: on to %s" % Stages.stage_name(next) if next >= 0 else "Tour complete!   Enter: race again"
+		_banner("FINISH!", "Time %d:%05.2f   %s" % [mins, secs, prompt], 999.0)
 
 
 func _banner(text: String, sub: String, seconds: float) -> void:
@@ -196,6 +208,8 @@ func _parse_dev_args() -> void:
 		if arg == "--autodrive":
 			_autodrive = true
 			_log_banners = true
+		elif arg.begins_with("--stage="):
+			stage_index = clampi(int(arg.get_slice("=", 1)) - 1, 0, Stages.count() - 1)
 		elif arg == "--no-traffic":
 			_no_traffic = true
 		elif arg.begins_with("--screenshots="):

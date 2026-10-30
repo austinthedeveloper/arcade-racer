@@ -131,7 +131,7 @@ func collide(track: Track) -> void:
 	if offroad:
 		for sp in seg.sprites:
 			var def: Dictionary = SpriteLibrary.defs.get(sp["id"], {})
-			if def.is_empty():
+			if def.is_empty() or def["collide"] <= 0.0:
 				continue
 			var w_units: float = def["world_w"] / Cfg.ROAD_WIDTH
 			var offset: float = sp["offset"]

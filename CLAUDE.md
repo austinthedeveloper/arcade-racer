@@ -10,6 +10,7 @@ godot --path .                                      # play
 godot --path . -- --autodrive --screenshots=200,700 --shot-dir=/tmp/shots   # hands-off run with screenshots
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
+python3 tools/make_stage_sprites.py assets/concept . redrock   # rebuild a stage's background + roadside sprites
 python3 tools/make_audio.py                         # rebuild the placeholder sounds (assets/audio/README.md)
 ```
 
@@ -17,9 +18,9 @@ python3 tools/make_audio.py                         # rebuild the placeholder so
 
 No addon. `tests/run_tests.gd` runs every `tests/test_*.gd` (methods named `test_*`, on a
 `TestSuite`, see `tests/suite.gd`). `tests/e2e_input.gd` boots the real main scene and drives
-it through the input map. `tests/golden/` holds per-frame traces of two autodriven races
-(with traffic and on a clear road); `test_golden` replays them and also checks the
-autodriven race finishes in time. CI (`.github/workflows/ci.yml`) runs `tools/test.sh`.
+it through the input map. `tests/golden/` holds per-frame traces of three autodriven races
+(Palm Coast with traffic and on a clear road, Redrock with traffic); `test_golden` replays them
+and also checks every stage's autodriven race finishes in time. CI (`.github/workflows/ci.yml`) runs `tools/test.sh`.
 
 - Add or extend tests with every change.
 - Tests never touch the player's wheel profiles (`TestSuite.use_scratch_profiles`).

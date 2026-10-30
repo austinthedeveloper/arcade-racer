@@ -82,12 +82,62 @@ func test_restart_resets_everything() -> void:
 	eq(r.traffic.cars.size(), r.TRAFFIC_COUNT, "traffic respawned")
 
 
-func test_confirm_after_the_finish_races_again() -> void:
-	var r := race(false, false)
+func _finish(r: Node) -> void:
 	drive(r, 181)
 	r.player.distance = r.finish_distance + 1.0
 	r._check_progress()
+
+
+func _confirm(r: Node) -> void:
 	var c := input()
 	c.confirm_pressed = true
 	drive(r, 1, c)
+
+
+func test_finishing_palm_coast_continues_to_redrock() -> void:
+	var r := race(false, false)
+	eq(r.track.name, "Palm Coast Boulevard", "the tour opens on Palm Coast")
+	_finish(r)
+	check("Redrock Canyon" in r.banner_sub, "the finish names the next stage: " + r.banner_sub)
+	r.time_left = 2.0
+	_confirm(r)
+	eq(r.stage_index, 1, "stage 2")
+	eq(r.track.name, "Redrock Canyon", "on to Redrock")
+	eq(r.state, r.State.COUNTDOWN, "counting down on the new stage")
+	eq(r.time_left, r.START_TIME, "fresh clock")
+	eq(r.player.distance, 0.0, "at the start line")
+	eq(r.background.theme, r.track.theme, "the background shows Redrock")
+
+
+func test_finishing_the_last_stage_starts_the_tour_over() -> void:
+	var r := race(false, false, Stages.count() - 1)
+	_finish(r)
+	check("Tour complete" in r.banner_sub, "tour complete: " + r.banner_sub)
+	_confirm(r)
+	eq(r.stage_index, 0, "back to stage 1")
+	eq(r.track.name, "Palm Coast Boulevard", "Palm Coast again")
 	eq(r.state, r.State.COUNTDOWN, "new race")
+
+
+func test_restart_and_retry_stay_on_the_stage() -> void:
+	var r := race(false, false, 1)
+	drive(r, 400, input(1.0))
+	var rs := input()
+	rs.restart_pressed = true
+	drive(r, 1, rs)
+	eq(r.track.name, "Redrock Canyon", "restart keeps the stage")
+	drive(r, 181)
+	r.time_left = 0.1
+	drive(r, 10)
+	eq(r.state, r.State.TIME_UP, "time up")
+	_confirm(r)
+	eq(r.stage_index, 1, "retry the same stage")
+	eq(r.state, r.State.COUNTDOWN, "counting down again")
+
+
+func test_confirm_does_nothing_mid_race() -> void:
+	var r := race(false, false)
+	drive(r, 240, input(1.0))
+	_confirm(r)
+	eq(r.state, r.State.RACING, "still racing")
+	eq(r.stage_index, 0, "still on stage 1")
