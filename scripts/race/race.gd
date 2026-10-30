@@ -6,7 +6,7 @@ enum State { COUNTDOWN, RACING, FINISHED, TIME_UP }
 const START_TIME := 45.0
 const CHECKPOINT_BONUS := 25.0
 const BACKGROUND_SCROLL := 0.0006  # per segment travelled, per unit of curve
-const TRAFFIC_COUNT := 70
+const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
 
 var track: Track
 var stage_index := 0  # into Stages
@@ -69,7 +69,7 @@ func start_race() -> void:
 	player.reset()
 	player.road_y = track.height_at(Cfg.PLAYER_Z)
 	traffic = Traffic.new()
-	traffic.spawn(track, 0 if _no_traffic else TRAFFIC_COUNT)
+	traffic.spawn(track, 0 if _no_traffic else int(track.theme.get("traffic", TRAFFIC_COUNT)))
 	state = State.COUNTDOWN
 	countdown = 3.0
 	time_left = START_TIME

@@ -8,3 +8,4 @@
 # Concept art is reference only. Godot skips assets/concept (see its .gdignore),
 # so ignore any .import files an earlier editor session left there.
 assets/concept/**/*.import
+__pycache__/

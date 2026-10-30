@@ -30,6 +30,26 @@ func test_redrock_run_matches_golden() -> void:
 	_check("redrock_autodrive_traffic")
 
 
+func test_neon_run_matches_golden() -> void:
+	_check("neon_autodrive_traffic")
+
+
+func test_timberline_run_matches_golden() -> void:
+	_check("timberline_autodrive_traffic")
+
+
+func test_bayou_run_matches_golden() -> void:
+	_check("bayou_autodrive_traffic")
+
+
+func test_harvest_run_matches_golden() -> void:
+	_check("harvest_autodrive_traffic")
+
+
+func test_thunder_run_matches_golden() -> void:
+	_check("thunder_autodrive_traffic")
+
+
 func test_runs_are_reproducible() -> void:
 	eq(Golden.run("autodrive_traffic", 900), Golden.run("autodrive_traffic", 900), "same input, same trace")
 

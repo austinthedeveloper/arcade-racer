@@ -2,7 +2,8 @@ class_name Stages
 extends RefCounted
 ## The stages in Grand Tour order. A race runs them one after another.
 
-const NAMES := ["Palm Coast Boulevard", "Redrock Canyon"]
+const NAMES := ["Palm Coast Boulevard", "Redrock Canyon", "Neon Strip", "Timberline Pass",
+	"Bayou Causeway", "Harvest Valley", "Thunderhead Highway"]
 
 
 static func count() -> int:
@@ -13,6 +14,16 @@ static func build(index: int) -> Track:
 	match index:
 		1:
 			return Redrock.build()
+		2:
+			return NeonStrip.build()
+		3:
+			return Timberline.build()
+		4:
+			return BayouCauseway.build()
+		5:
+			return HarvestValley.build()
+		6:
+			return Thunderhead.build()
 		_:
 			return PalmCoast.build()
 

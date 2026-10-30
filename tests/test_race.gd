@@ -141,3 +141,13 @@ func test_confirm_does_nothing_mid_race() -> void:
 	_confirm(r)
 	eq(r.state, r.State.RACING, "still racing")
 	eq(r.stage_index, 0, "still on stage 1")
+
+
+func test_the_tour_runs_through_every_stage_in_order() -> void:
+	var r := race(false, false)
+	for i in range(1, Stages.count()):
+		_finish(r)
+		check(Stages.stage_name(i) in r.banner_sub, "the finish names %s: %s" % [Stages.stage_name(i), r.banner_sub])
+		_confirm(r)
+		eq(r.stage_index, i, "stage %d" % (i + 1))
+		eq(r.track.name, Stages.stage_name(i), "on to " + Stages.stage_name(i))

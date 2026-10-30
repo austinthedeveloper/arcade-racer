@@ -18,9 +18,14 @@ func test_every_stage_builds() -> void:
 
 
 func test_stage_order_and_names() -> void:
-	eq(Stages.count(), 2, "two stages")
+	eq(Stages.count(), 7, "seven stages")
 	eq(Stages.build(0).name, "Palm Coast Boulevard", "stage 1")
 	eq(Stages.build(1).name, "Redrock Canyon", "stage 2")
+	eq(Stages.build(2).name, "Neon Strip", "stage 3")
+	eq(Stages.build(3).name, "Timberline Pass", "stage 4")
+	eq(Stages.build(4).name, "Bayou Causeway", "stage 5")
+	eq(Stages.build(5).name, "Harvest Valley", "stage 6")
+	eq(Stages.build(6).name, "Thunderhead Highway", "stage 7")
 	for i in Stages.count():
 		eq(Stages.stage_name(i), Stages.build(i).name, "listed name of stage %d" % (i + 1))
 	eq(Stages.next(0), 1, "Palm Coast leads to Redrock")
@@ -28,10 +33,16 @@ func test_stage_order_and_names() -> void:
 
 
 func test_stages_have_their_own_look() -> void:
-	var palm := Stages.build(0).theme
-	var rock := Stages.build(1).theme
-	check(palm["background"] != rock["background"], "different backgrounds")
-	check(palm["grass"][0] != rock["grass"][0], "different ground")
+	var backgrounds := {}
+	var grounds := {}
+	var skies := {}
+	for t in _stages():
+		backgrounds[t.theme["background"]] = true
+		grounds[t.theme["grass"][0]] = true
+		skies[t.theme["sky_top"]] = true
+	eq(backgrounds.size(), Stages.count(), "a background per stage")
+	eq(grounds.size(), Stages.count(), "a ground color per stage")
+	eq(skies.size(), Stages.count(), "a sky per stage")
 	for t in _stages():
 		check(ResourceLoader.exists(t.theme["background"]), t.name + " background exists")
 
@@ -102,3 +113,111 @@ func test_redrock_has_its_landmarks() -> void:
 		check(counts.get(id, 0) > 0, "Redrock has a " + id)
 	eq(counts.get("diner", 0), 1, "one diner stop")
 	check(not counts.has("palm_tall_a"), "no palms in the desert")
+
+
+func _sprite_counts(t: Track) -> Dictionary:
+	var counts := {}
+	for seg in t.segments:
+		for sp in seg.sprites:
+			counts[sp["id"]] = counts.get(sp["id"], 0) + 1
+	return counts
+
+
+func test_neon_strip_has_its_landmarks() -> void:
+	var counts := _sprite_counts(NeonStrip.build())
+	for id in ["casino_spire", "casino_lotus", "neon_cocktail", "billboard_wide", "street_lamp_a", "palm_lit"]:
+		check(counts.get(id, 0) > 0, "Neon Strip has a " + id)
+	eq(counts.get("fountain", 0), 2, "a fountain each side of the plaza")
+	check(not counts.has("saguaro_a"), "no cactus on the Strip")
+
+
+func test_neon_strip_has_heavier_traffic() -> void:
+	var r := race(false, true, 2)
+	check(r.traffic.cars.size() > r.TRAFFIC_COUNT, "more cars than usual (%d)" % r.traffic.cars.size())
+	eq(race(false, true, 0).traffic.cars.size(), r.TRAFFIC_COUNT, "Palm Coast keeps the usual count")
+
+
+func test_timberline_has_its_landmarks() -> void:
+	var t := Timberline.build()
+	var counts := _sprite_counts(t)
+	for id in ["pine_a", "pine_d", "cabin", "snowbank", "guardrail", "chevron_sign", "snow_cliff"]:
+		check(counts.get(id, 0) > 0, "Timberline has a " + id)
+	for id in ["lookout_tower", "waterfall", "lodge"]:
+		eq(counts.get(id, 0), 1, "one " + id)
+	var snow := 0
+	for seg in t.segments:
+		if seg.ground_left == Track.GROUND_SAND:
+			snow += 1
+	check(snow > 300, "snow at the summit (%d segments)" % snow)
+
+
+func test_timberline_guardrails_sit_on_the_outside_of_bends() -> void:
+	var wrong := 0
+	var rails := 0
+	for seg in Timberline.build().segments:
+		for sp in seg.sprites:
+			if sp["id"] == "guardrail":
+				rails += 1
+				if signf(sp["offset"]) == signf(seg.curve):
+					wrong += 1
+	check(rails > 20, "rails on the bends (%d)" % rails)
+	eq(wrong, 0, "guardrails on the inside of a bend")
+
+
+func test_bayou_has_causeways_over_water() -> void:
+	var t := BayouCauseway.build()
+	var counts := _sprite_counts(t)
+	for id in ["cypress_a", "reeds_a", "mist_a", "piling", "heron"]:
+		check(counts.get(id, 0) > 0, "Bayou has a " + id)
+	for id in ["bait_shop", "stilt_shack", "boat_dock"]:
+		eq(counts.get(id, 0), 1, "one " + id)
+	var water := 0
+	for seg in t.segments:
+		if seg.ground_left != Track.GROUND_SAND:
+			continue
+		water += 1
+		for sp in seg.sprites:
+			if sp["id"] == "cypress_a" or sp["id"] == "cypress_b" or sp["id"] == "cypress_c":
+				check(absf(sp["offset"]) >= 3.0, "cypress out in the water, not on the causeway")
+	check(water > 1000, "long stretches over water (%d segments)" % water)
+
+
+func test_bayou_fog_is_thicker() -> void:
+	check(BayouCauseway.theme()["fog_density"] > Cfg.FOG_DENSITY, "thicker fog than the default")
+	for i in Stages.count():
+		if i != 4:
+			check(Stages.build(i).theme.get("fog_density", Cfg.FOG_DENSITY) < BayouCauseway.theme()["fog_density"],
+				Stages.stage_name(i) + " is clearer than the Bayou")
+
+
+func test_harvest_has_its_farm() -> void:
+	var t := HarvestValley.build()
+	var counts := _sprite_counts(t)
+	for id in ["farm_windmill", "oak", "corn", "sunflowers", "hay_round", "hay_bale", "farm_fence", "scarecrow"]:
+		check(counts.get(id, 0) > 0, "Harvest has a " + id)
+	for id in ["barn", "silos", "water_tower", "farm_stand"]:
+		eq(counts.get(id, 0), 1, "one " + id)
+	var top := 0.0
+	for seg in t.segments:
+		top = maxf(top, seg.w2.y)
+	check(top >= Track.HILL_MEDIUM * Cfg.SEGMENT_LENGTH, "big rolling hills (top %.0f)" % top)
+
+
+func test_thunderhead_has_its_landmarks() -> void:
+	var t := Thunderhead.build()
+	var counts := _sprite_counts(t)
+	for id in ["pole_a", "pylon", "tree_windswept", "puddle_a", "cone", "jersey_barrier", "wrecked_sign"]:
+		check(counts.get(id, 0) > 0, "Thunderhead has a " + id)
+	for id in ["truck_stop", "motel"]:
+		eq(counts.get(id, 0), 1, "one " + id)
+	var poles_left := 0
+	for seg in t.segments:
+		for sp in seg.sprites:
+			if sp["id"].begins_with("pole_") and sp["offset"] < 0.0:
+				poles_left += 1
+	eq(poles_left, 0, "the power line stays on the right")
+
+
+func test_road_work_cones_never_crash_the_car() -> void:
+	for id in ["cone", "cone_tall", "drum"]:
+		eq(SpriteLibrary.defs[id]["collide"], 0.0, id + " gets knocked aside, not crashed into")
