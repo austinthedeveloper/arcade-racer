@@ -1,5 +1,6 @@
 extends Node
-## Autoload. Turns keyboard, gamepad and wheel/pedal input into one DriveInput per physics tick.
+## Autoload. Turns keyboard, gamepad and wheel/pedal input into one DriveInput (and one
+## MenuInput, for the menus) per physics tick.
 ##
 ## Gamepads and wheels are read per device rather than through the InputMap, so a wheel's
 ## pedal axes can never leak into gamepad trigger bindings. Wheels go through a saved
@@ -16,10 +17,12 @@ const WHEEL_NAME_HINTS := [
 ]
 const PAD_DEADZONE := 0.12
 const PAD_GAMMA := 1.6
+const PEDAL_PRESS := 0.5  # a pedal past this confirms (gas) or goes back (brake) in menus
 
 ## Where wheel and pad profiles are saved. Tests point this at a scratch file.
 var profile_path := "user://input_profiles.cfg"
 var state := DriveInput.new()
+var menu := MenuInput.new()
 var speed_factor := 0.0  # set by the race each tick, for speed-sensitive pad steering
 var last_active_device := -1  # -1 is the keyboard
 
@@ -28,6 +31,7 @@ var _transient: Dictionary = {}  # device id -> DeviceProfile, for devices witho
 var _kb_steer := 0.0
 var _pad_steer: Dictionary = {}
 var _prev := {"nitro": false, "pause": false, "restart": false, "confirm": false}
+var _prev_menu := {"confirm": false, "back": false}
 
 
 func _ready() -> void:
@@ -57,6 +61,11 @@ func _physics_process(dt: float) -> void:
 	down["confirm"] = Input.is_action_pressed("confirm")
 	if kb_target != 0.0 or throttle > 0.0 or brake > 0.0:
 		last_active_device = -1
+	var menu_x := kb_target
+	var menu_down := {
+		"confirm": down["confirm"],
+		"back": Input.is_action_pressed("back") or down["pause"],
+	}
 
 	for device in Input.get_connected_joypads():
 		var prof := get_profile(device)
@@ -67,6 +76,10 @@ func _physics_process(dt: float) -> void:
 		brake = maxf(brake, r["brake"])
 		for key in down:
 			down[key] = down[key] or r.get(key, false)
+		if absf(r["menu_x"]) > absf(menu_x):
+			menu_x = r["menu_x"]
+		menu_down["confirm"] = menu_down["confirm"] or r["menu_confirm"]
+		menu_down["back"] = menu_down["back"] or r["menu_back"]
 		if r["active"]:
 			last_active_device = device
 
@@ -78,6 +91,10 @@ func _physics_process(dt: float) -> void:
 	state.restart_pressed = down["restart"] and not _prev["restart"]
 	state.confirm_pressed = down["confirm"] and not _prev["confirm"]
 	_prev = down
+	menu.step_axis(clampf(menu_x, -1.0, 1.0), dt)
+	menu.confirm_pressed = menu_down["confirm"] and not _prev_menu["confirm"]
+	menu.back_pressed = menu_down["back"] and not _prev_menu["back"]
+	_prev_menu = menu_down
 	if last_active_device >= 0 and Input.get_connected_joypads().has(last_active_device):
 		var p := get_profile(last_active_device)
 		state.kind = DriveInput.Kind.WHEEL if p.kind == DeviceProfile.Kind.WHEEL else DriveInput.Kind.GAMEPAD
@@ -106,6 +123,11 @@ func _read_pad(device: int, dt: float) -> Dictionary:
 	var brake_btn := Input.is_joy_button_pressed(device, JOY_BUTTON_B) or Input.is_joy_button_pressed(device, JOY_BUTTON_X)
 	var brake := maxf(Input.get_joy_axis(device, JOY_AXIS_TRIGGER_LEFT), 1.0 if brake_btn else 0.0)
 	var nitro := Input.is_joy_button_pressed(device, JOY_BUTTON_RIGHT_SHOULDER) or Input.is_joy_button_pressed(device, JOY_BUTTON_Y)
+	var menu_x := ax
+	if Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_LEFT):
+		menu_x = -1.0
+	elif Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_RIGHT):
+		menu_x = 1.0
 	return {
 		"steer": s,
 		"throttle": throttle if throttle > 0.05 else 0.0,
@@ -115,6 +137,9 @@ func _read_pad(device: int, dt: float) -> Dictionary:
 		"restart": Input.is_joy_button_pressed(device, JOY_BUTTON_BACK),
 		"confirm": a_btn,
 		"active": mag > PAD_DEADZONE or throttle > 0.05 or brake > 0.05 or nitro or a_btn,
+		"menu_x": menu_x,
+		"menu_confirm": a_btn or Input.is_joy_button_pressed(device, JOY_BUTTON_START),
+		"menu_back": Input.is_joy_button_pressed(device, JOY_BUTTON_B) or Input.is_joy_button_pressed(device, JOY_BUTTON_BACK),
 	}
 
 
@@ -134,6 +159,10 @@ func _read_wheel(device: int, prof: DeviceProfile) -> Dictionary:
 		"brake": brake,
 		"nitro": nitro,
 		"active": absf(steer) > 0.05 or throttle > 0.05 or brake > 0.05 or nitro,
+		# Any wheel button confirms too, so an uncalibrated wheel (pedals unused) gets through
+		"menu_x": steer,
+		"menu_confirm": throttle > PEDAL_PRESS or not pressed_buttons(device).is_empty(),
+		"menu_back": brake > PEDAL_PRESS,
 	}
 
 
@@ -230,6 +259,7 @@ func _register_actions() -> void:
 	_add_action("pause", [KEY_ESCAPE, KEY_P])
 	_add_action("restart", [KEY_R])
 	_add_action("confirm", [KEY_ENTER, KEY_KP_ENTER])
+	_add_action("back", [KEY_BACKSPACE])
 	_add_action("debug_input", [KEY_F1])
 	_add_action("calibrate", [KEY_F2])
 

@@ -30,15 +30,20 @@ static func flat_track(segments: int = 600) -> Track:
 ## The race scene, ready, outside the tree (nothing draws or ticks on its own; tests
 ## call _physics_process). Autodrive, traffic and stage (index into Stages) as asked.
 static func new_race(autodrive := false, traffic := true, stage := 0) -> Node:
-	var r: Node = load("res://scenes/main.tscn").instantiate()
+	var r: Node = load("res://scenes/race.tscn").instantiate()
 	r.set("stage_index", stage)
 	r.set("_autodrive", autodrive)
 	r.set("_no_traffic", not traffic)
-	r._ready()
-	for n in r.find_children("*", "", true, false):
+	ready_all(r)
+	return r
+
+
+## Runs _ready on a node built outside the tree, and on everything under it.
+static func ready_all(node: Node) -> void:
+	node._ready()
+	for n in node.find_children("*", "", true, false):
 		if n.has_method("_ready"):
 			n._ready()
-	return r
 
 
 ## A race for this suite, freed after it.
