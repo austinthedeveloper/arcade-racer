@@ -2,7 +2,7 @@
 
 An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports keyboard, gamepads, and steering wheels with pedals.
 
-**Status:** Milestone 1 prototype. Four stages are drivable back to back (Palm Coast Boulevard, Redrock Canyon, Neon Strip, Timberline Pass), with traffic, checkpoints, a timer, nitro, jumps and crashes, with generated placeholder sound and music. Finish a stage and press Enter to go on to the next; after the last one the tour starts over. The art is placeholder: the backgrounds, roadside sprites and cars are cut from the concept art (the player drives the Vega).
+**Status:** Milestone 1 prototype. Six stages are drivable back to back (Palm Coast Boulevard, Redrock Canyon, Neon Strip, Timberline Pass, Bayou Causeway, Harvest Valley), with traffic, checkpoints, a timer, nitro, jumps and crashes, with generated placeholder sound and music. Finish a stage and press Enter to go on to the next; after the last one the tour starts over. The art is placeholder: the backgrounds, roadside sprites and cars are cut from the concept art (the player drives the Vega).
 
 ## Running it
 

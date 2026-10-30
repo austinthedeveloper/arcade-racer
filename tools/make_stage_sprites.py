@@ -59,6 +59,28 @@ STAGES = {
             ("timberline_props_A_v1.png", 160, ["snowbank", "guardrail", "chevron_sign", "snow_cliff"]),
         ],
     },
+    "bayou": {
+        "background": ("bayou_composite_A_v1.png", 600),
+        "sheets": [
+            ("bayou_trees_A_v1.png", 220, ["cypress_a", "cypress_b", "cypress_c", None]),
+            ("bayou_buildings_A_v1.png", 150, ["stilt_shack", "boat_dock", "bait_shop"]),
+            ("bayou_props_A_v1.png", 90, [
+                "reeds_a", "reeds_b", "cattails", "reeds_c", "heron", "mist_a", "mist_b", "mist_c"]),
+            ("bayou_bridge_A_v1.png", 150, [
+                "rail_wood_a", "rail_wood_b", "rail_wood_short", "rail_post", "rail_end",
+                None, None, None, None, None, "piling",
+                "rail_wood_long", "rail_concrete", "rail_concrete_end"]),
+        ],
+    },
+    "harvest": {
+        "background": ("harvest_composite_A_v1.png", 600),
+        "sheets": [
+            ("harvest_buildings_A_v1.png", 200, ["barn", "silos", "water_tower"]),
+            ("harvest_landmarks_A_v1.png", 220, ["farm_windmill", "oak"]),
+            ("harvest_plants_A_v1.png", 90, ["sunflowers", "corn", "farm_stand"]),
+            ("harvest_props_A_v1.png", 100, ["hay_round", "hay_bale", "scarecrow", "farm_fence"]),
+        ],
+    },
 }
 
 
