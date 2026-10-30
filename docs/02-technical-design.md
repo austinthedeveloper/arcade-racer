@@ -11,9 +11,9 @@ How we build a sprite-based pseudo-3D arcade racer in Godot 4, with first-class 
 | Engine | Godot 4.x, latest stable | Current input stack, good 2D tooling |
 | Language | GDScript | Fast iteration. Hot paths can move to C# or a GDExtension later if profiling says so. |
 | Renderer | Compatibility (OpenGL) | Pure 2D work, widest hardware support, fine on macOS |
-| Internal resolution | **640 x 360** (pending art decision) | Integer-scales to 720p (x2), 1080p (x3), 1440p (x4), 4K (x6) |
+| Internal resolution | **640 x 360** (pixel art, decided) | Integer-scales to 720p (x2), 1080p (x3), 1440p (x4), 4K (x6) |
 | Stretch mode | `viewport`, aspect `keep`, integer scaling optional | Crisp pixels, no shimmering from non-integer scale |
-| Texture filter | Nearest (pixel art) or Linear (hi-res art) | Decided by the art direction question |
+| Texture filter | Nearest | Pixel art |
 | Physics tick | 60 Hz fixed, game logic in `_physics_process` | Deterministic-ish feel, simple ghost replays later |
 | Target frame rate | Locked 60 fps, V-Sync on | Arcade smoothness |
 
@@ -301,3 +301,14 @@ arcade racer/
 | Car sprite consistency (many angles, many frames) | Consider pre-rendering car frames from simple 3D models (see art direction doc) |
 | Sprite count per frame on dense stages | Atlases, batching, draw distance and sprite LOD per stage |
 | AI-generated concepts not usable as production art | Treat generated images as concept/reference only; production sprites are cleaned up or redrawn |
+
+## 10. As built (milestone 1, 2026-10-30)
+
+Notes where the prototype differs from or adds detail to the plan above:
+
+- **Projection** uses one scale factor (`Cfg.PROJ`, half the screen width) for both x and y, so sprites keep their aspect ratio. The horizon sits at y = 151 (42%), and the player's car is drawn `PLAYER_Z` = 1500 units ahead of the camera, which makes it about 180 px wide.
+- **Draw order** is painter's: one pass near-to-far projects segments and records how far up the screen nearer road already reaches, then a second pass draws far-to-near (road band, then that segment's sprites and cars). Hills hide what's behind them without per-sprite clipping. Each segment's road is one `canvas_item_add_triangle_array` call.
+- **Jumps** come from short, sharp crests (`Track.jump()`): the car leaves the road when the road drops away faster than `GRAVITY` pulls it down.
+- **Input:** gamepads and wheels are read per device in `InputRouter`, not through the InputMap, so wheel pedal axes can't leak into trigger bindings. The keyboard uses InputMap actions registered in code.
+- **Placeholder art:** `tools/make_placeholder_sprites.py` cuts the palms and the background strip out of the round 1 concepts and draws the simple props. Cars are drawn from flat shapes in `CarPainter` until car sprites exist.
+- **Not built yet:** AI rivals, positions, title and results screens, audio, force feedback.

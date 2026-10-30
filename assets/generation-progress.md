@@ -2,7 +2,7 @@
 
 Updated: 2026-10-29 (America/Chicago).
 
-**Saved: 24/137 images.** Covers all 133 source prompts plus four additional title/gameplay style comparisons.
+**Saved: 66/137 images.** Covers all 133 source prompts plus four additional title/gameplay style comparisons.
 
 **Main direction:** STYLE-A, high-color pixel art (confirmed by the user). STYLE-B and STYLE-C are comparison variants for KA-01 and KA-02 only.
 
@@ -15,8 +15,8 @@ Updated: 2026-10-29 (America/Chicago).
 | Round | Saved | Total |
 |---|---:|---:|
 | 1 | 12 | 12 |
-| 2 | 12 | 47 |
-| 3 | 0 | 78 |
+| 2 | 47 | 47 |
+| 3 | 7 | 78 |
 
 ## Round 1
 
@@ -42,7 +42,7 @@ Updated: 2026-10-29 (America/Chicago).
 | complete | [BG-NEON-01](prompts/backgrounds/neon.md) | A | [neon_composite_A_v1.png](concept/backgrounds/neon_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
 | complete | [BG-NEON-02](prompts/backgrounds/neon.md) | A | [neon_l1_sky_A_v1.png](concept/backgrounds/neon_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-NEON-03](prompts/backgrounds/neon.md) | A | [neon_l2_far_A_v1.png](concept/backgrounds/neon_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
-| pending | [BG-NEON-04](prompts/backgrounds/neon.md) | A | `concept/backgrounds/neon_l3_near_A_v1.png` |  |
+| complete | [BG-NEON-04](prompts/backgrounds/neon.md) | A | [neon_l3_near_A_v1.png](concept/backgrounds/neon_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-PALM-02](prompts/backgrounds/palm-coast.md) | A | [palm-coast_l1_sky_A_v1.png](concept/backgrounds/palm-coast_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-PALM-03](prompts/backgrounds/palm-coast.md) | A | [palm-coast_l2_far_A_v1.png](concept/backgrounds/palm-coast_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-PALM-04](prompts/backgrounds/palm-coast.md) | A | [palm-coast_l3_near_A_v1.png](concept/backgrounds/palm-coast_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
@@ -51,53 +51,53 @@ Updated: 2026-10-29 (America/Chicago).
 | complete | [BG-REDROCK-03](prompts/backgrounds/redrock.md) | A | [redrock_l2_far_A_v1.png](concept/backgrounds/redrock_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-REDROCK-04](prompts/backgrounds/redrock.md) | A | [redrock_l3_near_A_v1.png](concept/backgrounds/redrock_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [CAR-BRUISER-02](prompts/cars/car_bruiser.md) | A | [car_bruiser_views_A_v1.png](concept/cars/car_bruiser_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| pending | [CAR-BRUISER-03](prompts/cars/car_bruiser.md) | A | `concept/cars/car_bruiser_steer_sheet_A_v1.png` |  |
-| pending | [CAR-KESTREL-01](prompts/cars/car_kestrel.md) | A | `concept/cars/car_kestrel_hero_A_v1.png` |  |
-| pending | [CAR-KESTREL-02](prompts/cars/car_kestrel.md) | A | `concept/cars/car_kestrel_views_A_v1.png` |  |
-| pending | [CAR-KESTREL-03](prompts/cars/car_kestrel.md) | A | `concept/cars/car_kestrel_steer_sheet_A_v1.png` |  |
-| pending | [CAR-SOL-01](prompts/cars/car_sol.md) | A | `concept/cars/car_sol_hero_A_v1.png` |  |
-| pending | [CAR-SOL-02](prompts/cars/car_sol.md) | A | `concept/cars/car_sol_views_A_v1.png` |  |
-| pending | [CAR-SOL-03](prompts/cars/car_sol.md) | A | `concept/cars/car_sol_steer_sheet_A_v1.png` |  |
+| complete | [CAR-BRUISER-03](prompts/cars/car_bruiser.md) | A | [car_bruiser_steer_sheet_A_v1.png](concept/cars/car_bruiser_steer_sheet_A_v1.png) | 2114 × 744. Generated and visually reviewed as concept reference. |
+| complete | [CAR-KESTREL-01](prompts/cars/car_kestrel.md) | A | [car_kestrel_hero_A_v1.png](concept/cars/car_kestrel_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| complete | [CAR-KESTREL-02](prompts/cars/car_kestrel.md) | A | [car_kestrel_views_A_v1.png](concept/cars/car_kestrel_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-KESTREL-03](prompts/cars/car_kestrel.md) | A | [car_kestrel_steer_sheet_A_v1.png](concept/cars/car_kestrel_steer_sheet_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
+| complete | [CAR-SOL-01](prompts/cars/car_sol.md) | A | [car_sol_hero_A_v1.png](concept/cars/car_sol_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| complete | [CAR-SOL-02](prompts/cars/car_sol.md) | A | [car_sol_views_A_v1.png](concept/cars/car_sol_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [CAR-SOL-03](prompts/cars/car_sol.md) | A | [car_sol_steer_sheet_A_v1.png](concept/cars/car_sol_steer_sheet_A_v1.png) | 2117 × 743. Generated and visually reviewed as concept reference. |
 | complete | [CAR-VEGA-02](prompts/cars/car_vega.md) | A | [car_vega_views_A_v1.png](concept/cars/car_vega_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| pending | [CAR-VEGA-03](prompts/cars/car_vega.md) | A | `concept/cars/car_vega_steer_sheet_A_v1.png` |  |
-| pending | [FX-01](prompts/fx/fx.md) | A | `concept/fx/fx01_tire_smoke_A_v1.png` |  |
-| pending | [FX-02](prompts/fx/fx.md) | A | `concept/fx/fx02_nitro_A_v1.png` |  |
-| pending | [KA-04](prompts/key-art/key-art.md) | A | `concept/key-art/ka04_gameplay_canyon_A_v1.png` |  |
-| pending | [KA-05](prompts/key-art/key-art.md) | A | `concept/key-art/ka05_postcards_A_v1.png` |  |
-| pending | [RS-NEON-01](prompts/roadside/neon.md) | A | `concept/roadside/neon_neon-signs_A_v1.png` |  |
-| pending | [RS-NEON-02](prompts/roadside/neon.md) | A | `concept/roadside/neon_buildings_A_v1.png` |  |
-| pending | [RS-NEON-03](prompts/roadside/neon.md) | A | `concept/roadside/neon_props_A_v1.png` |  |
-| pending | [RS-NEON-04](prompts/roadside/neon.md) | A | `concept/roadside/neon_billboards_A_v1.png` |  |
-| pending | [RS-NEON-ROAD](prompts/roadside/neon.md) | A | `concept/roadside/neon_road_colors_A_v1.png` |  |
-| pending | [RS-PALM-02](prompts/roadside/palm-coast.md) | A | `concept/roadside/palm-coast_beach_A_v1.png` |  |
-| pending | [RS-PALM-03](prompts/roadside/palm-coast.md) | A | `concept/roadside/palm-coast_buildings_A_v1.png` |  |
-| pending | [RS-PALM-04](prompts/roadside/palm-coast.md) | A | `concept/roadside/palm-coast_billboards_A_v1.png` |  |
-| pending | [RS-PALM-COAST-ROAD](prompts/roadside/palm-coast.md) | A | `concept/roadside/palm-coast_road_colors_A_v1.png` |  |
-| pending | [RS-REDROCK-01](prompts/roadside/redrock.md) | A | `concept/roadside/redrock_cactus_A_v1.png` |  |
-| pending | [RS-REDROCK-02](prompts/roadside/redrock.md) | A | `concept/roadside/redrock_rocks_A_v1.png` |  |
-| pending | [RS-REDROCK-03](prompts/roadside/redrock.md) | A | `concept/roadside/redrock_buildings_A_v1.png` |  |
-| pending | [RS-REDROCK-04](prompts/roadside/redrock.md) | A | `concept/roadside/redrock_props_A_v1.png` |  |
-| pending | [RS-REDROCK-ROAD](prompts/roadside/redrock.md) | A | `concept/roadside/redrock_road_colors_A_v1.png` |  |
-| pending | [TRF-01](prompts/traffic/traffic.md) | A | `concept/traffic/trf01_cars_A_v1.png` |  |
-| pending | [TRF-03](prompts/traffic/traffic.md) | A | `concept/traffic/trf03_big_A_v1.png` |  |
-| pending | [HUD-01](prompts/ui/hud.md) | A | `concept/ui/hud01_overlay_A_v1.png` |  |
-| pending | [HUD-02](prompts/ui/hud.md) | A | `concept/ui/hud02_speedo_A_v1.png` |  |
-| pending | [HUD-04](prompts/ui/hud.md) | A | `concept/ui/hud04_callouts_A_v1.png` |  |
-| pending | [UI-02](prompts/ui/logo-and-menus.md) | A | `concept/ui/ui02_logo_shapes_A_v1.png` |  |
-| pending | [UI-03](prompts/ui/logo-and-menus.md) | A | `concept/ui/ui03_title_screen_A_v1.png` |  |
-| pending | [UI-04](prompts/ui/logo-and-menus.md) | A | `concept/ui/ui04_car_select_A_v1.png` |  |
+| complete | [CAR-VEGA-03](prompts/cars/car_vega.md) | A | [car_vega_steer_sheet_A_v1.png](concept/cars/car_vega_steer_sheet_A_v1.png) | 2098 × 749. Generated and visually reviewed as concept reference. |
+| complete | [FX-01](prompts/fx/fx.md) | A | [fx01_tire_smoke_A_v1.png](concept/fx/fx01_tire_smoke_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [FX-02](prompts/fx/fx.md) | A | [fx02_nitro_A_v1.png](concept/fx/fx02_nitro_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [KA-04](prompts/key-art/key-art.md) | A | [ka04_gameplay_canyon_A_v1.png](concept/key-art/ka04_gameplay_canyon_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [KA-05](prompts/key-art/key-art.md) | A | [ka05_postcards_A_v1.png](concept/key-art/ka05_postcards_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-NEON-01](prompts/roadside/neon.md) | A | [neon_neon-signs_A_v1.png](concept/roadside/neon_neon-signs_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-NEON-02](prompts/roadside/neon.md) | A | [neon_buildings_A_v1.png](concept/roadside/neon_buildings_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-NEON-03](prompts/roadside/neon.md) | A | [neon_props_A_v1.png](concept/roadside/neon_props_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-NEON-04](prompts/roadside/neon.md) | A | [neon_billboards_A_v1.png](concept/roadside/neon_billboards_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-NEON-ROAD](prompts/roadside/neon.md) | A | [neon_road_colors_A_v1.png](concept/roadside/neon_road_colors_A_v1.png) | 1672 × 940. Generated and visually reviewed as concept reference. |
+| complete | [RS-PALM-02](prompts/roadside/palm-coast.md) | A | [palm-coast_beach_A_v1.png](concept/roadside/palm-coast_beach_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-PALM-03](prompts/roadside/palm-coast.md) | A | [palm-coast_buildings_A_v1.png](concept/roadside/palm-coast_buildings_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-PALM-04](prompts/roadside/palm-coast.md) | A | [palm-coast_billboards_A_v1.png](concept/roadside/palm-coast_billboards_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-PALM-COAST-ROAD](prompts/roadside/palm-coast.md) | A | [palm-coast_road_colors_A_v1.png](concept/roadside/palm-coast_road_colors_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-REDROCK-01](prompts/roadside/redrock.md) | A | [redrock_cactus_A_v1.png](concept/roadside/redrock_cactus_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-REDROCK-02](prompts/roadside/redrock.md) | A | [redrock_rocks_A_v1.png](concept/roadside/redrock_rocks_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-REDROCK-03](prompts/roadside/redrock.md) | A | [redrock_buildings_A_v1.png](concept/roadside/redrock_buildings_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-REDROCK-04](prompts/roadside/redrock.md) | A | [redrock_props_A_v1.png](concept/roadside/redrock_props_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-REDROCK-ROAD](prompts/roadside/redrock.md) | A | [redrock_road_colors_A_v1.png](concept/roadside/redrock_road_colors_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [TRF-01](prompts/traffic/traffic.md) | A | [trf01_cars_A_v1.png](concept/traffic/trf01_cars_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [TRF-03](prompts/traffic/traffic.md) | A | [trf03_big_A_v1.png](concept/traffic/trf03_big_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [HUD-01](prompts/ui/hud.md) | A | [hud01_overlay_A_v1.png](concept/ui/hud01_overlay_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [HUD-02](prompts/ui/hud.md) | A | [hud02_speedo_A_v1.png](concept/ui/hud02_speedo_A_v1.png) | 1254 × 1254. Generated and visually reviewed as concept reference. |
+| complete | [HUD-04](prompts/ui/hud.md) | A | [hud04_callouts_A_v1.png](concept/ui/hud04_callouts_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [UI-02](prompts/ui/logo-and-menus.md) | A | [ui02_logo_shapes_A_v1.png](concept/ui/ui02_logo_shapes_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [UI-03](prompts/ui/logo-and-menus.md) | A | [ui03_title_screen_A_v1.png](concept/ui/ui03_title_screen_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [UI-04](prompts/ui/logo-and-menus.md) | A | [ui04_car_select_A_v1.png](concept/ui/ui04_car_select_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 
 ## Round 3
 
 | Status | Prompt | Style | Output | Notes |
 |---|---|---|---|---|
-| pending | [BG-BAYOU-01](prompts/backgrounds/bayou.md) | A | `concept/backgrounds/bayou_composite_A_v1.png` |  |
-| pending | [BG-BAYOU-02](prompts/backgrounds/bayou.md) | A | `concept/backgrounds/bayou_l1_sky_A_v1.png` |  |
-| pending | [BG-BAYOU-03](prompts/backgrounds/bayou.md) | A | `concept/backgrounds/bayou_l2_far_A_v1.png` |  |
-| pending | [BG-BAYOU-04](prompts/backgrounds/bayou.md) | A | `concept/backgrounds/bayou_l3_near_A_v1.png` |  |
-| pending | [BG-HARVEST-01](prompts/backgrounds/harvest.md) | A | `concept/backgrounds/harvest_composite_A_v1.png` |  |
-| pending | [BG-HARVEST-02](prompts/backgrounds/harvest.md) | A | `concept/backgrounds/harvest_l1_sky_A_v1.png` |  |
-| pending | [BG-HARVEST-03](prompts/backgrounds/harvest.md) | A | `concept/backgrounds/harvest_l2_far_A_v1.png` |  |
+| complete | [BG-BAYOU-01](prompts/backgrounds/bayou.md) | A | [bayou_composite_A_v1.png](concept/backgrounds/bayou_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
+| complete | [BG-BAYOU-02](prompts/backgrounds/bayou.md) | A | [bayou_l1_sky_A_v1.png](concept/backgrounds/bayou_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-BAYOU-03](prompts/backgrounds/bayou.md) | A | [bayou_l2_far_A_v1.png](concept/backgrounds/bayou_l2_far_A_v1.png) | 1983 × 793. Generated and visually reviewed as concept reference. |
+| complete | [BG-BAYOU-04](prompts/backgrounds/bayou.md) | A | [bayou_l3_near_A_v1.png](concept/backgrounds/bayou_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-HARVEST-01](prompts/backgrounds/harvest.md) | A | [harvest_composite_A_v1.png](concept/backgrounds/harvest_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
+| complete | [BG-HARVEST-02](prompts/backgrounds/harvest.md) | A | [harvest_l1_sky_A_v1.png](concept/backgrounds/harvest_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-HARVEST-03](prompts/backgrounds/harvest.md) | A | [harvest_l2_far_A_v1.png](concept/backgrounds/harvest_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | pending | [BG-HARVEST-04](prompts/backgrounds/harvest.md) | A | `concept/backgrounds/harvest_l3_near_A_v1.png` |  |
 | pending | [BG-SKYLINE-01](prompts/backgrounds/skyline.md) | A | `concept/backgrounds/skyline_composite_A_v1.png` |  |
 | pending | [BG-SKYLINE-02](prompts/backgrounds/skyline.md) | A | `concept/backgrounds/skyline_l1_sky_A_v1.png` |  |
