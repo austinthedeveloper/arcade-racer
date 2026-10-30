@@ -19,7 +19,7 @@ const TRAFFIC_DIR := "res://assets/sprites/traffic/"
 const PITCH_SWITCH := 0.4
 # Fraction of the car's height, from the top, that is roof and rear deck (above the taillights)
 const DECK_SPLIT := 0.55
-# Fallback stretch at full pitch: the deck grows this much nose-down and shrinks nose-up,
+# Fallback stretch at full pitch: the deck grows this much nose-up and shrinks nose-down,
 # the bumper does the opposite at half the rate.
 const DECK_STRETCH := 0.35
 
@@ -106,11 +106,12 @@ static func pitch_row(pitch: float, rows: Array = [-1, 0, 1]) -> int:
 	return want if want in rows else 0
 
 
-## Height scale of the (deck, bumper) slices that fakes a pitch on the level strip: nose-down
-## shows more roof and deck, nose-up more bumper.
+## Height scale of the (deck, bumper) slices that fakes a pitch on the level strip. The camera
+## stays level behind the car, so nose-up (uphill) tips the roof toward it: more roof and deck,
+## less bumper. Nose-down (downhill) tips the tail up toward it: more bumper, less roof.
 static func pitch_warp(pitch: float) -> Vector2:
 	var p := clampf(pitch, -1.0, 1.0)
-	return Vector2(1.0 + DECK_STRETCH * p, 1.0 - DECK_STRETCH * 0.5 * p)
+	return Vector2(1.0 - DECK_STRETCH * p, 1.0 + DECK_STRETCH * 0.5 * p)
 
 
 ## Strip frame for a steering value: 0 is hard left, the middle is straight, the last is hard right.
