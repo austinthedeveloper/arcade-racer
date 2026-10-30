@@ -1,0 +1,171 @@
+# Image Generation Completion Log
+
+Updated: 2026-10-29 (America/Chicago).
+
+**Saved: 24/137 images.** Covers all 133 source prompts plus four additional title/gameplay style comparisons.
+
+**Main direction:** STYLE-A, high-color pixel art (confirmed by the user). STYLE-B and STYLE-C are comparison variants for KA-01 and KA-02 only.
+
+**Generator:** built-in image_gen. Source prompts are preserved. Every final prompt substitutes the exact chosen style block and adds aspect ratio plus constraints on original designs, full subjects, frame counts, and magenta key backgrounds. Exact submitted prompts and results: [generation-prompts.json](generation-prompts.json).
+
+**Usage:** concept/reference images. Sprite sheets still need production cleanup, frame registration, keying/alpha conversion, and animation checks. Background layers need seam testing before use.
+
+## Completion by round
+
+| Round | Saved | Total |
+|---|---:|---:|
+| 1 | 12 | 12 |
+| 2 | 12 | 47 |
+| 3 | 0 | 78 |
+
+## Round 1
+
+| Status | Prompt | Style | Output | Notes |
+|---|---|---|---|---|
+| complete | [BG-PALM-01](prompts/backgrounds/palm-coast.md) | A | [palm-coast_composite_A_v1.png](concept/backgrounds/palm-coast_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
+| complete | [CAR-BRUISER-01](prompts/cars/car_bruiser.md) | A | [car_bruiser_hero_A_v1.png](concept/cars/car_bruiser_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| complete | [CAR-VEGA-01](prompts/cars/car_vega.md) | A | [car_vega_hero_A_v1.png](concept/cars/car_vega_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| complete | [KA-01](prompts/key-art/key-art.md) | A | [ka01_title_A_v1.png](concept/key-art/ka01_title_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [KA-01](prompts/key-art/key-art.md) | B | [ka01_title_B_v1.png](concept/key-art/ka01_title_B_v1.png) | 1672 × 940. Generated and visually reviewed as concept reference. |
+| complete | [KA-01](prompts/key-art/key-art.md) | C | [ka01_title_C_v1.png](concept/key-art/ka01_title_C_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [KA-02](prompts/key-art/key-art.md) | A | [ka02_gameplay_palm_A_v1.png](concept/key-art/ka02_gameplay_palm_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [KA-02](prompts/key-art/key-art.md) | B | [ka02_gameplay_palm_B_v1.png](concept/key-art/ka02_gameplay_palm_B_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [KA-02](prompts/key-art/key-art.md) | C | [ka02_gameplay_palm_C_v1.png](concept/key-art/ka02_gameplay_palm_C_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [KA-03](prompts/key-art/key-art.md) | A | [ka03_gameplay_neon_A_v1.png](concept/key-art/ka03_gameplay_neon_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [RS-PALM-01](prompts/roadside/palm-coast.md) | A | [palm-coast_palms_A_v1.png](concept/roadside/palm-coast_palms_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| complete | [UI-01](prompts/ui/logo-and-menus.md) | A | [ui01_logo_A_v1.png](concept/ui/ui01_logo_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+
+## Round 2
+
+| Status | Prompt | Style | Output | Notes |
+|---|---|---|---|---|
+| complete | [BG-NEON-01](prompts/backgrounds/neon.md) | A | [neon_composite_A_v1.png](concept/backgrounds/neon_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
+| complete | [BG-NEON-02](prompts/backgrounds/neon.md) | A | [neon_l1_sky_A_v1.png](concept/backgrounds/neon_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-NEON-03](prompts/backgrounds/neon.md) | A | [neon_l2_far_A_v1.png](concept/backgrounds/neon_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| pending | [BG-NEON-04](prompts/backgrounds/neon.md) | A | `concept/backgrounds/neon_l3_near_A_v1.png` |  |
+| complete | [BG-PALM-02](prompts/backgrounds/palm-coast.md) | A | [palm-coast_l1_sky_A_v1.png](concept/backgrounds/palm-coast_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-PALM-03](prompts/backgrounds/palm-coast.md) | A | [palm-coast_l2_far_A_v1.png](concept/backgrounds/palm-coast_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-PALM-04](prompts/backgrounds/palm-coast.md) | A | [palm-coast_l3_near_A_v1.png](concept/backgrounds/palm-coast_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-REDROCK-01](prompts/backgrounds/redrock.md) | A | [redrock_composite_A_v1.png](concept/backgrounds/redrock_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
+| complete | [BG-REDROCK-02](prompts/backgrounds/redrock.md) | A | [redrock_l1_sky_A_v1.png](concept/backgrounds/redrock_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-REDROCK-03](prompts/backgrounds/redrock.md) | A | [redrock_l2_far_A_v1.png](concept/backgrounds/redrock_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [BG-REDROCK-04](prompts/backgrounds/redrock.md) | A | [redrock_l3_near_A_v1.png](concept/backgrounds/redrock_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| complete | [CAR-BRUISER-02](prompts/cars/car_bruiser.md) | A | [car_bruiser_views_A_v1.png](concept/cars/car_bruiser_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| pending | [CAR-BRUISER-03](prompts/cars/car_bruiser.md) | A | `concept/cars/car_bruiser_steer_sheet_A_v1.png` |  |
+| pending | [CAR-KESTREL-01](prompts/cars/car_kestrel.md) | A | `concept/cars/car_kestrel_hero_A_v1.png` |  |
+| pending | [CAR-KESTREL-02](prompts/cars/car_kestrel.md) | A | `concept/cars/car_kestrel_views_A_v1.png` |  |
+| pending | [CAR-KESTREL-03](prompts/cars/car_kestrel.md) | A | `concept/cars/car_kestrel_steer_sheet_A_v1.png` |  |
+| pending | [CAR-SOL-01](prompts/cars/car_sol.md) | A | `concept/cars/car_sol_hero_A_v1.png` |  |
+| pending | [CAR-SOL-02](prompts/cars/car_sol.md) | A | `concept/cars/car_sol_views_A_v1.png` |  |
+| pending | [CAR-SOL-03](prompts/cars/car_sol.md) | A | `concept/cars/car_sol_steer_sheet_A_v1.png` |  |
+| complete | [CAR-VEGA-02](prompts/cars/car_vega.md) | A | [car_vega_views_A_v1.png](concept/cars/car_vega_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| pending | [CAR-VEGA-03](prompts/cars/car_vega.md) | A | `concept/cars/car_vega_steer_sheet_A_v1.png` |  |
+| pending | [FX-01](prompts/fx/fx.md) | A | `concept/fx/fx01_tire_smoke_A_v1.png` |  |
+| pending | [FX-02](prompts/fx/fx.md) | A | `concept/fx/fx02_nitro_A_v1.png` |  |
+| pending | [KA-04](prompts/key-art/key-art.md) | A | `concept/key-art/ka04_gameplay_canyon_A_v1.png` |  |
+| pending | [KA-05](prompts/key-art/key-art.md) | A | `concept/key-art/ka05_postcards_A_v1.png` |  |
+| pending | [RS-NEON-01](prompts/roadside/neon.md) | A | `concept/roadside/neon_neon-signs_A_v1.png` |  |
+| pending | [RS-NEON-02](prompts/roadside/neon.md) | A | `concept/roadside/neon_buildings_A_v1.png` |  |
+| pending | [RS-NEON-03](prompts/roadside/neon.md) | A | `concept/roadside/neon_props_A_v1.png` |  |
+| pending | [RS-NEON-04](prompts/roadside/neon.md) | A | `concept/roadside/neon_billboards_A_v1.png` |  |
+| pending | [RS-NEON-ROAD](prompts/roadside/neon.md) | A | `concept/roadside/neon_road_colors_A_v1.png` |  |
+| pending | [RS-PALM-02](prompts/roadside/palm-coast.md) | A | `concept/roadside/palm-coast_beach_A_v1.png` |  |
+| pending | [RS-PALM-03](prompts/roadside/palm-coast.md) | A | `concept/roadside/palm-coast_buildings_A_v1.png` |  |
+| pending | [RS-PALM-04](prompts/roadside/palm-coast.md) | A | `concept/roadside/palm-coast_billboards_A_v1.png` |  |
+| pending | [RS-PALM-COAST-ROAD](prompts/roadside/palm-coast.md) | A | `concept/roadside/palm-coast_road_colors_A_v1.png` |  |
+| pending | [RS-REDROCK-01](prompts/roadside/redrock.md) | A | `concept/roadside/redrock_cactus_A_v1.png` |  |
+| pending | [RS-REDROCK-02](prompts/roadside/redrock.md) | A | `concept/roadside/redrock_rocks_A_v1.png` |  |
+| pending | [RS-REDROCK-03](prompts/roadside/redrock.md) | A | `concept/roadside/redrock_buildings_A_v1.png` |  |
+| pending | [RS-REDROCK-04](prompts/roadside/redrock.md) | A | `concept/roadside/redrock_props_A_v1.png` |  |
+| pending | [RS-REDROCK-ROAD](prompts/roadside/redrock.md) | A | `concept/roadside/redrock_road_colors_A_v1.png` |  |
+| pending | [TRF-01](prompts/traffic/traffic.md) | A | `concept/traffic/trf01_cars_A_v1.png` |  |
+| pending | [TRF-03](prompts/traffic/traffic.md) | A | `concept/traffic/trf03_big_A_v1.png` |  |
+| pending | [HUD-01](prompts/ui/hud.md) | A | `concept/ui/hud01_overlay_A_v1.png` |  |
+| pending | [HUD-02](prompts/ui/hud.md) | A | `concept/ui/hud02_speedo_A_v1.png` |  |
+| pending | [HUD-04](prompts/ui/hud.md) | A | `concept/ui/hud04_callouts_A_v1.png` |  |
+| pending | [UI-02](prompts/ui/logo-and-menus.md) | A | `concept/ui/ui02_logo_shapes_A_v1.png` |  |
+| pending | [UI-03](prompts/ui/logo-and-menus.md) | A | `concept/ui/ui03_title_screen_A_v1.png` |  |
+| pending | [UI-04](prompts/ui/logo-and-menus.md) | A | `concept/ui/ui04_car_select_A_v1.png` |  |
+
+## Round 3
+
+| Status | Prompt | Style | Output | Notes |
+|---|---|---|---|---|
+| pending | [BG-BAYOU-01](prompts/backgrounds/bayou.md) | A | `concept/backgrounds/bayou_composite_A_v1.png` |  |
+| pending | [BG-BAYOU-02](prompts/backgrounds/bayou.md) | A | `concept/backgrounds/bayou_l1_sky_A_v1.png` |  |
+| pending | [BG-BAYOU-03](prompts/backgrounds/bayou.md) | A | `concept/backgrounds/bayou_l2_far_A_v1.png` |  |
+| pending | [BG-BAYOU-04](prompts/backgrounds/bayou.md) | A | `concept/backgrounds/bayou_l3_near_A_v1.png` |  |
+| pending | [BG-HARVEST-01](prompts/backgrounds/harvest.md) | A | `concept/backgrounds/harvest_composite_A_v1.png` |  |
+| pending | [BG-HARVEST-02](prompts/backgrounds/harvest.md) | A | `concept/backgrounds/harvest_l1_sky_A_v1.png` |  |
+| pending | [BG-HARVEST-03](prompts/backgrounds/harvest.md) | A | `concept/backgrounds/harvest_l2_far_A_v1.png` |  |
+| pending | [BG-HARVEST-04](prompts/backgrounds/harvest.md) | A | `concept/backgrounds/harvest_l3_near_A_v1.png` |  |
+| pending | [BG-SKYLINE-01](prompts/backgrounds/skyline.md) | A | `concept/backgrounds/skyline_composite_A_v1.png` |  |
+| pending | [BG-SKYLINE-02](prompts/backgrounds/skyline.md) | A | `concept/backgrounds/skyline_l1_sky_A_v1.png` |  |
+| pending | [BG-SKYLINE-03](prompts/backgrounds/skyline.md) | A | `concept/backgrounds/skyline_l2_far_A_v1.png` |  |
+| pending | [BG-SKYLINE-04](prompts/backgrounds/skyline.md) | A | `concept/backgrounds/skyline_l3_near_A_v1.png` |  |
+| pending | [BG-THUNDER-01](prompts/backgrounds/thunder.md) | A | `concept/backgrounds/thunder_composite_A_v1.png` |  |
+| pending | [BG-THUNDER-02](prompts/backgrounds/thunder.md) | A | `concept/backgrounds/thunder_l1_sky_A_v1.png` |  |
+| pending | [BG-THUNDER-03](prompts/backgrounds/thunder.md) | A | `concept/backgrounds/thunder_l2_far_A_v1.png` |  |
+| pending | [BG-THUNDER-04](prompts/backgrounds/thunder.md) | A | `concept/backgrounds/thunder_l3_near_A_v1.png` |  |
+| pending | [BG-TIMBER-01](prompts/backgrounds/timberline.md) | A | `concept/backgrounds/timberline_composite_A_v1.png` |  |
+| pending | [BG-TIMBER-02](prompts/backgrounds/timberline.md) | A | `concept/backgrounds/timberline_l1_sky_A_v1.png` |  |
+| pending | [BG-TIMBER-03](prompts/backgrounds/timberline.md) | A | `concept/backgrounds/timberline_l2_far_A_v1.png` |  |
+| pending | [BG-TIMBER-04](prompts/backgrounds/timberline.md) | A | `concept/backgrounds/timberline_l3_near_A_v1.png` |  |
+| pending | [CAR-BRUISER-04](prompts/cars/car_bruiser.md) | A | `concept/cars/car_bruiser_crash_sheet_A_v1.png` |  |
+| pending | [CAR-HAULER-01](prompts/cars/car_hauler.md) | A | `concept/cars/car_hauler_hero_A_v1.png` |  |
+| pending | [CAR-HAULER-02](prompts/cars/car_hauler.md) | A | `concept/cars/car_hauler_views_A_v1.png` |  |
+| pending | [CAR-HAULER-03](prompts/cars/car_hauler.md) | A | `concept/cars/car_hauler_steer_sheet_A_v1.png` |  |
+| pending | [CAR-HAULER-04](prompts/cars/car_hauler.md) | A | `concept/cars/car_hauler_crash_sheet_A_v1.png` |  |
+| pending | [CAR-KESTREL-04](prompts/cars/car_kestrel.md) | A | `concept/cars/car_kestrel_crash_sheet_A_v1.png` |  |
+| pending | [CAR-MESA-01](prompts/cars/car_mesa.md) | A | `concept/cars/car_mesa_hero_A_v1.png` |  |
+| pending | [CAR-MESA-02](prompts/cars/car_mesa.md) | A | `concept/cars/car_mesa_views_A_v1.png` |  |
+| pending | [CAR-MESA-03](prompts/cars/car_mesa.md) | A | `concept/cars/car_mesa_steer_sheet_A_v1.png` |  |
+| pending | [CAR-MESA-04](prompts/cars/car_mesa.md) | A | `concept/cars/car_mesa_crash_sheet_A_v1.png` |  |
+| pending | [CAR-PHANTOM-01](prompts/cars/car_phantom.md) | A | `concept/cars/car_phantom_hero_A_v1.png` |  |
+| pending | [CAR-PHANTOM-02](prompts/cars/car_phantom.md) | A | `concept/cars/car_phantom_views_A_v1.png` |  |
+| pending | [CAR-PHANTOM-03](prompts/cars/car_phantom.md) | A | `concept/cars/car_phantom_steer_sheet_A_v1.png` |  |
+| pending | [CAR-PHANTOM-04](prompts/cars/car_phantom.md) | A | `concept/cars/car_phantom_crash_sheet_A_v1.png` |  |
+| pending | [CAR-SOL-04](prompts/cars/car_sol.md) | A | `concept/cars/car_sol_crash_sheet_A_v1.png` |  |
+| pending | [CAR-VEGA-04](prompts/cars/car_vega.md) | A | `concept/cars/car_vega_crash_sheet_A_v1.png` |  |
+| pending | [CAR-ZENITH-01](prompts/cars/car_zenith.md) | A | `concept/cars/car_zenith_hero_A_v1.png` |  |
+| pending | [CAR-ZENITH-02](prompts/cars/car_zenith.md) | A | `concept/cars/car_zenith_views_A_v1.png` |  |
+| pending | [CAR-ZENITH-03](prompts/cars/car_zenith.md) | A | `concept/cars/car_zenith_steer_sheet_A_v1.png` |  |
+| pending | [CAR-ZENITH-04](prompts/cars/car_zenith.md) | A | `concept/cars/car_zenith_crash_sheet_A_v1.png` |  |
+| pending | [FX-03](prompts/fx/fx.md) | A | `concept/fx/fx03_sparks_A_v1.png` |  |
+| pending | [FX-04](prompts/fx/fx.md) | A | `concept/fx/fx04_surface_kickup_A_v1.png` |  |
+| pending | [FX-05](prompts/fx/fx.md) | A | `concept/fx/fx05_weather_A_v1.png` |  |
+| pending | [FX-06](prompts/fx/fx.md) | A | `concept/fx/fx06_celebration_A_v1.png` |  |
+| pending | [FX-07](prompts/fx/fx.md) | A | `concept/fx/fx07_speed_A_v1.png` |  |
+| pending | [KA-06](prompts/key-art/key-art.md) | A | `concept/key-art/ka06_map_A_v1.png` |  |
+| pending | [RS-BAYOU-01](prompts/roadside/bayou.md) | A | `concept/roadside/bayou_trees_A_v1.png` |  |
+| pending | [RS-BAYOU-02](prompts/roadside/bayou.md) | A | `concept/roadside/bayou_bridge_A_v1.png` |  |
+| pending | [RS-BAYOU-03](prompts/roadside/bayou.md) | A | `concept/roadside/bayou_buildings_A_v1.png` |  |
+| pending | [RS-BAYOU-04](prompts/roadside/bayou.md) | A | `concept/roadside/bayou_props_A_v1.png` |  |
+| pending | [RS-BAYOU-ROAD](prompts/roadside/bayou.md) | A | `concept/roadside/bayou_road_colors_A_v1.png` |  |
+| pending | [RS-HARVEST-01](prompts/roadside/harvest.md) | A | `concept/roadside/harvest_buildings_A_v1.png` |  |
+| pending | [RS-HARVEST-02](prompts/roadside/harvest.md) | A | `concept/roadside/harvest_props_A_v1.png` |  |
+| pending | [RS-HARVEST-03](prompts/roadside/harvest.md) | A | `concept/roadside/harvest_landmarks_A_v1.png` |  |
+| pending | [RS-HARVEST-04](prompts/roadside/harvest.md) | A | `concept/roadside/harvest_plants_A_v1.png` |  |
+| pending | [RS-HARVEST-ROAD](prompts/roadside/harvest.md) | A | `concept/roadside/harvest_road_colors_A_v1.png` |  |
+| pending | [RS-SKYLINE-01](prompts/roadside/skyline.md) | A | `concept/roadside/skyline_buildings_A_v1.png` |  |
+| pending | [RS-SKYLINE-02](prompts/roadside/skyline.md) | A | `concept/roadside/skyline_bridge_A_v1.png` |  |
+| pending | [RS-SKYLINE-03](prompts/roadside/skyline.md) | A | `concept/roadside/skyline_props_A_v1.png` |  |
+| pending | [RS-SKYLINE-04](prompts/roadside/skyline.md) | A | `concept/roadside/skyline_finish_A_v1.png` |  |
+| pending | [RS-SKYLINE-ROAD](prompts/roadside/skyline.md) | A | `concept/roadside/skyline_road_colors_A_v1.png` |  |
+| pending | [RS-THUNDER-01](prompts/roadside/thunder.md) | A | `concept/roadside/thunder_poles_A_v1.png` |  |
+| pending | [RS-THUNDER-02](prompts/roadside/thunder.md) | A | `concept/roadside/thunder_props_A_v1.png` |  |
+| pending | [RS-THUNDER-03](prompts/roadside/thunder.md) | A | `concept/roadside/thunder_buildings_A_v1.png` |  |
+| pending | [RS-THUNDER-04](prompts/roadside/thunder.md) | A | `concept/roadside/thunder_hazards_A_v1.png` |  |
+| pending | [RS-THUNDER-ROAD](prompts/roadside/thunder.md) | A | `concept/roadside/thunder_road_colors_A_v1.png` |  |
+| pending | [RS-TIMBER-01](prompts/roadside/timberline.md) | A | `concept/roadside/timberline_pines_A_v1.png` |  |
+| pending | [RS-TIMBER-02](prompts/roadside/timberline.md) | A | `concept/roadside/timberline_props_A_v1.png` |  |
+| pending | [RS-TIMBER-03](prompts/roadside/timberline.md) | A | `concept/roadside/timberline_buildings_A_v1.png` |  |
+| pending | [RS-TIMBER-04](prompts/roadside/timberline.md) | A | `concept/roadside/timberline_landmarks_A_v1.png` |  |
+| pending | [RS-TIMBERLINE-ROAD](prompts/roadside/timberline.md) | A | `concept/roadside/timberline_road_colors_A_v1.png` |  |
+| pending | [TRF-02](prompts/traffic/traffic.md) | A | `concept/traffic/trf02_cars_front_A_v1.png` |  |
+| pending | [TRF-04](prompts/traffic/traffic.md) | A | `concept/traffic/trf04_stage_specials_A_v1.png` |  |
+| pending | [HUD-03](prompts/ui/hud.md) | A | `concept/ui/hud03_icons_A_v1.png` |  |
+| pending | [HUD-05](prompts/ui/hud.md) | A | `concept/ui/hud05_countdown_A_v1.png` |  |
+| pending | [HUD-06](prompts/ui/hud.md) | A | `concept/ui/hud06_calibration_A_v1.png` |  |
+| pending | [UI-05](prompts/ui/logo-and-menus.md) | A | `concept/ui/ui05_stage_select_A_v1.png` |  |
+| pending | [UI-06](prompts/ui/logo-and-menus.md) | A | `concept/ui/ui06_results_A_v1.png` |  |
