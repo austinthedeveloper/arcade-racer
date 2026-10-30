@@ -1,0 +1,67 @@
+# Builds Windows, macOS and Web with tools/export.sh. A pushed v* tag
+# (e.g. v0.1.0) publishes a GitHub Release with the three zips; a manual
+# run only uploads them as a workflow artifact, to try a build first.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Export and release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-godot
+        with:
+          templates: "true"
+
+      - name: Tests (suites + e2e)
+        run: tools/test.sh
+
+      - name: Version
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then v="${GITHUB_REF_NAME#v}"
+          else v="$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)-dev.${GITHUB_SHA::7}"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Export Windows, macOS, Web
+        run: tools/export.sh "${{ steps.version.outputs.version }}"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: SundownRun-${{ steps.version.outputs.version }}
+          path: build/release/*.zip
+          if-no-files-found: error
+
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cat > notes.md <<NOTES
+          ## Downloads
+
+          - **Windows:** \`SundownRun-$VERSION-windows.zip\`. Unzip and run \`SundownRun.exe\`. It isn't code-signed, so SmartScreen may warn: choose *More info*, then *Run anyway*.
+          - **macOS** (Intel and Apple Silicon): \`SundownRun-$VERSION-macos.zip\`. Unzip and move *Sundown Run* to Applications. It isn't notarized, so the first time right-click it and choose *Open* (or run \`xattr -cr "/Applications/Sundown Run.app"\` if macOS says it is damaged).
+          - **Web:** \`SundownRun-$VERSION-web.zip\`. Serve the folder from any static web server (for example \`python3 -m http.server\` inside it) and open \`index.html\`; opening the file directly doesn't work. Works on itch.io as an HTML upload.
+
+          Keyboard, gamepads and wheels are supported; see the README for controls and wheel calibration (F2).
+          NOTES
+          # A tag like v0.2.0-alpha is marked as a pre-release.
+          pre=""; case "$VERSION" in *-*) pre="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" build/release/*.zip $pre \
+            --title "Sundown Run $VERSION" --notes-file notes.md --verify-tag
