@@ -19,7 +19,9 @@ from PIL import Image
 from make_placeholder_sprites import key_out, pixelate_down
 
 # Per stage: background (composite file, horizon row in it) and roadside sheets.
-# Each sheet lists its objects left to right and the texture height of its tallest object.
+# Each sheet lists its objects in reading order (rows top to bottom, left to right) and the
+# texture height of its tallest object. None skips an object (art the renderer can't use yet,
+# such as a tunnel mouth or a covered bridge the road would run through).
 STAGES = {
     "redrock": {
         "background": ("redrock_composite_A_v1.png", 636),
@@ -30,6 +32,31 @@ STAGES = {
             ("redrock_rocks_A_v1.png", 200, ["boulders_a", "boulders_b", "rock_pillar", "rock_arch"]),
             ("redrock_buildings_A_v1.png", 180, ["diner", "gas_station", "windmill"]),
             ("redrock_props_A_v1.png", 110, ["fence", "skull_post", "road_sign"]),
+        ],
+    },
+    "neon": {
+        "background": ("neon_composite_A_v1.png", 676),
+        "sheets": [
+            ("neon_buildings_A_v1.png", 200, [
+                "casino_spire", "casino_lotus", "casino_round", "casino_star", "casino_wave",
+                "casino_crown"]),
+            ("neon_billboards_A_v1.png", 170, [
+                "billboard_sunset", "sign_chevron", "sign_starburst", "sign_lights", "billboard_wide",
+                "sign_stack"]),
+            ("neon_neon-signs_A_v1.png", 150, [
+                "neon_arrow", "neon_star", "neon_cocktail", "neon_chevrons", "neon_card", "neon_stars",
+                "neon_spiral"]),
+            ("neon_props_A_v1.png", 150, ["street_lamp_a", "street_lamp_b", "palm_lit", "fountain", None]),
+        ],
+    },
+    "timberline": {
+        "background": ("timberline_composite_A_v1.png", 706),
+        "sheets": [
+            ("timberline_pines_A_v1.png", 170, [
+                "pine_a", "pine_b", "pine_c", "pine_d", "pine_e", "pine_f", "fallen_log"]),
+            ("timberline_buildings_A_v1.png", 150, ["cabin", "lodge", None]),
+            ("timberline_landmarks_A_v1.png", 220, ["waterfall", "lookout_tower"]),
+            ("timberline_props_A_v1.png", 160, ["snowbank", "guardrail", "chevron_sign", "snow_cliff"]),
         ],
     },
 }
@@ -90,7 +117,47 @@ def group_objects(boxes, min_area=400):
         best = max(groups, key=lambda g: overlap(g["box"], b), default=None)
         if best is not None and overlap(best["box"], b) > 0.5:
             best["members"].append(i)
-    return sorted(groups, key=lambda g: g["box"][0])
+    _merge_stacked(groups)
+    return in_reading_order(groups)
+
+
+def _merge_stacked(groups, max_gap=12):
+    """Joins a part that sits on top of or under another part (a sign on its pole, a
+    dome on its tower): one box's columns lie mostly within the other's, with at most a
+    small vertical gap between them. Boxes are in label-grid cells (half the sheet's pixels)."""
+    merged = True
+    while merged:
+        merged = False
+        for a in groups:
+            for b in groups:
+                if a is b:
+                    continue
+                ax0, ay0, ax1, ay1 = a["box"]
+                bx0, by0, bx1, by1 = b["box"]
+                shared = min(ax1, bx1) - max(ax0, bx0)
+                narrower = min(ax1 - ax0, bx1 - bx0)
+                gap = max(ay0, by0) - min(ay1, by1)
+                if shared > 0.8 * narrower and gap < max_gap:
+                    a["members"] += b["members"]
+                    a["box"] = union(a["box"], b["box"])
+                    groups.remove(b)
+                    merged = True
+                    break
+            if merged:
+                break
+
+
+def in_reading_order(groups):
+    """Rows top to bottom (a row is every object overlapping the one above it vertically),
+    left to right within a row."""
+    rows = []
+    for g in sorted(groups, key=lambda g: g["box"][1]):
+        if rows and g["box"][1] < rows[-1]["bottom"]:
+            rows[-1]["items"].append(g)
+            rows[-1]["bottom"] = max(rows[-1]["bottom"], g["box"][3])
+        else:
+            rows.append({"items": [g], "bottom": g["box"][3]})
+    return [g for row in rows for g in sorted(row["items"], key=lambda g: g["box"][0])]
 
 
 def union(a, b):
@@ -143,6 +210,8 @@ def build(stage, concept_dir, project_dir):
     os.makedirs(out_dir, exist_ok=True)
     for sheet, target_height, names in spec["sheets"]:
         for name, sprite in slice_sheet(os.path.join(concept_dir, "roadside", sheet), names, target_height):
+            if name is None:
+                continue
             sprite.save(os.path.join(out_dir, name + ".png"))
             print(stage, name, sprite.size)
 

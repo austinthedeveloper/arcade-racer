@@ -7,13 +7,19 @@ class_name Golden
 extends SceneTree
 
 const DIR := "res://tests/golden/"
-const SCENARIOS := ["autodrive_traffic", "autodrive_clear_road", "redrock_autodrive_traffic"]
+const SCENARIOS := ["autodrive_traffic", "autodrive_clear_road", "redrock_autodrive_traffic",
+	"neon_autodrive_traffic", "timberline_autodrive_traffic"]
+## Scenario name prefix -> stage index (no prefix: Palm Coast).
+const STAGE_PREFIXES := {"redrock_": 1, "neon_": 2, "timberline_": 3}
 const FRAMES := 7500  # the countdown plus the longest the clock allows (45 s + 3 checkpoint bonuses)
 
 
 ## Frame hashes for a scenario: [frames..., final snapshot string].
 static func run(scenario: String, frames: int = FRAMES) -> PackedStringArray:
-	var stage := 1 if scenario.begins_with("redrock_") else 0
+	var stage := 0
+	for prefix in STAGE_PREFIXES:
+		if scenario.begins_with(prefix):
+			stage = STAGE_PREFIXES[prefix]
 	var r := TestSuite.new_race(true, scenario.ends_with("_traffic"), stage)
 	var out := PackedStringArray()
 	var banner := ""

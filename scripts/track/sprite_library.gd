@@ -46,6 +46,35 @@ static func load_all() -> void:
 	_add("skull_post", "skull_post.png", 1700.0, 0.3)
 	_add("road_sign", "road_sign.png", 2400.0, 0.9)
 
+	_dir = ROADSIDE + "neon/"
+	for id in ["casino_spire", "casino_lotus", "casino_round", "casino_star", "casino_wave", "casino_crown"]:
+		_add(id, id + ".png", 11000.0, 1.0)
+	for id in ["billboard_sunset", "sign_chevron", "sign_starburst", "sign_lights", "billboard_wide", "sign_stack"]:
+		_add(id, id + ".png", 5200.0, 0.8)
+	for id in ["neon_arrow", "neon_star", "neon_cocktail", "neon_chevrons", "neon_card", "neon_stars", "neon_spiral"]:
+		_add(id, id + ".png", 3600.0, 0.3)
+	_add("street_lamp_a", "street_lamp_a.png", 3400.0, 0.2)
+	_add("street_lamp_b", "street_lamp_b.png", 3000.0, 0.2)
+	_add("palm_lit", "palm_lit.png", 4200.0, 0.3)
+	_add("fountain", "fountain.png", 2800.0, 1.0)
+
+	_dir = ROADSIDE + "timberline/"
+	_add("pine_a", "pine_a.png", 6400.0, 0.25)
+	_add("pine_b", "pine_b.png", 6000.0, 0.25)
+	_add("pine_c", "pine_c.png", 4200.0, 0.25)
+	_add("pine_d", "pine_d.png", 3800.0, 0.25)
+	_add("pine_e", "pine_e.png", 2500.0, 0.3)
+	_add("pine_f", "pine_f.png", 2200.0, 0.3)
+	_add("fallen_log", "fallen_log.png", 700.0, 0.9)
+	_add("cabin", "cabin.png", 5000.0, 1.0)
+	_add("lodge", "lodge.png", 6500.0, 1.0)
+	_add("waterfall", "waterfall.png", 12000.0, 1.0)
+	_add("lookout_tower", "lookout_tower.png", 8500.0, 0.4)
+	_add("snowbank", "snowbank.png", 1100.0, 0.0)
+	_add("guardrail", "guardrail.png", 900.0, 1.0)
+	_add("chevron_sign", "chevron_sign.png", 1900.0, 0.8)
+	_add("snow_cliff", "snow_cliff.png", 7000.0, 1.0)
+
 
 static func _add(id: String, file: String, world_h: float, collide: float) -> void:
 	var tex: Texture2D = load(_dir + file)
