@@ -106,6 +106,28 @@ static func load_all() -> void:
 	_add("scarecrow", "scarecrow.png", 1800.0, 0.3)
 	_add("farm_fence", "farm_fence.png", 900.0, 1.0)
 
+	_dir = ROADSIDE + "thunder/"
+	_add("truck_stop", "truck_stop.png", 6500.0, 1.0)
+	_add("motel", "motel.png", 6000.0, 1.0)
+	_add("jersey_barrier", "jersey_barrier.png", 900.0, 1.0)
+	_add("cone", "cone.png", 650.0, 0.0)
+	_add("cone_tall", "cone_tall.png", 780.0, 0.0)
+	_add("drum", "drum.png", 900.0, 0.0)
+	_add("barricade_post", "barricade_post.png", 1100.0, 0.5)
+	_add("sawhorse", "sawhorse.png", 1000.0, 0.9)
+	_add("hazard_post", "hazard_post.png", 1000.0, 0.5)
+	_add("a_frame", "a_frame.png", 950.0, 0.9)
+	for id in ["pole_a", "pole_b", "pole_c", "pole_transformer", "pole_tanks"]:
+		_add(id, id + ".png", 5200.0, 0.2)
+	_add("pole_tall", "pole_tall.png", 6000.0, 0.2)
+	_add("pylon", "pylon.png", 11000.0, 0.6)
+	_add("tree_windswept", "tree_windswept.png", 3200.0, 0.3)
+	_add("tree_snapped", "tree_snapped.png", 2600.0, 0.3)
+	_add("shrub_windswept", "shrub_windswept.png", 1700.0, 0.0)
+	_add("puddle_a", "puddle_a.png", 500.0, 0.0)
+	_add("puddle_b", "puddle_b.png", 500.0, 0.0)
+	_add("wrecked_sign", "wrecked_sign.png", 3200.0, 0.8)
+
 
 static func _add(id: String, file: String, world_h: float, collide: float) -> void:
 	var tex: Texture2D = load(_dir + file)
