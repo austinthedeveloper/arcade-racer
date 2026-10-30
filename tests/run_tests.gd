@@ -12,6 +12,7 @@ var current := ""
 func _initialize() -> void:
 	# Never read or write the player's own wheel profiles.
 	TestSuite.use_scratch_profiles(root.get_node("InputRouter"))
+	TestSuite.use_scratch_settings(root.get_node("Settings"))
 	SpriteLibrary.load_all()
 	CarSprites.load_all()
 	var filter := ""

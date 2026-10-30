@@ -6,7 +6,7 @@ signal quit_requested
 
 enum State { COUNTDOWN, RACING, FINISHED, TIME_UP }
 
-const START_TIME := 45.0
+const START_TIME := 45.0  # on the ARCADE timer; Settings scales both for the others
 const CHECKPOINT_BONUS := 25.0
 const BACKGROUND_SCROLL := 0.0006  # per segment travelled, per unit of curve
 const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
@@ -21,6 +21,7 @@ var countdown := 3.0
 var time_left := START_TIME
 var race_time := 0.0
 var finish_distance := 1.0
+var checkpoint_bonus := CHECKPOINT_BONUS  # after the timer option
 var checkpoint_distances: Array[float] = []
 var next_checkpoint := 0
 var banner := ""
@@ -73,10 +74,11 @@ func start_race() -> void:
 	player.reset()
 	player.road_y = track.height_at(Cfg.PLAYER_Z)
 	traffic = Traffic.new()
-	traffic.spawn(track, 0 if _no_traffic else int(track.theme.get("traffic", TRAFFIC_COUNT)))
+	traffic.spawn(track, 0 if _no_traffic else Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
 	state = State.COUNTDOWN
 	countdown = 3.0
-	time_left = START_TIME
+	time_left = Settings.race_time(START_TIME)
+	checkpoint_bonus = Settings.race_time(CHECKPOINT_BONUS)
 	race_time = 0.0
 	next_checkpoint = 0
 	banner = ""
@@ -110,7 +112,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(dt: float) -> void:
-	var inp: DriveInput = InputRouter.state
+	var inp: DriveInput = Settings.drive_input(InputRouter.state)
 	if _autodrive:
 		inp = _autodrive_input()
 	if calibration.visible:
@@ -176,8 +178,8 @@ func _physics_process(dt: float) -> void:
 func _check_progress() -> void:
 	if next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
-		time_left += CHECKPOINT_BONUS
-		_banner("CHECKPOINT!", "TIME EXTENDED +%d" % CHECKPOINT_BONUS, 2.0)
+		time_left += checkpoint_bonus
+		_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0)
 	if player.distance >= finish_distance:
 		state = State.FINISHED
 		var mins := int(race_time) / 60

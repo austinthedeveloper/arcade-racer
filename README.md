@@ -35,13 +35,27 @@ Menus go left and right only, so every device can drive them:
 | Select / start | Enter | A or Start | Gas pedal or any wheel button |
 | Back | Esc or Backspace | B or Back | Brake pedal |
 
+### Options
+
+Pick **OPTIONS** on the title screen. Options are saved to `user://settings.cfg` as soon as they change.
+
+| Option | What it does |
+|---|---|
+| Auto gas | The car keeps the gas down, so a young player only has to steer. The brake still works (and lifts the gas while held). |
+| Traffic | Light, normal or heavy traffic. |
+| Timer | Relaxed (more time per checkpoint), Arcade (as tuned) or Tight. |
+| Music / sound FX volume | 0 to 10. |
+| Calibrate wheel | Opens the wheel calibration (same as F2). |
+
+On the keyboard and gamepad, Up / Down picks a row and Left / Right changes it; Enter / A also toggles or cycles it. A wheel has no up and down, so there you turn the wheel to pick a row and press the gas to change it. Brake goes back.
+
 ### Using a wheel
 
 The game spots most wheels by name and asks you to calibrate. Press **F2** and follow the steps: rest, full left, full right, gas, brake, nitro button. It works out which axis is which, and handles inverted, 0..1 and combined pedal axes. The profile is saved per device in `user://input_profiles.cfg`.
 
 Until the wheel is calibrated, only its steering is used. **F1** shows every raw axis and button, which helps when something doesn't respond. There is no force feedback yet, so turn on your wheel software's centering spring for games without FFB (for example in Logitech G HUB or the Thrustmaster Control Panel).
 
-Steering lock defaults to using 360 of the wheel's 900 degrees. You can change `hardware_range_deg` and `lock_deg` in the profile file until there's an options screen.
+Steering lock defaults to using 360 of the wheel's 900 degrees. You can change `hardware_range_deg` and `lock_deg` in the profile file (they aren't on the Options screen yet).
 
 ## Project layout
 
@@ -62,7 +76,7 @@ tests/                      test runner, suites, golden traces, end-to-end smoke
 tools/                      test.sh, sprite-cutting scripts, make_audio.py (placeholder sound)
 ```
 
-For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--no-traffic` removes traffic, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|stages|cars --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits.
+For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--no-traffic` removes traffic, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|options|stages|cars --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits.
 
 ## Tests
 
@@ -71,7 +85,7 @@ tools/test.sh                  # every suite, then the end-to-end input smoke
 tools/test.sh test_race        # only tests whose name contains "test_race"
 ```
 
-`test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, menu input and the menu flow, the driving model, traffic, race flow and renderer regressions. The end-to-end smoke boots the game on the title screen and goes through stage and car select into the race. `tests/golden/` holds frame-by-frame traces of autodriven races (Palm Coast with and without traffic, every other stage with traffic). If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`. CI runs the same script on every push.
+`test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, menu input and the menu flow, options, the driving model, traffic, race flow and renderer regressions. The end-to-end smoke boots the game on the title screen, changes some options, and goes through stage and car select into the race (and later into a second race with auto gas on). `tests/golden/` holds frame-by-frame traces of autodriven races (Palm Coast with and without traffic, every other stage with traffic). If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`. CI runs the same script on every push.
 
 ## Releases
 

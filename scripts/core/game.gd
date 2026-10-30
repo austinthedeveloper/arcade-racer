@@ -1,8 +1,8 @@
 extends Node
-## Main scene: the front end (title, stage select, car select) and the race it starts.
+## Main scene: the front end (title, options, stage select, car select) and the race it starts.
 ## Race dev flags (--autodrive, --stage=N, --race) skip the menus and go straight to a race.
 
-enum Screen { TITLE, STAGES, CARS, RACE }
+enum Screen { TITLE, OPTIONS, STAGES, CARS, RACE }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -63,8 +63,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		calibration.open()
 
 
-func show_title() -> void:
-	_set_menu(TitleScreen.new(), Screen.TITLE)
+## The title, with START (0) or OPTIONS (1) picked.
+func show_title(item := 0) -> void:
+	var t := TitleScreen.new()
+	t.index = item
+	_set_menu(t, Screen.TITLE)
+
+
+func show_options() -> void:
+	_set_menu(OptionsScreen.new(), Screen.OPTIONS)
 
 
 func show_stage_select() -> void:
@@ -123,6 +130,8 @@ func _open(which: String) -> void:
 			show_stage_select()
 		"cars":
 			show_car_select()
+		"options":
+			show_options()
 		_:
 			show_title()
 
