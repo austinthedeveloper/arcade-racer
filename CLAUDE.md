@@ -12,6 +12,7 @@ godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
 python3 tools/make_stage_sprites.py assets/concept . redrock   # rebuild a stage's background + roadside sprites
 python3 tools/make_audio.py                         # rebuild the placeholder sounds (assets/audio/README.md)
+tools/export.sh 0.1.0                               # Windows/macOS/Web zips in build/release (needs export templates)
 ```
 
 ## Tests
@@ -20,7 +21,8 @@ No addon. `tests/run_tests.gd` runs every `tests/test_*.gd` (methods named `test
 `TestSuite`, see `tests/suite.gd`). `tests/e2e_input.gd` boots the real main scene and drives
 it through the input map. `tests/golden/` holds per-frame traces of three autodriven races
 (Palm Coast with traffic and on a clear road, Redrock with traffic); `test_golden` replays them
-and also checks every stage's autodriven race finishes in time. CI (`.github/workflows/ci.yml`) runs `tools/test.sh`.
+and also checks every stage's autodriven race finishes in time. CI (`.github/workflows/ci.yml`) runs `tools/test.sh`. A pushed `v*` tag runs
+`.github/workflows/release.yml`: tests, `tools/export.sh`, then a GitHub Release with the zips.
 
 - Add or extend tests with every change.
 - Tests never touch the player's wheel profiles (`TestSuite.use_scratch_profiles`).

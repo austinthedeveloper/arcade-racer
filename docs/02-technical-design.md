@@ -236,6 +236,7 @@ Throttle/brake: triggers and pedals are analog; keyboard and face buttons are di
 - Primary dev platform appears to be **macOS**. Wheel support on macOS is patchier than on Windows: some Xbox-branded wheels (e.g. G920/G923 Xbox editions) need vendor software and may not enumerate correctly. **Test early with your actual wheel.**
 - Windows is the most important target for wheel players. Plan to test there before calling wheel support done.
 - Steam Input can remap gamepads but can interfere with wheels. Document that players may need to disable Steam Input for wheels.
+- Release builds (`tools/export.sh`, `.github/workflows/release.yml`): Windows x86_64 (one .exe, pck embedded), macOS universal (ad-hoc signed, not notarized), and Web (single-threaded, so any static host works without COOP/COEP headers). Browsers expose wheels through the Gamepad API with their own axis mapping, so the web build is mainly for keyboard and gamepad; calibration (F2) still runs there, but the profile lives in browser storage.
 
 ### 4.7 Dev tooling
 

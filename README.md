@@ -61,6 +61,18 @@ tools/test.sh test_race        # only tests whose name contains "test_race"
 
 `test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, the driving model, traffic, race flow and renderer regressions. `tests/golden/` holds frame-by-frame traces of three autodriven races (Palm Coast with and without traffic, Redrock with traffic). If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`. CI runs the same script on every push.
 
+## Releases
+
+`tools/export.sh [version]` builds Windows, macOS (universal) and Web into `build/release/SundownRun-<version>-<platform>.zip`. It needs the Godot 4.7.2 export templates (Editor > Manage Export Templates). The presets are in `export_presets.cfg`.
+
+To publish, bump `config/version` in `project.godot`, then push a tag:
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+`.github/workflows/release.yml` runs the tests, exports the three builds and creates the GitHub Release with the zips and download notes. Running the workflow by hand (Actions > Release > Run workflow) builds the zips as a workflow artifact without publishing. The builds are not code-signed or notarized, so Windows SmartScreen and macOS Gatekeeper warn on first launch; the release notes say how to get past that.
+
 ## Docs
 
 - [Game design](docs/01-game-design.md): modes, driving feel, cars, stages, scope
