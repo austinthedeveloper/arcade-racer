@@ -2,7 +2,7 @@
 
 An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports keyboard, gamepads, and steering wheels with pedals.
 
-**Status:** Milestone 1 prototype. One stage (Palm Coast Boulevard) is drivable with traffic, checkpoints, a timer, nitro, jumps and crashes. The art is placeholder: the palms, background and cars are cut from the concept art (the player drives the Vega).
+**Status:** Milestone 1 prototype. One stage (Palm Coast Boulevard) is drivable with traffic, checkpoints, a timer, nitro, jumps and crashes, with generated placeholder sound and music. The art is placeholder: the palms, background and cars are cut from the concept art (the player drives the Vega).
 
 ## Running it
 
@@ -42,9 +42,11 @@ scripts/
   input/                    InputRouter autoload, device profiles, DriveInput
   race/race.gd              race flow: countdown, checkpoints, timer, finish
   ui/                       HUD, input debug overlay, calibration wizard
+  audio/                    Audio autoload, SoundBank (cue -> file), RaceAudio (race -> cues)
 assets/sprites/             in-game sprites (placeholders for now)
+assets/audio/               generated placeholder sounds and music (how to swap: its README)
 tests/                      test runner, suites, golden traces, end-to-end smoke
-tools/                      test.sh, and helper scripts that cut sprites from the concept art
+tools/                      test.sh, sprite-cutting scripts, make_audio.py (placeholder sound)
 ```
 
 For a test drive without input, run `godot --path . -- --autodrive`. `--no-traffic` removes traffic, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames.
