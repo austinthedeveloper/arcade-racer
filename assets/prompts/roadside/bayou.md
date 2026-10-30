@@ -47,3 +47,14 @@ Sprite sheet of roadside objects for an arcade racing game set in Bayou Causeway
 ```
 Color palette study for a pseudo-3D arcade racing game road in Bayou Causeway (swamp at dawn, mist): a straight road seen from behind the car stretching to the horizon, showing the asphalt color, alternating rumble strip colors, lane markings, and the roadside ground (grass, sand, snow, water or pavement as fits the place). Flat color bands, no cars, no sprites. {STYLE}
 ```
+
+## RS-BAYOU-05 Extras
+- **Output:** `assets/concept/roadside/bayou_extras.png`
+- **Aspect:** 16:9
+- **Round:** 4
+
+```
+Sprite sheet of roadside objects for an arcade racing game set in Bayou Causeway (swamp at dawn, mist): A rusty swing bridge machinery house on stilts, an alligator sunning on a log, a weathered blank crawfish shack sign, a moss-draped live oak, a paddlewheel riverboat seen across the water, and a row of mailboxes on posts. Arranged in a row, separate objects with clear gaps, isolated on a flat solid magenta #FF00FF background, front-facing as seen from the road, consistent scale, no ground shadow, no readable text. {STYLE}
+```
+
+Drive-through pieces for this stage are in `drive-through.md`.

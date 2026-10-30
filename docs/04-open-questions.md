@@ -14,3 +14,5 @@ Decisions that change the direction of the docs or the art. Defaults in **bold**
 | 8 | Is force feedback a must-have for 1.0 or a nice-to-have? | **Nice-to-have (post-MVP)** | Need for a GDExtension |
 | 9 | Split-screen 2-player: wanted? | **Stretch goal** | Renderer architecture (two viewports) |
 | 10 | Which image generator are you using? | Unknown | Prompt syntax (negative prompts, aspect flags) |
+| 11 | Power-ups: wanted? Which ones? | **Proposal only:** nitro can, time clock, ram plate, ghost, mystery crate, never weapons (docs/07-art-prompts-round4.md) | Race rules, HUD, art |
+| 12 | Four more player cars (Tempest, Dune Skipper, Halo, Cyclone)? | **Proposal only** (docs/07-art-prompts-round4.md) | Car roster, unlocks, art |

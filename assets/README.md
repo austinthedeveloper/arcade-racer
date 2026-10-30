@@ -7,10 +7,11 @@ assets/
 │   ├── key-art/            # title art, style frames, mock gameplay screenshots
 │   ├── cars/               # one file per playable car
 │   ├── traffic/            # civilian vehicles
-│   ├── roadside/           # roadside sprite sets, one file per stage
+│   ├── roadside/           # roadside sprite sets, one file per stage, plus shared.md and drive-through.md
 │   ├── backgrounds/        # parallax sky/horizon layers, one file per stage
 │   ├── ui/                 # logo, HUD, menus, callouts
-│   └── fx/                 # smoke, sparks, nitro, weather
+│   ├── fx/                 # smoke, sparks, nitro, weather
+│   └── powerups/           # power-up pickups, icons, effects (proposal)
 └── concept/        # put generated images here, mirroring the prompts folders
 ```
 
@@ -20,6 +21,10 @@ assets/
 2. In any prompt, replace `{STYLE}` with that block's text. Add the negative prompt if your generator supports one.
 3. Save results to the **Output** path listed under each prompt (in `assets/concept/...`). Add `_v1`, `_v2`, etc. for variations, e.g. `car_vega_hero_A_v2.png` (the `A` is the style used).
 4. Each prompt has a **Round** tag. Do Round 1 first; it decides the style before we spend time on everything else.
+
+## Round 4
+
+Round 4 adds more cars, traffic, drive-through pieces, shared race pieces and power-ups. What's new and what hasn't been generated yet: `docs/07-art-prompts-round4.md`.
 
 ## Round 1 checklist (style alignment)
 
