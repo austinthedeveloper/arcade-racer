@@ -2,7 +2,7 @@
 
 An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports keyboard, gamepads, and steering wheels with pedals.
 
-**Status:** Milestone 1 prototype. One stage (Palm Coast Boulevard) is drivable with traffic, checkpoints, a timer, nitro, jumps and crashes. The art is placeholder: the palms and background are cut from the round 1 concepts, and the cars are drawn from flat shapes.
+**Status:** Milestone 1 prototype. One stage (Palm Coast Boulevard) is drivable with traffic, checkpoints, a timer, nitro, jumps and crashes. The art is placeholder: the palms, background and cars are cut from the concept art (the player drives the Vega).
 
 ## Running it
 
@@ -37,13 +37,13 @@ Steering lock defaults to using 360 of the wheel's 900 degrees. You can change `
 scripts/
   core/cfg.gd               tuning constants (camera, speeds, physics)
   track/                    segment + track builder, sprite library, stages/
-  render/                   road renderer, background, placeholder car painter
+  render/                   road renderer, background, car sprites
   car/                      player driving model, traffic
   input/                    InputRouter autoload, device profiles, DriveInput
   race/race.gd              race flow: countdown, checkpoints, timer, finish
   ui/                       HUD, input debug overlay, calibration wizard
 assets/sprites/             in-game sprites (placeholders for now)
-tools/                      helper scripts (placeholder sprite slicer)
+tools/                      helper scripts that cut sprites from the concept art
 ```
 
 For a test drive without input, run `godot --path . -- --autodrive`. `--no-traffic` removes traffic, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames.

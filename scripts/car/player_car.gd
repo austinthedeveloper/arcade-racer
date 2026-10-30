@@ -2,7 +2,6 @@ class_name PlayerCar
 extends RefCounted
 ## Arcade driving model in track space: z along the road, x across it (-1..1 is the road).
 
-var color := Color("#d9201f")
 var position := 0.0  # camera z, wrapped to the track length
 var distance := 0.0  # total distance driven, not wrapped
 var x := 0.0

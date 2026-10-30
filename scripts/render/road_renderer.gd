@@ -149,7 +149,7 @@ func _draw_objects(seg: Segment) -> void:
 		var cy := lerpf(seg.s1.y, seg.s2.y, p)
 		if w < 1.0 or cy - w >= seg.clip or cx + w < 0.0 or cx - w > Cfg.SCREEN_W:
 			continue
-		CarPainter.draw_car(self, Vector2(cx, cy), w, car.color, car.style, 0.0, false, false, seg.fog, _fog_color, time)
+		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog)
 
 
 func _draw_gantry(seg: Segment, tint: Color) -> void:
@@ -202,8 +202,8 @@ func _draw_player() -> void:
 		lift += sin(k * PI) * w * 0.3
 	elif p.speed > 50.0 and not p.airborne:
 		y += roundf(randf_range(-1.0, 1.0) * (1.5 if p.offroad else 0.4) * p.speed / Cfg.MAX_SPEED)
-	CarPainter.draw_car(self, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, p.color, CarPainter.Style.SPORTS,
-		steer, p.braking, p.nitro_time > 0.0, 0.0, _fog_color, time, roundf(lift))
+	CarSprites.draw_player(self, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking, p.nitro_time > 0.0,
+		time, roundf(lift))
 
 
 func _ground(theme: Dictionary, kind: int, b: int, fog: float) -> Color:
