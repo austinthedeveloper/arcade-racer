@@ -27,6 +27,7 @@ func _draw() -> void:
 		return
 	var theme := track.theme
 	_fog_color = theme["fog"]
+	var fog_density: float = theme.get("fog_density", Cfg.FOG_DENSITY)
 	var segs := track.segments
 	var count := segs.size()
 	var base := track.find_segment(camera_z)
@@ -45,7 +46,7 @@ func _draw() -> void:
 		x += dx
 		dx += seg.curve
 		var d := float(n) / Cfg.DRAW_DISTANCE
-		seg.fog = 1.0 - exp(-d * d * Cfg.FOG_DENSITY)
+		seg.fog = 1.0 - exp(-d * d * fog_density)
 		seg.clip = max_y
 		var in_front := seg.cam_z1 > Cfg.CAMERA_DEPTH
 		seg.visible = in_front and seg.s2.y < seg.s1.y and seg.s2.y < max_y

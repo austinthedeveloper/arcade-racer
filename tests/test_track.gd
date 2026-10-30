@@ -18,11 +18,13 @@ func test_every_stage_builds() -> void:
 
 
 func test_stage_order_and_names() -> void:
-	eq(Stages.count(), 4, "four stages")
+	eq(Stages.count(), 6, "six stages")
 	eq(Stages.build(0).name, "Palm Coast Boulevard", "stage 1")
 	eq(Stages.build(1).name, "Redrock Canyon", "stage 2")
 	eq(Stages.build(2).name, "Neon Strip", "stage 3")
 	eq(Stages.build(3).name, "Timberline Pass", "stage 4")
+	eq(Stages.build(4).name, "Bayou Causeway", "stage 5")
+	eq(Stages.build(5).name, "Harvest Valley", "stage 6")
 	for i in Stages.count():
 		eq(Stages.stage_name(i), Stages.build(i).name, "listed name of stage %d" % (i + 1))
 	eq(Stages.next(0), 1, "Palm Coast leads to Redrock")
@@ -159,3 +161,41 @@ func test_timberline_guardrails_sit_on_the_outside_of_bends() -> void:
 					wrong += 1
 	check(rails > 20, "rails on the bends (%d)" % rails)
 	eq(wrong, 0, "guardrails on the inside of a bend")
+
+
+func test_bayou_has_causeways_over_water() -> void:
+	var t := BayouCauseway.build()
+	var counts := _sprite_counts(t)
+	for id in ["cypress_a", "reeds_a", "mist_a", "piling", "heron"]:
+		check(counts.get(id, 0) > 0, "Bayou has a " + id)
+	for id in ["bait_shop", "stilt_shack", "boat_dock"]:
+		eq(counts.get(id, 0), 1, "one " + id)
+	var water := 0
+	for seg in t.segments:
+		if seg.ground_left != Track.GROUND_SAND:
+			continue
+		water += 1
+		for sp in seg.sprites:
+			if sp["id"] == "cypress_a" or sp["id"] == "cypress_b" or sp["id"] == "cypress_c":
+				check(absf(sp["offset"]) >= 3.0, "cypress out in the water, not on the causeway")
+	check(water > 1000, "long stretches over water (%d segments)" % water)
+
+
+func test_bayou_fog_is_thicker() -> void:
+	check(BayouCauseway.theme()["fog_density"] > Cfg.FOG_DENSITY, "thicker fog than the default")
+	for i in Stages.count():
+		if i != 4:
+			check(not Stages.build(i).theme.has("fog_density"), Stages.stage_name(i) + " uses the default fog")
+
+
+func test_harvest_has_its_farm() -> void:
+	var t := HarvestValley.build()
+	var counts := _sprite_counts(t)
+	for id in ["farm_windmill", "oak", "corn", "sunflowers", "hay_round", "hay_bale", "farm_fence", "scarecrow"]:
+		check(counts.get(id, 0) > 0, "Harvest has a " + id)
+	for id in ["barn", "silos", "water_tower", "farm_stand"]:
+		eq(counts.get(id, 0), 1, "one " + id)
+	var top := 0.0
+	for seg in t.segments:
+		top = maxf(top, seg.w2.y)
+	check(top >= Track.HILL_MEDIUM * Cfg.SEGMENT_LENGTH, "big rolling hills (top %.0f)" % top)

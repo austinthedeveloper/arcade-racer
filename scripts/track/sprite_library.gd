@@ -75,6 +75,37 @@ static func load_all() -> void:
 	_add("chevron_sign", "chevron_sign.png", 1900.0, 0.8)
 	_add("snow_cliff", "snow_cliff.png", 7000.0, 1.0)
 
+	_dir = ROADSIDE + "bayou/"
+	_add("cypress_a", "cypress_a.png", 8000.0, 0.15)
+	_add("cypress_b", "cypress_b.png", 8400.0, 0.2)
+	_add("cypress_c", "cypress_c.png", 6200.0, 0.15)
+	_add("stilt_shack", "stilt_shack.png", 5000.0, 1.0)
+	_add("boat_dock", "boat_dock.png", 3200.0, 1.0)
+	_add("bait_shop", "bait_shop.png", 4800.0, 1.0)
+	for id in ["reeds_a", "reeds_b", "reeds_c", "cattails"]:
+		_add(id, id + ".png", 1000.0, 0.0)
+	_add("heron", "heron.png", 1100.0, 0.0)
+	for id in ["mist_a", "mist_b", "mist_c"]:
+		_add(id, id + ".png", 1400.0, 0.0)
+	_add("rail_post", "rail_post.png", 750.0, 1.0)
+	_add("piling", "piling.png", 2000.0, 0.8)
+	for id in ["rail_wood_a", "rail_wood_b", "rail_wood_short", "rail_end", "rail_wood_long", "rail_concrete", "rail_concrete_end"]:
+		_add(id, id + ".png", 1000.0, 1.0)
+
+	_dir = ROADSIDE + "harvest/"
+	_add("barn", "barn.png", 6500.0, 1.0)
+	_add("silos", "silos.png", 7500.0, 1.0)
+	_add("water_tower", "water_tower.png", 8000.0, 0.4)
+	_add("farm_windmill", "farm_windmill.png", 8000.0, 0.3)
+	_add("oak", "oak.png", 6500.0, 0.2)
+	_add("sunflowers", "sunflowers.png", 1500.0, 0.0)
+	_add("corn", "corn.png", 1700.0, 0.0)
+	_add("farm_stand", "farm_stand.png", 2200.0, 1.0)
+	_add("hay_round", "hay_round.png", 1200.0, 1.0)
+	_add("hay_bale", "hay_bale.png", 800.0, 1.0)
+	_add("scarecrow", "scarecrow.png", 1800.0, 0.3)
+	_add("farm_fence", "farm_fence.png", 900.0, 1.0)
+
 
 static func _add(id: String, file: String, world_h: float, collide: float) -> void:
 	var tex: Texture2D = load(_dir + file)
