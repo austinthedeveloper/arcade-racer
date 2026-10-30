@@ -50,10 +50,25 @@ func test_pitch_rows() -> void:
 	eq(CarSprites.pitch_row(-0.6, [0, 1]), 0, "no uphill strip falls back to level")
 
 
-func test_pitch_warp_shows_more_deck_downhill() -> void:
+func test_pitch_warp_shows_more_roof_uphill() -> void:
+	# Regression: the stand-in stretch had uphill and downhill swapped.
 	eq(CarSprites.pitch_warp(0.0), Vector2.ONE, "level is unscaled")
 	var down := CarSprites.pitch_warp(1.0)
 	var up := CarSprites.pitch_warp(-1.0)
-	check(down.x > 1.0 and down.y < 1.0, "nose-down: taller deck, shorter bumper")
-	check(up.x < 1.0 and up.y > 1.0, "nose-up: shorter deck, taller bumper")
+	check(up.x > 1.0 and up.y < 1.0, "nose-up: taller roof/deck, shorter bumper")
+	check(down.x < 1.0 and down.y > 1.0, "nose-down: shorter roof/deck, taller bumper")
 	eq(CarSprites.pitch_warp(3.0), down, "clamped")
+
+
+func test_pitch_warp_matches_the_camera_geometry() -> void:
+	# Car faces +z, camera behind and above it. Pitching the nose up by a turns the roof
+	# normal (0, 1, 0) to (0, cos a, -sin a) and the tail normal (0, 0, -1) to (0, -sin a, -cos a).
+	var to_cam := Vector3(0.0, Cfg.CAMERA_HEIGHT, -Cfg.PLAYER_Z).normalized()
+	for slope in [0.3, -0.3]:
+		var pitch := PlayerCar.pitch_for_slope(slope)
+		var a := atan(slope)  # nose-up angle
+		var roof := Vector3(0.0, cos(a), -sin(a)).dot(to_cam) - Vector3.UP.dot(to_cam)
+		var tail := Vector3(0.0, -sin(a), -cos(a)).dot(to_cam) - Vector3(0.0, 0.0, -1.0).dot(to_cam)
+		var warp := CarSprites.pitch_warp(pitch)
+		eq(signf(warp.x - 1.0), signf(roof), "roof grows as it turns to the camera (slope %s)" % slope)
+		eq(signf(warp.y - 1.0), signf(tail), "bumper grows as it turns to the camera (slope %s)" % slope)
