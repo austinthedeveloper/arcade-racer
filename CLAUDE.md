@@ -11,6 +11,7 @@ godot --path . -- --autodrive --screenshots=200,700 --shot-dir=/tmp/shots   # ha
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
 python3 tools/make_stage_sprites.py assets/concept . redrock   # rebuild a stage's background + roadside sprites
+python3 tools/make_audio.py                         # rebuild the placeholder sounds (assets/audio/README.md)
 ```
 
 ## Tests

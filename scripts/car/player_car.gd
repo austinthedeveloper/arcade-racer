@@ -18,6 +18,7 @@ var air_height := 0.0  # car height above the road
 var airborne := false
 var landed := false  # true for the tick the car touches down
 var crashed := false  # true for the tick a crash starts
+var bumped := false  # true for the tick the car nudges slower traffic without crashing
 var crash_time := 0.0
 
 var _alt := 0.0
@@ -44,6 +45,7 @@ func speed_percent() -> float:
 func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	landed = false
 	crashed = false
+	bumped = false
 	var seg := track.find_segment(position + Cfg.PLAYER_Z)
 	var pct := speed / Cfg.MAX_SPEED
 	var top := Cfg.MAX_SPEED * (Cfg.NITRO_SPEED_MULT if nitro_time > 0.0 else 1.0)
@@ -146,6 +148,7 @@ func collide(track: Track) -> void:
 				crash()
 			else:
 				speed = car.speed * (car.speed / speed)
+				bumped = true
 				position = fposmod(car.z - Cfg.PLAYER_Z - 50.0, track.length)
 			return
 

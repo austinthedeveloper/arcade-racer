@@ -30,6 +30,7 @@ var road: RoadRenderer
 var hud: Hud
 var debug_overlay: InputDebugOverlay
 var calibration: CalibrationWizard
+var audio: RaceAudio
 
 var _shake := 0.0
 var _autodrive := false
@@ -55,6 +56,8 @@ func _ready() -> void:
 	layer.add_child(debug_overlay)
 	calibration = CalibrationWizard.new()
 	layer.add_child(calibration)
+	audio = RaceAudio.new(self)
+	add_child(audio)
 	InputRouter.devices_changed.connect(_update_wheel_hint)
 	_parse_dev_args()
 	start_race()
