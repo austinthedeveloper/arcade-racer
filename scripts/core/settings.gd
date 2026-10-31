@@ -23,6 +23,7 @@ var timer: int = Clock.ARCADE  # a Clock
 var power_ups := true  # pickups on the road (PowerUps)
 var difficulty: int = Difficulty.Level.NORMAL
 var carry_time := false  # Grand Tour: clock left at a finish carries into the next stage
+var attack_traffic := false  # Time Attack with traffic on the road (picked on stage select)
 var unlock_all := false  # every car and stage open (Unlocks), for testing and accessibility
 var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
 var sfx_volume := 10
@@ -43,6 +44,7 @@ func reset() -> void:
 	difficulty = Difficulty.Level.NORMAL
 	carry_time = false
 	unlock_all = false
+	attack_traffic = false
 	music_volume = 10
 	sfx_volume = 10
 	apply_volumes()
@@ -61,6 +63,7 @@ func load_settings() -> void:
 		difficulty = clampi(int(cfg.get_value("play", "difficulty", difficulty)), 0, Difficulty.Level.size() - 1)
 		carry_time = bool(cfg.get_value("play", "carry_time", carry_time))
 		unlock_all = bool(cfg.get_value("play", "unlock_all", unlock_all))
+		attack_traffic = bool(cfg.get_value("play", "attack_traffic", attack_traffic))
 		music_volume = clampi(int(cfg.get_value("audio", "music", music_volume)), 0, VOLUME_STEPS)
 		sfx_volume = clampi(int(cfg.get_value("audio", "sfx", sfx_volume)), 0, VOLUME_STEPS)
 	apply_volumes()
@@ -86,6 +89,7 @@ func save() -> void:
 	cfg.set_value("play", "difficulty", difficulty)
 	cfg.set_value("play", "carry_time", carry_time)
 	cfg.set_value("play", "unlock_all", unlock_all)
+	cfg.set_value("play", "attack_traffic", attack_traffic)
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.save(path)

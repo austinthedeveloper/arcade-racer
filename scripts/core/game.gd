@@ -128,7 +128,8 @@ func start_race() -> void:
 	race = RACE_SCENE.instantiate()
 	race.stage_index = stage_index
 	race.car_id = Cars.get_car(car_index)["id"]
-	race.tour = mode_index != ModeSelect.Item.SINGLE_RACE
+	race.tour = mode_index == ModeSelect.Item.GRAND_TOUR
+	race.time_attack = mode_index == ModeSelect.Item.TIME_ATTACK
 	race.debug_overlay = debug_overlay
 	race.calibration = calibration
 	race.quit_requested.connect(_on_race_quit)
@@ -142,7 +143,7 @@ func _on_race_quit() -> void:
 	show_title()
 
 
-## A Single Race finished: back to stage select for the next one.
+## A Single Race or Time Attack run finished: back to stage select for the next one.
 func _on_race_over() -> void:
 	_drop_race()
 	show_stage_select()

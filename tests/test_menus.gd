@@ -144,7 +144,9 @@ func test_mode_select_lists_every_mode() -> void:
 	eq(m.notice_time, 0.0, "no notice for a built mode")
 	m.index = ModeSelect.Item.SINGLE_RACE
 	eq(m.pick(), ModeSelect.Item.SINGLE_RACE, "SINGLE RACE can be picked")
-	for item: int in [ModeSelect.Item.TIME_ATTACK, ModeSelect.Item.FREE_DRIVE]:
+	m.index = ModeSelect.Item.TIME_ATTACK
+	eq(m.pick(), ModeSelect.Item.TIME_ATTACK, "TIME ATTACK can be picked")
+	for item: int in [ModeSelect.Item.FREE_DRIVE]:
 		m.index = item
 		check(not ModeSelect.available(item), "%s isn't built yet" % ModeSelect.LABELS[item])
 		eq(m.pick(), -1, "so it can't be picked")

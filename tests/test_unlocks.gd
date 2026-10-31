@@ -40,9 +40,10 @@ func test_the_zenith_needs_the_tour_finished() -> void:
 func test_the_hauler_is_a_secret() -> void:
 	check(not Unlocks.car_open("car_hauler", Stages.count() - 1, [Tour.FINISH_UNLOCK], false), "not by progress")
 	check(Unlocks.car_open("car_hauler", 0, ["car_hauler"], false), "by its unlock")
-	check(Unlocks.earns_secret(0, false), "a clean Palm Coast earns it")
-	check(not Unlocks.earns_secret(0, true), "not after touching traffic")
-	check(not Unlocks.earns_secret(1, false), "only on Palm Coast")
+	check(Unlocks.earns_secret(0, false, true), "a clean Palm Coast earns it")
+	check(not Unlocks.earns_secret(0, true, true), "not after touching traffic")
+	check(not Unlocks.earns_secret(1, false, true), "only on Palm Coast")
+	check(not Unlocks.earns_secret(0, false, false), "not on an empty road (Time Attack without traffic)")
 	check(Unlocks.car_condition("car_hauler").begins_with("A secret"), "the condition stays a hint")
 
 
@@ -99,9 +100,9 @@ func test_locked_stages_and_cars_cant_be_picked() -> void:
 func test_a_clean_palm_coast_finish_unlocks_the_hauler() -> void:
 	_clean()
 	var save: Node = runner.root.get_node("SaveData")
-	var r := race(false, false, 0)
+	var r := race(false, true, 0)
 	drive(r, 200, input(1.0))
-	check(not r.touched_traffic, "no traffic on the road to touch")
+	r.touched_traffic = false  # (however the first seconds went)
 	r.player.distance = r.finish_distance + 1.0
 	r._check_progress()
 	check(save.is_unlocked("car_hauler"), "the Hauler unlocks")
@@ -112,7 +113,7 @@ func test_a_clean_palm_coast_finish_unlocks_the_hauler() -> void:
 
 func test_touching_traffic_spoils_the_secret() -> void:
 	_clean()
-	var r := race(false, false, 0)
+	var r := race(false, true, 0)
 	drive(r, 200, input(1.0))
 	r.touched_traffic = true
 	r.player.distance = r.finish_distance + 1.0

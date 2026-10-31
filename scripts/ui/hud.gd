@@ -16,11 +16,19 @@ func _draw() -> void:
 	var p: PlayerCar = race.player
 	var w := float(Cfg.SCREEN_W)
 
-	# Time, top left
+	# Time, top left: the clock, or in Time Attack the run's time and the best
 	_text(Vector2(12, 18), "TIME", 10, Color("#ffd23a"))
-	var t: float = race.time_left
-	var tcol := Color("#ff4040") if t < Cfg.LOW_TIME and int(t * 4.0) % 2 == 0 else Color.WHITE
-	_text(Vector2(12, 46), str(ceili(t)), 30, tcol)
+	if race.time_attack:
+		_text(Vector2(12, 42), clock_text(race.race_time), 22, Color.WHITE)
+		var best: Ghost = race.ghost
+		_text(Vector2(12, 58), "BEST " + (clock_text(best.time) if best != null else "--:--.--"), 10, Color(1, 1, 1, 0.8))
+		if not is_nan(race.split) and race.banner_time <= 0.0 and race.state == race.State.RACING:
+			var ahead: bool = race.split < 0.0
+			_text(Vector2(12, 72), race.split_text(race.split), 10, Color("#5dff8a") if ahead else Color("#ff6a6a"))
+	else:
+		var t: float = race.time_left
+		var tcol := Color("#ff4040") if t < Cfg.LOW_TIME and int(t * 4.0) % 2 == 0 else Color.WHITE
+		_text(Vector2(12, 46), str(ceili(t)), 30, tcol)
 
 	# Place, under the time
 	if not race.rivals.cars.is_empty():
@@ -41,6 +49,9 @@ func _draw() -> void:
 	for r: RivalCar in race.rivals.cars:
 		var rx := progress_x(bar, r.distance, race.finish_distance)
 		draw_rect(Rect2(rx - 2, bar.position.y + 2, 4, 4), Color("#ff4f8b"))
+	if race.ghost != null:
+		var gx := progress_x(bar, race.ghost_now.x, race.finish_distance)
+		draw_rect(Rect2(gx - 2, bar.position.y + 2, 4, 4), Color("#9ad8ff"))
 	var you := progress_x(bar, p.distance, race.finish_distance)
 	draw_rect(Rect2(you - 2, bar.position.y + 1, 4, 6), Color.WHITE)
 	_text(Vector2(bar.position.x, bar.end.y + 14), ("STAGE %d  " % (race.stage_index + 1)) + race.track.name.to_upper(), 9, Color(1, 1, 1, 0.85))
@@ -116,6 +127,11 @@ func _draw() -> void:
 		_text_centered(Vector2(w / 2.0, 130), race.banner, 44, Color("#ffd23a"))
 		if race.banner_sub != "":
 			_text_centered(Vector2(w / 2.0, 156), race.banner_sub, 14, Color.WHITE)
+
+
+## A run's time as m:ss.cc.
+static func clock_text(seconds: float) -> String:
+	return "%d:%05.2f" % [int(seconds) / 60, fmod(seconds, 60.0)]
 
 
 ## The finish's notice of cars it opened (Unlocks.newly_open).
