@@ -27,6 +27,7 @@ Options, stage select with postcards and car select with showroom pictures.
 | PR-10 | **Camera feel.** Shake on crests, crashes and off-road, behind the AC-2 slider; a small FOV stretch on nitro. | S | 3 | AC-2 | Shake amounts in `Cfg`; slider at 0 gives none |
 | PR-11 | **Attract mode.** The title screen starts an autodrive demo after idling, with the logo over it; any input returns to the title. | S | 6 | | e2e smoke waits for the demo and interrupts it |
 | PR-12 | **Pause menu.** Resume, restart, options, quit to title, instead of today's key combinations. | S | 2 | | e2e smoke uses it; wheel-drivable |
+| PR-13 | **Game icon.** The striped sunset disc from the logo shapes sheet on a night-blue tile with a gold rim (`tools/make_icon.py`): the project and window icon, the Windows .exe (`icon.ico`), the macOS app (`icon.icns`) and the Web favicon. | S | 1 | | The exported .exe, .app and Web build show it |
 
 ## Open decisions
 

@@ -15,6 +15,7 @@ config/description="Sprite-based pseudo-3D arcade racer"
 config/version="0.1.0"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.png"
 
 [autoload]
 
