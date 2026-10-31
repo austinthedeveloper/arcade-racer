@@ -254,8 +254,8 @@ func _draw_player() -> void:
 	var alpha := 1.0
 	if p.ghost_time > 0.0:
 		alpha = 0.45 + (0.35 if p.ghost_time < 1.0 and int(time * 10.0) % 2 == 0 else 0.0)
-	CarSprites.draw_player(self, player_strips, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking, p.nitro_time > 0.0,
-		time, roundf(lift), p.pitch, alpha)
+	CarSprites.draw_player(self, player_strips, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking,
+		roundf(lift), p.pitch, alpha)
 
 
 ## A stage's road colors, darkened for inside a tunnel or covered bridge (worked out once

@@ -76,7 +76,7 @@ tests/                      test runner, suites, golden traces, end-to-end smoke
 tools/                      test.sh, sprite-cutting scripts, make_audio.py (placeholder sound)
 ```
 
-For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--no-traffic` removes traffic, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|options|stages|cars --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits.
+For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--no-traffic` removes traffic, `--drive-x=1.8` starts the car on that line (past 1 is off the road) and keeps autodrive on it, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|options|stages|cars --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits.
 
 ## Tests
 

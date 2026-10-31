@@ -42,6 +42,7 @@ var paused := false
 
 var background: Background
 var road: RoadRenderer
+var fx: FxLayer  # between the road and the HUD
 var hud: Hud
 ## The F1 input overlay and F2 calibration wizard. The game passes in its own, so there is one
 ## pair across the menus and the race; a race run on its own (tests, race.tscn) makes a pair.
@@ -54,6 +55,7 @@ var _autodrive := false
 var _log_banners := false
 var _no_traffic := false
 var _start_segment := 0  # --at-segment=N: start the race this far in (screenshots)
+var _drive_x := NAN  # --drive-x=X: start on this line and autodrive holds it (road half-widths; past 1 is off the road)
 var _screenshot_frames: Array[int] = []
 var _screenshot_dir := ""
 var _frame := 0  # physics ticks since this race (re)started
@@ -67,6 +69,8 @@ func _ready() -> void:
 	add_child(background)
 	road = RoadRenderer.new()
 	add_child(road)
+	fx = FxLayer.new()
+	add_child(fx)
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	hud = Hud.new()
@@ -95,6 +99,8 @@ func start_race() -> void:
 	player.setup(car)
 	CarSprites.load_all()
 	player.reset(_start_segment * Cfg.SEGMENT_LENGTH)
+	if not is_nan(_drive_x):
+		player.x = _drive_x  # already on that line, past any roadside railing
 	player.road_y = track.height_at(player.position + Cfg.PLAYER_Z)
 	power_ups = PowerUps.new()
 	if Settings.power_ups:
@@ -122,6 +128,8 @@ func start_race() -> void:
 	road.track = track
 	road.player = player
 	road.player_strips = CarSprites.strips(car["strip"])
+	fx.clear()
+	fx.player = player
 
 
 ## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
@@ -207,6 +215,8 @@ func _physics_process(dt: float) -> void:
 	_shake = move_toward(_shake, 0.0, dt * SHAKE_SETTLE)
 	road.position = Vector2(roundf(randf_range(-1, 1) * _shake), roundf(randf_range(-1, 1) * _shake))
 	road.time += dt
+	fx.update(dt, player, track)
+	fx.position = road.position
 	road.camera_z = player.position
 	_redraw()
 	_frame += 1
@@ -261,6 +271,7 @@ func _banner(text: String, sub: String, seconds: float) -> void:
 
 func _redraw() -> void:
 	road.queue_redraw()
+	fx.queue_redraw()
 	background.queue_redraw()
 	hud.queue_redraw()
 
@@ -278,6 +289,8 @@ func _parse_dev_args() -> void:
 			car_id = Cars.find(arg.get_slice("=", 1))["id"]
 		elif arg.begins_with("--at-segment="):
 			_start_segment = int(arg.get_slice("=", 1))
+		elif arg.begins_with("--drive-x="):
+			_drive_x = float(arg.get_slice("=", 1))
 		elif arg == "--no-traffic":
 			_no_traffic = true
 		elif arg.begins_with("--screenshots="):
@@ -291,7 +304,8 @@ func _autodrive_input() -> DriveInput:
 	var inp := DriveInput.new()
 	var seg := track.find_segment(player.position + Cfg.PLAYER_Z + 3000.0)
 	inp.throttle = 1.0
-	inp.steer = clampf((seg.curve * 0.25) + (_autodrive_lane() - player.x) * 1.5, -1.0, 1.0)
+	var lane := _drive_x if not is_nan(_drive_x) else _autodrive_lane()
+	inp.steer = clampf((seg.curve * 0.25) + (lane - player.x) * 1.5, -1.0, 1.0)
 	inp.nitro_pressed = _frame % 600 == 300
 	return inp
 

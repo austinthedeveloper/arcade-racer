@@ -13,6 +13,7 @@ static func theme() -> Dictionary:
 		"below_horizon": Color("#2f3d2c"),
 		"grass": [Color("#3f5a32"), Color("#38512d")],  # wet prairie
 		"sand": [Color("#57594f"), Color("#505248")],  # gravel shoulder
+		"kickup": ["water", "dust"],  # FxLayer: what the wheels throw up off the grass, off the sand
 		"rumble": [Color("#d8d8dc"), Color("#e0a020")],
 		"road": [Color("#3c3e46"), Color("#373941")],  # rain-soaked asphalt
 		"lane": Color("#e6e6ea"),

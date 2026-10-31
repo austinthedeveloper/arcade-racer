@@ -70,8 +70,9 @@ static func _add_traffic(id: String, path: String, world_per_px: float) -> void:
 ## steer: -1 full left .. 1 full right; beyond that it keeps the hardest frame.
 ## pitch: 1 full nose-down (downhill) .. -1 full nose-up (see PlayerCar.pitch).
 ## alpha: below 1 for a see-through car (the ghost power-up).
-static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float, steer: float, brake: bool, nitro: bool,
-		t: float, lift: float = 0.0, pitch: float = 0.0, alpha: float = 1.0) -> void:
+## The nitro flame is the FX layer's (FxLayer), drawn over the car.
+static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float, steer: float, brake: bool,
+		lift: float = 0.0, pitch: float = 0.0, alpha: float = 1.0) -> void:
 	var row := pitch_row(pitch, car.keys())
 	var strip: Dictionary = car[row]
 	var tex: Texture2D = strip["tex"]
@@ -100,8 +101,6 @@ static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float
 		var ly := y - h * 0.58
 		for side in [-1.0, 1.0]:
 			ci.draw_rect(Rect2(base.x + side * w * 0.36 - w * 0.13, ly, w * 0.26, h * 0.12), Color(1.0, 0.25, 0.1, 0.35))
-	if nitro:
-		_flame(ci, Vector2(base.x, y - h * 0.24), w, t)
 
 
 ## Texture-to-screen scale for a strip drawn `w` wide: its body fills `w`, unless that would
@@ -149,10 +148,3 @@ static func _shadow(ci: CanvasItem, base: Vector2, w: float, strength: float) ->
 	var h := maxf(1.0, w * 0.05)
 	ci.draw_rect(Rect2(base.x - w * 0.5, base.y - h * 0.6, w, h), Color(0, 0, 0, 0.35 * strength))
 
-
-static func _flame(ci: CanvasItem, at: Vector2, w: float, t: float) -> void:
-	var flicker := 0.75 + 0.25 * sin(t * 47.0)
-	var r := w * 0.07 * flicker
-	ci.draw_circle(at, r * 1.6, Color(1.0, 0.45, 0.1, 0.8))
-	ci.draw_circle(at, r, Color(1.0, 0.85, 0.3, 0.95))
-	ci.draw_circle(at, r * 0.5, Color(0.7, 0.85, 1.0))
