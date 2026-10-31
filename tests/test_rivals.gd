@@ -234,6 +234,16 @@ func test_standings_sort_by_distance_then_finishers_first() -> void:
 	eq(f.place(p, 81.0), 2, "finished after it")
 
 
+func test_the_player_and_rivals_share_a_clock() -> void:
+	# Review on #104: race_time skipped the GO tick that Rivals.clock counted, so a
+	# same-tick photo finish always went to the player.
+	var r := race(true, false, 0)
+	run_until(r, func(): return r.state == r.State.RACING)
+	near(r.race_time, r.rivals.clock, 0.0001, "on the GO tick")
+	run_until(r, func(): return r.race_time > 3.0)
+	near(r.race_time, r.rivals.clock, 0.0001, "three seconds in")
+
+
 func test_ordinals() -> void:
 	eq([Rivals.ordinal(1), Rivals.ordinal(2), Rivals.ordinal(3), Rivals.ordinal(4), Rivals.ordinal(8)],
 		["1ST", "2ND", "3RD", "4TH", "8TH"], "ordinals")

@@ -184,6 +184,7 @@ func _physics_process(dt: float) -> void:
 			if countdown <= 0.0:
 				state = State.RACING
 				_banner("GO!", "", 1.0)
+				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
 			time_left -= dt
