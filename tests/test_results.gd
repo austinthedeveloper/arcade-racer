@@ -18,6 +18,7 @@ func _finish(r: Node, ahead: int) -> void:
 			r.rivals.cars[i].finish_time = 0.01 * (i + 1)
 	r.player.distance = r.finish_distance + 1.0
 	drive(r, 1, input(1.0))
+	drive(r, roundi(r.RESULTS_AFTER * 60.0) + 2)  # the finish spectacle, then the results
 
 
 func test_choices_follow_the_mode() -> void:

@@ -123,9 +123,10 @@ func test_frames_play_through_a_particle_life() -> void:
 func test_every_effect_frame_loads() -> void:
 	for id: String in FxLayer.EFFECTS:
 		var e: Dictionary = FxLayer.EFFECTS[id]
-		for f in range(1, e["frames"] + 1):
-			var name: String = e["sprite"] if e["frames"] == 1 else "%s_%d" % [e["sprite"], f]
-			check(FxLayer.texture(name) != null, "%s frame %d" % [id, f])
+		for stem: String in e.get("variants", [e["sprite"]]):
+			for f in range(1, e["frames"] + 1):
+				var name: String = stem if e["frames"] == 1 else "%s_%d" % [stem, f]
+				check(FxLayer.texture(name) != null, "%s frame %d" % [id, f])
 	for f in range(1, FxLayer.NITRO_FRAMES + 1):
 		check(FxLayer.texture("nitro_%d" % f) != null, "nitro flame %d" % f)
 	for f in range(1, FxLayer.SPEED_LINE_FRAMES + 1):
@@ -192,3 +193,50 @@ func test_splash_off_the_bayou_causeway() -> void:
 	var splashed := run_until(r, func() -> bool: return r.fx.count("water") > 0, 120, input(1.0))
 	check(splashed >= 0, "water kicked up off the causeway")
 	eq(r.fx.count("dust"), 0, "no dust over water")
+
+
+func test_fireworks_only_where_the_theme_has_them() -> void:
+	check(FxLayer.fireworks_for(SkylineFinale.theme()), "Skyline")
+	for i in Stages.count() - 1:
+		check(not FxLayer.fireworks_for(Stages.build(i).theme), "not on %s" % Stages.stage_name(i))
+
+
+func test_confetti_falls_for_a_while_then_stops() -> void:
+	near(FxLayer.confetti_owed(0.0, 0.5, 0.0), FxLayer.CONFETTI_RATE * 0.5, 0.001, "owed at the rate")
+	near(FxLayer.confetti_owed(1.0, 0.1, 0.5), 0.5 + FxLayer.CONFETTI_RATE * 0.1, 0.001, "carries part pieces")
+	eq(FxLayer.confetti_owed(FxLayer.CONFETTI_TIME + 0.1, 0.1, 3.0), 0.0, "done after CONFETTI_TIME")
+	var fx := FxLayer.new()
+	var t := TestSuite.flat_track()
+	var p := _car(0.0)
+	fx.celebrate(false)
+	for tick in 60:
+		fx.update(1.0 / 60.0, p, t)
+	check(fx.count("confetti") + fx.count("streamer") > 20, "confetti everywhere")
+	check(fx.count("streamer") > 0, "with streamers")
+	eq(fx.count("firework"), 0, "no fireworks unless asked")
+	for tick in 60 * 7:
+		fx.update(1.0 / 60.0, p, t)
+	eq(fx.count("confetti") + fx.count("streamer"), 0, "all down a while later")
+	fx.free()
+
+
+func _finished_race(stage: int) -> Node:
+	var r := race(false, false, stage)
+	drive(r, 181)
+	r.player.distance = r.finish_distance + 1.0
+	r._check_progress()
+	drive(r, 120)
+	return r
+
+
+func test_finish_celebrations() -> void:
+	var r := _finished_race(7)
+	check(r.fx.celebrating, "Skyline celebrates")
+	check(r.fx.count("confetti") > 0, "confetti on Skyline")
+	check(r.fx.count("firework") > 0, "fireworks over Skyline")
+	r = _finished_race(0)
+	check(r.fx.count("confetti") > 0, "confetti on Palm Coast")
+	eq(r.fx.count("firework"), 0, "no fireworks on Palm Coast")
+	r.start_race()
+	check(not r.fx.celebrating, "a new race clears it")
+	eq(r.fx.alive_count(), 0, "and every particle")

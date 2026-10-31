@@ -111,7 +111,10 @@ func test_race_events_play_once_each() -> void:
 	r.player.distance = r.finish_distance + 1.0
 	step(r, 3)
 	eq(count("finish"), 1, "finish fanfare")
+	eq(count("crowd"), 1, "the crowd roars at the finish")
 	eq(audio_node().music_cue, "", "music stops at the finish")
+	for cue: String in SoundBank.CUES:
+		check(cue == "crowd" or SoundBank.volume_db(cue) < SoundBank.volume_db("crowd"), "the crowd is louder than %s" % cue)
 
 
 func test_clock_ticks_when_time_runs_low() -> void:

@@ -49,10 +49,15 @@ func _finish(r: Node, place_ahead: int) -> void:
 	drive(r, 1)
 
 
+## Enter after a finish or TIME UP. During the finish spectacle the first press brings up
+## the results; a second picks their first choice (on, or back to the menus).
 func _confirm(r: Node) -> void:
 	var c := input()
 	c.confirm_pressed = true
+	var was_up: bool = r.results.visible
 	drive(r, 1, c)
+	if r.results.visible and not was_up:
+		drive(r, 1, c)
 
 
 func test_a_podium_goes_on_with_the_same_drivers() -> void:
