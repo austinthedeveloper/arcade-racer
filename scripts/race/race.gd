@@ -25,6 +25,8 @@ var stage_index := 0  # into Stages
 var tour := true  # Grand Tour: a finish goes on to the next stage. false: a Single Race
 ## Time Attack: solo against the clock and the best run's ghost; no rivals, no time limit.
 var time_attack := false
+## Free Drive: no clock, no rivals, no finish; the road loops on until you quit (pause menu).
+var free_drive := false
 var ghost: Ghost  # Time Attack: the best run so far, replayed (null before the first)
 var recording: Ghost  # Time Attack: this run, tick by tick
 var ghost_now := Vector3.ZERO  # the ghost this tick: distance, x, steer (Ghost.at)
@@ -133,13 +135,13 @@ func start_race() -> void:
 	ram_flash = 0.0
 	traffic = Traffic.new()
 	var traffic_count := Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT)))
-	if _no_traffic or (time_attack and not Settings.attack_traffic):
+	if _no_traffic or ((time_attack or free_drive) and not Settings.attack_traffic):
 		traffic_count = 0
 	traffic.spawn(track, traffic_count)
 	if tour and tour_state == null:
 		tour_state = Tour.new()
 	rivals = Rivals.new()
-	rivals.spawn(track, player, car_id, 0 if _no_rivals or time_attack else Rivals.COUNT, Rivals.SEED + stage_index,
+	rivals.spawn(track, player, car_id, 0 if _no_rivals or time_attack or free_drive else Rivals.COUNT, Rivals.SEED + stage_index,
 		Difficulty.of(Settings.difficulty), tour_state.drivers if tour else [])
 	if tour and tour_state.drivers.is_empty():
 		tour_state.drivers = rivals.driver_names()
@@ -290,9 +292,9 @@ func _physics_process(dt: float) -> void:
 				_banner("GO!", "", 1.0)
 		State.RACING:
 			race_time += dt
-			if not time_attack:
+			if timed():
 				time_left -= dt
-			if time_left <= 0.0 and not time_attack:
+			if time_left <= 0.0 and timed():
 				time_left = 0.0
 				state = State.TIME_UP
 				_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", 999.0)
@@ -384,6 +386,8 @@ func _check_pickups() -> void:
 
 
 func _check_progress() -> void:
+	if free_drive:
+		return
 	if next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
 		score.checkpoint()
@@ -464,6 +468,11 @@ func _save_ghost() -> void:
 ## Seconds against a best: "-1.23" ahead, "+0.50" behind.
 static func split_text(seconds: float) -> String:
 	return ("-" if seconds < 0.0 else "+") + "%.2f" % absf(seconds)
+
+
+## Whether the clock runs down to TIME UP (not in Time Attack or Free Drive).
+func timed() -> bool:
+	return not time_attack and not free_drive
 
 
 ## Whether this race is the player's own, to save from: not autodriven, not started partway.

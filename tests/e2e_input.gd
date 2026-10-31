@@ -48,8 +48,7 @@ func _menu_script() -> Array:
 		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.index == 0, "Enter on the title opens mode select, on GRAND TOUR"],
 		["steer_right", func() -> bool: return g.menu.index == 1, "right picks SINGLE RACE (played at the end)"],
 		["steer_right", func() -> bool: return g.menu.index == 2, "right picks TIME ATTACK (played at the end)"],
-		["steer_right", func() -> bool: return g.menu.index == 3, "right picks FREE DRIVE"],
-		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.notice.begins_with("Free Drive"), "FREE DRIVE says it's coming soon"],
+		["steer_right", func() -> bool: return g.menu.index == 3, "right picks FREE DRIVE (played at the end)"],
 		["steer_right", func() -> bool: return g.menu.index == 4, "right picks OPTIONS"],
 		["confirm", func() -> bool: return g.screen == g.Screen.OPTIONS, "Enter on OPTIONS opens the options"],
 		["back", func() -> bool: return g.screen == g.Screen.MODES and g.menu.index == 4, "back from those options returns to mode select"],
@@ -100,7 +99,7 @@ func _send(action: String, pressed: bool) -> void:
 	Input.parse_input_event(e)
 
 
-## Stage select to a running Time Attack race, from step `first` (four steps): stage, car,
+## Stage select to a running Time Attack or Free Drive race, from step `first` (four steps): stage, car,
 ## then the gas held for the countdown and a second or so.
 func _time_attack_start(first: int) -> void:
 	match _step - first:
@@ -117,7 +116,7 @@ func _time_attack_start(first: int) -> void:
 		3:
 			_send("confirm", false)
 			_race = _game.race
-			_check(_race != null and _race.time_attack, "a Time Attack run starts")
+			_check(_race != null and (_race.time_attack or _race.free_drive), "the run starts")
 			if _race == null:
 				quit(1)
 				return
@@ -140,7 +139,7 @@ func _next(wait_frames: int = 0) -> void:
 
 func _tick() -> void:
 	_frame += 1
-	if _frame > 3400:  # first, so a script error in a step can't hang the run
+	if _frame > 3800:  # first, so a script error in a step can't hang the run
 		printerr("  FAIL e2e timed out at step %d" % _step)
 		quit(1)
 		return
@@ -454,6 +453,53 @@ func _tick() -> void:
 			_send("accelerate", false)
 			_check(_race.state == _race.State.FINISHED and "vs best" in _race.banner_sub,
 				"the second run is timed against it: " + _race.banner_sub)
+			# Free Drive: in from mode select, past the finish line, then quit from the pause menu
+			_send("confirm", true)
+			_next(2)
+		67:
+			_send("confirm", false)
+			_next(2)
+		68:
+			_send("back", true)
+			_next(2)
+		69:
+			_send("back", false)
+			_send("steer_right", true)
+			_next(2)
+		70:
+			_send("steer_right", false)
+			_check(_game.screen == _game.Screen.MODES and _game.menu.index == 3, "mode select, on FREE DRIVE")
+			_send("confirm", true)
+			_next(2)
+		71:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.STAGES and _game.menu.solo(), "FREE DRIVE opens stage select")
+			_next(2)
+		72, 73, 74, 75:
+			_time_attack_start(72)
+		76:
+			_check(_race.free_drive and _race.rivals.cars.is_empty(), "Free Drive: alone on the road")
+			_race.player.distance = _race.finish_distance + 1.0
+			_next(30)
+		77:
+			_check(_race.state == _race.State.RACING, "past the line and still driving")
+			_send("accelerate", false)
+			_send("pause", true)
+			_next(2)
+		78:
+			_send("pause", false)
+			_send("accelerate", true)
+			_next(2)
+		79:
+			_send("accelerate", false)
+			_check(_race.pause_menu.index == 3, "QUIT TO TITLE")
+			_next(2)
+		80:
+			_send("confirm", true)
+			_next(2)
+		81:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.TITLE and _game.race == null, "Free Drive quits to the title")
 			_next()
 		_:
 			print("\n%s" % ("e2e passed" if _fails == 0 else "e2e: %d failed" % _fails))
