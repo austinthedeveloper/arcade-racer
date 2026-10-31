@@ -8,8 +8,8 @@ checked in game. "Fixed (phase N)" marks what the cleanup below has done (2026-1
 
 **Still open:** A1 (magenta painted into window glass: needs rerolled or recolored art), A4 (brake
 glow and nitro flame anchors, roadmap CP-3), G3 (side-swipes), G4 (rammed cars never return), G6
-(a missing traffic sprite crashes; the manifest test makes it unlikely). Placing the sprites listed in
-`SpriteLibrary.UNPLACED` is a layout call.
+(a missing traffic sprite crashes; the manifest test makes it unlikely). Every loaded roadside sprite is now placed
+(roadmap WS-5): `Track.add_road_signs` and `Track.add_race_furniture`, and `test_track` asserts it.
 
 ## Fixed in this pass
 

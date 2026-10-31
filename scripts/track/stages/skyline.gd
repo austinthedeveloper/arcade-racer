@@ -86,6 +86,10 @@ static func build() -> Track:
 		while i >= 0 and i < b.y - 20:
 			t.add_span(i, "skyline_pylon")
 			i = t.free_spot(i + 300, 20)
+	# Highway signs: route and exit boards on the right
+	t.scatter(["sign_green", "sign_green", "sign_green", "sign_green", "sign_green"], 120, 800, 1.5, 1)
+	t.add_road_signs()
+	t.add_race_furniture()
 	t.add_finish_crowd()
 	t.add_sprite(t.finish_index - 20, "crowd_barrier_city", -1.3)
 	t.add_sprite(t.finish_index + 20, "dolphin_balloon", -2.5)
