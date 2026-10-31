@@ -24,7 +24,7 @@ func _clean() -> void:
 
 func _settings_values() -> Array:
 	return [Settings.auto_gas, Settings.traffic, Settings.timer, Settings.power_ups, Settings.music_volume,
-		Settings.sfx_volume, Settings.screen_shake, Settings.flash]
+		Settings.sfx_volume, Settings.screen_shake, Settings.flash, Settings.units]
 
 
 func _load_settings(fixture: String) -> Array:
@@ -82,7 +82,7 @@ func test_settings_v0_loads_as_before() -> void:
 	_clean()
 	var v0 := _load_settings("settings_v0.cfg")
 	eq(Settings.loaded_version, 0, "unversioned is version 0")
-	eq(v0, [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 10, 10],
+	eq(v0, [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 10, 10, Settings.Units.MPH],
 		"every option; shake and flash as designed")
 	eq(_load_settings("settings_v1.cfg"), v0, "version 1: the same options")
 	eq(Settings.loaded_version, 1, "version 1")
@@ -93,16 +93,32 @@ func test_settings_v1_to_v2_adds_shake_and_flash() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(FIXTURES + "settings_v1.cfg")
 	eq(Settings.migrate(cfg), 1, "from version 1")
-	eq([CfgVersion.of(cfg), cfg.get_value("accessibility", "screen_shake"), cfg.get_value("accessibility", "flash")],
-		[2, 10, 10], "version 2, shake and flash at the designed level")
+	eq([cfg.get_value("accessibility", "screen_shake"), cfg.get_value("accessibility", "flash")],
+		[10, 10], "shake and flash at the designed level")
 	eq(cfg.get_value("audio", "music"), 3, "the rest untouched")
 
 
 func test_settings_v2_loads() -> void:
 	_clean()
-	eq(_load_settings("settings_v2.cfg"), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 3, 0],
+	eq(_load_settings("settings_v2.cfg"), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 3, 0, Settings.Units.MPH],
 		"every option")
 	eq(Settings.loaded_version, 2, "version 2")
+	_clean()
+
+
+func test_settings_v2_to_v3_adds_units() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v2.cfg")
+	eq(Settings.migrate(cfg), 2, "from version 2")
+	eq([CfgVersion.of(cfg), cfg.get_value("display", "units")], [3, Settings.Units.MPH], "version 3, MPH as before")
+	eq(cfg.get_value("accessibility", "screen_shake"), 3, "the rest untouched")
+
+
+func test_settings_v3_loads() -> void:
+	_clean()
+	eq(_load_settings("settings_v3.cfg"), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 3, 0,
+		Settings.Units.KPH], "every option")
+	eq(Settings.loaded_version, 3, "version 3")
 	_clean()
 
 
@@ -110,7 +126,7 @@ func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")
 	eq(Settings.loaded_version, 99, "version 99 read")
-	eq(future, [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 4, 10],
+	eq(future, [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 4, 10, Settings.Units.KPH],
 		"the known options (flash clamped to the designed level)")
 	_clean()
 
@@ -123,7 +139,7 @@ func test_settings_save_writes_the_version() -> void:
 	cfg.load(TestSuite.SCRATCH_SETTINGS)
 	eq(CfgVersion.of(cfg), Settings.VERSION, "saved as the current version")
 	Settings.load_settings()
-	eq(_settings_values(), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 10, 10], "same options")
+	eq(_settings_values(), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 10, 10, Settings.Units.MPH], "same options")
 	_clean()
 	eq(Settings.loaded_version, Settings.VERSION, "no file: the current version")
 
@@ -174,7 +190,7 @@ func test_settings_saved_over_a_newer_file_keep_its_keys() -> void:
 	Settings.save(true)
 	cfg = ConfigFile.new()
 	cfg.load(TestSuite.SCRATCH_SETTINGS)
-	eq([CfgVersion.of(cfg), cfg.has_section("display")], [Settings.VERSION, false], "a reset starts fresh")
+	eq([CfgVersion.of(cfg), cfg.has_section_key("display", "crt_filter")], [Settings.VERSION, false], "a reset starts fresh")
 	_clean()
 
 

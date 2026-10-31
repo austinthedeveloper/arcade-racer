@@ -6,16 +6,20 @@ signal changed
 
 enum Traffic { LIGHT, NORMAL, HEAVY }
 enum Clock { RELAXED, ARCADE, TIGHT }
+enum Units { MPH, KPH }
 
 const TRAFFIC_NAMES := ["LIGHT", "NORMAL", "HEAVY"]
 const TRAFFIC_MULT := [0.5, 1.0, 1.4]
 const TIMER_NAMES := ["RELAXED", "ARCADE", "TIGHT"]
 const TIMER_MULT := [1.35, 1.0, 0.85]  # on the start time and checkpoint bonuses
+const UNIT_NAMES := ["MPH", "KPH"]
+const KPH_PER_MPH := 1.609344
 const VOLUME_STEPS := 10
 const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, the most)
 ## The settings.cfg format (CfgVersion). 0: no version field. 1: the same keys, versioned.
 ## 2: [accessibility] screen_shake and flash (missing: the designed level).
-const VERSION := 2
+## 3: [display] units (missing: MPH).
+const VERSION := 3
 
 ## Where options are saved. Tests point this at a scratch file.
 var path := "user://settings.cfg"
@@ -29,6 +33,7 @@ var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
 var sfx_volume := 10
 var screen_shake := 10  # 0..EFFECT_STEPS; scales camera shake and the nitro FOV stretch
 var flash := 10  # 0..EFFECT_STEPS; scales flashes and blinking warnings
+var units: int = Units.MPH  # the speedometer's
 ## The version of the file last loaded (VERSION when there was no file).
 var loaded_version := VERSION
 
@@ -49,6 +54,7 @@ func reset() -> void:
 	sfx_volume = 10
 	screen_shake = EFFECT_STEPS
 	flash = EFFECT_STEPS
+	units = Units.MPH
 	apply_volumes()
 
 
@@ -68,12 +74,13 @@ func load_settings() -> void:
 		sfx_volume = clampi(int(cfg.get_value("audio", "sfx", sfx_volume)), 0, VOLUME_STEPS)
 		screen_shake = clampi(int(cfg.get_value("accessibility", "screen_shake", screen_shake)), 0, EFFECT_STEPS)
 		flash = clampi(int(cfg.get_value("accessibility", "flash", flash)), 0, EFFECT_STEPS)
+		units = clampi(int(cfg.get_value("display", "units", units)), 0, Units.size() - 1)
 	apply_volumes()
 
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -85,6 +92,11 @@ static func _v0_to_v1(_cfg: ConfigFile) -> void:
 static func _v1_to_v2(cfg: ConfigFile) -> void:
 	cfg.set_value("accessibility", "screen_shake", EFFECT_STEPS)
 	cfg.set_value("accessibility", "flash", EFFECT_STEPS)
+
+
+## Version 3 added the speedometer units: MPH, as every earlier build showed.
+static func _v2_to_v3(cfg: ConfigFile) -> void:
+	cfg.set_value("display", "units", Units.MPH)
 
 
 ## Writes the options. Over a file from a newer build, its other keys are kept
@@ -101,6 +113,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("accessibility", "screen_shake", screen_shake)
 	cfg.set_value("accessibility", "flash", flash)
+	cfg.set_value("display", "units", units)
 	cfg.save(path)
 	apply_volumes()
 	changed.emit()
@@ -125,6 +138,18 @@ func shake_amount(designed: float) -> float:
 ## A flash's strength (alpha, or how far a blink goes) after the flash option, as above.
 func flash_amount(designed: float) -> float:
 	return designed * clampi(flash, 0, EFFECT_STEPS) / float(EFFECT_STEPS)
+
+
+## A car's speed (world units per second) as the speedometer shows it in `in_units`:
+## Cfg.DISPLAY_TOP_SPEED mph at Cfg.MAX_SPEED, rounded.
+static func speed_in(speed: float, in_units: int) -> int:
+	var mph := speed / Cfg.MAX_SPEED * Cfg.DISPLAY_TOP_SPEED
+	return roundi(mph * KPH_PER_MPH if in_units == Units.KPH else mph)
+
+
+## The speedometer's number and label in the units option.
+func speedometer(speed: float) -> Array:
+	return [speed_in(speed, units), UNIT_NAMES[units]]
 
 
 ## Picks a difficulty and puts the timer option on its default (it can still be changed after).
