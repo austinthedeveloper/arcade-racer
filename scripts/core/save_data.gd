@@ -109,8 +109,9 @@ func best(stage: int, car_id: String) -> Dictionary:
 
 
 ## Records a finished stage: the best time and placing for the stage and car (place 0 is
-## "no placing"; lower is better), and with `reach_next` the tour reaching the stage after it.
-## Saves when anything changed. Returns true for a new best time.
+## "no placing"; lower is better), and with `reach_next` the tour reaching the stage after it
+## (a Time Attack run or a Single Race opens nothing). Saves when anything changed. Returns
+## true for a new best time.
 func record_finish(stage: int, car_id: String, time: float, place: int = 0, reach_next := true) -> bool:
 	var dirty := false
 	var key := best_key(stage, car_id)

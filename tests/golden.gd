@@ -76,6 +76,7 @@ func _initialize() -> void:
 	TestSuite.use_scratch_profiles(root.get_node("InputRouter"))
 	TestSuite.use_scratch_settings(root.get_node("Settings"))
 	TestSuite.use_scratch_save(root.get_node("SaveData"))
+	TestSuite.use_scratch_ghosts()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(DIR))
 	for sc in SCENARIOS:
 		var lines := run(sc)

@@ -18,6 +18,13 @@ const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
 var track: Track
 var stage_index := 0  # into Stages
 var tour := true  # Grand Tour: a finish goes on to the next stage. false: a Single Race
+## Time Attack: solo against the clock and the best run's ghost; no rivals, no time limit.
+var time_attack := false
+var ghost: Ghost  # Time Attack: the best run so far, replayed (null before the first)
+var recording: Ghost  # Time Attack: this run, tick by tick
+var ghost_now := Vector3.ZERO  # the ghost this tick: distance, x, steer (Ghost.at)
+var split := NAN  # Time Attack: seconds against the ghost at the last checkpoint (minus is ahead)
+var new_best := false  # Time Attack: this finish beat the ghost and replaced it
 ## What Enter does after a finish or TIME UP: on, another go, or back to the menus.
 enum After { NEXT_STAGE, RETRY, TOUR_OVER, TOUR_DONE, MENU }
 var tour_state: Tour  # the Grand Tour's standings and continue, kept stage to stage
@@ -125,12 +132,15 @@ func start_race() -> void:
 	_fov_stretch = 0.0
 	_was_airborne = false
 	traffic = Traffic.new()
-	traffic.spawn(track, 0 if _no_traffic else Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
+	var traffic_count := Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT)))
+	if _no_traffic or (time_attack and not Settings.attack_traffic):
+		traffic_count = 0
+	traffic.spawn(track, traffic_count)
 	if tour and tour_state == null:
 		tour_state = Tour.new()
 		tour_state.start_stage = stage_index
 	rivals = Rivals.new()
-	rivals.spawn(track, player, car_id, 0 if _no_rivals else Rivals.COUNT, Rivals.SEED + stage_index,
+	rivals.spawn(track, player, car_id, 0 if _no_rivals or time_attack else Rivals.COUNT, Rivals.SEED + stage_index,
 		Difficulty.of(Settings.difficulty), tour_state.drivers if tour else [])
 	if tour and tour_state.drivers.is_empty():
 		tour_state.drivers = rivals.driver_names()
@@ -147,6 +157,12 @@ func start_race() -> void:
 	launch = Launch.Grade.PENDING
 	_gas_since = NAN
 	place = rivals.place(player, player_finish)
+	ghost = Ghost.load_best(stage_index, car_id) if time_attack else null
+	recording = Ghost.make(stage_index, car_id) if time_attack else null
+	ghost_now = Vector3.ZERO if ghost == null else ghost.at(0)
+	road.ghost = ghost_now
+	split = NAN
+	new_best = false
 	next_checkpoint = 0
 	banner = ""
 	resume()
@@ -160,6 +176,7 @@ func start_race() -> void:
 	road.player = player
 	road.player_strips = CarSprites.strips(car["strip"])
 	road.rivals = rivals.cars
+	road.ghost_strips = road.player_strips if ghost != null else {}
 
 
 ## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
@@ -295,8 +312,9 @@ func _physics_process(dt: float) -> void:
 				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
-			time_left -= dt
-			if time_left <= 0.0:
+			if not time_attack:
+				time_left -= dt
+			if time_left <= 0.0 and not time_attack:
 				time_left = 0.0
 				state = State.TIME_UP
 				_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", 999.0)
@@ -318,7 +336,12 @@ func _physics_process(dt: float) -> void:
 	if state == State.RACING:
 		score.watch(dt, player, track)
 		_check_pickups()
+		if recording != null:
+			recording.record(player)
 		_check_progress()
+	if ghost != null:
+		ghost_now = ghost.at(recording.count() - 1)
+		road.ghost = ghost_now
 
 	background.offset += seg_before.curve * (player.speed * dt / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
 
@@ -408,8 +431,12 @@ func _check_progress() -> void:
 	if next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
 		score.checkpoint()
-		time_left += checkpoint_bonus
-		_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0)
+		if time_attack:
+			split = race_time - ghost.time_at(player.distance, 1.0 / Engine.physics_ticks_per_second) if ghost != null else NAN
+			_banner("CHECKPOINT", "" if is_nan(split) else split_text(split) + " vs best", 2.0)
+		else:
+			time_left += checkpoint_bonus
+			_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0)
 	if player.distance >= finish_distance:
 		state = State.FINISHED
 		player_finish = race_time
@@ -418,13 +445,18 @@ func _check_progress() -> void:
 		var before_furthest := SaveData.furthest_stage
 		var before_unlocks: Array = SaveData.unlocks.duplicate()
 		record_finish()
+		if time_attack:
+			_save_ghost()
 		var mins := int(race_time) / 60
 		var secs := fmod(race_time, 60.0)
 		var prompt := "Enter: menu   R: race again"
 		after = After.MENU
 		if tour:
 			prompt = _tour_finish()
-		if _saves() and Unlocks.earns_secret(stage_index, touched_traffic):
+		elif time_attack:
+			var against := "" if ghost == null else split_text(race_time - ghost.time) + " vs best   "
+			prompt = ("NEW BEST!   " if new_best else "") + against + prompt
+		if _saves() and Unlocks.earns_secret(stage_index, touched_traffic, not traffic.cars.is_empty()):
 			SaveData.unlock(Unlocks.SECRET_CAR)
 		new_unlocks = Unlocks.newly_open(before_furthest, before_unlocks, SaveData.furthest_stage, SaveData.unlocks)
 		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
@@ -468,6 +500,19 @@ func record_finish() -> bool:
 	var placed := not rivals.cars.is_empty()
 	var goes_on := tour and (not placed or Tour.advances(place))
 	return SaveData.record_finish(stage_index, car_id, race_time, place if placed else 0, goes_on)
+
+
+## Time Attack: this run becomes the ghost when it beats the saved one.
+func _save_ghost() -> void:
+	if not _saves() or not Ghost.beats(race_time, ghost):
+		return
+	recording.time = race_time
+	new_best = recording.save()
+
+
+## Seconds against a best: "-1.23" ahead, "+0.50" behind.
+static func split_text(seconds: float) -> String:
+	return ("-" if seconds < 0.0 else "+") + "%.2f" % absf(seconds)
 
 
 ## Whether this race is the player's own, to save from: not autodriven, not started partway.

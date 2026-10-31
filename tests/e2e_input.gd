@@ -26,6 +26,7 @@ func _initialize() -> void:
 	_settings = root.get_node("Settings")  # autoloads aren't globals in a SceneTree script
 	TestSuite.use_scratch_settings(_settings)
 	TestSuite.use_scratch_save(root.get_node("SaveData"))
+	TestSuite.use_scratch_ghosts()
 	_game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(_game)
 	physics_frame.connect(_tick)
@@ -66,8 +67,7 @@ func _menu_script() -> Array:
 		["steer_left", func() -> bool: return g.menu.index == 0, "left picks START"],
 		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.index == 0, "Enter on the title opens mode select, on GRAND TOUR"],
 		["steer_right", func() -> bool: return g.menu.index == 1, "right picks SINGLE RACE (played at the end)"],
-		["steer_right", func() -> bool: return g.menu.index == 2, "right picks TIME ATTACK"],
-		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.notice.begins_with("Time Attack"), "TIME ATTACK says it's coming soon"],
+		["steer_right", func() -> bool: return g.menu.index == 2, "right picks TIME ATTACK (played at the end)"],
 		["steer_right", func() -> bool: return g.menu.index == 3, "right picks FREE DRIVE"],
 		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.notice.begins_with("Free Drive"), "FREE DRIVE says it's coming soon"],
 		["steer_right", func() -> bool: return g.menu.index == 4, "right picks OPTIONS"],
@@ -133,6 +133,31 @@ func _send_key(code: int, pressed: bool) -> void:
 	Input.parse_input_event(e)
 
 
+## Stage select to a running Time Attack race, from step `first` (four steps): stage, car,
+## then the gas held for the countdown and a second or so.
+func _time_attack_start(first: int) -> void:
+	match _step - first:
+		0:
+			_send("confirm", true)
+			_next(2)
+		1:
+			_send("confirm", false)
+			_next(2)
+		2:
+			_check(_game.screen == _game.Screen.CARS, "car select")
+			_send("confirm", true)
+			_next(2)
+		3:
+			_send("confirm", false)
+			_race = _game.race
+			_check(_race != null and _race.time_attack, "a Time Attack run starts")
+			if _race == null:
+				quit(1)
+				return
+			_send("accelerate", true)
+			_next(200)
+
+
 func _check(cond: bool, msg: String) -> void:
 	if cond:
 		print("  ok   ", msg)
@@ -148,7 +173,7 @@ func _next(wait_frames: int = 0) -> void:
 
 func _tick() -> void:
 	_frame += 1
-	if _frame > 2500:  # first, so a script error in a step can't hang the run
+	if _frame > 3400:  # first, so a script error in a step can't hang the run
 		printerr("  FAIL e2e timed out at step %d" % _step)
 		quit(1)
 		return
@@ -419,6 +444,49 @@ func _tick() -> void:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES and _game.race == null, "Enter after the finish goes back to stage select")
 			_check(not is_instance_valid(_race) or _race.is_queued_for_deletion(), "the race is gone")
+			# Time Attack: a first run sets the ghost, the second races it
+			_send("back", true)
+			_next(2)
+		51:
+			_send("back", false)
+			_check(_game.screen == _game.Screen.MODES, "back to mode select")
+			_send("steer_right", true)
+			_next(2)
+		52:
+			_send("steer_right", false)
+			_check(_game.menu.index == 2, "on TIME ATTACK")
+			_send("confirm", true)
+			_next(2)
+		53:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.STAGES and _game.menu.time_attack(), "TIME ATTACK opens stage select")
+			_next()
+		54, 55, 56, 57:
+			_time_attack_start(54)
+		58:
+			_check(_race.state == _race.State.RACING and _race.rivals.cars.is_empty(), "racing alone")
+			_race.player.distance = _race.finish_distance + 1.0
+			_next(2)
+		59:
+			_send("accelerate", false)
+			_check(_race.state == _race.State.FINISHED and "NEW BEST" in _race.banner_sub,
+				"the first run is the best so far: " + _race.banner_sub)
+			_send("confirm", true)
+			_next(2)
+		60:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.STAGES, "back to stage select")
+			_next()
+		61, 62, 63, 64:
+			_time_attack_start(61)
+		65:
+			_check(_race.ghost != null and _race.ghost_now.x > 0.0, "the ghost of the first run drives along")
+			_race.player.distance = _race.finish_distance + 1.0
+			_next(2)
+		66:
+			_send("accelerate", false)
+			_check(_race.state == _race.State.FINISHED and "vs best" in _race.banner_sub,
+				"the second run is timed against it: " + _race.banner_sub)
 			_next()
 		_:
 			print("\n%s" % ("e2e passed" if _fails == 0 else "e2e: %d failed" % _fails))

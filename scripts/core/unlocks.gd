@@ -51,9 +51,10 @@ static func stage_condition(index: int) -> String:
 	return "Reach stage %d in the Grand Tour" % (index + 1)
 
 
-## Whether a finish earns the secret car: Palm Coast without a single touch of traffic.
-static func earns_secret(stage: int, touched_traffic: bool) -> bool:
-	return stage == SECRET_STAGE and not touched_traffic
+## Whether a finish earns the secret car: Palm Coast, with traffic on the road, without a
+## single touch of it.
+static func earns_secret(stage: int, touched_traffic: bool, had_traffic: bool) -> bool:
+	return stage == SECRET_STAGE and had_traffic and not touched_traffic
 
 
 ## The cars open now that weren't with `before_furthest` and `before_unlocked`: for the

@@ -8,10 +8,15 @@ extends Node2D
 ## The player's car goes in after its own segment; cars between it and the camera are
 ## drawn over it.
 
+const GHOST_ALPHA := 0.45  # the Time Attack ghost, see-through...
+const GHOST_TINT := Color(0.6, 0.85, 1.0)  # ...and cooled blue
+
 var track: Track
 var player: PlayerCar
 var player_strips: Dictionary = {}  # the player car's CarSprites.strips
 var rivals: Array[RivalCar] = []
+var ghost := Vector3.ZERO  # Time Attack's ghost: distance, x, steer (Ghost.at)
+var ghost_strips: Dictionary = {}  # its car's strips; empty for no ghost
 var camera_z := 0.0
 var camera_depth := Cfg.CAMERA_DEPTH  # the race eases it down for the nitro stretch
 var flash := 1.0  # the FLASHING option's share of the designed blink (Settings.flash_amount(1.0))
@@ -25,6 +30,7 @@ var _covered: Dictionary = {}  # _covered_theme: the darkened colors
 var _covered_from: Dictionary = {}  # and the theme they were made from
 var _font: Font
 var _rivals_in: Dictionary = {}  # segment index -> the rivals in it, this frame
+var _ghost_seg := -1  # the ghost's segment index this frame, -1 for none
 var _rivals_behind: Array = []  # rivals in the player's segment but behind it, this frame
 
 
@@ -48,6 +54,7 @@ func _draw() -> void:
 	var dx := -base.curve * base_percent
 	var max_y := float(Cfg.SCREEN_H)
 	var drawn: Array[Segment] = []
+	_ghost_seg = -1 if ghost_strips.is_empty() else track.find_segment(ghost_z()).index
 	var player_seg := track.find_segment(player.position + Cfg.PLAYER_Z).index
 	_rivals_in.clear()
 	_rivals_behind.clear()
@@ -226,6 +233,8 @@ func _draw_cars(seg: Segment) -> void:
 
 	for r: RivalCar in _rivals_in.get(seg.index, []):
 		_draw_rival(seg, r, tint)
+	if seg.index == _ghost_seg:
+		_draw_ghost(seg)
 
 
 ## The race gate drawn for a segment's flags, or "" for none.
@@ -306,6 +315,24 @@ func _draw_rival(seg: Segment, r: RivalCar, tint: Color) -> void:
 		lift += sin(r.crash_time / Cfg.CRASH_DURATION * PI) * w * 0.3
 	CarSprites.draw_player(self, r.strips, Vector2(roundf(cx), roundf(cy)), w, steer, r.braking, r.nitro_time > 0.0,
 		time, roundf(lift), r.pitch, 1.0, tint)
+
+
+## Where the ghost is on the track (its distance from the start line, wrapped).
+func ghost_z() -> float:
+	return fposmod(ghost.x + Cfg.PLAYER_Z, track.length)
+
+
+## The Time Attack ghost: the player's car, see-through and cooled blue.
+func _draw_ghost(seg: Segment) -> void:
+	var p := fposmod(ghost_z(), Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH
+	var s := lerpf(seg.scale1, seg.scale2, p)
+	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
+	var cx := lerpf(seg.s1.x, seg.s2.x, p) + s * ghost.y * Cfg.ROAD_WIDTH * Cfg.PROJ
+	var cy := lerpf(seg.s1.y, seg.s2.y, p)
+	if w < 1.0 or cy - w >= seg.clip or cx + w < 0.0 or cx - w > Cfg.SCREEN_W:
+		return
+	CarSprites.draw_player(self, ghost_strips, Vector2(roundf(cx), roundf(cy)), w, ghost.z, false, false,
+		time, 0.0, 0.0, GHOST_ALPHA, GHOST_TINT)
 
 
 func _draw_player() -> void:

@@ -5,6 +5,7 @@ extends RefCounted
 const SCRATCH_PROFILES := "user://test_input_profiles.cfg"
 const SCRATCH_SETTINGS := "user://test_settings.cfg"
 const SCRATCH_SAVE := "user://test_save.cfg"
+const SCRATCH_GHOSTS := "user://test_ghosts"
 const DT := 1.0 / 60.0
 
 var runner
@@ -35,6 +36,15 @@ static func use_scratch_save(save_data: Node) -> void:
 		if FileAccess.file_exists(f):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
 	save_data.load_save()
+
+
+## Points Time Attack ghosts (Ghost.dir) at an empty folder of the tests' own.
+static func use_scratch_ghosts() -> void:
+	Ghost.dir = SCRATCH_GHOSTS
+	var d := DirAccess.open(SCRATCH_GHOSTS)
+	if d != null:
+		for f in d.get_files():
+			d.remove(f)
 
 
 ## A straight, flat track `segments` long, for driving tests.

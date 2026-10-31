@@ -25,7 +25,11 @@ func move(dir: int) -> int:
 
 
 func handle(m: MenuInput) -> void:
-	if m.step() != 0:
+	if time_attack() and m.step_y() != 0:
+		Settings.attack_traffic = not Settings.attack_traffic
+		Settings.save()
+		Audio.play("tick")
+	elif m.step() != 0:
 		move(m.step())
 		Audio.play("tick")
 	elif m.confirm_pressed:
@@ -76,9 +80,15 @@ func _draw() -> void:
 	_footer(hints(true))
 
 
+func time_attack() -> bool:
+	return game != null and game.mode_index == ModeSelect.Item.TIME_ATTACK
+
+
 func _tour_line() -> String:
 	if game != null and game.mode_index == ModeSelect.Item.SINGLE_RACE:
 		return "Single Race: one run on this stage"
+	if time_attack():
+		return "Time Attack: you and your best run.   Traffic %s  (Up / Down)" % ("ON" if Settings.attack_traffic else "OFF")
 	var last := Stages.count() - 1
 	if index == last:
 		return "The final stage"
