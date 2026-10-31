@@ -74,6 +74,24 @@ The order above follows these dependencies. Moving an item earlier means moving 
 | Rivals change every golden trace | RC-1 | Seed the rivals' RNG and regenerate the traces as their own commit |
 | One developer, six themes | Everything | Each month has a release, so slipping an item moves it to the next month rather than breaking a build |
 
+## Tracking on GitHub
+
+The feature list is mirrored on GitHub (populated 2026-10-31), and the docs stay the source of the
+wording while GitHub tracks state:
+
+- **Issues.** One per feature, titled with its ID (`RC-8 Power slide`), labelled with its group
+  (`RC: racing core` and so on), its size (`size: S`, `M`, `L`) and `roadmap`. Dependencies in the
+  body read `WS-1 (#28)`, so GitHub cross-links them.
+- **Milestones.** M1 (November 2026) to M6 (April 2027), one per month of the table above, each
+  with its theme and due date. The milestones page is the month-by-month roadmap.
+- **Project.** [arcade racer roadmap](https://github.com/users/austinthedeveloper/projects/4) holds
+  every issue with Month, Group, Size, Start date and Target date fields, and a Status of Backlog,
+  Todo, In progress or Done. Month 1 starts in Todo, the rest in Backlog.
+
+When a feature is finished, close its issue; the project item follows. When a group doc changes a
+feature, update its issue to match. A new feature takes the next ID in its group doc and gets an
+issue in the same shape.
+
 ## Reading the group docs
 
 Each group doc has the same shape: what is built today, a feature table, open decisions and test
