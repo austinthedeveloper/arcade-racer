@@ -26,7 +26,17 @@ TRAFFIC_BIG_WIDTH = 170
 TRAFFIC = [
     ("trf01_cars_A_v1.png", TRAFFIC_CAR_WIDTH, ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow"]),
     ("trf03_big_A_v1.png", TRAFFIC_BIG_WIDTH, ["semi", "bus", "box_truck", "rv", "carrier"]),
-    ("trf04_stage_specials_A_v1.png", TRAFFIC_CAR_WIDTH, ["surf_van", None, None, None, None, "taxi"]),
+    ("trf04_stage_specials_A_v1.png", TRAFFIC_CAR_WIDTH, [
+        "surf_van", "trolley", "log_truck", "tractor", "airboat_trailer", "taxi"]),
+    ("trf06_cars_more_A_v1.png", TRAFFIC_CAR_WIDTH, [
+        "pickup_red", "suv_green", "muscle_white", "van_navy", "tuk_tuk", "hatch_purple"]),
+    ("trf08_service_A_v1.png", TRAFFIC_BIG_WIDTH, [
+        "tow_truck", "cement_mixer", "tanker", "garbage_truck", "street_sweeper", "ice_cream_truck"]),
+    # The green combine on the specials sheet was rerolled as its own sheet (v2)
+    ("trf09_stage_specials_2_A_v1.png", TRAFFIC_CAR_WIDTH, [
+        "golf_cart", "jeep_red", "limo_white", "dump_truck", "boat_trailer", None, "news_truck",
+        "double_decker"]),
+    ("trf09_combine_A_v2.png", 220, ["combine"]),
 ]
 
 

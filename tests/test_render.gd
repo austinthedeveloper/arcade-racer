@@ -38,7 +38,7 @@ func test_car_sprites_load() -> void:
 		eq(int(strip["cell"].x) * CarSprites.PLAYER_FRAMES, strip["tex"].get_width(), "seven equal cells in strip %d" % row)
 		check(strip["body_w"] > 0.0, "body width found in strip %d" % row)
 	check(CarSprites.player_strips.has(0), "level strip always there")
-	eq(CarSprites.traffic.size(), 13, "traffic vehicles")
+	eq(CarSprites.traffic.size(), 37, "traffic vehicles")
 
 
 func test_pitch_rows() -> void:

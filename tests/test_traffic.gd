@@ -55,3 +55,25 @@ func test_cars_move_and_change_segments() -> void:
 		near(moved, fposmod(c.speed * 10.0, t.length), 1.0, "car %d moved speed x time" % i)
 		check(c.segment == t.find_segment(c.z), "car %d listed in the right segment" % i)
 	eq(_count_in_segments(t), 15, "no car lost or doubled")
+
+
+func test_every_traffic_sprite_exists() -> void:
+	for id in Traffic.CARS + Traffic.BIG + Traffic.SPECIALS:
+		check(CarSprites.traffic.has(id), id + " has a sprite")
+	for i in Stages.count():
+		var t := Stages.build(i)
+		var specials: Array = t.theme.get("specials", [])
+		check(not specials.is_empty(), t.name + " has its own locals")
+		for id in specials:
+			check(CarSprites.traffic.has(id), "%s local %s has a sprite" % [t.name, id])
+
+
+func test_stage_locals_show_up_in_traffic() -> void:
+	var t := HarvestValley.build()
+	var tr := Traffic.new()
+	tr.spawn(t, 200)
+	var seen := {}
+	for car in tr.cars:
+		seen[car.sprite] = true
+	check(seen.has("combine") or seen.has("tractor"), "farm machines on the Harvest road")
+	check(not seen.has("surf_van"), "no Palm Coast surf vans in Harvest Valley")

@@ -15,6 +15,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#6e6e79"), Color("#686873")],
 		"lane": Color("#f0f0f0"),
 		"background": "res://assets/sprites/backgrounds/palm_coast_far.png",
+		"specials": ["surf_van", "golf_cart", "ice_cream_truck"],
 	}
 
 

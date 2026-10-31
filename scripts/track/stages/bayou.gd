@@ -17,6 +17,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#6a6a68"), Color("#646462")],
 		"lane": Color("#efe9d6"),
 		"background": "res://assets/sprites/backgrounds/bayou_far.png",
+		"specials": ["airboat_trailer", "boat_trailer", "pickup_red"],
 	}
 
 

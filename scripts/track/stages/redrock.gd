@@ -15,6 +15,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#4a4a53"), Color("#44444d")],
 		"lane": Color("#f4f4f4"),
 		"background": "res://assets/sprites/backgrounds/redrock_far.png",
+		"specials": ["jeep_red", "tow_truck", "pickup_red"],
 	}
 
 

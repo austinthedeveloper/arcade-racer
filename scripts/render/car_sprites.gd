@@ -26,6 +26,13 @@ const DECK_STRETCH := 0.35
 # World units per texture pixel. Each concept sheet was drawn at its own scale.
 const CAR_SCALE := 7.0
 const BIG_SCALE := 8.2
+## Traffic sprites by the scale their sheet was cut at (tools/make_car_sprites.py)
+const CAR_SHEET_IDS := ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow",
+	"surf_van", "trolley", "log_truck", "tractor", "airboat_trailer", "taxi",
+	"pickup_red", "suv_green", "muscle_white", "van_navy", "tuk_tuk", "hatch_purple",
+	"golf_cart", "jeep_red", "limo_white", "dump_truck", "boat_trailer", "news_truck", "double_decker"]
+const BIG_SHEET_IDS := ["semi", "bus", "box_truck", "rv", "carrier",
+	"tow_truck", "cement_mixer", "tanker", "garbage_truck", "street_sweeper", "ice_cream_truck", "combine"]
 
 ## pitch row (-1 up, 0 level, 1 down) -> {"tex", "cell", "body_w"}
 static var player_strips: Dictionary = {}
@@ -39,9 +46,9 @@ static func load_all() -> void:
 	for row: int in PLAYER_PITCH_STRIPS:
 		if ResourceLoader.exists(PLAYER_PITCH_STRIPS[row]):
 			player_strips[row] = _load_strip(PLAYER_PITCH_STRIPS[row])
-	for id in ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow", "surf_van", "taxi"]:
+	for id in CAR_SHEET_IDS:
 		_add_traffic(id, CAR_SCALE)
-	for id in ["semi", "bus", "box_truck", "rv", "carrier"]:
+	for id in BIG_SHEET_IDS:
 		_add_traffic(id, BIG_SCALE)
 
 

@@ -17,6 +17,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#34323e"), Color("#302e3a")],
 		"lane": Color("#f2f0f6"),
 		"background": "res://assets/sprites/backgrounds/skyline_far.png",
+		"specials": ["double_decker", "trolley", "news_truck", "taxi"],
 		"traffic": 80,
 	}
 

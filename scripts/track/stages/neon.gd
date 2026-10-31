@@ -15,6 +15,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#2a2540"), Color("#262138")],  # wet asphalt
 		"lane": Color("#f0e6ff"),
 		"background": "res://assets/sprites/backgrounds/neon_far.png",
+		"specials": ["taxi", "limo_white", "tuk_tuk"],
 		"traffic": 95,
 	}
 

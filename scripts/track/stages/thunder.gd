@@ -17,6 +17,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#3c3e46"), Color("#373941")],  # rain-soaked asphalt
 		"lane": Color("#e6e6ea"),
 		"background": "res://assets/sprites/backgrounds/thunder_far.png",
+		"specials": ["tanker", "cement_mixer", "dump_truck"],
 	}
 
 

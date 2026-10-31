@@ -16,6 +16,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#66625c"), Color("#605c56")],
 		"lane": Color("#f6efd8"),
 		"background": "res://assets/sprites/backgrounds/harvest_far.png",
+		"specials": ["tractor", "combine", "pickup_red"],
 	}
 
 
