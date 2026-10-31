@@ -2,7 +2,7 @@
 
 Updated: 2026-10-30 (America/Chicago). Generation began 2026-10-29.
 
-**Saved: 140 images — 137 from the initial run plus 3 round-one review revisions.** The initial run covers 133 source prompts plus four style comparisons. Revised and reused concepts await user review; generation completion does not mean production approval.
+**Saved: 215 images — 140 from the earlier passes plus 75/75 round-four images.** Generation completion is separate from user approval and production readiness.
 
 **Main direction:** STYLE-A, high-color pixel art (confirmed by the user). STYLE-B and STYLE-C are comparison variants for KA-01 and KA-02 only.
 
@@ -10,11 +10,15 @@ Updated: 2026-10-30 (America/Chicago). Generation began 2026-10-29.
 
 **Usage:** concept/reference images. Sprite sheets still need production cleanup, frame registration, keying/alpha conversion, and animation checks. Background layers need seam testing before use. Wide layers are generally about 3:1, the width returned by the generator; actual dimensions are recorded below.
 
+## Round 4 generation — 2026-10-30
+
+**75/75 images saved.** [Round-four completion log](generation-round4.md) · [Exact prompts and provenance](generation-round4.json). Earlier review decisions and source documents are retained. Car redesigns use the new 01R descriptions for their dependent sheets; old files are preserved.
+
 ## Round 1 review follow-up — 2026-10-30
 
 **3 new v2 revisions saved; 7 requested existing concepts gathered for review.** [Review and current selections](generation-review-round1.md) · [Revised prompts and validation](generation-revisions-round1.json).
 
-KA-02 A is the visual target. New Vega/Bruiser heroes and the new Vega seven-frame sheet supersede their v1 counterparts for the next design review. Old Vega orthographic/crash and Bruiser orthographic/steering/crash images need design refreshes. KA-01/KA-02 retain mood/style value but show the prior Vega. Production keying, one pixel grid, steering geometry/registration and parallax seams remain outstanding. The proposed ~200 px player-car width is not locked.
+KA-02 A is the visual target. New Vega/Bruiser heroes and the new Vega seven-frame sheet supersede their v1 counterparts for the next design review. Those old Vega and Bruiser views are superseded by the round-four outputs linked above. KA-01/KA-02 retain mood/style value but show the prior Vega. Production keying, one pixel grid, steering geometry/registration and parallax seams remain outstanding. The proposed ~200 px player-car width is not locked.
 
 The round tables below document the **initial run**. The three additional files are listed in the review follow-up document. Their existence does not imply that all later source-prompt revisions have been regenerated.
 
@@ -31,7 +35,7 @@ The round tables below document the **initial run**. The three additional files 
 | Status | Prompt | Style | Output | Notes |
 |---|---|---|---|---|
 | complete | [BG-PALM-01](prompts/backgrounds/palm-coast.md) | A | [palm-coast_composite_A_v1.png](concept/backgrounds/palm-coast_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
-| superseded by v2 | [CAR-BRUISER-01](prompts/cars/car_bruiser.md) | A | [car_bruiser_hero_A_v1.png](concept/cars/car_bruiser_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-BRUISER-01](prompts/cars/car_bruiser.md) | A | [car_bruiser_hero_A_v1.png](concept/cars/car_bruiser_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
 | superseded by v2 | [CAR-VEGA-01](prompts/cars/car_vega.md) | A | [car_vega_hero_A_v1.png](concept/cars/car_vega_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
 | complete | [KA-01](prompts/key-art/key-art.md) | A | [ka01_title_A_v1.png](concept/key-art/ka01_title_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [KA-01](prompts/key-art/key-art.md) | B | [ka01_title_B_v1.png](concept/key-art/ka01_title_B_v1.png) | 1672 × 940. Generated and visually reviewed as concept reference. |
@@ -58,15 +62,15 @@ The round tables below document the **initial run**. The three additional files 
 | complete | [BG-REDROCK-02](prompts/backgrounds/redrock.md) | A | [redrock_l1_sky_A_v1.png](concept/backgrounds/redrock_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-REDROCK-03](prompts/backgrounds/redrock.md) | A | [redrock_l2_far_A_v1.png](concept/backgrounds/redrock_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-REDROCK-04](prompts/backgrounds/redrock.md) | A | [redrock_l3_near_A_v1.png](concept/backgrounds/redrock_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
-| old design; refresh pending | [CAR-BRUISER-02](prompts/cars/car_bruiser.md) | A | [car_bruiser_views_A_v1.png](concept/cars/car_bruiser_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| old design; refresh pending | [CAR-BRUISER-03](prompts/cars/car_bruiser.md) | A | [car_bruiser_steer_sheet_A_v1.png](concept/cars/car_bruiser_steer_sheet_A_v1.png) | 2114 × 744. Generated and visually reviewed as concept reference. |
-| complete | [CAR-KESTREL-01](prompts/cars/car_kestrel.md) | A | [car_kestrel_hero_A_v1.png](concept/cars/car_kestrel_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
-| complete | [CAR-KESTREL-02](prompts/cars/car_kestrel.md) | A | [car_kestrel_views_A_v1.png](concept/cars/car_kestrel_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| complete | [CAR-KESTREL-03](prompts/cars/car_kestrel.md) | A | [car_kestrel_steer_sheet_A_v1.png](concept/cars/car_kestrel_steer_sheet_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
-| complete | [CAR-SOL-01](prompts/cars/car_sol.md) | A | [car_sol_hero_A_v1.png](concept/cars/car_sol_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
-| complete | [CAR-SOL-02](prompts/cars/car_sol.md) | A | [car_sol_views_A_v1.png](concept/cars/car_sol_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| complete | [CAR-SOL-03](prompts/cars/car_sol.md) | A | [car_sol_steer_sheet_A_v1.png](concept/cars/car_sol_steer_sheet_A_v1.png) | 2117 × 743. Generated and visually reviewed as concept reference. |
-| old design; refresh pending | [CAR-VEGA-02](prompts/cars/car_vega.md) | A | [car_vega_views_A_v1.png](concept/cars/car_vega_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-BRUISER-02](prompts/cars/car_bruiser.md) | A | [car_bruiser_views_A_v1.png](concept/cars/car_bruiser_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-BRUISER-03](prompts/cars/car_bruiser.md) | A | [car_bruiser_steer_sheet_A_v1.png](concept/cars/car_bruiser_steer_sheet_A_v1.png) | 2114 × 744. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-KESTREL-01](prompts/cars/car_kestrel.md) | A | [car_kestrel_hero_A_v1.png](concept/cars/car_kestrel_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-KESTREL-02](prompts/cars/car_kestrel.md) | A | [car_kestrel_views_A_v1.png](concept/cars/car_kestrel_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-KESTREL-03](prompts/cars/car_kestrel.md) | A | [car_kestrel_steer_sheet_A_v1.png](concept/cars/car_kestrel_steer_sheet_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-SOL-01](prompts/cars/car_sol.md) | A | [car_sol_hero_A_v1.png](concept/cars/car_sol_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-SOL-02](prompts/cars/car_sol.md) | A | [car_sol_views_A_v1.png](concept/cars/car_sol_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-SOL-03](prompts/cars/car_sol.md) | A | [car_sol_steer_sheet_A_v1.png](concept/cars/car_sol_steer_sheet_A_v1.png) | 2117 × 743. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-VEGA-02](prompts/cars/car_vega.md) | A | [car_vega_views_A_v1.png](concept/cars/car_vega_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | superseded by v2 | [CAR-VEGA-03](prompts/cars/car_vega.md) | A | [car_vega_steer_sheet_A_v1.png](concept/cars/car_vega_steer_sheet_A_v1.png) | 2098 × 749. Generated and visually reviewed as concept reference. |
 | complete | [FX-01](prompts/fx/fx.md) | A | [fx01_tire_smoke_A_v1.png](concept/fx/fx01_tire_smoke_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [FX-02](prompts/fx/fx.md) | A | [fx02_nitro_A_v1.png](concept/fx/fx02_nitro_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
@@ -107,7 +111,7 @@ The round tables below document the **initial run**. The three additional files 
 | complete | [BG-HARVEST-02](prompts/backgrounds/harvest.md) | A | [harvest_l1_sky_A_v1.png](concept/backgrounds/harvest_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-HARVEST-03](prompts/backgrounds/harvest.md) | A | [harvest_l2_far_A_v1.png](concept/backgrounds/harvest_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-HARVEST-04](prompts/backgrounds/harvest.md) | A | [harvest_l3_near_A_v1.png](concept/backgrounds/harvest_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
-| complete | [BG-SKYLINE-01](prompts/backgrounds/skyline.md) | A | [skyline_composite_A_v1.png](concept/backgrounds/skyline_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [BG-SKYLINE-01](prompts/backgrounds/skyline.md) | A | [skyline_composite_A_v1.png](concept/backgrounds/skyline_composite_A_v1.png) | 1916 × 821. Generated and visually reviewed as concept reference. |
 | complete | [BG-SKYLINE-02](prompts/backgrounds/skyline.md) | A | [skyline_l1_sky_A_v1.png](concept/backgrounds/skyline_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-SKYLINE-03](prompts/backgrounds/skyline.md) | A | [skyline_l2_far_A_v1.png](concept/backgrounds/skyline_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-SKYLINE-04](prompts/backgrounds/skyline.md) | A | [skyline_l3_near_A_v1.png](concept/backgrounds/skyline_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
@@ -119,22 +123,22 @@ The round tables below document the **initial run**. The three additional files 
 | complete | [BG-TIMBER-02](prompts/backgrounds/timberline.md) | A | [timberline_l1_sky_A_v1.png](concept/backgrounds/timberline_l1_sky_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-TIMBER-03](prompts/backgrounds/timberline.md) | A | [timberline_l2_far_A_v1.png](concept/backgrounds/timberline_l2_far_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [BG-TIMBER-04](prompts/backgrounds/timberline.md) | A | [timberline_l3_near_A_v1.png](concept/backgrounds/timberline_l3_near_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
-| old design; refresh pending | [CAR-BRUISER-04](prompts/cars/car_bruiser.md) | A | [car_bruiser_crash_sheet_A_v1.png](concept/cars/car_bruiser_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-BRUISER-04](prompts/cars/car_bruiser.md) | A | [car_bruiser_crash_sheet_A_v1.png](concept/cars/car_bruiser_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [CAR-HAULER-01](prompts/cars/car_hauler.md) | A | [car_hauler_hero_A_v1.png](concept/cars/car_hauler_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
 | complete | [CAR-HAULER-02](prompts/cars/car_hauler.md) | A | [car_hauler_views_A_v1.png](concept/cars/car_hauler_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [CAR-HAULER-03](prompts/cars/car_hauler.md) | A | [car_hauler_steer_sheet_A_v1.png](concept/cars/car_hauler_steer_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [CAR-HAULER-04](prompts/cars/car_hauler.md) | A | [car_hauler_crash_sheet_A_v1.png](concept/cars/car_hauler_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| complete | [CAR-KESTREL-04](prompts/cars/car_kestrel.md) | A | [car_kestrel_crash_sheet_A_v1.png](concept/cars/car_kestrel_crash_sheet_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
-| complete | [CAR-MESA-01](prompts/cars/car_mesa.md) | A | [car_mesa_hero_A_v1.png](concept/cars/car_mesa_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
-| complete | [CAR-MESA-02](prompts/cars/car_mesa.md) | A | [car_mesa_views_A_v1.png](concept/cars/car_mesa_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| complete | [CAR-MESA-03](prompts/cars/car_mesa.md) | A | [car_mesa_steer_sheet_A_v1.png](concept/cars/car_mesa_steer_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| complete | [CAR-MESA-04](prompts/cars/car_mesa.md) | A | [car_mesa_crash_sheet_A_v1.png](concept/cars/car_mesa_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| complete | [CAR-PHANTOM-01](prompts/cars/car_phantom.md) | A | [car_phantom_hero_A_v1.png](concept/cars/car_phantom_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
-| complete | [CAR-PHANTOM-02](prompts/cars/car_phantom.md) | A | [car_phantom_views_A_v1.png](concept/cars/car_phantom_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| complete | [CAR-PHANTOM-03](prompts/cars/car_phantom.md) | A | [car_phantom_steer_sheet_A_v1.png](concept/cars/car_phantom_steer_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| complete | [CAR-PHANTOM-04](prompts/cars/car_phantom.md) | A | [car_phantom_crash_sheet_A_v1.png](concept/cars/car_phantom_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
-| complete | [CAR-SOL-04](prompts/cars/car_sol.md) | A | [car_sol_crash_sheet_A_v1.png](concept/cars/car_sol_crash_sheet_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
-| old design; refresh pending | [CAR-VEGA-04](prompts/cars/car_vega.md) | A | [car_vega_crash_sheet_A_v1.png](concept/cars/car_vega_crash_sheet_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-KESTREL-04](prompts/cars/car_kestrel.md) | A | [car_kestrel_crash_sheet_A_v1.png](concept/cars/car_kestrel_crash_sheet_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-MESA-01](prompts/cars/car_mesa.md) | A | [car_mesa_hero_A_v1.png](concept/cars/car_mesa_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-MESA-02](prompts/cars/car_mesa.md) | A | [car_mesa_views_A_v1.png](concept/cars/car_mesa_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-MESA-03](prompts/cars/car_mesa.md) | A | [car_mesa_steer_sheet_A_v1.png](concept/cars/car_mesa_steer_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-MESA-04](prompts/cars/car_mesa.md) | A | [car_mesa_crash_sheet_A_v1.png](concept/cars/car_mesa_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-PHANTOM-01](prompts/cars/car_phantom.md) | A | [car_phantom_hero_A_v1.png](concept/cars/car_phantom_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-PHANTOM-02](prompts/cars/car_phantom.md) | A | [car_phantom_views_A_v1.png](concept/cars/car_phantom_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-PHANTOM-03](prompts/cars/car_phantom.md) | A | [car_phantom_steer_sheet_A_v1.png](concept/cars/car_phantom_steer_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-PHANTOM-04](prompts/cars/car_phantom.md) | A | [car_phantom_crash_sheet_A_v1.png](concept/cars/car_phantom_crash_sheet_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-SOL-04](prompts/cars/car_sol.md) | A | [car_sol_crash_sheet_A_v1.png](concept/cars/car_sol_crash_sheet_A_v1.png) | 2048 × 768. Generated and visually reviewed as concept reference. |
+| superseded by round 4 | [CAR-VEGA-04](prompts/cars/car_vega.md) | A | [car_vega_crash_sheet_A_v1.png](concept/cars/car_vega_crash_sheet_A_v1.png) | 2172 × 724. Generated and visually reviewed as concept reference. |
 | complete | [CAR-ZENITH-01](prompts/cars/car_zenith.md) | A | [car_zenith_hero_A_v1.png](concept/cars/car_zenith_hero_A_v1.png) | 1448 × 1086. Generated and visually reviewed as concept reference. |
 | complete | [CAR-ZENITH-02](prompts/cars/car_zenith.md) | A | [car_zenith_views_A_v1.png](concept/cars/car_zenith_views_A_v1.png) | 1672 × 941. Generated and visually reviewed as concept reference. |
 | complete | [CAR-ZENITH-03](prompts/cars/car_zenith.md) | A | [car_zenith_steer_sheet_A_v1.png](concept/cars/car_zenith_steer_sheet_A_v1.png) | 2117 × 743. Generated and visually reviewed as concept reference. |
