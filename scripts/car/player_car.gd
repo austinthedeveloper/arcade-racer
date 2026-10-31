@@ -45,6 +45,7 @@ var airborne := false
 var landed := false  # true for the tick the car touches down
 var crashed := false  # true for the tick a crash starts
 var bumped := false  # true for the tick the car nudges slower traffic without crashing
+var hit_traffic := false  # true for the tick the car touches a traffic car (any way)
 var crash_time := 0.0
 
 var _alt := 0.0
@@ -93,6 +94,7 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	landed = false
 	crashed = false
 	bumped = false
+	hit_traffic = false
 	var seg := track.find_segment(position + Cfg.PLAYER_Z)
 	var pct := speed / Cfg.MAX_SPEED
 	var top := top_speed * (Cfg.NITRO_SPEED_MULT if nitro_time > 0.0 else 1.0)
@@ -250,6 +252,7 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 		if gap < 0.0:
 			if speed <= car.speed and absf(last_x - car.offset) < reach:
 				continue  # a faster car catching you up from behind in your lane drives through
+			hit_traffic = true
 			# Steered into a car beside you: pushed back out to your side, no snap behind it
 			x = car.offset + (reach if x >= car.offset else -reach)
 			speed *= 1.0 - Cfg.SIDESWIPE_SPEED_LOSS
@@ -257,6 +260,7 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 			return true
 		if speed <= car.speed:
 			continue
+		hit_traffic = true
 		if ram_time > 0.0:
 			Traffic.fling(car, x)
 			rammed = true

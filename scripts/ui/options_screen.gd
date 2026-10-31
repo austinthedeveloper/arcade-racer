@@ -7,7 +7,7 @@ extends MenuScreen
 ## up/down, so steering picks the row and gas changes it (on the page bar, the next page).
 ## The two reset rows leave the wheel profiles alone; resetting the save asks first.
 
-enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
+enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
 	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP,
 	BACK }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
@@ -15,7 +15,8 @@ enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
 ## The rows between the page bar and BACK on each page.
 const PAGE_ROWS := [
-	[Row.AUTO_GAS, Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS, Row.RESET_OPTIONS, Row.RESET_SAVE],
+	[Row.AUTO_GAS, Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.RESET_OPTIONS,
+		Row.RESET_SAVE],
 	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
 	[Row.MUSIC, Row.SFX],
 	[Row.CALIBRATE, Row.REMAP],
@@ -24,8 +25,8 @@ const PAGE_ROWS := [
 ## Shown on a page with no rows yet.
 const PAGE_EMPTY := ["", "", "", "", ""]
 ## The most rows any page has, page bar and BACK included: the panel's height.
-const SLOTS := 10
-const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
+const SLOTS := 11
+const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
 	"BACK"]
@@ -37,6 +38,7 @@ const HELP := [
 	"Time to reach each checkpoint. Relaxed gives more, Tight less.",
 	"Grand Tour: time left at a finish carries into the next stage.",
 	"Nitro cans, clocks, ram plates and ghosts to grab on the road.",
+	"Every car and stage open now, without earning them. Progress is kept.",
 	"Music loudness.",
 	"Engine, crash and menu sound loudness.",
 	"Set up a racing wheel and pedals (F2 also works).",
@@ -55,12 +57,12 @@ const HELP := [
 	"Back to %s.",
 ]
 ## The rows that show ON or OFF.
-const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES,
+const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES,
 	Row.STEER_ASSIST, Row.BRAKE_ASSIST]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
 ## Rows the race only reads when a stage starts.
 const NEXT_RACE := [Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS]
-const ROW_H := 22.0
+const ROW_H := 20.0
 const TOP := 56.0
 
 var back_name := "the title screen"  # where BACK goes, for its help line
@@ -151,6 +153,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.carry_time = not s.carry_time
 		Row.POWER_UPS:
 			s.power_ups = not s.power_ups
+		Row.UNLOCK_ALL:
+			s.unlock_all = not s.unlock_all
 		Row.MUSIC:
 			s.music_volume = _step(s.music_volume, dir, s.VOLUME_STEPS + 1, wrap)
 		Row.SFX:
@@ -216,6 +220,8 @@ static func toggled(row: int) -> bool:
 			return s.carry_time
 		Row.POWER_UPS:
 			return s.power_ups
+		Row.UNLOCK_ALL:
+			return s.unlock_all
 		Row.INTEGER_SCALE:
 			return s.integer_scale
 		Row.VSYNC:

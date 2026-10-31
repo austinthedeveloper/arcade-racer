@@ -40,6 +40,8 @@ var launch: Launch.Grade = Launch.Grade.PENDING  # how the player's start went
 var score := Scoring.new()
 var place := 1  # the player's place in the field (Rivals.standings)
 var player_finish := -1.0  # race time the player finished in, -1 still racing
+var touched_traffic := false  # the player has touched a traffic car this stage (Unlocks secret)
+var new_unlocks: Array[String] = []  # car ids this finish opened, for the HUD
 var finish_distance := 1.0
 var checkpoint_bonus := CHECKPOINT_BONUS  # after the timer option
 var checkpoint_distances: Array[float] = []
@@ -139,6 +141,8 @@ func start_race() -> void:
 	checkpoint_bonus = Settings.race_time(CHECKPOINT_BONUS)
 	race_time = 0.0
 	player_finish = -1.0
+	touched_traffic = false
+	new_unlocks.clear()
 	score = Scoring.new()
 	launch = Launch.Grade.PENDING
 	_gas_since = NAN
@@ -304,6 +308,7 @@ func _physics_process(dt: float) -> void:
 	traffic.update(dt, track)
 	rivals.update(dt, track, player, state != State.COUNTDOWN, finish_distance)
 	player.collide(track)
+	touched_traffic = touched_traffic or player.hit_traffic
 	Rivals.resolve_contacts(rivals.everyone(player), track)
 	place = rivals.place(player, player_finish)
 	picked_up = false
@@ -410,6 +415,8 @@ func _check_progress() -> void:
 		player_finish = race_time
 		place = rivals.place(player, player_finish)
 		score.finish(place, not rivals.cars.is_empty())
+		var before_furthest := SaveData.furthest_stage
+		var before_unlocks: Array = SaveData.unlocks.duplicate()
 		record_finish()
 		var mins := int(race_time) / 60
 		var secs := fmod(race_time, 60.0)
@@ -417,6 +424,9 @@ func _check_progress() -> void:
 		after = After.MENU
 		if tour:
 			prompt = _tour_finish()
+		if _saves() and Unlocks.earns_secret(stage_index, touched_traffic):
+			SaveData.unlock(Unlocks.SECRET_CAR)
+		new_unlocks = Unlocks.newly_open(before_furthest, before_unlocks, SaveData.furthest_stage, SaveData.unlocks)
 		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
 		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], 999.0)
 
@@ -441,7 +451,7 @@ func _tour_finish() -> String:
 	after = After.TOUR_DONE
 	if not tour_state.full():
 		return "Tour complete! Start from stage 1 for the Zenith.   Enter: menu"
-	if not _autodrive and _start_segment == 0:
+	if _saves():
 		SaveData.unlock(Tour.FINISH_UNLOCK)
 		SaveData.total_points += int(tour_state.points.get(Tour.YOU, 0))
 		SaveData.save()
@@ -453,11 +463,16 @@ func _tour_finish() -> String:
 ## Autodriven runs and partway starts (dev flags) aren't the player's, so they aren't saved.
 ## Returns true for a new best time.
 func record_finish() -> bool:
-	if _autodrive or _start_segment != 0:
+	if not _saves():
 		return false
 	var placed := not rivals.cars.is_empty()
 	var goes_on := tour and (not placed or Tour.advances(place))
 	return SaveData.record_finish(stage_index, car_id, race_time, place if placed else 0, goes_on)
+
+
+## Whether this race is the player's own, to save from: not autodriven, not started partway.
+func _saves() -> bool:
+	return not _autodrive and _start_segment == 0
 
 
 func _banner(text: String, sub: String, seconds: float) -> void:

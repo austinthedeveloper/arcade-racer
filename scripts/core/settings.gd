@@ -37,6 +37,7 @@ var difficulty: int = Difficulty.Level.NORMAL
 var carry_time := false  # Grand Tour: clock left at a finish carries into the next stage
 var steer_assist := false  # Assists: keyboard and gamepad steering pulls toward the lane
 var brake_assist := false  # Assists: brakes into corners taken too fast
+var unlock_all := false  # every car and stage open (Unlocks), for testing and accessibility
 var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
 var sfx_volume := 10
 var screen_shake := 10  # 0..EFFECT_STEPS; scales camera shake and the nitro FOV stretch
@@ -70,6 +71,7 @@ func reset() -> void:
 	carry_time = false
 	steer_assist = false
 	brake_assist = false
+	unlock_all = false
 	music_volume = 10
 	sfx_volume = 10
 	screen_shake = EFFECT_STEPS
@@ -97,6 +99,7 @@ func load_settings() -> void:
 		carry_time = bool(cfg.get_value("play", "carry_time", carry_time))
 		steer_assist = bool(cfg.get_value("play", "steer_assist", steer_assist))
 		brake_assist = bool(cfg.get_value("play", "brake_assist", brake_assist))
+		unlock_all = bool(cfg.get_value("play", "unlock_all", unlock_all))
 		music_volume = clampi(int(cfg.get_value("audio", "music", music_volume)), 0, VOLUME_STEPS)
 		sfx_volume = clampi(int(cfg.get_value("audio", "sfx", sfx_volume)), 0, VOLUME_STEPS)
 		screen_shake = clampi(int(cfg.get_value("accessibility", "screen_shake", screen_shake)), 0, EFFECT_STEPS)
@@ -158,6 +161,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("play", "carry_time", carry_time)
 	cfg.set_value("play", "steer_assist", steer_assist)
 	cfg.set_value("play", "brake_assist", brake_assist)
+	cfg.set_value("play", "unlock_all", unlock_all)
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("accessibility", "screen_shake", screen_shake)

@@ -96,6 +96,7 @@ func test_prompts_follow_the_device() -> void:
 
 
 func test_menus_flow_into_the_race_and_back() -> void:
+	SaveData.furthest_stage = 3  # stage 3 reached (Unlocks)
 	var g := _game()
 	eq(g.screen, g.Screen.TITLE, "boots to the title")
 	g.menu.handle(menu_input(false, true))
@@ -130,6 +131,7 @@ func test_menus_flow_into_the_race_and_back() -> void:
 	g.menu.handle(menu_input(true))
 	eq(g.screen, g.Screen.STAGES, "title, mode select, stage select")
 	eq(g.menu.index, 3, "stage select opens where the tour got to")
+	SaveData.furthest_stage = 0
 
 
 func test_mode_select_lists_every_mode() -> void:
@@ -224,6 +226,7 @@ func test_options_from_the_pause_menu_return_to_the_race() -> void:
 
 
 func test_single_race_runs_once_and_returns_to_the_menus() -> void:
+	SaveData.furthest_stage = 1  # stage 2 open (Unlocks)
 	var g := _game()
 	g.show_mode_select()
 	g.menu.handle(menu_input(false, false, 1))
@@ -249,6 +252,7 @@ func test_single_race_runs_once_and_returns_to_the_menus() -> void:
 	check(g.race != null and g.race.tour, "GRAND TOUR races tour on")
 	TestSuite.ready_all(g.race)
 	g.race.quit_requested.emit()
+	SaveData.furthest_stage = 0
 
 
 func test_only_the_grand_tour_tours() -> void:
