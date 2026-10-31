@@ -21,12 +21,16 @@ const HELP := [
 	"Set up a racing wheel and pedals (F2 also works).",
 	"Every option above back to its default. Wheel setups are kept.",
 	"Erase tour progress, best times and unlocks. Wheel setups are kept.",
-	"Back to the title screen.",
+	"Back to %s.",
 ]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
+## Rows the race only reads when a stage starts.
+const NEXT_RACE := [Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS]
 const ROW_H := 20.0
 const TOP := 56.0
 
+var back_name := "the title screen"  # where BACK goes, for its help line
+var in_race := false  # opened from the pause menu: some rows only change the next race
 var index := 0  # into Row
 var confirming := false  # RESET SAVE DATA was selected once; selecting it again erases
 var done_row := -1  # a reset row that has just run, shown as DONE until the cursor moves
@@ -161,12 +165,21 @@ func handle(m: MenuInput) -> void:
 				Audio.play("beep")
 			Row.BACK:
 				Audio.play("beep")
-				game.show_title(1)
+				game.close_options()
 			_:
 				change(index, 1, true)
 				Audio.play("beep")
 	elif m.back_pressed:
-		game.show_title(1)
+		game.close_options()
+
+
+## The help line for the picked row.
+func help_text() -> String:
+	if index == Row.BACK:
+		return HELP[index] % back_name
+	if in_race and NEXT_RACE.has(index):
+		return HELP[index] + " From the next race."
+	return HELP[index]
 
 
 func _draw() -> void:
@@ -210,7 +223,7 @@ func _draw() -> void:
 				if on and not wheel:
 					_small_arrow(Vector2(right - 120, y + mid), -1)
 					_small_arrow(Vector2(right, y + mid), 1)
-	var help: String = CONFIRM_HELP if confirming else HELP[index]
+	var help: String = CONFIRM_HELP if confirming else help_text()
 	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, panel.end.y + 20), help, 10, Color(1, 1, 1, 0.85))
 	_footer(options_hints())
 
