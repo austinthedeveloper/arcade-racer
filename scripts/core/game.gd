@@ -67,8 +67,13 @@ func show_title(item := 0) -> void:
 	_set_menu(t, Screen.TITLE)
 
 
-func show_options() -> void:
-	_set_menu(OptionsScreen.new(), Screen.OPTIONS)
+## The options, on `page` (an OptionsScreen.Page) when given.
+func show_options(page := -1) -> void:
+	var o := OptionsScreen.new()
+	if page >= 0:
+		o.page = page
+		o.index = 0  # on the page bar, so the page shows which it is
+	_set_menu(o, Screen.OPTIONS)
 
 
 func show_stage_select() -> void:
@@ -124,6 +129,8 @@ func _open(which: String) -> void:
 			show_car_select()
 		"options":
 			show_options()
+		_ when which.begins_with("options:"):
+			show_options(OptionsScreen.page_named(which.get_slice(":", 1)))
 		_:
 			show_title()
 
