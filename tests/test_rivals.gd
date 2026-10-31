@@ -135,7 +135,8 @@ func test_rivals_avoid_heavy_traffic() -> void:
 		f.update(DT, t, p, true, 1e12)
 		for r in f.cars:
 			crashes += int(r.crashed)
-	check(crashes <= 3, "rarely crash in double traffic (%d crashes in 40 s, 7 cars)" % crashes)
+	# Was 3 before the erratic drivers (RC-4), who swerve into traffic now and then. Keep it here.
+	check(crashes <= 8, "rarely crash in double traffic (%d crashes in 40 s, 7 cars)" % crashes)
 
 
 func test_nitro_only_on_straights() -> void:
@@ -255,7 +256,7 @@ func test_overtaking_a_rival_moves_you_up() -> void:
 	r.state = r.State.RACING
 	r.countdown = 0.0
 	for rv: RivalCar in r.rivals.cars:
-		rv.top_speed = Cfg.MAX_SPEED * 0.3  # a slow field to pass
+		rv.base_top = Cfg.MAX_SPEED * 0.3  # a slow field to pass
 	drive(r, 1)
 	eq(r.place, Rivals.COUNT + 1, "last off the grid")
 	var best: int = r.place
@@ -274,3 +275,119 @@ func test_progress_dots() -> void:
 	eq(Hud.progress_x(bar, 0.0, 1000.0), 100.0, "start")
 	eq(Hud.progress_x(bar, 500.0, 1000.0), 200.0, "halfway")
 	eq(Hud.progress_x(bar, 2000.0, 1000.0), 300.0, "past the finish stays at the end")
+
+
+func test_a_profile_per_car() -> void:
+	var roster := RivalProfile.roster()
+	eq(roster.size(), Cars.count(), "one driver per car")
+	var styles := {}
+	for prof in roster:
+		check(Cars.find(prof.car_id)["id"] == prof.car_id, "%s drives a real car" % prof.driver)
+		check(prof.pace > 0.85 and prof.pace <= 1.0, "%s pace" % prof.driver)
+		styles[prof.style] = true
+	eq(styles.size(), RivalProfile.Style.size(), "every style is on the roster")
+	var f := _field(flat_track())
+	for r in f.cars:
+		check(r.profile != null and r.profile.car_id == r.car_id, "each rival has its profile")
+		eq(r.driver.style, r.profile.style, "and drives in its style")
+
+
+func test_the_band_never_exceeds_its_cap() -> void:
+	near(Rivals.band(0.0, 0.05, 0.04), 1.0, 0.0001, "level with the player: no band")
+	near(Rivals.band(Rivals.BAND_RANGE, 0.05, 0.04), 0.95, 0.0001, "well ahead: eases off in full")
+	near(Rivals.band(-Rivals.BAND_RANGE, 0.05, 0.04), 1.04, 0.0001, "well behind: gains in full")
+	near(Rivals.band(Rivals.BAND_RANGE * 0.5, 0.05, 0.04), 0.975, 0.0001, "half way: half")
+	for gap in [-1e9, -Rivals.BAND_RANGE * 3.0, Rivals.BAND_RANGE * 3.0, 1e9]:
+		for strength in [0.0, 0.05, 0.5, 10.0]:
+			var b := Rivals.band(gap, strength, strength)
+			check(b >= 1.0 - Rivals.BAND_MAX and b <= 1.0 + Rivals.BAND_MAX,
+				"capped at %d%% (gap %.0f, strength %.2f: %.3f)" % [Rivals.BAND_MAX * 100, gap, strength, b])
+
+
+func test_the_band_reaches_the_race() -> void:
+	var t := flat_track(2000)
+	var p := _player()
+	var f := _field(t, 2)
+	f.cars[0].distance = p.distance + Rivals.BAND_RANGE * 2.0
+	f.cars[1].distance = p.distance - Rivals.BAND_RANGE * 2.0
+	f.update(DT, t, p, true, 1e12)
+	near(f.cars[0].top_speed, f.cars[0].base_top * (1.0 - Rivals.BAND_EASE), 0.01, "the leader eases off")
+	near(f.cars[1].top_speed, f.cars[1].base_top * (1.0 + Rivals.BAND_BOOST), 0.01, "the straggler gains")
+
+
+func test_an_aggressive_driver_blocks_a_faster_car_behind() -> void:
+	var t := flat_track()
+	var me := RivalCar.new(Cars.find("car_bruiser"), AIDriver.new(1, 0.0, RivalProfile.Style.AGGRESSIVE))
+	me.reset(4000.0)
+	me.speed = Cfg.MAX_SPEED * 0.7
+	var chaser := _player()
+	chaser.reset(4000.0 - 800.0)
+	chaser.speed = Cfg.MAX_SPEED
+	chaser.x = 0.75
+	check(AIDriver.blocking_target(me, t, [me, chaser]) == chaser, "sees the car coming")
+	me.driver.drive(me, t, [me, chaser], DT)
+	near(me.driver.target, 0.75, 0.001, "moves across to block it")
+	var clean := RivalCar.new(Cars.find("car_vega"), AIDriver.new(1, 0.0, RivalProfile.Style.CLEAN))
+	clean.reset(4000.0)
+	clean.speed = Cfg.MAX_SPEED * 0.7
+	clean.driver.drive(clean, t, [clean, chaser], DT)
+	near(clean.driver.target, 0.0, 0.001, "a clean driver keeps its line")
+	chaser.speed = Cfg.MAX_SPEED * 0.5
+	check(AIDriver.blocking_target(me, t, [me, chaser]) == null, "no need to block a slower car")
+
+
+func test_an_erratic_driver_reacts_late() -> void:
+	var t := flat_track()
+	var me := RivalCar.new(Cars.find("car_sol"), AIDriver.new(1, 0.0, RivalProfile.Style.ERRATIC))
+	me.reset(4000.0)
+	me.speed = Cfg.MAX_SPEED * 0.9
+	me.driver.drive(me, t, [me], DT)
+	eq(me.driver.target, 0.0, "on its line")
+	var car := Traffic.TrafficCar.new()
+	car.z = me.position + Cfg.PLAYER_Z + 10 * Cfg.SEGMENT_LENGTH
+	car.speed = Cfg.MAX_SPEED * 0.3
+	car.segment = t.find_segment(car.z)
+	car.segment.cars.append(car)
+	me.driver.drive(me, t, [me], DT)
+	eq(me.driver.target, 0.0, "hasn't looked again yet")
+	for i in roundi(AIDriver.ERRATIC_REACT / DT):
+		me.driver.drive(me, t, [me], DT)
+	check(absf(me.driver.target) > 0.3, "then dodges (to %.2f)" % me.driver.target)
+
+
+func test_an_aggressive_driver_only_blocks_for_a_while() -> void:
+	var t := flat_track()
+	var me := RivalCar.new(Cars.find("car_bruiser"), AIDriver.new(1, 0.0, RivalProfile.Style.AGGRESSIVE))
+	me.reset(4000.0)
+	me.speed = Cfg.MAX_SPEED * 0.7
+	var chaser := _player()
+	chaser.reset(4000.0 - 800.0)
+	chaser.speed = Cfg.MAX_SPEED
+	chaser.x = 0.75
+	var blocked := 0
+	for i in roundi((AIDriver.BLOCK_TIME + 1.0) / DT):
+		me.driver.drive(me, t, [me, chaser], DT)
+		blocked += int(me.driver.target == 0.75)
+	check(blocked <= roundi(AIDriver.BLOCK_TIME / DT) + 1, "blocks for BLOCK_TIME at most (%d ticks)" % blocked)
+	near(me.driver.target, 0.0, 0.001, "then lets it by")
+
+
+func test_a_bump_does_not_restart_the_block() -> void:
+	# Review on #116: the contact a block causes slows the chaser below the blocker, which
+	# used to zero the block clock, so the block started over once the chaser sped up.
+	var t := flat_track()
+	var me := RivalCar.new(Cars.find("car_bruiser"), AIDriver.new(1, 0.0, RivalProfile.Style.AGGRESSIVE))
+	me.reset(4000.0)
+	me.speed = Cfg.MAX_SPEED * 0.7
+	var chaser := _player()
+	chaser.reset(4000.0 - 800.0)
+	chaser.x = 0.75
+	var blocked := 0
+	for i in roundi((AIDriver.BLOCK_TIME + 2.0) / DT):
+		var t_s := i * DT
+		# faster for 1 s, bumped under the blocker's speed for 0.3 s, then faster again
+		chaser.speed = Cfg.MAX_SPEED * (0.6 if t_s >= 1.0 and t_s < 1.3 else 1.0)
+		me.driver.drive(me, t, [me, chaser], DT)
+		blocked += int(me.driver.target == 0.75)
+	check(blocked <= roundi(AIDriver.BLOCK_TIME / DT) + 10, "about BLOCK_TIME of blocking in all (%d ticks)" % blocked)
+	near(me.driver.target, 0.0, 0.001, "then lets it by")

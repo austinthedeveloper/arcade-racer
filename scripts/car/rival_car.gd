@@ -5,6 +5,8 @@ extends PlayerCar
 ## player's start, so the two compare directly.
 
 var car_id := ""
+var profile: RivalProfile
+var base_top := 0.0  # top speed before the rubber band (Rivals.band)
 var strips: Dictionary = {}  # CarSprites.strips for its car
 var driver: AIDriver
 var finished := false
@@ -15,3 +17,4 @@ func _init(car: Dictionary = Cars.find("car_vega"), ai: AIDriver = AIDriver.new(
 	car_id = car["id"]
 	driver = ai
 	setup(car)
+	base_top = top_speed

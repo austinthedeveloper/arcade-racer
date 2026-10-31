@@ -9,13 +9,19 @@ const SEED := 4021
 const GRID_FRONT := 1250.0  # world units the front of the grid is ahead of the player's nose
 const GRID_STEP := 150.0  # between one grid slot and the next, staggered left and right
 const GRID_X := 0.5
-const PACE := [0.9, 0.98]  # each rival's top speed, as a share of its car's
-const LANE_BIAS := 0.35  # most a rival's own line sits off the racing line
+## Rubber band: rivals ahead of the player ease off and rivals behind get a little more, in
+## full at BAND_RANGE away. BAND_MAX caps either way, whatever a difficulty asks for.
+const BAND_RANGE := 4000.0
+const BAND_MAX := 0.08
+const BAND_EASE := 0.05  # normal difficulty: most a rival ahead gives up...
+const BAND_BOOST := 0.04  # ...and most a rival behind gains
 const CONTACT_LENGTH := 300.0  # world units along the road two racers touch within
 const CONTACT_SLOWDOWN := 0.97  # the car behind drops to this share of the one in front's speed
 const SIDE_PUSH_LOSS := 0.02  # share of speed a racer-to-racer side contact scrubs off
 
 var cars: Array[RivalCar] = []
+var band_ease := BAND_EASE
+var band_boost := BAND_BOOST
 var clock := 0.0  # seconds since GO; runs on after the player finishes, unlike the race clock
 
 
@@ -26,13 +32,16 @@ func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var pool: Array = []
-	for car: Dictionary in Cars.LIST:
-		if car["id"] != player_car_id:
-			pool.append(car)
-	for i in count:
-		var car: Dictionary = pool.pop_at(rng.randi() % pool.size()) if not pool.is_empty() else Cars.find(player_car_id)
-		var r := RivalCar.new(car, AIDriver.new(rng.randi(), rng.randf_range(-LANE_BIAS, LANE_BIAS)))
-		r.top_speed *= rng.randf_range(PACE[0], PACE[1])
+	for prof in RivalProfile.roster():
+		if prof.car_id != player_car_id:
+			pool.append(prof)
+	for i in mini(count, pool.size()):
+		var prof: RivalProfile = pool.pop_at(rng.randi() % pool.size())
+		var car := Cars.find(prof.car_id)
+		var r := RivalCar.new(car, AIDriver.new(rng.randi(), prof.lane_bias, prof.style))
+		r.profile = prof
+		r.top_speed *= prof.pace
+		r.base_top = r.top_speed
 		var ahead := GRID_FRONT - i * GRID_STEP
 		r.reset(player.position + ahead)
 		r.distance = player.distance + ahead
@@ -52,6 +61,8 @@ func update(dt: float, track: Track, player: PlayerCar, racing: bool, finish_dis
 		clock += dt
 	var racers := everyone(player)
 	for r in cars:
+		var gap := r.distance - player.distance
+		r.top_speed = r.base_top * (1.0 if r.finished else band(gap, band_ease, band_boost))
 		var inp := r.driver.drive(r, track, racers, dt) if racing else DriveInput.new()
 		r.update(dt, inp, track, racing)
 	for r in cars:
@@ -61,6 +72,15 @@ func update(dt: float, track: Track, player: PlayerCar, racing: bool, finish_dis
 		if not r.finished and r.distance >= finish_distance:
 			r.finished = true
 			r.finish_time = clock
+
+
+## A rival's top speed multiplier `gap` world units ahead of the player (negative: behind):
+## easing off by up to `ease` ahead, gaining up to `boost` behind, never more than BAND_MAX.
+static func band(gap: float, ease: float, boost: float) -> float:
+	var t := clampf(gap / BAND_RANGE, -1.0, 1.0)
+	if t > 0.0:
+		return 1.0 - t * clampf(ease, 0.0, BAND_MAX)
+	return 1.0 - t * clampf(boost, 0.0, BAND_MAX)
 
 
 func everyone(player: PlayerCar) -> Array:
