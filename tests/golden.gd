@@ -10,18 +10,21 @@ const DIR := "res://tests/golden/"
 const SCENARIOS := ["autodrive_traffic", "autodrive_clear_road", "redrock_autodrive_traffic",
 	"neon_autodrive_traffic", "timberline_autodrive_traffic", "bayou_autodrive_traffic",
 	"harvest_autodrive_traffic", "thunder_autodrive_traffic", "skyline_autodrive_traffic"]
-## Scenario name prefix -> stage index (no prefix: Palm Coast).
-const STAGE_PREFIXES := {"redrock_": 1, "neon_": 2, "timberline_": 3, "bayou_": 4, "harvest_": 5, "thunder_": 6, "skyline_": 7}
 const FRAMES := 7500  # the countdown plus the longest the clock allows (45 s + 3 checkpoint bonuses)
+
+
+## The stage a scenario runs on: its name starts with the stage's id (Stages.POSTCARDS) and
+## an underscore; no prefix is Palm Coast.
+static func stage_of(scenario: String) -> int:
+	for i in range(1, Stages.count()):
+		if scenario.begins_with(Stages.POSTCARDS[i] + "_"):
+			return i
+	return 0
 
 
 ## Frame hashes for a scenario: [frames..., final snapshot string].
 static func run(scenario: String, frames: int = FRAMES) -> PackedStringArray:
-	var stage := 0
-	for prefix in STAGE_PREFIXES:
-		if scenario.begins_with(prefix):
-			stage = STAGE_PREFIXES[prefix]
-	var r := TestSuite.new_race(true, scenario.ends_with("_traffic"), stage)
+	var r := TestSuite.new_race(true, scenario.ends_with("_traffic"), stage_of(scenario))
 	var out := PackedStringArray()
 	var banner := ""
 	for f in frames:
@@ -42,11 +45,20 @@ static func run(scenario: String, frames: int = FRAMES) -> PackedStringArray:
 static func snapshot(r: Node) -> String:
 	var p: PlayerCar = r.player
 	var cars := 0.0
+	var lanes := 0.0
+	var flung := 0
 	for c in r.traffic.cars:
 		cars += c.z
-	return "state=%d t=%.2f left=%.2f cp=%d z=%.1f x=%.3f v=%.1f air=%.1f crash=%.2f nitro=%d/%.2f cars=%.0f" % [
+		lanes += c.offset
+		flung += int(c.flung > 0.0)
+	var taken := ""
+	for pu: PowerUps.Pickup in r.power_ups.pickups:
+		taken += str(pu.kind) if pu.taken else "-"
+	return ("state=%d t=%.2f left=%.2f cp=%d z=%.1f x=%.3f v=%.1f air=%.1f crash=%.2f nitro=%d/%.2f cars=%.0f"
+		+ " lanes=%.2f flung=%d ram=%.2f ghost=%.2f taken=%s") % [
 		r.state, r.race_time, r.time_left, r.next_checkpoint, p.distance, p.x, p.speed,
-		p.air_height, p.crash_time, p.nitro_charges, p.nitro_time, cars]
+		p.air_height, p.crash_time, p.nitro_charges, p.nitro_time, cars, lanes, flung, p.ram_time,
+		p.ghost_time, taken]
 
 
 func _initialize() -> void:

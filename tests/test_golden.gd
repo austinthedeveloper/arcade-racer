@@ -71,3 +71,28 @@ func _finishes_in_time(stage: int) -> void:
 	eq(r.state, r.State.FINISHED, name + ": finished, not timed out")
 	eq(r.next_checkpoint, r.checkpoint_distances.size(), name + ": every checkpoint passed")
 	check(r.race_time > 60.0 and r.race_time < 120.0, "%s: a believable lap time (%.1f s)" % [name, r.race_time])
+
+
+func test_every_stage_has_a_golden_scenario() -> void:
+	var stages := {}
+	for sc: String in Golden.SCENARIOS:
+		stages[Golden.stage_of(sc)] = true
+	eq(stages.size(), Stages.count(), "one scenario per stage at least")
+	eq(Golden.stage_of("autodrive_traffic"), 0, "no prefix is Palm Coast")
+	eq(Golden.stage_of("skyline_autodrive_traffic"), 7, "skyline_ is the Skyline Finale")
+
+
+func test_the_snapshot_sees_power_ups() -> void:
+	# Regression: the snapshot skipped the ram and ghost timers and the pickups taken, so a
+	# change to power-ups could pass the golden traces.
+	var r := TestSuite.new_race(true, true, 0)
+	var before := Golden.snapshot(r)
+	r.player.ram_time = 1.0
+	check(Golden.snapshot(r) != before, "ram plate time")
+	r.player.ram_time = 0.0
+	r.power_ups.pickups[0].taken = true
+	check(Golden.snapshot(r) != before, "a pickup taken")
+	r.power_ups.pickups[0].taken = false
+	r.traffic.cars[0].offset += 0.5
+	check(Golden.snapshot(r) != before, "a car out of its lane")
+	r.free()
