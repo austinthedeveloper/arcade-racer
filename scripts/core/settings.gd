@@ -21,6 +21,8 @@ var auto_gas := false  # hold the gas for the player; steering and brake still t
 var traffic: int = Traffic.NORMAL
 var timer: int = Clock.ARCADE  # a Clock
 var power_ups := true  # pickups on the road (PowerUps)
+var difficulty: int = Difficulty.Level.NORMAL
+var carry_time := false  # Grand Tour: clock left at a finish carries into the next stage
 var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
 var sfx_volume := 10
 ## The version of the file last loaded (VERSION when there was no file).
@@ -37,6 +39,8 @@ func reset() -> void:
 	traffic = Traffic.NORMAL
 	timer = Clock.ARCADE
 	power_ups = true
+	difficulty = Difficulty.Level.NORMAL
+	carry_time = false
 	music_volume = 10
 	sfx_volume = 10
 	apply_volumes()
@@ -52,6 +56,8 @@ func load_settings() -> void:
 		traffic = clampi(int(cfg.get_value("play", "traffic", traffic)), 0, Traffic.size() - 1)
 		timer = clampi(int(cfg.get_value("play", "timer", timer)), 0, Clock.size() - 1)
 		power_ups = bool(cfg.get_value("play", "power_ups", power_ups))
+		difficulty = clampi(int(cfg.get_value("play", "difficulty", difficulty)), 0, Difficulty.Level.size() - 1)
+		carry_time = bool(cfg.get_value("play", "carry_time", carry_time))
 		music_volume = clampi(int(cfg.get_value("audio", "music", music_volume)), 0, VOLUME_STEPS)
 		sfx_volume = clampi(int(cfg.get_value("audio", "sfx", sfx_volume)), 0, VOLUME_STEPS)
 	apply_volumes()
@@ -67,13 +73,16 @@ static func _v0_to_v1(_cfg: ConfigFile) -> void:
 	pass
 
 
-func save() -> void:
-	var cfg := ConfigFile.new()
-	CfgVersion.stamp(cfg, VERSION)
+## Writes the options. Over a file from a newer build, its other keys are kept
+## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
+func save(fresh := false) -> void:
+	var cfg := CfgVersion.to_write(path, VERSION, fresh)
 	cfg.set_value("play", "auto_gas", auto_gas)
 	cfg.set_value("play", "traffic", traffic)
 	cfg.set_value("play", "timer", timer)
 	cfg.set_value("play", "power_ups", power_ups)
+	cfg.set_value("play", "difficulty", difficulty)
+	cfg.set_value("play", "carry_time", carry_time)
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.save(path)
@@ -89,6 +98,12 @@ func drive_input(inp: DriveInput) -> DriveInput:
 	var out := inp.copy()
 	out.throttle = 0.0 if inp.brake > 0.05 else 1.0
 	return out
+
+
+## Picks a difficulty and puts the timer option on its default (it can still be changed after).
+func set_difficulty(level: int) -> void:
+	difficulty = clampi(level, 0, Difficulty.Level.size() - 1)
+	timer = Difficulty.of(difficulty).timer
 
 
 func traffic_count(base: int) -> int:

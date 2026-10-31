@@ -105,7 +105,7 @@ func test_every_placed_sprite_has_art() -> void:
 		eq(missing.keys(), [], t.name + " sprites without art")
 
 
-func test_every_loaded_sprite_is_placed_or_listed_unplaced() -> void:
+func test_every_loaded_sprite_is_placed() -> void:
 	var placed := {}
 	for t in _stages():
 		for seg in t.segments:
@@ -113,11 +113,9 @@ func test_every_loaded_sprite_is_placed_or_listed_unplaced() -> void:
 				placed[sp["id"]] = true
 	var stray: Array = []
 	for id: String in SpriteLibrary.defs:
-		if not placed.has(id) and not SpriteLibrary.UNPLACED.has(id):
+		if not placed.has(id):
 			stray.append(id)
-	eq(stray, [], "sprites no stage places (add them to SpriteLibrary.UNPLACED, or drop them)")
-	for id: String in SpriteLibrary.UNPLACED:
-		check(not placed.has(id), "%s is placed now: take it off UNPLACED" % id)
+	eq(stray, [], "sprites no stage places (place them, or drop them from the sprite tools)")
 
 
 func test_redrock_has_its_landmarks() -> void:
@@ -257,3 +255,92 @@ func test_every_stage_has_its_extras_and_a_finish_crowd() -> void:
 		var counts := _sprite_counts(t)
 		check(counts.get(extras[i], 0) > 0, "%s has a %s" % [t.name, extras[i]])
 		eq(counts.get("grandstand", 0), 1, t.name + " has a grandstand at the finish")
+
+
+func test_sharp_curves_get_a_turn_sign_and_chevrons_on_the_outside() -> void:
+	var t := Track.new()
+	t.straight(Track.LENGTH_MEDIUM)
+	t.curve(Track.LENGTH_SHORT, Track.CURVE_HARD)
+	t.curve(Track.LENGTH_SHORT, -Track.CURVE_EASY)
+	t.finish_building(t.segments.size() - 5)
+	var runs := t.sharp_curves()
+	eq(runs.size(), 1, "one sharp curve; the easy one is not")
+	t.add_road_signs()
+	var turn := 0
+	var chevrons := 0
+	for seg in t.segments:
+		for sp in seg.sprites:
+			if sp["id"] == "turn_right":
+				turn += 1
+				check(seg.index < runs[0].x, "the turn sign stands before the curve")
+			if sp["id"].begins_with("chevron_"):
+				chevrons += 1
+				check(seg.index >= runs[0].x and seg.index < runs[0].y, "chevrons along the curve")
+				check(sp["offset"] < -1.0, "chevrons on the outside of a right-hand curve")
+				check(not sp["flip"], "chevrons point right, into the curve")
+	eq(turn, 1, "a turn sign before the curve")
+	check(chevrons >= 3, "chevrons along the curve (%d)" % chevrons)
+
+
+func test_no_chevrons_where_a_rail_lines_the_bend() -> void:
+	# Review on #108: Bayou's island fence stood right behind the chevrons.
+	var t := Track.new()
+	t.straight(Track.LENGTH_MEDIUM)
+	t.curve(Track.LENGTH_SHORT, Track.CURVE_HARD)
+	t.finish_building(t.segments.size() - 5)
+	var run := t.sharp_curves()[0]
+	for i in range(run.x, run.y, 10):
+		t.add_sprite(i, "rail_wood_a", -1.4)
+	t.add_road_signs()
+	var counts := _sprite_counts(t)
+	eq(counts.get("chevron_a", 0) + counts.get("chevron_b", 0) + counts.get("chevron_c", 0), 0, "no chevrons on the railed side")
+	eq(counts.get("turn_right", 0), 1, "the turn sign still stands")
+	var bayou := BayouCauseway.build()
+	for r in bayou.sharp_curves():
+		var side := -signf(bayou.segments[r.x].curve)
+		for i in range(r.x, r.y):
+			for sp in bayou.segments[i].sprites:
+				if sp["id"].begins_with("chevron_"):
+					check(not bayou.railed(i, side), "Bayou: no chevron on a railed bend (segment %d)" % i)
+
+
+func test_jumps_and_bumps_get_a_bump_sign_before_them() -> void:
+	for t in _stages():
+		var signs: Array[int] = []
+		for seg in t.segments:
+			for sp in seg.sprites:
+				if sp["id"] == "bump_sign":
+					signs.append(seg.index)
+		check(not t.hazards.is_empty(), t.name + " has jumps or bumps")
+		for h in t.hazards:
+			if t.open_roadside(h - Track.SIGN_AHEAD):
+				check(signs.has(h - Track.SIGN_AHEAD), "%s: a bump sign before segment %d" % [t.name, h])
+
+
+func test_race_furniture_around_the_start_and_checkpoints() -> void:
+	for t in _stages():
+		var near_start := {}
+		var near_checkpoints := {}
+		for seg in t.segments:
+			for sp in seg.sprites:
+				if absi(seg.index - Track.START_SEGMENT) <= 20:
+					near_start[sp["id"]] = true
+				for c in t.checkpoints:
+					if absi(seg.index - c) <= 24:
+						near_checkpoints[sp["id"]] = true
+		for id in ["tire_stack", "barrels_yellow", "inflatable_arch"]:
+			check(near_start.has(id), "%s: %s at the start" % [t.name, id])
+		for id in ["cone_orange", "delineator", "barricade", "barrier_orange"]:
+			check(near_checkpoints.has(id), "%s: %s at the checkpoints" % [t.name, id])
+
+
+func test_signs_and_furniture_stay_clear_of_spans_tunnels_and_gates() -> void:
+	var furniture := ["turn_left", "turn_right", "chevron_a", "chevron_b", "chevron_c", "bump_sign",
+		"tire_stack", "barrels_yellow", "cone_orange", "barricade", "barrier_orange", "inflatable_arch", "delineator"]
+	for t in _stages():
+		var bad := 0
+		for seg in t.segments:
+			for sp in seg.sprites:
+				if furniture.has(sp["id"]) and not t.open_roadside(seg.index):
+					bad += 1
+		eq(bad, 0, t.name + " signs and furniture under a span, in a tunnel or on a gate")

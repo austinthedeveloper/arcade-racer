@@ -125,6 +125,43 @@ func test_ram_plate_knocks_traffic_flying() -> void:
 	for i in 60:
 		tr.update(DT, t)
 	check(car.offset > 1.5 and car.flung == 0.0, "landed off the road (%.2f)" % car.offset)
+	check(not car.solid(), "not solid while off the road")
+
+
+func test_a_rammed_car_drives_back_to_its_lane_before_turning_solid() -> void:
+	# Regression (G4): rammed cars stayed off the road and turned solid out there.
+	var t := _flat(200)
+	var tr := Traffic.new()
+	var car := Traffic.TrafficCar.new()
+	car.offset = -0.25
+	car.speed = Cfg.MAX_SPEED * 0.3
+	car.z = 1000.0
+	car.segment = t.find_segment(car.z)
+	car.segment.cars.append(car)
+	tr.cars.append(car)
+	Traffic.fling(car, 0.0)
+	check(car.fling_dir < 0.0, "flung to the left")
+	var off_road := false
+	var solid_off_road := false
+	for i in 600:
+		tr.update(DT, t)
+		off_road = off_road or car.offset < -1.5
+		solid_off_road = solid_off_road or (car.solid() and absf(car.offset) > 1.0)
+	check(off_road, "went off the road")
+	check(not solid_off_road, "never solid off the road")
+	eq(car.offset, -0.25, "back in its lane")
+	check(car.solid(), "solid again once back")
+
+
+func test_a_second_ram_while_returning_keeps_the_original_lane() -> void:
+	var car := Traffic.TrafficCar.new()
+	car.offset = 0.75
+	Traffic.fling(car, 0.0)
+	car.flung = 0.0
+	car.returning = true
+	car.offset = 2.0
+	Traffic.fling(car, 0.0)
+	eq(car.lane, 0.75, "still heading home to its own lane")
 
 
 func test_pickups_reach_the_race() -> void:
