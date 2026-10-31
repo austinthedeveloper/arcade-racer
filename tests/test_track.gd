@@ -282,6 +282,28 @@ func test_sharp_curves_get_a_turn_sign_and_chevrons_on_the_outside() -> void:
 	check(chevrons >= 3, "chevrons along the curve (%d)" % chevrons)
 
 
+func test_no_chevrons_where_a_rail_lines_the_bend() -> void:
+	# Review on #108: Bayou's island fence stood right behind the chevrons.
+	var t := Track.new()
+	t.straight(Track.LENGTH_MEDIUM)
+	t.curve(Track.LENGTH_SHORT, Track.CURVE_HARD)
+	t.finish_building(t.segments.size() - 5)
+	var run := t.sharp_curves()[0]
+	for i in range(run.x, run.y, 10):
+		t.add_sprite(i, "rail_wood_a", -1.4)
+	t.add_road_signs()
+	var counts := _sprite_counts(t)
+	eq(counts.get("chevron_a", 0) + counts.get("chevron_b", 0) + counts.get("chevron_c", 0), 0, "no chevrons on the railed side")
+	eq(counts.get("turn_right", 0), 1, "the turn sign still stands")
+	var bayou := BayouCauseway.build()
+	for r in bayou.sharp_curves():
+		var side := -signf(bayou.segments[r.x].curve)
+		for i in range(r.x, r.y):
+			for sp in bayou.segments[i].sprites:
+				if sp["id"].begins_with("chevron_"):
+					check(not bayou.railed(i, side), "Bayou: no chevron on a railed bend (segment %d)" % i)
+
+
 func test_jumps_and_bumps_get_a_bump_sign_before_them() -> void:
 	for t in _stages():
 		var signs: Array[int] = []

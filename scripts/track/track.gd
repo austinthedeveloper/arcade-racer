@@ -22,6 +22,7 @@ const FINISH_INTO_STRAIGHT := 60  # segments into the final straight
 const SHARP_CURVE := CURVE_MEDIUM
 const SIGN_AHEAD := 30  # segments before a sharp curve, jump or bumps that its warning sign stands
 const CHEVRON_EVERY := 8
+const RAIL_REACH := 10  # segments: rails stand every 10 (Bayou, Timberline), so a run has one this close
 const CHEVRONS := ["chevron_a", "chevron_b", "chevron_c"]
 
 const GROUND_GRASS := 0
@@ -222,8 +223,9 @@ func add_finish_crowd() -> void:
 
 
 ## Warning signs: a turn arrow before every sharp curve (SHARP_CURVE) and, with `chevrons`,
-## chevrons along its outside; a bump sign before every jump and bumpy stretch. Call after the
-## stage's spans and tunnels: nothing goes under a span, in a tunnel or on a race gate.
+## chevrons along its outside where no rail already runs; a bump sign before every jump and
+## bumpy stretch. Call after the stage's spans, tunnels and rails: nothing goes under a span,
+## in a tunnel or on a race gate.
 func add_road_signs(chevrons := true) -> void:
 	for run in sharp_curves():
 		var first: int = run.x
@@ -233,11 +235,24 @@ func add_road_signs(chevrons := true) -> void:
 		if chevrons:
 			var k := 0
 			for i in range(first, run.y, CHEVRON_EVERY):
+				if railed(i, outside):
+					continue
 				# The chevron art points right; mirrored, it points into a left-hand curve
 				_add_sign(i, CHEVRONS[k % CHEVRONS.size()], outside * 1.5, dir < 0.0)
 				k += 1
 	for h in hazards:
 		_add_sign(h - SIGN_AHEAD, "bump_sign", 1.3, false)
+
+
+## Whether a rail (a "rail_" or "guardrail" sprite) stands on `side` (-1 left, 1 right) within
+## RAIL_REACH segments of `index`: the bend is lined already, chevrons would stand on it.
+func railed(index: int, side: float) -> bool:
+	for i in range(maxi(0, index - RAIL_REACH), mini(segments.size(), index + RAIL_REACH + 1)):
+		for sp in segments[i].sprites:
+			var id: String = sp["id"]
+			if (id.begins_with("rail_") or id == "guardrail") and signf(sp["offset"]) == side:
+				return true
+	return false
 
 
 ## Each stretch of sharp curve as (first segment, end): segments in a row at least
