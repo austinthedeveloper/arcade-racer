@@ -96,6 +96,7 @@ func test_prompts_follow_the_device() -> void:
 
 
 func test_menus_flow_into_the_race_and_back() -> void:
+	SaveData.furthest_stage = 3  # stage 3 reached (Unlocks)
 	var g := _game()
 	eq(g.screen, g.Screen.TITLE, "boots to the title")
 	g.menu.handle(menu_input(false, true))
@@ -130,6 +131,7 @@ func test_menus_flow_into_the_race_and_back() -> void:
 	g.menu.handle(menu_input(true))
 	eq(g.screen, g.Screen.STAGES, "title, mode select, stage select")
 	eq(g.menu.index, 3, "stage select opens where the tour got to")
+	SaveData.furthest_stage = 0
 
 
 func test_mode_select_lists_every_mode() -> void:
@@ -142,11 +144,11 @@ func test_mode_select_lists_every_mode() -> void:
 	eq(m.notice_time, 0.0, "no notice for a built mode")
 	m.index = ModeSelect.Item.SINGLE_RACE
 	eq(m.pick(), ModeSelect.Item.SINGLE_RACE, "SINGLE RACE can be picked")
-	for item: int in [ModeSelect.Item.TIME_ATTACK, ModeSelect.Item.FREE_DRIVE]:
-		m.index = item
-		check(not ModeSelect.available(item), "%s isn't built yet" % ModeSelect.LABELS[item])
-		eq(m.pick(), -1, "so it can't be picked")
-		check(m.notice.ends_with("coming soon") and m.notice_time > 0.0, "a notice instead: " + m.notice)
+	m.index = ModeSelect.Item.TIME_ATTACK
+	eq(m.pick(), ModeSelect.Item.TIME_ATTACK, "TIME ATTACK can be picked")
+	m.index = ModeSelect.Item.FREE_DRIVE
+	eq(m.pick(), ModeSelect.Item.FREE_DRIVE, "FREE DRIVE can be picked")
+	eq(m.notice_time, 0.0, "every mode is built: no coming-soon notices")
 	m.index = ModeSelect.Item.OPTIONS
 	eq(m.pick(), ModeSelect.Item.OPTIONS, "OPTIONS can be picked")
 	m.free()
@@ -159,6 +161,8 @@ func test_mode_select_leads_on_and_back() -> void:
 	g.menu.handle(menu_input(false, false, -1))
 	g.menu.handle(menu_input(true))
 	eq(g.screen, g.Screen.OPTIONS, "OPTIONS opens the options")
+	g.menu.go_to(OptionsScreen.Row.BACK)
+	eq(g.menu.help_text(), "Back to mode select.", "BACK says where it goes")
 	g.menu.handle(menu_input(false, true))
 	eq(g.screen, g.Screen.MODES, "back from them returns to mode select")
 	eq(g.menu.index, ModeSelect.Item.OPTIONS, "on OPTIONS")
@@ -172,6 +176,9 @@ func test_mode_select_leads_on_and_back() -> void:
 	g.menu.handle(menu_input(false, false, 1))
 	g.menu.handle(menu_input(true))
 	eq(g.screen, g.Screen.OPTIONS, "OPTIONS on the title still opens the options")
+	g.menu.go_to(OptionsScreen.Row.BACK)
+	eq(g.menu.help_text(), "Back to the title screen.", "BACK says the title")
+	check(not g.menu.help_text().contains("next race"), "no race to wait for")
 	g.menu.handle(menu_input(false, true))
 	eq(g.screen, g.Screen.TITLE, "and those go back to the title")
 
@@ -205,6 +212,10 @@ func test_options_from_the_pause_menu_return_to_the_race() -> void:
 	r.pause_action(PauseMenu.Action.OPTIONS)
 	eq(g.screen, g.Screen.OPTIONS, "the options open")
 	check(g.race == r and r.paused, "over the paused race")
+	g.menu.go_to(OptionsScreen.Row.POWER_UPS)
+	check(g.menu.help_text().ends_with("From the next race."), "says power-ups wait for the next race")
+	g.menu.go_to(OptionsScreen.Row.BACK)
+	eq(g.menu.help_text(), "Back to the race.", "BACK goes back to the race")
 	g.menu.handle(menu_input(false, true))
 	eq(g.screen, g.Screen.RACE, "back: the race again")
 	check(g.menu == null, "no menu left")
@@ -212,6 +223,52 @@ func test_options_from_the_pause_menu_return_to_the_race() -> void:
 	r.pause_action(PauseMenu.Action.QUIT)
 	eq(g.screen, g.Screen.TITLE, "QUIT TO TITLE: the title")
 	check(g.race == null, "race dropped")
+
+
+func test_single_race_runs_once_and_returns_to_the_menus() -> void:
+	SaveData.furthest_stage = 1  # stage 2 open (Unlocks)
+	var g := _game()
+	g.show_mode_select()
+	g.menu.handle(menu_input(false, false, 1))
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.STAGES, "SINGLE RACE: stage select")
+	eq(g.mode_index, ModeSelect.Item.SINGLE_RACE, "the mode is kept")
+	g.menu.handle(menu_input(false, false, 1))
+	g.menu.handle(menu_input(true))
+	g.menu.handle(menu_input(true))
+	if not check(g.race != null, "race started"):
+		return
+	check(not g.race.tour, "the race knows it's a Single Race")
+	TestSuite.ready_all(g.race)
+	g.race.race_over.emit()
+	eq(g.screen, g.Screen.STAGES, "race over: back to stage select")
+	check(g.race == null, "race dropped")
+	eq(g.menu.index, 1, "on the stage just raced")
+	g.menu.handle(menu_input(false, true))
+	g.menu.handle(menu_input(false, false, -1))
+	g.menu.handle(menu_input(true))
+	g.menu.handle(menu_input(true))
+	g.menu.handle(menu_input(true))
+	check(g.race != null and g.race.tour, "GRAND TOUR races tour on")
+	TestSuite.ready_all(g.race)
+	g.race.quit_requested.emit()
+	SaveData.furthest_stage = 0
+
+
+func test_only_the_grand_tour_tours() -> void:
+	# Review on #114: modes other than Single Race defaulted to tour = true.
+	var g := _game()
+	for item in [ModeSelect.Item.SINGLE_RACE, ModeSelect.Item.TIME_ATTACK, ModeSelect.Item.FREE_DRIVE]:
+		g.mode_index = item
+		g.start_race()
+		check(not g.race.tour, "%s: no tour" % ModeSelect.Item.keys()[item])
+		TestSuite.ready_all(g.race)
+		g.race.quit_requested.emit()
+	g.mode_index = ModeSelect.Item.GRAND_TOUR
+	g.start_race()
+	check(g.race.tour, "GRAND TOUR tours")
+	TestSuite.ready_all(g.race)
+	g.race.quit_requested.emit()
 
 
 # --- Attract mode -------------------------------------------------------------------

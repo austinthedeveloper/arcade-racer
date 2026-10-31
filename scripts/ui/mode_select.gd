@@ -1,7 +1,7 @@
 class_name ModeSelect
 extends MenuScreen
-## Mode select, after the title: a row of cards a wheel steers along. Modes that aren't
-## built yet stay on the row, marked COMING SOON; picking one shows a short notice.
+## Mode select, after the title: a row of cards a wheel steers along. A mode that isn't
+## built yet (none, now) stays on the row, marked COMING SOON; picking it shows a short notice.
 
 enum Item { GRAND_TOUR, SINGLE_RACE, TIME_ATTACK, FREE_DRIVE, OPTIONS }
 
@@ -34,7 +34,7 @@ func _ready() -> void:
 
 ## Whether a mode can be played yet.
 static func available(item: int) -> bool:
-	return item != Item.TIME_ATTACK and item != Item.FREE_DRIVE
+	return item >= 0 and item < Item.size()
 
 
 ## Moves the selection by `dir`, wrapping around; returns the new index.

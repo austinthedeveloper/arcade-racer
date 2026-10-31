@@ -7,7 +7,7 @@ section 5 and the unlocks and save data in section 11.
 
 The tour runs stage by stage from the stage picked on stage select, with a fresh clock each
 stage. R restarts; confirm after TIME UP retries. Options persist in `user://settings.cfg`.
-Nothing about progress, times or unlocks is saved. Every stage and car is available.
+Progress, best times and unlocks are saved (`user://save.cfg`). Four cars and stage 1 are open from the start; the rest unlock as the tour goes (`scripts/core/unlocks.gd`), or all at once with UNLOCK EVERYTHING in Options. Time Attack races the best run's ghost per stage and car (`user://ghosts/`).
 
 ## Features
 

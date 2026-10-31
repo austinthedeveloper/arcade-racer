@@ -5,11 +5,21 @@ extends Node2D
 ## Pass 1 walks segments near-to-far, bending the road by accumulated curvature and
 ## projecting each segment's ends to the screen. Pass 2 paints far-to-near (road band,
 ## then that segment's sprites and cars), so nearer road and hills cover what's behind them.
+## The player's car goes in after its own segment; cars between it and the camera are
+## drawn over it.
+
+const GHOST_ALPHA := 0.45  # the Time Attack ghost, see-through...
+const GHOST_TINT := Color(0.6, 0.85, 1.0)  # ...and cooled blue
 
 var track: Track
 var player: PlayerCar
 var player_strips: Dictionary = {}  # the player car's CarSprites.strips
+var rivals: Array[RivalCar] = []
+var ghost := Vector3.ZERO  # Time Attack's ghost: distance, x, steer (Ghost.at)
+var ghost_strips: Dictionary = {}  # its car's strips; empty for no ghost
 var camera_z := 0.0
+var camera_depth := Cfg.CAMERA_DEPTH  # the race eases it down for the nitro stretch
+var flash := 1.0  # the FLASHING option's share of the designed blink (Settings.flash_amount(1.0))
 var time := 0.0
 
 var _pts := PackedVector2Array()
@@ -19,6 +29,9 @@ var _fog_color := Color.WHITE
 var _covered: Dictionary = {}  # _covered_theme: the darkened colors
 var _covered_from: Dictionary = {}  # and the theme they were made from
 var _font: Font
+var _rivals_in: Dictionary = {}  # segment index -> the rivals in it, this frame
+var _ghost_seg := -1  # the ghost's segment index this frame, -1 for none
+var _rivals_behind: Array = []  # rivals in the player's segment but behind it, this frame
 
 
 func _ready() -> void:
@@ -41,6 +54,18 @@ func _draw() -> void:
 	var dx := -base.curve * base_percent
 	var max_y := float(Cfg.SCREEN_H)
 	var drawn: Array[Segment] = []
+	_ghost_seg = -1 if ghost_strips.is_empty() else track.find_segment(ghost_z()).index
+	var player_seg := track.find_segment(player.position + Cfg.PLAYER_Z).index
+	_rivals_in.clear()
+	_rivals_behind.clear()
+	for r in rivals:
+		var i := track.find_segment(r.position + Cfg.PLAYER_Z).index
+		if i == player_seg and behind(r.position, player.position, track.length):
+			_rivals_behind.append(r)
+			continue
+		if not _rivals_in.has(i):
+			_rivals_in[i] = []
+		_rivals_in[i].append(r)
 
 	for n in Cfg.DRAW_DISTANCE:
 		var seg := segs[(base.index + n) % count]
@@ -51,26 +76,49 @@ func _draw() -> void:
 		var d := float(n) / Cfg.DRAW_DISTANCE
 		seg.fog = 1.0 - exp(-d * d * fog_density)
 		seg.clip = max_y
-		var in_front := seg.cam_z1 > Cfg.CAMERA_DEPTH
+		var in_front := seg.cam_z1 > camera_depth
 		seg.visible = in_front and seg.s2.y < seg.s1.y and seg.s2.y < max_y
 		if seg.visible:
 			max_y = minf(max_y, seg.s2.y)
 		if in_front:
 			drawn.append(seg)
 
+	var at := player_slot(drawn, player_seg)
 	for i in range(drawn.size() - 1, -1, -1):
 		var seg := drawn[i]
 		if seg.visible:
 			_draw_segment(seg, theme)
-		_draw_objects(seg)
-	_draw_player()
+		_draw_objects(seg, i >= at)
+		if i == at:
+			_draw_player()
+	if at < 0:
+		_draw_player()
+	else:
+		# Cars between the player and the camera, over the player's car
+		for r: RivalCar in _rivals_behind:
+			_draw_rival(drawn[at], r, Color.WHITE.lerp(_fog_color, drawn[at].fog))
+		for i in range(at - 1, -1, -1):
+			_draw_cars(drawn[i])
+
+
+## Where in the near-to-far `drawn` list the player's segment is, or -1.
+static func player_slot(drawn: Array[Segment], player_seg: int) -> int:
+	for i in drawn.size():
+		if drawn[i].index == player_seg:
+			return i
+	return -1
+
+
+## Whether a car at track position `z` is behind one at `player_z` (both wrapped).
+static func behind(z: float, player_z: float, length: float) -> bool:
+	return wrapf(z - player_z, -length * 0.5, length * 0.5) < 0.0
 
 
 func _project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float) -> void:
 	seg.cam_z1 = seg.w1.z - cz
 	seg.cam_z2 = seg.w2.z - cz
-	seg.scale1 = Cfg.CAMERA_DEPTH / maxf(seg.cam_z1, 1.0)
-	seg.scale2 = Cfg.CAMERA_DEPTH / maxf(seg.cam_z2, 1.0)
+	seg.scale1 = camera_depth / maxf(seg.cam_z1, 1.0)
+	seg.scale2 = camera_depth / maxf(seg.cam_z2, 1.0)
 	var half_w := Cfg.SCREEN_W * 0.5
 	seg.s1 = Vector2(half_w - seg.scale1 * cx1 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale1 * (seg.w1.y - cam_y) * Cfg.PROJ)
 	seg.s2 = Vector2(half_w - seg.scale2 * cx2 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale2 * (seg.w2.y - cam_y) * Cfg.PROJ)
@@ -125,7 +173,9 @@ func _draw_segment(seg: Segment, theme: Dictionary) -> void:
 	RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), _idx, _pts, _cols)
 
 
-func _draw_objects(seg: Segment) -> void:
+## A segment's sprites, pickups and spans, and its cars too when `cars` (the segments
+## nearer than the player draw theirs after it, with _draw_cars).
+func _draw_objects(seg: Segment, cars := true) -> void:
 	var tint := Color.WHITE.lerp(_fog_color, seg.fog)
 	for sp in seg.sprites:
 		var def: Dictionary = SpriteLibrary.defs.get(sp["id"], {})
@@ -154,6 +204,20 @@ func _draw_objects(seg: Segment) -> void:
 			continue
 		draw_texture_rect(tex, Rect2(cx - w / 2.0, seg.s1.y - h + bob - h * 0.15, w, h), false, tint)
 
+	if cars:
+		_draw_cars(seg)
+
+	# Spans sit at the segment's near end, in front of its sprites and cars
+	for id in seg.spans:
+		_draw_span(seg, id, "", tint)
+	var gate := gate_for(seg.flags)
+	if gate != "":
+		_draw_span(seg, gate, gate_label(seg.flags), tint)
+
+
+## A segment's traffic and rivals.
+func _draw_cars(seg: Segment) -> void:
+	var tint := Color.WHITE.lerp(_fog_color, seg.fog)
 	for car in seg.cars:
 		var p: float = car.percent
 		var s := lerpf(seg.scale1, seg.scale2, p)
@@ -167,12 +231,10 @@ func _draw_objects(seg: Segment) -> void:
 			cy -= sin((1.0 - car.flung / Traffic.FLING_TIME) * PI) * w * 0.9
 		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog)
 
-	# Spans sit at the segment's near end, in front of its sprites and cars
-	for id in seg.spans:
-		_draw_span(seg, id, "", tint)
-	var gate := gate_for(seg.flags)
-	if gate != "":
-		_draw_span(seg, gate, gate_label(seg.flags), tint)
+	for r: RivalCar in _rivals_in.get(seg.index, []):
+		_draw_rival(seg, r, tint)
+	if seg.index == _ghost_seg:
+		_draw_ghost(seg)
 
 
 ## The race gate drawn for a segment's flags, or "" for none.
@@ -237,9 +299,45 @@ static func sprite_rect(sx: float, base_y: float, w: float, h: float, offset: fl
 	return Rect2(x0, base_y - h, -w if flip else w, h)
 
 
+## A rival in its segment, drawn with its car's steering strip like the player's.
+func _draw_rival(seg: Segment, r: RivalCar, tint: Color) -> void:
+	var p := fposmod(r.position + Cfg.PLAYER_Z, Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH
+	var s := lerpf(seg.scale1, seg.scale2, p)
+	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
+	var cx := lerpf(seg.s1.x, seg.s2.x, p) + s * r.x * Cfg.ROAD_WIDTH * Cfg.PROJ
+	var cy := lerpf(seg.s1.y, seg.s2.y, p)
+	if w < 1.0 or cy - w >= seg.clip or cx + w < 0.0 or cx - w > Cfg.SCREEN_W:
+		return
+	var steer := r.steer
+	var lift := r.air_height * s * Cfg.PROJ
+	if r.crash_time > 0.0:
+		steer = sin(r.crash_time * 20.0) * 2.0
+		lift += sin(r.crash_time / Cfg.CRASH_DURATION * PI) * w * 0.3
+	CarSprites.draw_player(self, r.strips, Vector2(roundf(cx), roundf(cy)), w, steer, r.braking, r.nitro_time > 0.0,
+		time, roundf(lift), r.pitch, 1.0, tint)
+
+
+## Where the ghost is on the track (its distance from the start line, wrapped).
+func ghost_z() -> float:
+	return fposmod(ghost.x + Cfg.PLAYER_Z, track.length)
+
+
+## The Time Attack ghost: the player's car, see-through and cooled blue.
+func _draw_ghost(seg: Segment) -> void:
+	var p := fposmod(ghost_z(), Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH
+	var s := lerpf(seg.scale1, seg.scale2, p)
+	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
+	var cx := lerpf(seg.s1.x, seg.s2.x, p) + s * ghost.y * Cfg.ROAD_WIDTH * Cfg.PROJ
+	var cy := lerpf(seg.s1.y, seg.s2.y, p)
+	if w < 1.0 or cy - w >= seg.clip or cx + w < 0.0 or cx - w > Cfg.SCREEN_W:
+		return
+	CarSprites.draw_player(self, ghost_strips, Vector2(roundf(cx), roundf(cy)), w, ghost.z, false, false,
+		time, 0.0, 0.0, GHOST_ALPHA, GHOST_TINT)
+
+
 func _draw_player() -> void:
 	var p := player
-	var s := Cfg.CAMERA_DEPTH / Cfg.PLAYER_Z
+	var s := camera_depth / Cfg.PLAYER_Z
 	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
 	var y := Cfg.HORIZON_Y + s * Cfg.CAMERA_HEIGHT * Cfg.PROJ
 	var lift := p.air_height * s * Cfg.PROJ
@@ -253,9 +351,16 @@ func _draw_player() -> void:
 	# A ghost flickers see-through, brighter as it runs out
 	var alpha := 1.0
 	if p.ghost_time > 0.0:
-		alpha = 0.45 + (0.35 if p.ghost_time < 1.0 and int(time * 10.0) % 2 == 0 else 0.0)
+		alpha = ghost_alpha(p.ghost_time, time, flash)
 	CarSprites.draw_player(self, player_strips, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking, p.nitro_time > 0.0,
 		time, roundf(lift), p.pitch, alpha)
+
+
+## The ghosted player's see-through alpha: it blinks brighter in its last second, by as much
+## as the FLASHING option allows (`flash`, 0..1; steady at 0).
+static func ghost_alpha(ghost_time: float, t: float, flash_share: float) -> float:
+	var blink := ghost_time < 1.0 and int(t * 10.0) % 2 == 0
+	return 0.45 + (0.35 * flash_share if blink else 0.0)
 
 
 ## A stage's road colors, darkened for inside a tunnel or covered bridge (worked out once

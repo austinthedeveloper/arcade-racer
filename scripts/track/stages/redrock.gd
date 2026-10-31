@@ -14,6 +14,7 @@ static func theme() -> Dictionary:
 		"rumble": [Color("#f8f8fa"), Color("#d70806")],
 		"road": [Color("#4a4a53"), Color("#44444d")],
 		"lane": Color("#f4f4f4"),
+		"clock": [27, 32, 38, 22],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/redrock_far.png",
 		"specials": ["jeep_red", "tow_truck", "pickup_red"],
 	}
@@ -68,6 +69,10 @@ static func build() -> Track:
 	_decorate(t, canyon_start, canyon_end, diner_at)
 	t.add_spans_at("redrock_arch", [0.3, 0.42, 0.62])
 	t.scatter(["water_tower_wood", "dino", "rusty_truck", "cattle_sign", "butte", "arrow_sign"], 250, 450, 1.8)
+	# Brown scenic-route signs on the right
+	t.scatter(["sign_brown", "sign_brown", "sign_brown", "sign_brown", "sign_brown"], 120, 800, 1.5, 1)
+	t.add_road_signs()
+	t.add_race_furniture()
 	t.add_finish_crowd()
 	return t
 
