@@ -300,3 +300,117 @@ func test_difficulty_reaches_the_race() -> void:
 	var hard := race(false, false)
 	check(easy.rivals.cars[0].base_top < hard.rivals.cars[0].base_top, "slower rivals on easy")
 	_clean()
+
+
+## The scratch options, save and wheel profiles, each with something non-default in it.
+func _fill_all_three() -> void:
+	_clean_all()
+	Settings.traffic = Settings.Traffic.HEAVY
+	Settings.music_volume = 4
+	Settings.save()
+	SaveData.record_finish(0, "car_vega", 70.0)
+	var cfg := ConfigFile.new()
+	cfg.set_value("test-wheel-guid", "steer_deadzone", 0.2)
+	cfg.save(TestSuite.SCRATCH_PROFILES)
+	InputRouter.load_profiles()
+
+
+func _clean_all() -> void:
+	_clean()
+	TestSuite.use_scratch_save(SaveData)
+	TestSuite.use_scratch_profiles(InputRouter)
+
+
+static func _file(path: String) -> String:
+	return FileAccess.get_file_as_string(path)
+
+
+func test_reset_options_leaves_save_and_profiles() -> void:
+	_fill_all_three()
+	var save_before := _file(TestSuite.SCRATCH_SAVE)
+	var profiles_before := _file(TestSuite.SCRATCH_PROFILES)
+	check(profiles_before != "" and save_before != "", "files written")
+	var keep := _as_device(DriveInput.Kind.KEYBOARD)
+	var g := _game()
+	g.show_options()
+	var o: OptionsScreen = g.menu
+	o.index = OptionsScreen.Row.RESET_OPTIONS
+	var m := MenuInput.new()
+	m.confirm_pressed = true
+	o.handle(m)
+	eq([Settings.traffic, Settings.music_volume], [Settings.Traffic.NORMAL, 10], "options back to defaults")
+	Settings.load_settings()
+	eq([Settings.traffic, Settings.music_volume], [Settings.Traffic.NORMAL, 10], "and saved")
+	eq(o.row_text(OptionsScreen.Row.RESET_OPTIONS), "DONE", "shows it ran")
+	eq(_file(TestSuite.SCRATCH_SAVE), save_before, "save file untouched")
+	eq(SaveData.best(0, "car_vega")["time"], 70.0, "best time kept")
+	eq(_file(TestSuite.SCRATCH_PROFILES), profiles_before, "profiles file untouched")
+	o.move(1)
+	eq(o.row_text(OptionsScreen.Row.RESET_OPTIONS), "", "DONE goes when the cursor moves")
+	InputRouter.state = keep
+	_clean_all()
+
+
+func test_reset_save_asks_then_leaves_options_and_profiles() -> void:
+	_fill_all_three()
+	var settings_before := _file(TestSuite.SCRATCH_SETTINGS)
+	var profiles_before := _file(TestSuite.SCRATCH_PROFILES)
+	var keep := _as_device(DriveInput.Kind.KEYBOARD)
+	var g := _game()
+	g.show_options()
+	var o: OptionsScreen = g.menu
+	o.index = OptionsScreen.Row.RESET_SAVE
+	var confirm := MenuInput.new()
+	confirm.confirm_pressed = true
+	o.handle(confirm)
+	check(o.confirming, "the first select asks")
+	eq(o.row_text(OptionsScreen.Row.RESET_SAVE), "SURE?", "shown on the row")
+	eq(SaveData.best(0, "car_vega")["time"], 70.0, "nothing erased yet")
+	var back := MenuInput.new()
+	back.back_pressed = true
+	o.handle(back)
+	check(not o.confirming, "back cancels")
+	eq(g.screen, g.Screen.OPTIONS, "and stays on the options")
+	o.handle(confirm)
+	var right := MenuInput.new()
+	right.right_pressed = true
+	o.handle(right)
+	check(not o.confirming, "left/right cancels")
+	eq(SaveData.best(0, "car_vega")["time"], 70.0, "still nothing erased")
+	o.handle(confirm)
+	o.handle(confirm)
+	check(not o.confirming, "the second select erases")
+	eq([SaveData.bests.size(), SaveData.furthest_stage], [0, 0], "save reset")
+	SaveData.load_save()
+	eq([SaveData.bests.size(), SaveData.furthest_stage], [0, 0], "and written")
+	eq(o.row_text(OptionsScreen.Row.RESET_SAVE), "DONE", "shows it ran")
+	eq(_file(TestSuite.SCRATCH_SETTINGS), settings_before, "options file untouched")
+	eq([Settings.traffic, Settings.music_volume], [Settings.Traffic.HEAVY, 4], "options kept")
+	eq(_file(TestSuite.SCRATCH_PROFILES), profiles_before, "profiles file untouched")
+	InputRouter.state = keep
+	_clean_all()
+
+
+func test_reset_save_on_a_wheel_cancels_on_steer() -> void:
+	_fill_all_three()
+	var keep := _as_device(DriveInput.Kind.WHEEL)
+	var g := _game()
+	g.show_options()
+	var o: OptionsScreen = g.menu
+	o.index = OptionsScreen.Row.RESET_SAVE
+	var gas := MenuInput.new()
+	gas.confirm_pressed = true
+	o.handle(gas)
+	check(o.confirming, "gas asks")
+	var steer := MenuInput.new()
+	steer.right_pressed = true
+	o.handle(steer)
+	check(not o.confirming, "steering away cancels")
+	eq(o.index, OptionsScreen.Row.BACK, "and moves on")
+	eq(SaveData.bests.size(), 1, "nothing erased")
+	o.index = OptionsScreen.Row.RESET_SAVE
+	o.handle(gas)
+	o.handle(gas)
+	eq(SaveData.bests.size(), 0, "gas twice erases")
+	InputRouter.state = keep
+	_clean_all()

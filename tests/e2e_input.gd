@@ -23,6 +23,7 @@ func _initialize() -> void:
 	TestSuite.use_scratch_profiles(root.get_node("InputRouter"))
 	_settings = root.get_node("Settings")  # autoloads aren't globals in a SceneTree script
 	TestSuite.use_scratch_settings(_settings)
+	TestSuite.use_scratch_save(root.get_node("SaveData"))
 	_game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(_game)
 	physics_frame.connect(_tick)
