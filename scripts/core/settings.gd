@@ -69,10 +69,7 @@ func save() -> void:
 func drive_input(inp: DriveInput) -> DriveInput:
 	if not auto_gas:
 		return inp
-	var out := DriveInput.new()
-	for p in ["steer", "throttle", "brake", "nitro_pressed", "pause_pressed", "restart_pressed",
-			"confirm_pressed", "kind", "device_name"]:
-		out.set(p, inp.get(p))
+	var out := inp.copy()
 	out.throttle = 0.0 if inp.brake > 0.05 else 1.0
 	return out
 

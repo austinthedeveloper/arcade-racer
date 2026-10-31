@@ -105,6 +105,21 @@ func test_every_placed_sprite_has_art() -> void:
 		eq(missing.keys(), [], t.name + " sprites without art")
 
 
+func test_every_loaded_sprite_is_placed_or_listed_unplaced() -> void:
+	var placed := {}
+	for t in _stages():
+		for seg in t.segments:
+			for sp in seg.sprites:
+				placed[sp["id"]] = true
+	var stray: Array = []
+	for id: String in SpriteLibrary.defs:
+		if not placed.has(id) and not SpriteLibrary.UNPLACED.has(id):
+			stray.append(id)
+	eq(stray, [], "sprites no stage places (add them to SpriteLibrary.UNPLACED, or drop them)")
+	for id: String in SpriteLibrary.UNPLACED:
+		check(not placed.has(id), "%s is placed now: take it off UNPLACED" % id)
+
+
 func test_redrock_has_its_landmarks() -> void:
 	var counts := {}
 	for seg in Redrock.build().segments:

@@ -16,9 +16,15 @@ python3 tools/make_stage_sprites.py assets/concept . neon      # rebuild a stage
 python3 tools/make_ui_sprites.py assets/concept .   # rebuild the logo, title backdrop, stage postcards, car pictures
 python3 tools/make_span_sprites.py assets/concept . # rebuild tunnels, bridges, arches and race gates
 python3 tools/make_powerup_sprites.py assets/concept .   # rebuild the power-up pickups, icons and effects
+python3 tools/make_drawn_props.py .                 # redraw Palm Coast's six hand-drawn props
+python3 tools/manifest.py .                         # rewrite assets/sprites/manifest.json after editing a world height or collide fraction
 python3 tools/make_audio.py                         # rebuild the placeholder sounds (assets/audio/README.md)
 tools/export.sh 0.1.0                               # Windows/macOS/Web zips in build/release (needs export templates)
 ```
+
+The sprite tools share `tools/spritelib.py` and need `pip install -r tools/requirements.txt`. Their
+specs (`STAGES`, `TRAFFIC`, `SPANS`, `DRAWN`) are the source of each sprite's world height, collide
+fraction and scale; every tool rewrites `assets/sprites/manifest.json`, which the game loads.
 
 ## Tests
 

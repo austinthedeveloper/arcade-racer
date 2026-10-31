@@ -60,11 +60,7 @@ static func build() -> Track:
 	var final_straight := t.segments.size()
 	t.straight(Track.LENGTH_LONG)
 
-	var n := t.segments.size()
-	t.segments[14].flags |= Segment.FLAG_START
-	for f in [0.25, 0.5, 0.75]:
-		t.add_checkpoint(int(n * f))
-	t.finish_building(final_straight + 60)
+	t.finish_stage(final_straight)
 
 	_decorate(t, strip_start, strip_end, plaza_at)
 	t.add_tunnel(t.free_spot(strip_start + 120, 50), 45, "neon_tunnel", "neon_tunnel_ring")

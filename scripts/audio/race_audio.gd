@@ -5,7 +5,6 @@ extends Node
 ## Reads the race and never writes to it, so play is the same with or without sound.
 
 const GEARS: Array[float] = [0.0, 0.16, 0.34, 0.54, 0.76, 1.0]  # speed fraction where each gear ends
-const LOW_TIME := 10.0  # seconds left when the clock starts ticking
 const FADE := 6.0  # loop level change per second
 
 var race: Node
@@ -102,7 +101,7 @@ func _events() -> void:
 		Audio.play("bump")
 	if _player.landed:
 		Audio.play("land")
-	if state == race.State.RACING and race.time_left < LOW_TIME:
+	if state == race.State.RACING and race.time_left < Cfg.LOW_TIME:
 		var s := ceili(race.time_left)
 		if s != _tick:
 			_tick = s

@@ -17,6 +17,10 @@ func test_every_span_loads_with_an_opening_that_fits_the_road() -> void:
 		var outer: Vector2 = e["outer"]
 		check(inner.x < -1.0 and inner.y > 1.0, "%s opening is wider than the road" % id)
 		check(outer.x < inner.x and outer.y > inner.y, "%s has structure on both sides" % id)
+		# The two checks above follow from how world_w is worked out; this one can fail.
+		var opening: Vector2 = SpriteLibrary.spans[id]["opening"]
+		check(opening.y - opening.x > SpriteLibrary.MIN_OPENING and opening.x > 0.0 and opening.y < 1.0,
+			"%s opening %.2f..%.2f of the sprite" % [id, opening.x, opening.y])
 
 
 func test_find_opening_reads_the_gap_near_the_bottom() -> void:
@@ -24,6 +28,14 @@ func test_find_opening_reads_the_gap_near_the_bottom() -> void:
 	img.fill(Color.WHITE)
 	img.fill_rect(Rect2i(20, 10, 60, 40), Color.TRANSPARENT)
 	eq(SpriteLibrary.find_opening(img), Vector2(0.2, 0.8), "legs at 0-20% and 80-100%")
+
+
+func test_find_opening_with_a_solid_middle_finds_none() -> void:
+	# Regression: a solid middle pixel came back as a 1 px opening, which made the span huge.
+	var img := Image.create(100, 50, false, Image.FORMAT_RGBA8)
+	img.fill(Color.WHITE)
+	var o := SpriteLibrary.find_opening(img)
+	check(o.y - o.x < SpriteLibrary.MIN_OPENING, "no opening (%s)" % o)
 
 
 func test_span_rect_centers_the_opening_on_the_road() -> void:

@@ -64,5 +64,6 @@ func _draw() -> void:
 	var dev: String = ["KEYBOARD", "GAMEPAD", "WHEEL"][inp.kind]
 	_text(Vector2(10, Cfg.SCREEN_H - 8), dev + "  " + inp.device_name.left(28), 8, Color(1, 1, 1, 0.7))
 	_text(Vector2(w - 150, Cfg.SCREEN_H - 8), "F2 calibrate wheel   v" + str(ProjectSettings.get_setting("application/config/version", "")), 8, Color(1, 1, 1, 0.6))
-	if game != null and game.wheel_hint != "":
-		_text_centered(Vector2(w / 2.0, 330), game.wheel_hint, 10, GOLD)
+	var hint := InputRouter.wheel_hint()
+	if hint != "":
+		_text_centered(Vector2(w / 2.0, 330), hint, 10, GOLD)

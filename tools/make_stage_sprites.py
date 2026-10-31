@@ -5,9 +5,8 @@
   one per object, scaled down so the sheet's tallest object is a fixed texture height.
 - Turns the stage's background composite into a seamless parallax strip.
 
-Stages are described in STAGES below. Palm Coast's background and palms still come from
-make_placeholder_sprites.py; "shared" holds race furniture (crowds, barriers, signs) for
-every stage.
+Stages are described in STAGES below; "shared" holds race furniture (crowds, barriers, signs)
+for every stage. Palm Coast's six hand-drawn props come from make_drawn_props.py.
 
 Usage:
     python3 tools/make_stage_sprites.py <concept_dir> <project_dir> [stage ...]
@@ -15,276 +14,231 @@ Usage:
 import os
 import sys
 
-from PIL import Image
-
-from make_placeholder_sprites import key_out, pixelate_down
+import manifest
+from spritelib import make_background, slice_objects
 
 # Per stage: background (composite file, horizon row in it) and roadside sheets.
 # Each sheet lists its objects in reading order (rows top to bottom, left to right) and the
-# texture height of its tallest object. None skips an object (art the renderer can't use yet,
-# such as a tunnel mouth or a covered bridge the road would run through).
+# texture height of its tallest object. An object is (name, world height, fraction of its
+# width that collides); the game reads those from the manifest (tools/manifest.py). None skips
+# an object (art the renderer can't use yet, such as a tunnel mouth or a covered bridge the
+# road would run through). A fourth item, "row", cuts a single row of overlapping objects
+# left to right instead (spritelib.slice_row).
 STAGES = {
     "redrock": {
         "background": ("redrock_composite_A_v1.png", 636),
         "sheets": [
             ("redrock_cactus_A_v1.png", 160, [
-                "saguaro_a", "saguaro_b", "saguaro_c", "prickly_pear_a", "prickly_pear_b",
-                "tumbleweed_a", "tumbleweed_b"]),
-            ("redrock_rocks_A_v1.png", 200, ["boulders_a", "boulders_b", "rock_pillar", "rock_arch"]),
-            ("redrock_buildings_A_v1.png", 180, ["diner", "gas_station", "windmill"]),
-            ("redrock_props_A_v1.png", 110, ["fence", "skull_post", "road_sign"]),
+                ("saguaro_a", 3600, 0.3), ("saguaro_b", 3800, 0.3), ("saguaro_c", 3400, 0.3),
+                ("prickly_pear_a", 1100, 0.7), ("prickly_pear_b", 1300, 0.7),
+                ("tumbleweed_a", 600, 0), ("tumbleweed_b", 750, 0),
+            ]),
+            ("redrock_rocks_A_v1.png", 200, [
+                ("boulders_a", 2600, 0.8), ("boulders_b", 2000, 0.8), ("rock_pillar", 9000, 0.5),
+                ("rock_arch", 6500, 0.9),
+            ]),
+            ("redrock_buildings_A_v1.png", 180, [
+                ("diner", 6000, 1), ("gas_station", 4200, 1), ("windmill", 7000, 0.4),
+            ]),
+            ("redrock_props_A_v1.png", 110, [
+                ("fence", 1300, 1), ("skull_post", 1700, 0.3), ("road_sign", 2400, 0.9),
+            ]),
             ("redrock_extras_A_v1.png", 200, [
-                "water_tower_wood", "rusty_truck", "dino", "cattle_sign", "butte", "arrow_sign"]),
+                ("water_tower_wood", 6500, 0.6), ("rusty_truck", 1800, 1), ("dino", 7000, 0.6),
+                ("cattle_sign", 2200, 0.5), ("butte", 9000, 0.9), ("arrow_sign", 4200, 0.4),
+            ]),
         ],
     },
     "neon": {
         "background": ("neon_composite_A_v1.png", 676),
         "sheets": [
             ("neon_buildings_A_v1.png", 200, [
-                "casino_spire", "casino_lotus", "casino_round", "casino_star", "casino_wave",
-                "casino_crown"]),
+                ("casino_spire", 11000, 1), ("casino_lotus", 11000, 1), ("casino_round", 11000, 1),
+                ("casino_star", 11000, 1), ("casino_wave", 11000, 1), ("casino_crown", 11000, 1),
+            ]),
             ("neon_billboards_A_v1.png", 170, [
-                "billboard_sunset", "sign_chevron", "sign_starburst", "sign_lights", "billboard_wide",
-                "sign_stack"]),
+                ("billboard_sunset", 5200, 0.8), ("sign_chevron", 5200, 0.8),
+                ("sign_starburst", 5200, 0.8), ("sign_lights", 5200, 0.8),
+                ("billboard_wide", 5200, 0.8), ("sign_stack", 5200, 0.8),
+            ]),
             ("neon_neon-signs_A_v1.png", 150, [
-                "neon_arrow", "neon_star", "neon_cocktail", "neon_chevrons", "neon_card", "neon_stars",
-                "neon_spiral"]),
-            ("neon_props_A_v1.png", 150, ["street_lamp_a", "street_lamp_b", "palm_lit", "fountain", None]),
+                ("neon_arrow", 3600, 0.3), ("neon_star", 3600, 0.3), ("neon_cocktail", 3600, 0.3),
+                ("neon_chevrons", 3600, 0.3), ("neon_card", 3600, 0.3), ("neon_stars", 3600, 0.3),
+                ("neon_spiral", 3600, 0.3),
+            ]),
+            ("neon_props_A_v1.png", 150, [
+                ("street_lamp_a", 3400, 0.2), ("street_lamp_b", 3000, 0.2), ("palm_lit", 4200, 0.3),
+                ("fountain", 2800, 1), None,
+            ]),
             ("neon_extras_A_v1.png", 200, [
-                "slot_machine", "cowboy_boot", "palm_lights", "casino_entrance", "fountain_show", "searchlight"]),
+                ("slot_machine", 7500, 1), ("cowboy_boot", 6000, 0.8), ("palm_lights", 4600, 0.3),
+                ("casino_entrance", 6500, 1), ("fountain_show", 5000, 0.9),
+                ("searchlight", 3000, 0.7),
+            ]),
         ],
     },
     "timberline": {
         "background": ("timberline_composite_A_v1.png", 706),
         "sheets": [
             ("timberline_pines_A_v1.png", 170, [
-                "pine_a", "pine_b", "pine_c", "pine_d", "pine_e", "pine_f", "fallen_log"]),
-            ("timberline_buildings_A_v1.png", 150, ["cabin", "lodge", None]),
-            ("timberline_landmarks_A_v1.png", 220, ["waterfall", "lookout_tower"]),
-            ("timberline_props_A_v1.png", 160, ["snowbank", "guardrail", "chevron_sign", "snow_cliff"]),
+                ("pine_a", 6400, 0.25), ("pine_b", 6000, 0.25), ("pine_c", 4200, 0.25),
+                ("pine_d", 3800, 0.25), ("pine_e", 2500, 0.3), ("pine_f", 2200, 0.3),
+                ("fallen_log", 700, 0.9),
+            ]),
+            ("timberline_buildings_A_v1.png", 150, [
+                ("cabin", 5000, 1), ("lodge", 6500, 1), None,
+            ]),
+            ("timberline_landmarks_A_v1.png", 220, [
+                ("waterfall", 12000, 1), ("lookout_tower", 8500, 0.4),
+            ]),
+            ("timberline_props_A_v1.png", 160, [
+                ("snowbank", 1100, 0), ("guardrail", 900, 1), ("chevron_sign", 1900, 0.8),
+                ("snow_cliff", 7000, 1),
+            ]),
             ("timberline_extras_A_v1.png", 200, [
-                "chairlift", "chapel", "frozen_falls", "moose", "woodpile", "snowman"]),
+                ("chairlift", 7500, 0.3), ("chapel", 6500, 1), ("frozen_falls", 9000, 1),
+                ("moose", 2600, 0.6), ("woodpile", 1600, 1), ("snowman", 1500, 0.5),
+            ]),
         ],
     },
     "bayou": {
         "background": ("bayou_composite_A_v1.png", 600),
         "sheets": [
-            ("bayou_trees_A_v1.png", 220, ["cypress_a", "cypress_b", "cypress_c", None]),
-            ("bayou_buildings_A_v1.png", 150, ["stilt_shack", "boat_dock", "bait_shop"]),
+            ("bayou_trees_A_v1.png", 220, [
+                ("cypress_a", 8000, 0.15), ("cypress_b", 8400, 0.2), ("cypress_c", 6200, 0.15),
+                None,
+            ]),
+            ("bayou_buildings_A_v1.png", 150, [
+                ("stilt_shack", 5000, 1), ("boat_dock", 3200, 1), ("bait_shop", 4800, 1),
+            ]),
             ("bayou_props_A_v1.png", 90, [
-                "reeds_a", "reeds_b", "cattails", "reeds_c", "heron", "mist_a", "mist_b", "mist_c"]),
+                ("reeds_a", 1000, 0), ("reeds_b", 1000, 0), ("cattails", 1000, 0),
+                ("reeds_c", 1000, 0), ("heron", 1100, 0), ("mist_a", 1400, 0), ("mist_b", 1400, 0),
+                ("mist_c", 1400, 0),
+            ]),
             ("bayou_bridge_A_v1.png", 150, [
-                "rail_wood_a", "rail_wood_b", "rail_wood_short", "rail_post", "rail_end",
-                None, None, None, None, None, "piling",
-                "rail_wood_long", "rail_concrete", "rail_concrete_end"]),
+                ("rail_wood_a", 1000, 1), ("rail_wood_b", 1000, 1), ("rail_wood_short", 1000, 1),
+                ("rail_post", 750, 1), ("rail_end", 1000, 1), None, None, None, None, None,
+                ("piling", 2000, 0.8), ("rail_wood_long", 1000, 1), ("rail_concrete", 1000, 1),
+                ("rail_concrete_end", 1000, 1),
+            ]),
             ("bayou_extras_A_v1.png", 200, [
-                "crab_shack", "gator", "crawfish_sign", "live_oak", "riverboat", "mailboxes"]),
+                ("crab_shack", 5500, 1), ("gator", 700, 0), ("crawfish_sign", 3000, 0.8),
+                ("live_oak", 7000, 0.3), ("riverboat", 5500, 1), ("mailboxes", 1300, 0.9),
+            ]),
         ],
     },
     "harvest": {
         "background": ("harvest_composite_A_v1.png", 600),
         "sheets": [
-            ("harvest_buildings_A_v1.png", 200, ["barn", "silos", "water_tower"]),
-            ("harvest_landmarks_A_v1.png", 220, ["farm_windmill", "oak"]),
-            ("harvest_plants_A_v1.png", 90, ["sunflowers", "corn", "farm_stand"]),
-            ("harvest_props_A_v1.png", 100, ["hay_round", "hay_bale", "scarecrow", "farm_fence"]),
+            ("harvest_buildings_A_v1.png", 200, [
+                ("barn", 6500, 1), ("silos", 7500, 1), ("water_tower", 8000, 0.4),
+            ]),
+            ("harvest_landmarks_A_v1.png", 220, [
+                ("farm_windmill", 8000, 0.3), ("oak", 6500, 0.2),
+            ]),
+            ("harvest_plants_A_v1.png", 90, [
+                ("sunflowers", 1500, 0), ("corn", 1700, 0), ("farm_stand", 2200, 1),
+            ]),
+            ("harvest_props_A_v1.png", 100, [
+                ("hay_round", 1200, 1), ("hay_bale", 800, 1), ("scarecrow", 1800, 0.3),
+                ("farm_fence", 900, 1),
+            ]),
             ("harvest_extras_A_v1.png", 200, [
-                "grain_elevator", "balloon", "farm_truck", "produce_cart", "crop_duster", "pumpkins"]),
+                ("grain_elevator", 10000, 1), ("balloon", 4000, 0), ("farm_truck", 2000, 1),
+                ("produce_cart", 2400, 1), ("crop_duster", 4200, 1), ("pumpkins", 1500, 0.9),
+            ]),
         ],
     },
     "thunder": {
         "background": ("thunder_composite_A_v1.png", 630),
         "sheets": [
-            ("thunder_buildings_A_v1.png", 160, ["truck_stop", "motel"]),
+            ("thunder_buildings_A_v1.png", 160, [
+                ("truck_stop", 6500, 1), ("motel", 6000, 1),
+            ]),
             ("thunder_hazards_A_v1.png", 110, [
-                "jersey_barrier", "cone", "cone_tall", "barricade_post", "sawhorse", "drum",
-                "hazard_post", "a_frame"]),
+                ("jersey_barrier", 900, 1), ("cone", 650, 0), ("cone_tall", 780, 0),
+                ("barricade_post", 1100, 0.5), ("sawhorse", 1000, 0.9), ("drum", 900, 0),
+                ("hazard_post", 1000, 0.5), ("a_frame", 950, 0.9),
+            ]),
             ("thunder_poles_A_v1.png", 220, [
-                "pole_a", "pole_b", "pole_transformer", "pole_c", "pole_tanks", "pole_tall", "pylon"]),
+                ("pole_a", 5200, 0.2), ("pole_b", 5200, 0.2), ("pole_transformer", 5200, 0.2),
+                ("pole_c", 5200, 0.2), ("pole_tanks", 5200, 0.2), ("pole_tall", 6000, 0.2),
+                ("pylon", 11000, 0.6),
+            ]),
             ("thunder_props_A_v1.png", 110, [
-                "tree_windswept", "tree_snapped", "shrub_windswept", "puddle_a", "puddle_b",
-                "wrecked_sign"]),
+                ("tree_windswept", 3200, 0.3), ("tree_snapped", 2600, 0.3),
+                ("shrub_windswept", 1700, 0), ("puddle_a", 500, 0), ("puddle_b", 500, 0),
+                ("wrecked_sign", 3200, 0.8),
+            ]),
             ("thunder_extras_A_v1.png", 200, [
-                "grain_bin", "storm_cellar", "windmill_old", "flasher_barricade", "radar_dome", "tree_bent"]),
+                ("grain_bin", 7000, 0.9), ("storm_cellar", 1800, 1), ("windmill_old", 6500, 0.3),
+                ("flasher_barricade", 1100, 0.9), ("radar_dome", 8000, 0.6),
+                ("tree_bent", 3600, 0.3),
+            ]),
         ],
     },
     "skyline": {
         "background": ("skyline_composite_A_v2.png", 560),
         "sheets": [
             ("skyline_buildings_A_v1.png", 220, [
-                "tower_twin", "tower_glass", "tower_round", "office_a", "deco_tower", "galleria",
-                "hotel_sky", "clock_tower", "cafe", "apartments", "deco_pink", "brick_loft", "office_b",
-                "office_c", None]),
+                ("tower_twin", 11000, 1), ("tower_glass", 11000, 1), ("tower_round", 11000, 1),
+                ("office_a", 11000, 1), ("deco_tower", 11000, 1), ("galleria", 7500, 1),
+                ("hotel_sky", 11000, 1), ("clock_tower", 11000, 1), ("cafe", 7500, 1),
+                ("apartments", 7500, 1), ("deco_pink", 7500, 1), ("brick_loft", 7500, 1),
+                ("office_b", 7500, 1), ("office_c", 7500, 1), None,
+            ]),
             ("skyline_props_A_v1.png", 150, [
-                "harbor_lamp", "harbor_lamp_double", "traffic_light", "traffic_light_arm", "subway",
-                "crowd_barrier_city"]),
+                ("harbor_lamp", 3600, 0.2), ("harbor_lamp_double", 3600, 0.2),
+                ("traffic_light", 3000, 0.2), ("traffic_light_arm", 3400, 0.15),
+                ("subway", 3200, 1), ("crowd_barrier_city", 1500, 1),
+            ]),
             ("skyline_bridge_A_v1.png", 220, [
-                "bridge_tower_x", "bridge_tower_h", "bridge_tower_a", "bridge_tower_slim", None, None]),
+                ("bridge_tower_x", 16000, 0.4), ("bridge_tower_h", 16000, 0.4),
+                ("bridge_tower_a", 16000, 0.4), ("bridge_tower_slim", 16000, 0.4), None, None,
+            ]),
             ("skyline_extras_A_v1.png", 200, [
-                "harbor_crane", "ferry_terminal", "dolphin_balloon", "flag_a", "flag_b", "flag_c",
-                "flag_d", "flag_e", "news_van", "fireworks_barge"]),
+                ("harbor_crane", 11000, 0.6), ("ferry_terminal", 5500, 1),
+                ("dolphin_balloon", 6000, 0), ("flag_a", 3800, 0.1), ("flag_b", 3800, 0.1),
+                ("flag_c", 3800, 0.1), ("flag_d", 3800, 0.1), ("flag_e", 3800, 0.1),
+                ("news_van", 1900, 1), ("fireworks_barge", 2600, 1),
+            ]),
         ],
     },
-    # Palm Coast's background and palms come from make_placeholder_sprites.py
     "palm_coast": {
+        "background": ("palm-coast_composite_A_v1.png", 584),
         "sheets": [
+            ("palm-coast_palms_A_v1.png", 190, [
+                ("palm_tall_a", 5200, 0.2), ("palm_tall_b", 4800, 0.2), ("palm_lean", 4800, 0.2),
+                ("palm_short_a", 2400, 0.35), ("palm_short_b", 2400, 0.35), ("palm_fan", 2200, 0.4),
+                ("palm_cluster", 4400, 0.5),
+            ], "row"),
             ("palm-coast_extras_A_v1.png", 200, [
-                "pier", "ice_cream_stand", "surfboards", "lighthouse", "bikes", "gull_post"]),
+                ("pier", 4200, 1), ("ice_cream_stand", 3600, 0.9), ("surfboards", 2200, 0.8),
+                ("lighthouse", 8000, 0.5), ("bikes", 1200, 0.9), ("gull_post", 1500, 0.4),
+            ]),
         ],
     },
     # Race furniture every stage can use; no background.
     "shared": {
         "sheets": [
             ("shared_barriers_A_v1.png", 60, [
-                "guardrail_steel", "barrier_red", "tire_stack", "barrels_yellow", "cone_orange",
-                "barricade", "barrier_orange"]),
+                ("guardrail_steel", 650, 1), ("barrier_red", 900, 1), ("tire_stack", 1000, 1),
+                ("barrels_yellow", 900, 1), ("cone_orange", 650, 0), ("barricade", 1000, 0.9),
+                ("barrier_orange", 900, 1),
+            ]),
             ("shared_crowd_A_v1.png", 120, [
-                "crowd", "grandstand", "flagman", "camera_tower", None, None, None, "inflatable_arch"]),
+                ("crowd", 1800, 1), ("grandstand", 4200, 1), ("flagman", 1900, 0.4),
+                ("camera_tower", 4500, 0.6), None, None, None, ("inflatable_arch", 3800, 0.3),
+            ]),
             ("shared_signs_A_v1.png", 110, [
-                "turn_left", "turn_right", "chevron_a", "chevron_b", "chevron_c", "bump_sign",
-                "sign_green", "sign_brown", "delineator"]),
+                ("turn_left", 2100, 0.4), ("turn_right", 2100, 0.4), ("chevron_a", 2100, 0.4),
+                ("chevron_b", 2100, 0.4), ("chevron_c", 2100, 0.4), ("bump_sign", 2100, 0.4),
+                ("sign_green", 3200, 0.8), ("sign_brown", 3200, 0.8), ("delineator", 1100, 0.5),
+            ]),
         ],
     },
 }
-
-
-def label_components(img, step=2, min_area=12):
-    """Connected opaque regions on a downsampled alpha mask: (label grid, list of boxes)."""
-    alpha = img.getchannel("A")
-    w, h = img.size[0] // step, img.size[1] // step
-    small = alpha.resize((w, h), Image.NEAREST).load()
-    label = [[-1] * w for _ in range(h)]
-    boxes = []
-    for sy in range(h):
-        for sx in range(w):
-            if label[sy][sx] >= 0 or small[sx, sy] == 0:
-                continue
-            n = len(boxes)
-            stack, area = [(sx, sy)], 0
-            label[sy][sx] = n
-            x0, y0, x1, y1 = sx, sy, sx, sy
-            while stack:
-                x, y = stack.pop()
-                area += 1
-                x0, y0, x1, y1 = min(x0, x), min(y0, y), max(x1, x), max(y1, y)
-                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-                    if 0 <= nx < w and 0 <= ny < h and label[ny][nx] < 0 and small[nx, ny] > 0:
-                        label[ny][nx] = n
-                        stack.append((nx, ny))
-            boxes.append((x0, y0, x1 + 1, y1 + 1, area))
-    return label, boxes, step
-
-
-def overlap(a, b):
-    """Area of the intersection of two boxes over the smaller box's area."""
-    ix = max(0, min(a[2], b[2]) - max(a[0], b[0]))
-    iy = max(0, min(a[3], b[3]) - max(a[1], b[1]))
-    smaller = min((a[2] - a[0]) * (a[3] - a[1]), (b[2] - b[0]) * (b[3] - b[1]))
-    return ix * iy / max(1, smaller)
-
-
-def group_objects(boxes, min_area=400):
-    """Groups components into objects: big components seed objects, and every other
-    component (pebbles, grass tufts, a detached sign) joins the object whose box holds most of it."""
-    seeds = [i for i, b in enumerate(boxes) if b[4] >= min_area]
-    # Two big components that mostly overlap are one object (a sign above its posts)
-    groups = []
-    for i in sorted(seeds, key=lambda i: -boxes[i][4]):
-        for g in groups:
-            if overlap(g["box"], boxes[i]) > 0.5:
-                g["members"].append(i)
-                g["box"] = union(g["box"], boxes[i])
-                break
-        else:
-            groups.append({"members": [i], "box": boxes[i][:4]})
-    for i, b in enumerate(boxes):
-        if i in seeds:
-            continue
-        best = max(groups, key=lambda g: overlap(g["box"], b), default=None)
-        if best is not None and overlap(best["box"], b) > 0.5:
-            best["members"].append(i)
-    _merge_stacked(groups)
-    return in_reading_order(groups)
-
-
-def _merge_stacked(groups, max_gap=12):
-    """Joins a part that sits on top of or under another part (a sign on its pole, a
-    dome on its tower): one box's columns lie mostly within the other's, with at most a
-    small vertical gap between them. Boxes are in label-grid cells (half the sheet's pixels)."""
-    merged = True
-    while merged:
-        merged = False
-        for a in groups:
-            for b in groups:
-                if a is b:
-                    continue
-                ax0, ay0, ax1, ay1 = a["box"]
-                bx0, by0, bx1, by1 = b["box"]
-                shared = min(ax1, bx1) - max(ax0, bx0)
-                narrower = min(ax1 - ax0, bx1 - bx0)
-                gap = max(ay0, by0) - min(ay1, by1)
-                if shared > 0.8 * narrower and gap < max_gap:
-                    a["members"] += b["members"]
-                    a["box"] = union(a["box"], b["box"])
-                    groups.remove(b)
-                    merged = True
-                    break
-            if merged:
-                break
-
-
-def in_reading_order(groups):
-    """Rows top to bottom (a row is every object overlapping the one above it vertically),
-    left to right within a row."""
-    rows = []
-    for g in sorted(groups, key=lambda g: g["box"][1]):
-        if rows and g["box"][1] < rows[-1]["bottom"]:
-            rows[-1]["items"].append(g)
-            rows[-1]["bottom"] = max(rows[-1]["bottom"], g["box"][3])
-        else:
-            rows.append({"items": [g], "bottom": g["box"][3]})
-    return [g for row in rows for g in sorted(row["items"], key=lambda g: g["box"][0])]
-
-
-def union(a, b):
-    return (min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3]))
-
-
-def slice_sheet(path, names, target_height):
-    keyed = key_out(Image.open(path))
-    label, boxes, step = label_components(keyed)
-    groups = group_objects(boxes)
-    if len(groups) != len(names):
-        raise SystemExit("%s: found %d objects, expected %d (%s)" % (path, len(groups), len(names), names))
-    crops = []
-    for g in groups:
-        members = set(g["members"])
-        box = tuple(v * step for v in g["box"])
-        part = keyed.crop(box)
-        px = part.load()
-        for y in range(part.height):
-            for x in range(part.width):
-                ly, lx = (box[1] + y) // step, (box[0] + x) // step
-                if ly >= len(label) or lx >= len(label[0]) or label[ly][lx] not in members:
-                    px[x, y] = (0, 0, 0, 0)
-        crops.append(part.crop(part.getbbox()))
-    scale = target_height / max(c.height for c in crops)
-    return [(name, pixelate_down(c, scale)) for name, c in zip(names, crops)]
-
-
-def make_background(path, horizon, out_path):
-    src = Image.open(path).convert("RGB")
-    strip = src.crop((0, 0, src.width, horizon))
-    width = 1280
-    height = round(strip.height * width / strip.width)
-    strip = strip.resize((width, height), Image.BOX)
-    seamless = Image.new("RGB", (width * 2, height))
-    seamless.paste(strip, (0, 0))
-    seamless.paste(strip.transpose(Image.FLIP_LEFT_RIGHT), (width, 0))
-    seamless = seamless.quantize(colors=96, method=Image.MEDIANCUT).convert("RGB")
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    seamless.save(out_path)
-    print("background", out_path, seamless.size)
 
 
 def build(stage, concept_dir, project_dir):
@@ -295,8 +249,10 @@ def build(stage, concept_dir, project_dir):
                         os.path.join(project_dir, "assets", "sprites", "backgrounds", stage + "_far.png"))
     out_dir = os.path.join(project_dir, "assets", "sprites", "roadside", stage)
     os.makedirs(out_dir, exist_ok=True)
-    for sheet, target_height, names in spec["sheets"]:
-        for name, sprite in slice_sheet(os.path.join(concept_dir, "roadside", sheet), names, target_height):
+    for sheet, target_height, names, *how in spec["sheets"]:
+        path = os.path.join(concept_dir, "roadside", sheet)
+        names = [n and n[0] for n in names]
+        for name, sprite in slice_objects(path, names, target_height, row=how == ["row"]):
             if name is None:
                 continue
             sprite.save(os.path.join(out_dir, name + ".png"))
@@ -307,6 +263,7 @@ def main():
     concept_dir, project_dir = sys.argv[1], sys.argv[2]
     for stage in sys.argv[3:] or list(STAGES):
         build(stage, concept_dir, project_dir)
+    manifest.write(project_dir)
 
 
 if __name__ == "__main__":

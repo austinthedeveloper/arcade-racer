@@ -12,7 +12,6 @@ var stage_index := 0  # into Stages
 var car_index := 0  # into Cars
 var menu: MenuScreen
 var race: Node  # race.gd, while racing
-var wheel_hint := ""
 
 var calibration: CalibrationWizard
 var debug_overlay: InputDebugOverlay
@@ -30,8 +29,6 @@ func _ready() -> void:
 	add_child(top)
 	top.add_child(debug_overlay)
 	top.add_child(calibration)
-	InputRouter.devices_changed.connect(_update_wheel_hint)
-	_update_wheel_hint()
 	var quick := false
 	for arg in OS.get_cmdline_user_args():
 		for flag: String in RACE_FLAGS:
@@ -92,6 +89,8 @@ func start_race() -> void:
 	race = RACE_SCENE.instantiate()
 	race.stage_index = stage_index
 	race.car_id = Cars.get_car(car_index)["id"]
+	race.debug_overlay = debug_overlay
+	race.calibration = calibration
 	race.quit_requested.connect(_on_race_quit)
 	add_child(race)
 
@@ -113,13 +112,6 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 	if menu != null:
 		menu.game = self
 		_layer.add_child(menu)
-
-
-func _update_wheel_hint() -> void:
-	wheel_hint = ""
-	for d in Input.get_connected_joypads():
-		if InputRouter.needs_calibration(d):
-			wheel_hint = "Wheel detected: press F2 to calibrate steering and pedals"
 
 
 # --- Dev helpers: `godot -- --screen=stages --menu-shot=/tmp/stages.png` -------------

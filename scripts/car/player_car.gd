@@ -5,8 +5,10 @@ extends RefCounted
 const PITCH_SPAN := 400.0  # world units of road the car's pitch is measured over (about its length)
 const PITCH_FULL_DEG := 30.0
 const PITCH_RATE := 8.0
+const MAX_TICK_SEGMENTS := 4  # more segments than this in one tick is a teleport
 
 var position := 0.0  # camera z, wrapped to the track length
+var last_position := 0.0  # position before this tick's move
 var distance := 0.0  # total distance driven, not wrapped
 var x := 0.0
 var speed := 0.0
@@ -58,6 +60,7 @@ func setup(car: Dictionary) -> void:
 
 func reset(start_position: float = 0.0) -> void:
 	position = start_position
+	last_position = start_position
 	distance = 0.0
 	x = 0.0
 	speed = 0.0
@@ -99,27 +102,28 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	ghost_time = maxf(0.0, ghost_time - dt)
 
 	var step := speed * dt
+	last_position = position
 	position = fposmod(position + step, track.length)
 	distance += step
 
 	# Steering and the outward pull of curves
 	var rate := dt * Cfg.STEER_RATE * steer_mult * pct
 	if airborne:
-		rate *= 0.35
+		rate *= Cfg.AIR_STEER
 	x += steer_in * rate
 	if not airborne:
 		x -= rate / steer_mult * pct * seg.curve * Cfg.CENTRIFUGAL * pull_mult
-	steer = lerpf(steer, steer_in, minf(1.0, dt * 12.0))
+	steer = lerpf(steer, steer_in, minf(1.0, dt * Cfg.STEER_SMOOTHING))
 
 	# Speed
 	if crash_time > 0.0:
 		crash_time -= dt
-		speed = move_toward(speed, 0.0, Cfg.MAX_SPEED * 1.2 * dt)
-		x = move_toward(x, clampf(x, -0.8, 0.8), dt * 1.5)
+		speed = move_toward(speed, 0.0, Cfg.CRASH_BRAKING * dt)
+		x = move_toward(x, clampf(x, -Cfg.CRASH_RECOVER_X, Cfg.CRASH_RECOVER_X), dt * Cfg.CRASH_RECOVER_RATE)
 	elif not airborne:
 		if throttle > 0.01:
 			var boost := Cfg.NITRO_ACCEL_MULT if nitro_time > 0.0 else 1.0
-			speed += Cfg.ACCEL * accel_mult * boost * throttle * (1.3 - 0.8 * speed / top) * dt
+			speed += Cfg.ACCEL * accel_mult * boost * throttle * (Cfg.ACCEL_START - Cfg.ACCEL_FADE * speed / top) * dt
 		if brake > 0.01:
 			speed -= Cfg.BRAKING * brake * dt
 		if throttle <= 0.01 and brake <= 0.01:
@@ -128,9 +132,9 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	if offroad and not airborne and offroad_mult > 0.0 and speed > Cfg.OFFROAD_LIMIT / offroad_mult:
 		speed = maxf(Cfg.OFFROAD_LIMIT / offroad_mult, speed - Cfg.OFFROAD_DECEL * offroad_mult * dt)
 	if speed > top:
-		speed = move_toward(speed, top, Cfg.MAX_SPEED * 0.4 * dt)
+		speed = move_toward(speed, top, Cfg.OVERSPEED_DECAY * dt)
 	speed = maxf(speed, 0.0)
-	x = clampf(x, -3.0, 3.0)
+	x = clampf(x, -Cfg.MAX_X, Cfg.MAX_X)
 	braking = brake > 0.1
 
 	_update_air(dt, track.height_at(position + Cfg.PLAYER_Z))
@@ -148,7 +152,7 @@ func _update_air(dt: float, new_road_y: float) -> void:
 			_vy = road_vy
 			airborne = false
 			landed = true
-	elif _vy - road_vy > Cfg.GRAVITY * dt and speed > Cfg.MAX_SPEED * 0.4:
+	elif _vy - road_vy > Cfg.GRAVITY * dt and speed > Cfg.TAKEOFF_SPEED:
 		airborne = true
 		_vy -= Cfg.GRAVITY * dt
 		_alt = road_y + _vy * dt
@@ -176,16 +180,31 @@ static func pitch_for_slope(slope: float) -> float:
 	return clampf(-rad_to_deg(atan(slope)) / PITCH_FULL_DEG, -1.0, 1.0)
 
 
-## Checks roadside sprites and traffic in the player's segment.
+## The segments the car's nose entered this tick (two at nitro speed). A longer jump is a
+## teleport (a test or a restart placing the car), which only checks where it landed.
+func passed_segments(track: Track) -> Array[Segment]:
+	var segs := track.segments_entered(last_position + Cfg.PLAYER_Z, position + Cfg.PLAYER_Z)
+	if segs.size() > MAX_TICK_SEGMENTS:
+		return [track.find_segment(position + Cfg.PLAYER_Z)]
+	return segs
+
+
+## Checks roadside sprites and traffic in every segment the car entered this tick.
 func collide(track: Track) -> void:
 	rammed = false
 	if crash_time > 0.0 or airborne:
 		return
-	var seg := track.find_segment(position + Cfg.PLAYER_Z)
+	for seg in passed_segments(track):
+		if _collide_segment(seg, track):
+			return
+
+
+## Collides with one segment's spans, sprites and traffic. True once something was hit.
+func _collide_segment(seg: Segment, track: Track) -> bool:
 	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
 	if offroad and hits_span(seg, x, half_car):
 		crash()
-		return
+		return true
 	if offroad:
 		for sp in seg.sprites:
 			var def: Dictionary = SpriteLibrary.defs.get(sp["id"], {})
@@ -196,24 +215,33 @@ func collide(track: Track) -> void:
 			var center := offset - w_units / 2.0 if offset < 0.0 else offset + w_units / 2.0
 			if absf(x - center) < w_units * def["collide"] / 2.0 + half_car:
 				crash()
-				return
+				return true
 	if ghost_time > 0.0:
-		return
+		return false
 	for car in seg.cars:
 		if speed <= car.speed or car.flung > 0.0:
 			continue
 		var car_half: float = half_car * car.width_mult
-		if absf(x - car.offset) < (half_car + car_half) * 0.8:
+		if absf(x - car.offset) < (half_car + car_half) * Cfg.HIT_OVERLAP:
 			if ram_time > 0.0:
 				Traffic.fling(car, x)
 				rammed = true
-			elif speed - car.speed > Cfg.MAX_SPEED * 0.5:
+			elif speed - car.speed > Cfg.CRASH_CLOSING_SPEED:
 				crash()
 			else:
 				speed = car.speed * (car.speed / speed)
 				bumped = true
-				position = fposmod(car.z - Cfg.PLAYER_Z - 50.0, track.length)
-			return
+				move_to(car.z - Cfg.PLAYER_Z - Cfg.BUMP_GAP, track)
+			return true
+	return false
+
+
+## Puts the car at track position `z` (wrapped), moving `distance` by the same amount so
+## checkpoints and the finish stay where they are drawn.
+func move_to(z: float, track: Track) -> void:
+	var to := fposmod(z, track.length)
+	distance += wrapf(to - position, -track.length * 0.5, track.length * 0.5)
+	position = to
 
 
 ## Whether a car at `car_x` (half-width `half_car`, both in road half-widths) hits the

@@ -3,11 +3,9 @@ extends Control
 ## In-race HUD: timer, route progress, nitro, speedometer and center banners.
 
 var race: Node  # race.gd
-var _font: Font
 
 
 func _ready() -> void:
-	_font = ThemeDB.fallback_font
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
@@ -21,7 +19,7 @@ func _draw() -> void:
 	# Time, top left
 	_text(Vector2(12, 18), "TIME", 10, Color("#ffd23a"))
 	var t: float = race.time_left
-	var tcol := Color("#ff4040") if t < 10.0 and int(t * 4.0) % 2 == 0 else Color.WHITE
+	var tcol := Color("#ff4040") if t < Cfg.LOW_TIME and int(t * 4.0) % 2 == 0 else Color.WHITE
 	_text(Vector2(12, 46), str(ceili(t)), 30, tcol)
 
 	# Route progress, top center
@@ -68,8 +66,9 @@ func _draw() -> void:
 	var dev: String = ["KEYBOARD", "GAMEPAD", "WHEEL"][inp.kind]
 	_text(Vector2(10, Cfg.SCREEN_H - 20), dev + "  " + inp.device_name.left(28), 8, Color(1, 1, 1, 0.7))
 	_text(Vector2(10, Cfg.SCREEN_H - 8), "F1 input debug   F2 calibrate wheel   R restart", 8, Color(1, 1, 1, 0.45))
-	if race.wheel_hint != "":
-		_text_centered(Vector2(w / 2.0, 70), race.wheel_hint, 10, Color("#ffd23a"))
+	var hint := InputRouter.wheel_hint()
+	if hint != "":
+		_text_centered(Vector2(w / 2.0, 70), hint, 10, Color("#ffd23a"))
 
 	# Banners
 	if race.counting_down():
@@ -86,13 +85,11 @@ func _draw() -> void:
 
 
 func _text(pos: Vector2, s: String, size: int, col: Color) -> void:
-	draw_string_outline(_font, pos, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, maxi(2, size / 6), Color(0, 0, 0, 0.85))
-	draw_string(_font, pos, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+	UiText.draw(self, pos, s, size, col)
 
 
 func _text_centered(pos: Vector2, s: String, size: int, col: Color) -> void:
-	var width := _font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-	_text(Vector2(pos.x - width / 2.0, pos.y), s, size, col)
+	UiText.draw_centered(self, pos, s, size, col)
 
 
 ## The power-up slot under the nitro: the running ram plate or ghost with its time left, or

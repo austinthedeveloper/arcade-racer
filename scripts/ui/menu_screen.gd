@@ -85,10 +85,8 @@ func _arrow(c: Vector2, dir: int, col: Color) -> void:
 
 
 func _text(pos: Vector2, s: String, size: int, col: Color) -> void:
-	draw_string_outline(_font, pos, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, maxi(2, size / 6), Color(0, 0, 0, 0.85))
-	draw_string(_font, pos, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+	UiText.draw(self, pos, s, size, col)
 
 
 func _text_centered(pos: Vector2, s: String, size: int, col: Color) -> void:
-	var width := _font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-	_text(Vector2(pos.x - width / 2.0, pos.y), s, size, col)
+	UiText.draw_centered(self, pos, s, size, col)

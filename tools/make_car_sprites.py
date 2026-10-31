@@ -18,110 +18,45 @@ import sys
 
 from PIL import Image
 
-from make_placeholder_sprites import components, is_key, pixelate_down
+import manifest
+from spritelib import key_sheet, pixelate_down, slice_row
 
 PLAYER_BODY_WIDTH = 180  # straight-ahead frame, in texture pixels (about its on-screen width)
 TRAFFIC_CAR_WIDTH = 150  # widest vehicle on each sheet
 TRAFFIC_BIG_WIDTH = 170
+# World units per texture pixel, per sheet: each concept sheet was drawn at its own scale.
+CAR_SCALE = 7.0
+BIG_SCALE = 8.2
+# Pixels of magenta-ish fringe keyed off around the background (spritelib.key_sheet). Traffic
+# sheets have wide ones: a shadowed magenta line along the ground, glow around beacons. The
+# player cars keep one pixel, since the Zenith's purple paint would go too.
+PLAYER_FRINGE = 1
+TRAFFIC_FRINGE = 16
 
 TRAFFIC = [
-    ("trf01_cars_A_v1.png", TRAFFIC_CAR_WIDTH, ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow"]),
-    ("trf03_big_A_v1.png", TRAFFIC_BIG_WIDTH, ["semi", "bus", "box_truck", "rv", "carrier"]),
-    ("trf04_stage_specials_A_v1.png", TRAFFIC_CAR_WIDTH, [
+    ("trf01_cars_A_v1.png", TRAFFIC_CAR_WIDTH, CAR_SCALE, ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow"]),
+    ("trf03_big_A_v1.png", TRAFFIC_BIG_WIDTH, BIG_SCALE, ["semi", "bus", "box_truck", "rv", "carrier"]),
+    ("trf04_stage_specials_A_v1.png", TRAFFIC_CAR_WIDTH, CAR_SCALE, [
         "surf_van", "trolley", "log_truck", "tractor", "airboat_trailer", "taxi"]),
-    ("trf06_cars_more_A_v1.png", TRAFFIC_CAR_WIDTH, [
+    ("trf06_cars_more_A_v1.png", TRAFFIC_CAR_WIDTH, CAR_SCALE, [
         "pickup_red", "suv_green", "muscle_white", "van_navy", "tuk_tuk", "hatch_purple"]),
-    ("trf08_service_A_v1.png", TRAFFIC_BIG_WIDTH, [
+    ("trf08_service_A_v1.png", TRAFFIC_BIG_WIDTH, BIG_SCALE, [
         "tow_truck", "cement_mixer", "tanker", "garbage_truck", "street_sweeper", "ice_cream_truck"]),
     # The green combine on the specials sheet was rerolled as its own sheet (v2)
-    ("trf09_stage_specials_2_A_v1.png", TRAFFIC_CAR_WIDTH, [
+    ("trf09_stage_specials_2_A_v1.png", TRAFFIC_CAR_WIDTH, CAR_SCALE, [
         "golf_cart", "jeep_red", "limo_white", "dump_truck", "boat_trailer", None, "news_truck",
         "double_decker"]),
-    ("trf09_combine_A_v2.png", 220, ["combine"]),
+    ("trf09_combine_A_v2.png", 220, BIG_SCALE, ["combine"]),
 ]
 
 
-# Key color distance (sum of RGB differences) from the sheet's background that counts as
-# background. The plain magenta key (make_placeholder_sprites.is_key) also matches pink and
-# purple paint, which left holes in the Cyclone and the Zenith.
-KEY_DISTANCE = 90
-# A background-colored patch inside a car is a gap to see through (between a buggy's tubes,
-# under the Mesa's axle) if it is this close to the background on average, whatever its size,
-# or if it is framed by dark parts: the median brightest channel of the pixels around it is
-# under GAP_FRAME (thin gaps, like under the Mesa's light bar, are mostly shaded magenta).
-# Paint is further off and sits in bright paint: the Zenith's iridescent purple averages 40
-# or more and its surroundings 200 or more.
-GAP_DISTANCE = 40
-GAP_FRAME = 200
-
-
-def is_gap(patch, frame, dist, px):
-    """Whether a background-colored patch inside a car is a gap (see GAP_DISTANCE, GAP_FRAME)."""
-    if sum(dist[y][x] for x, y in patch) / len(patch) < GAP_DISTANCE:
-        return True
-    brightest = sorted(max(px[x, y][:3]) for x, y in frame)
-    return brightest[len(brightest) // 2] < GAP_FRAME
-
-
-def key_car_sheet(img):
-    """Keys out the sheet's background color (read from its corner): every patch of it that
-    touches the edge or is a real gap (GAP_DISTANCE, GAP_FRAME), plus a
-    one-pixel rim of magenta-ish fringe around those. Pink or purple paint stays."""
-    img = img.convert("RGBA")
-    px = img.load()
-    w, h = img.size
-    bg = px[1, 1][:3]
-    dist = [[abs(px[x, y][0] - bg[0]) + abs(px[x, y][1] - bg[1]) + abs(px[x, y][2] - bg[2])
-             for x in range(w)] for y in range(h)]
-    near = [[d < KEY_DISTANCE for d in row] for row in dist]
-    seen = [[False] * w for _ in range(h)]
-    keyed = []
-    for sy in range(h):
-        for sx in range(w):
-            if seen[sy][sx] or not near[sy][sx]:
-                continue
-            patch, stack, edge, frame = [], [(sx, sy)], False, set()
-            seen[sy][sx] = True
-            while stack:
-                x, y = stack.pop()
-                patch.append((x, y))
-                edge = edge or x in (0, w - 1) or y in (0, h - 1)
-                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-                    if not (0 <= nx < w and 0 <= ny < h):
-                        continue
-                    if not near[ny][nx]:
-                        frame.add((nx, ny))
-                    elif not seen[ny][nx]:
-                        seen[ny][nx] = True
-                        stack.append((nx, ny))
-            if edge or is_gap(patch, frame, dist, px):
-                keyed += patch
-    keyed_set = set(keyed)
-    fringe = set()
-    for x, y in keyed:
-        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-            if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in keyed_set and is_key(*px[nx, ny][:3]):
-                fringe.add((nx, ny))
-    for x, y in keyed_set | fringe:
-        px[x, y] = (0, 0, 0, 0)
-    return img
-
-
-def slice_sheet(path):
-    """Keyed, trimmed sprites left to right. Pixels of other sprites inside a box are cleared."""
-    keyed = key_car_sheet(Image.open(path))
-    boxes, label, step = components(keyed)
-    crops = []
-    for box, comp in boxes:
-        part = keyed.crop(box)
-        px = part.load()
-        for y in range(part.height):
-            for x in range(part.width):
-                ly, lx = (box[1] + y) // step, (box[0] + x) // step
-                if ly >= len(label) or lx >= len(label[0]) or label[ly][lx] != comp:
-                    px[x, y] = (0, 0, 0, 0)
-        crops.append(part.crop(part.getbbox()))
-    return crops
+def slice_sheet(path, fringe=PLAYER_FRINGE):
+    """Keyed, trimmed sprites left to right. Pixels of other sprites inside a box are cleared.
+    Sprites are found on the sheet keyed with a one-pixel fringe, so the wide fringe can't
+    cut a part off its vehicle."""
+    sheet = Image.open(path)
+    shape = key_sheet(sheet, PLAYER_FRINGE)
+    return slice_row(shape if fringe == PLAYER_FRINGE else key_sheet(sheet, fringe), shape)
 
 
 # (concept sheet, output strip, required, tallest cell as a multiple of the level strip's)
@@ -177,8 +112,8 @@ def make_player(sheet_path, out_path, level_h=None, max_ratio=None):
 
 def make_traffic(concept_dir, out_dir):
     os.makedirs(out_dir, exist_ok=True)
-    for sheet, width, names in TRAFFIC:
-        crops = slice_sheet(os.path.join(concept_dir, "traffic", sheet))
+    for sheet, width, _, names in TRAFFIC:
+        crops = slice_sheet(os.path.join(concept_dir, "traffic", sheet), TRAFFIC_FRINGE)
         if len(crops) != len(names):
             print("warning: %s has %d sprites, expected %d" % (sheet, len(crops), len(names)))
         # One scale per sheet keeps the vehicles' sizes relative to each other
@@ -205,6 +140,7 @@ def main():
     for car, sheet in GARAGE:
         make_player(os.path.join(concept_dir, "cars", sheet), os.path.join(sprites, "cars", car + "_steer.png"))
     make_traffic(concept_dir, os.path.join(sprites, "traffic"))
+    manifest.write(project_dir)
 
 
 if __name__ == "__main__":
