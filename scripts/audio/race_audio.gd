@@ -92,6 +92,10 @@ func _events() -> void:
 	if _player.nitro_charges < _nitro:
 		Audio.play("nitro")
 	_nitro = _player.nitro_charges
+	if race.picked_up:
+		Audio.play("checkpoint", 1.5)
+	if _player.rammed:
+		Audio.play("bump", 0.7)
 	if _player.crashed:
 		Audio.play("crash")
 	elif _player.bumped:

@@ -15,6 +15,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#4a4a53"), Color("#44444d")],
 		"lane": Color("#f4f4f4"),
 		"background": "res://assets/sprites/backgrounds/redrock_far.png",
+		"specials": ["jeep_red", "tow_truck", "pickup_red"],
 	}
 
 
@@ -69,6 +70,9 @@ static func build() -> Track:
 	t.finish_building(final_straight + 60)
 
 	_decorate(t, canyon_start, canyon_end, diner_at)
+	t.add_spans_at("redrock_arch", [0.3, 0.42, 0.62])
+	t.scatter(["water_tower_wood", "dino", "rusty_truck", "cattle_sign", "butte", "arrow_sign"], 250, 450, 1.8)
+	t.add_finish_crowd()
 	return t
 
 

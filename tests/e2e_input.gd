@@ -53,8 +53,12 @@ func _menu_script() -> Array:
 		["confirm", func() -> bool: return g.screen == g.Screen.CARS and g.stage_index == 0, "Enter picks the stage and opens car select"],
 		["pause", func() -> bool: return g.screen == g.Screen.STAGES, "Esc on car select goes back to stage select"],
 		["confirm", func() -> bool: return g.screen == g.Screen.CARS, "car select again"],
-		["steer_right", func() -> bool: return g.menu.index == 0, "only the Vega so far"],
-		["confirm", func() -> bool: return g.screen == g.Screen.RACE and g.race != null, "Enter on car select starts the race"],
+		["steer_right", func() -> bool: return g.menu.index == 1, "right picks the next car"],
+		["steer_left", func() -> bool: return g.menu.index == 0, "left goes back to the Vega"],
+		["steer_left", func() -> bool: return g.menu.index == Cars.count() - 1, "left from the Vega wraps to the last car"],
+		["steer_right", func() -> bool: return g.menu.index == 0, "and right wraps back"],
+		["confirm", func() -> bool: return g.screen == g.Screen.RACE and g.race != null and g.race.car_id == "car_vega",
+			"Enter on car select starts the race in the Vega"],
 	]
 
 

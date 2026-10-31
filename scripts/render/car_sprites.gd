@@ -1,20 +1,21 @@
 class_name CarSprites
 extends RefCounted
-## Car sprites cut from the concept sheets (see tools/make_car_sprites.py): the player's
+## Car sprites cut from the concept sheets (see tools/make_car_sprites.py): the player cars'
 ## steering strips and the traffic vehicles, all seen from behind.
 ##
 ## The player has one steering strip per pitch: level, plus optional nose-up (uphill) and
 ## nose-down (downhill) strips laid out the same way. A missing pitched strip falls back to
 ## the level one, stretched to fake the pitch (pitch_warp).
 
-const PLAYER_STRIP := "res://assets/sprites/cars/vega_steer.png"
-const PLAYER_PITCH_STRIPS := {
-	-1: "res://assets/sprites/cars/vega_steer_up.png",
-	1: "res://assets/sprites/cars/vega_steer_down.png",
-}
+## Steering strips per car (Cars.LIST "strip"): <car>_steer.png, plus <car>_steer_up.png and
+## <car>_steer_down.png when that car has pitched strips.
+const PLAYER_DIR := "res://assets/sprites/cars/"
+const PITCH_SUFFIXES := {-1: "_up", 1: "_down"}
 const PLAYER_FRAMES := 7
 const TRAFFIC_DIR := "res://assets/sprites/traffic/"
 
+# Tallest a player car is drawn, as a multiple of its on-screen width (CarSprites.draw_scale)
+const MAX_HEIGHT := 0.85
 # |pitch| at which a pitched strip takes over from the level one
 const PITCH_SWITCH := 0.4
 # Fraction of the car's height, from the top, that is roof and rear deck (above the taillights)
@@ -26,23 +27,42 @@ const DECK_STRETCH := 0.35
 # World units per texture pixel. Each concept sheet was drawn at its own scale.
 const CAR_SCALE := 7.0
 const BIG_SCALE := 8.2
+## Traffic sprites by the scale their sheet was cut at (tools/make_car_sprites.py)
+const CAR_SHEET_IDS := ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow",
+	"surf_van", "trolley", "log_truck", "tractor", "airboat_trailer", "taxi",
+	"pickup_red", "suv_green", "muscle_white", "van_navy", "tuk_tuk", "hatch_purple",
+	"golf_cart", "jeep_red", "limo_white", "dump_truck", "boat_trailer", "news_truck", "double_decker"]
+const BIG_SHEET_IDS := ["semi", "bus", "box_truck", "rv", "carrier",
+	"tow_truck", "cement_mixer", "tanker", "garbage_truck", "street_sweeper", "ice_cream_truck", "combine"]
 
-## pitch row (-1 up, 0 level, 1 down) -> {"tex", "cell", "body_w"}
+## The player's car: pitch row (-1 up, 0 level, 1 down) -> {"tex", "cell", "body_w"}
 static var player_strips: Dictionary = {}
+static var player_car := ""
+static var _strip_sets: Dictionary = {}  # car strip id -> its player_strips
 static var traffic: Dictionary = {}
 
 
 static func load_all() -> void:
-	if not player_strips.is_empty():
+	if not traffic.is_empty():
 		return
-	player_strips[0] = _load_strip(PLAYER_STRIP)
-	for row: int in PLAYER_PITCH_STRIPS:
-		if ResourceLoader.exists(PLAYER_PITCH_STRIPS[row]):
-			player_strips[row] = _load_strip(PLAYER_PITCH_STRIPS[row])
-	for id in ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow", "surf_van", "taxi"]:
+	use_car("vega")
+	for id in CAR_SHEET_IDS:
 		_add_traffic(id, CAR_SCALE)
-	for id in ["semi", "bus", "box_truck", "rv", "carrier"]:
+	for id in BIG_SHEET_IDS:
 		_add_traffic(id, BIG_SCALE)
+
+
+## Makes `strip_id`'s steering strips the player's (loaded once per car).
+static func use_car(strip_id: String) -> void:
+	if not _strip_sets.has(strip_id):
+		var strips := {0: _load_strip(PLAYER_DIR + strip_id + "_steer.png")}
+		for row: int in PITCH_SUFFIXES:
+			var path: String = PLAYER_DIR + strip_id + "_steer" + PITCH_SUFFIXES[row] + ".png"
+			if ResourceLoader.exists(path):
+				strips[row] = _load_strip(path)
+		_strip_sets[strip_id] = strips
+	player_strips = _strip_sets[strip_id]
+	player_car = strip_id
 
 
 static func _load_strip(path: String) -> Dictionary:
@@ -64,13 +84,15 @@ static func _add_traffic(id: String, world_per_px: float) -> void:
 ## base: bottom-center of the car on the road. w: on-screen body width.
 ## steer: -1 full left .. 1 full right; beyond that it keeps the hardest frame.
 ## pitch: 1 full nose-down (downhill) .. -1 full nose-up (see PlayerCar.pitch).
+## alpha: below 1 for a see-through car (the ghost power-up).
 static func draw_player(ci: CanvasItem, base: Vector2, w: float, steer: float, brake: bool, nitro: bool,
-		t: float, lift: float = 0.0, pitch: float = 0.0) -> void:
+		t: float, lift: float = 0.0, pitch: float = 0.0, alpha: float = 1.0) -> void:
 	var row := pitch_row(pitch, player_strips.keys())
 	var strip: Dictionary = player_strips[row]
 	var tex: Texture2D = strip["tex"]
 	var cell: Vector2 = strip["cell"]
-	var k := w / float(strip["body_w"])
+	var k := draw_scale(w, strip)
+	w = float(strip["body_w"]) * k
 	var size := cell * k
 	var y := base.y - lift
 	_shadow(ci, base, w, clampf(1.0 - lift / (w * 0.6), 0.2, 1.0))
@@ -84,8 +106,9 @@ static func draw_player(ci: CanvasItem, base: Vector2, w: float, steer: float, b
 	var deck_src := Rect2(src.position, Vector2(cell.x, split))
 	var bumper_src := Rect2(src.position + Vector2(0.0, split), Vector2(cell.x, cell.y - split))
 	var bumper_top := roundf(y - bumper_h)
-	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top, roundf(size.x), bumper_h), bumper_src)
-	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top - deck_h, roundf(size.x), deck_h), deck_src)
+	var mod := Color(1, 1, 1, alpha)
+	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top, roundf(size.x), bumper_h), bumper_src, mod)
+	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top - deck_h, roundf(size.x), deck_h), deck_src, mod)
 	var h := deck_h + bumper_h
 	if brake:
 		# Glow over the triangle taillights
@@ -94,6 +117,14 @@ static func draw_player(ci: CanvasItem, base: Vector2, w: float, steer: float, b
 			ci.draw_rect(Rect2(base.x + side * w * 0.36 - w * 0.13, ly, w * 0.26, h * 0.12), Color(1.0, 0.25, 0.1, 0.35))
 	if nitro:
 		_flame(ci, Vector2(base.x, y - h * 0.24), w, t)
+
+
+## Texture-to-screen scale for a strip drawn `w` wide: its body fills `w`, unless that would
+## make the car taller than MAX_HEIGHT x `w` (a buggy or trike drawn from higher up), when the
+## whole car shrinks to that height.
+static func draw_scale(w: float, strip: Dictionary) -> float:
+	var cell: Vector2 = strip["cell"]
+	return minf(w / float(strip["body_w"]), w * MAX_HEIGHT / cell.y)
 
 
 ## Which pitch strip to draw: -1 nose-up, 0 level, 1 nose-down, among the rows that exist.

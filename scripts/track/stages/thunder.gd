@@ -17,6 +17,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#3c3e46"), Color("#373941")],  # rain-soaked asphalt
 		"lane": Color("#e6e6ea"),
 		"background": "res://assets/sprites/backgrounds/thunder_far.png",
+		"specials": ["tanker", "cement_mixer", "dump_truck"],
 	}
 
 
@@ -63,8 +64,11 @@ static func build() -> Track:
 	t.finish_building(final_straight + 60)
 
 	_decorate(t, works_start, works_end)
+	t.add_spans_at("thunder_overpass", [0.15, 0.45, 0.6, 0.88])
 	t.add_sprite(stop_at, "truck_stop", 1.6)
 	t.add_sprite(stop_at + 20, "motel", -1.7)
+	t.scatter(["grain_bin", "storm_cellar", "windmill_old", "radar_dome", "flasher_barricade", "tree_bent"], 250, 450, 1.9)
+	t.add_finish_crowd()
 	return t
 
 

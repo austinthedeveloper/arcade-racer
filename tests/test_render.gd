@@ -38,7 +38,7 @@ func test_car_sprites_load() -> void:
 		eq(int(strip["cell"].x) * CarSprites.PLAYER_FRAMES, strip["tex"].get_width(), "seven equal cells in strip %d" % row)
 		check(strip["body_w"] > 0.0, "body width found in strip %d" % row)
 	check(CarSprites.player_strips.has(0), "level strip always there")
-	eq(CarSprites.traffic.size(), 13, "traffic vehicles")
+	eq(CarSprites.traffic.size(), 37, "traffic vehicles")
 
 
 func test_pitch_rows() -> void:
@@ -72,3 +72,26 @@ func test_pitch_warp_matches_the_camera_geometry() -> void:
 		var warp := CarSprites.pitch_warp(pitch)
 		eq(signf(warp.x - 1.0), signf(roof), "roof grows as it turns to the camera (slope %s)" % slope)
 		eq(signf(warp.y - 1.0), signf(tail), "bumper grows as it turns to the camera (slope %s)" % slope)
+
+
+func test_hill_strips_are_in_and_not_much_taller_than_level() -> void:
+	CarSprites.load_all()
+	for row in [-1, 1]:
+		check(CarSprites.player_strips.has(row), "pitched strip %d is built" % row)
+	var level: float = CarSprites.player_strips[0]["cell"].y
+	for row in [-1, 1]:
+		var h: float = CarSprites.player_strips[row]["cell"].y
+		# Taller pops when the pitch switches strips; the tool squashes them (make_car_sprites.py)
+		check(h <= level * 1.4, "strip %d is %.0f px, level %.0f px" % [row, h, level])
+
+
+func test_tall_cars_are_drawn_smaller_not_taller() -> void:
+	CarSprites.use_car("vega")
+	var vega: Dictionary = CarSprites.player_strips[0]
+	near(CarSprites.draw_scale(100.0, vega), 100.0 / vega["body_w"], 0.0001, "the Vega fills the width")
+	for id in ["cyclone", "skipper", "mesa", "hauler"]:
+		CarSprites.use_car(id)
+		var strip: Dictionary = CarSprites.player_strips[0]
+		var h: float = strip["cell"].y * CarSprites.draw_scale(100.0, strip)
+		check(h <= 100.0 * CarSprites.MAX_HEIGHT + 0.01, "%s at most %.2f x its width tall (%.1f)" % [id, CarSprites.MAX_HEIGHT, h])
+	CarSprites.use_car("vega")

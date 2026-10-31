@@ -18,7 +18,7 @@ func test_every_stage_builds() -> void:
 
 
 func test_stage_order_and_names() -> void:
-	eq(Stages.count(), 7, "seven stages")
+	eq(Stages.count(), 8, "eight stages")
 	eq(Stages.build(0).name, "Palm Coast Boulevard", "stage 1")
 	eq(Stages.build(1).name, "Redrock Canyon", "stage 2")
 	eq(Stages.build(2).name, "Neon Strip", "stage 3")
@@ -26,6 +26,7 @@ func test_stage_order_and_names() -> void:
 	eq(Stages.build(4).name, "Bayou Causeway", "stage 5")
 	eq(Stages.build(5).name, "Harvest Valley", "stage 6")
 	eq(Stages.build(6).name, "Thunderhead Highway", "stage 7")
+	eq(Stages.build(7).name, "Skyline Finale", "stage 8")
 	for i in Stages.count():
 		eq(Stages.stage_name(i), Stages.build(i).name, "listed name of stage %d" % (i + 1))
 	eq(Stages.next(0), 1, "Palm Coast leads to Redrock")
@@ -221,3 +222,23 @@ func test_thunderhead_has_its_landmarks() -> void:
 func test_road_work_cones_never_crash_the_car() -> void:
 	for id in ["cone", "cone_tall", "drum"]:
 		eq(SpriteLibrary.defs[id]["collide"], 0.0, id + " gets knocked aside, not crashed into")
+
+
+func test_skyline_has_its_landmarks() -> void:
+	var t := SkylineFinale.build()
+	var counts := _sprite_counts(t)
+	for id in ["tower_twin", "harbor_lamp_double", "bridge_tower_x", "traffic_light", "harbor_crane", "fireworks_barge", "crowd"]:
+		check(counts.get(id, 0) > 0, "Skyline has a " + id)
+	var pylons := 0
+	for seg in t.segments:
+		pylons += seg.spans.count("skyline_pylon")
+	check(pylons >= 4, "cable-stay pylons over the bridges (%d)" % pylons)
+
+
+func test_every_stage_has_its_extras_and_a_finish_crowd() -> void:
+	var extras := ["lighthouse", "dino", "slot_machine", "chapel", "gator", "balloon", "radar_dome", "dolphin_balloon"]
+	for i in Stages.count():
+		var t := Stages.build(i)
+		var counts := _sprite_counts(t)
+		check(counts.get(extras[i], 0) > 0, "%s has a %s" % [t.name, extras[i]])
+		eq(counts.get("grandstand", 0), 1, t.name + " has a grandstand at the finish")

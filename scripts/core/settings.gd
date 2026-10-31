@@ -18,6 +18,7 @@ var path := "user://settings.cfg"
 var auto_gas := false  # hold the gas for the player; steering and brake still theirs
 var traffic: int = Traffic.NORMAL
 var timer: int = Clock.ARCADE  # a Clock
+var power_ups := true  # pickups on the road (PowerUps)
 var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
 var sfx_volume := 10
 
@@ -31,6 +32,7 @@ func reset() -> void:
 	auto_gas = false
 	traffic = Traffic.NORMAL
 	timer = Clock.ARCADE
+	power_ups = true
 	music_volume = 10
 	sfx_volume = 10
 	apply_volumes()
@@ -43,6 +45,7 @@ func load_settings() -> void:
 		auto_gas = bool(cfg.get_value("play", "auto_gas", auto_gas))
 		traffic = clampi(int(cfg.get_value("play", "traffic", traffic)), 0, Traffic.size() - 1)
 		timer = clampi(int(cfg.get_value("play", "timer", timer)), 0, Clock.size() - 1)
+		power_ups = bool(cfg.get_value("play", "power_ups", power_ups))
 		music_volume = clampi(int(cfg.get_value("audio", "music", music_volume)), 0, VOLUME_STEPS)
 		sfx_volume = clampi(int(cfg.get_value("audio", "sfx", sfx_volume)), 0, VOLUME_STEPS)
 	apply_volumes()
@@ -53,6 +56,7 @@ func save() -> void:
 	cfg.set_value("play", "auto_gas", auto_gas)
 	cfg.set_value("play", "traffic", traffic)
 	cfg.set_value("play", "timer", timer)
+	cfg.set_value("play", "power_ups", power_ups)
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.save(path)

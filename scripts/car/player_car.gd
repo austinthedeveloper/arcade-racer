@@ -18,6 +18,20 @@ var offroad := false
 var nitro_charges := Cfg.NITRO_CHARGES
 var nitro_time := 0.0
 
+# The car's tuning (Cars.tuning); the defaults are the Vega's
+var top_speed := Cfg.MAX_SPEED
+var accel_mult := 1.0
+var steer_mult := 1.0
+var pull_mult := 1.0
+var offroad_mult := 1.0
+var nitro_max := Cfg.NITRO_CHARGES
+var nitro_duration := Cfg.NITRO_DURATION
+
+# Power-ups (PowerUps): seconds left on each
+var ram_time := 0.0  # traffic you hit flies off instead of crashing you
+var ghost_time := 0.0  # drive through traffic
+var rammed := false  # true for the tick the ram plate knocks a car away
+
 var road_y := 0.0  # road height under the car
 var air_height := 0.0  # car height above the road
 var airborne := false
@@ -30,13 +44,27 @@ var _alt := 0.0
 var _vy := 0.0
 
 
+## Tunes the driving model for a car from Cars.LIST. Call before reset.
+func setup(car: Dictionary) -> void:
+	var t := Cars.tuning(car)
+	top_speed = Cfg.MAX_SPEED * t["top"]
+	accel_mult = t["accel"]
+	steer_mult = t["steer"]
+	pull_mult = t["pull"]
+	offroad_mult = t["offroad"]
+	nitro_max = t["nitros"]
+	nitro_duration = Cfg.NITRO_DURATION * t["nitro_time"]
+
+
 func reset(start_position: float = 0.0) -> void:
 	position = start_position
 	distance = 0.0
 	x = 0.0
 	speed = 0.0
-	nitro_charges = Cfg.NITRO_CHARGES
+	nitro_charges = nitro_max
 	nitro_time = 0.0
+	ram_time = 0.0
+	ghost_time = 0.0
 	crash_time = 0.0
 	airborne = false
 	air_height = 0.0
@@ -54,7 +82,7 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	bumped = false
 	var seg := track.find_segment(position + Cfg.PLAYER_Z)
 	var pct := speed / Cfg.MAX_SPEED
-	var top := Cfg.MAX_SPEED * (Cfg.NITRO_SPEED_MULT if nitro_time > 0.0 else 1.0)
+	var top := top_speed * (Cfg.NITRO_SPEED_MULT if nitro_time > 0.0 else 1.0)
 
 	var throttle := 0.0
 	var brake := 0.0
@@ -65,20 +93,22 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 		steer_in = inp.steer
 		if inp.nitro_pressed and nitro_charges > 0 and nitro_time <= 0.0:
 			nitro_charges -= 1
-			nitro_time = Cfg.NITRO_DURATION
+			nitro_time = nitro_duration
 	nitro_time = maxf(0.0, nitro_time - dt)
+	ram_time = maxf(0.0, ram_time - dt)
+	ghost_time = maxf(0.0, ghost_time - dt)
 
 	var step := speed * dt
 	position = fposmod(position + step, track.length)
 	distance += step
 
 	# Steering and the outward pull of curves
-	var rate := dt * Cfg.STEER_RATE * pct
+	var rate := dt * Cfg.STEER_RATE * steer_mult * pct
 	if airborne:
 		rate *= 0.35
 	x += steer_in * rate
 	if not airborne:
-		x -= rate * pct * seg.curve * Cfg.CENTRIFUGAL
+		x -= rate / steer_mult * pct * seg.curve * Cfg.CENTRIFUGAL * pull_mult
 	steer = lerpf(steer, steer_in, minf(1.0, dt * 12.0))
 
 	# Speed
@@ -89,14 +119,14 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	elif not airborne:
 		if throttle > 0.01:
 			var boost := Cfg.NITRO_ACCEL_MULT if nitro_time > 0.0 else 1.0
-			speed += Cfg.ACCEL * boost * throttle * (1.3 - 0.8 * speed / top) * dt
+			speed += Cfg.ACCEL * accel_mult * boost * throttle * (1.3 - 0.8 * speed / top) * dt
 		if brake > 0.01:
 			speed -= Cfg.BRAKING * brake * dt
 		if throttle <= 0.01 and brake <= 0.01:
 			speed -= Cfg.DECEL * dt
 	offroad = absf(x) > 1.0
-	if offroad and not airborne and speed > Cfg.OFFROAD_LIMIT:
-		speed = maxf(Cfg.OFFROAD_LIMIT, speed - Cfg.OFFROAD_DECEL * dt)
+	if offroad and not airborne and offroad_mult > 0.0 and speed > Cfg.OFFROAD_LIMIT / offroad_mult:
+		speed = maxf(Cfg.OFFROAD_LIMIT / offroad_mult, speed - Cfg.OFFROAD_DECEL * offroad_mult * dt)
 	if speed > top:
 		speed = move_toward(speed, top, Cfg.MAX_SPEED * 0.4 * dt)
 	speed = maxf(speed, 0.0)
@@ -148,10 +178,14 @@ static func pitch_for_slope(slope: float) -> float:
 
 ## Checks roadside sprites and traffic in the player's segment.
 func collide(track: Track) -> void:
+	rammed = false
 	if crash_time > 0.0 or airborne:
 		return
 	var seg := track.find_segment(position + Cfg.PLAYER_Z)
 	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
+	if offroad and hits_span(seg, x, half_car):
+		crash()
+		return
 	if offroad:
 		for sp in seg.sprites:
 			var def: Dictionary = SpriteLibrary.defs.get(sp["id"], {})
@@ -163,18 +197,41 @@ func collide(track: Track) -> void:
 			if absf(x - center) < w_units * def["collide"] / 2.0 + half_car:
 				crash()
 				return
+	if ghost_time > 0.0:
+		return
 	for car in seg.cars:
-		if speed <= car.speed:
+		if speed <= car.speed or car.flung > 0.0:
 			continue
 		var car_half: float = half_car * car.width_mult
 		if absf(x - car.offset) < (half_car + car_half) * 0.8:
-			if speed - car.speed > Cfg.MAX_SPEED * 0.5:
+			if ram_time > 0.0:
+				Traffic.fling(car, x)
+				rammed = true
+			elif speed - car.speed > Cfg.MAX_SPEED * 0.5:
 				crash()
 			else:
 				speed = car.speed * (car.speed / speed)
 				bumped = true
 				position = fposmod(car.z - Cfg.PLAYER_Z - 50.0, track.length)
 			return
+
+
+## Whether a car at `car_x` (half-width `half_car`, both in road half-widths) hits the
+## legs or walls of a span or race gate in `seg`.
+static func hits_span(seg: Segment, car_x: float, half_car: float) -> bool:
+	var ids: Array[String] = seg.spans.duplicate()
+	var gate := RoadRenderer.gate_for(seg.flags)
+	if gate != "":
+		ids.append(gate)
+	for id in ids:
+		if not SpriteLibrary.spans.has(id):
+			continue
+		var e := SpriteLibrary.span_edges(id)
+		var inner: Vector2 = e["inner"]
+		var outer: Vector2 = e["outer"]
+		if (car_x - half_car < inner.x and car_x + half_car > outer.x) or (car_x + half_car > inner.y and car_x - half_car < outer.y):
+			return true
+	return false
 
 
 func crash() -> void:

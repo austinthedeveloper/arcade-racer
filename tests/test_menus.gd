@@ -64,15 +64,18 @@ func test_stage_select_wraps_and_has_every_postcard() -> void:
 	s.free()
 
 
-func test_cars_list_the_vega() -> void:
-	eq(Cars.count(), 1, "only the Vega so far")
+func test_car_select_lists_the_garage() -> void:
 	var v := Cars.get_car(0)
-	eq(v["name"], "Vega GT", "name")
+	eq(v["name"], "Vega GT", "the Vega comes first")
 	eq([v["accel"], v["top_speed"], v["handling"]], [4, 5, 3], "stats from the design doc")
-	check(ResourceLoader.exists(v["picture"]), "showroom picture")
-	eq(Cars.get_car(5)["id"], "car_vega", "out of range clamps")
+	eq(Cars.get_car(99)["id"], Cars.get_car(Cars.count() - 1)["id"], "out of range clamps")
+	var ids := {}
+	for i in Cars.count():
+		ids[Cars.get_car(i)["id"]] = true
+	eq(ids.size(), Cars.count(), "ids are unique")
 	var c := CarSelect.new()
-	eq(c.move(1), 0, "one car: right stays on it")
+	eq(c.move(1), 1, "right picks the next car")
+	eq(c.move(-2), Cars.count() - 1, "left wraps to the last")
 	c.free()
 
 

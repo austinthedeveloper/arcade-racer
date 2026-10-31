@@ -222,3 +222,15 @@ func test_title_reaches_options_and_back() -> void:
 	eq(OptionsScreen.LABELS.size(), OptionsScreen.Row.size(), "a label per row")
 	eq(OptionsScreen.HELP.size(), OptionsScreen.Row.size(), "help per row")
 	_clean()
+
+
+func test_power_ups_option_saves() -> void:
+	var o := OptionsScreen.new()
+	eq(OptionsScreen.value_text(OptionsScreen.Row.POWER_UPS), "ON", "on by default")
+	o.change(OptionsScreen.Row.POWER_UPS, 1, true)
+	check(not Settings.power_ups, "toggled off")
+	Settings.load_settings()
+	check(not Settings.power_ups, "saved off")
+	o.change(OptionsScreen.Row.POWER_UPS, 1, true)
+	check(Settings.power_ups, "back on")
+	o.free()

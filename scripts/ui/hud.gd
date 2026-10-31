@@ -37,15 +37,22 @@ func _draw() -> void:
 
 	# Nitro, top right
 	_text(Vector2(w - 92, 18), "NITRO", 10, Color("#ffd23a"))
-	for i in Cfg.NITRO_CHARGES:
-		var cx := w - 88 + i * 18
+	var slots := maxi(p.nitro_max, p.nitro_charges)
+	var gap := minf(18.0, 72.0 / slots)
+	for i in slots:
+		var cx := w - 88 + i * gap
 		var lit := i < p.nitro_charges
 		var col := Color("#ff7a1a") if lit else Color(1, 1, 1, 0.2)
 		draw_colored_polygon(PackedVector2Array([Vector2(cx, 38), Vector2(cx + 6, 24), Vector2(cx + 12, 38)]), col)
 		if lit:
 			draw_colored_polygon(PackedVector2Array([Vector2(cx + 3, 38), Vector2(cx + 6, 30), Vector2(cx + 9, 38)]), Color("#ffe36a"))
 	if p.nitro_time > 0.0:
-		draw_rect(Rect2(w - 90, 42, 76 * p.nitro_time / Cfg.NITRO_DURATION, 3), Color("#7ad8ff"))
+		draw_rect(Rect2(w - 90, 42, 76 * p.nitro_time / p.nitro_duration, 3), Color("#7ad8ff"))
+
+	var pu: PowerUps = race.power_ups
+	if not pu.pickups.is_empty():
+		_power_up_slot(Rect2(w - 90, 50, 24, 24))
+	_power_up_fx()
 
 	# Speedometer, bottom right
 	var center := Vector2(w - 58, Cfg.SCREEN_H - 20)
@@ -86,3 +93,49 @@ func _text(pos: Vector2, s: String, size: int, col: Color) -> void:
 func _text_centered(pos: Vector2, s: String, size: int, col: Color) -> void:
 	var width := _font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 	_text(Vector2(pos.x - width / 2.0, pos.y), s, size, col)
+
+
+## The power-up slot under the nitro: the running ram plate or ghost with its time left, or
+## for a moment what was just picked up (a mystery hubcap spins open first).
+func _power_up_slot(slot: Rect2) -> void:
+	var p: PlayerCar = race.player
+	draw_rect(slot.grow(-2), Color(0, 0, 0, 0.45))
+	draw_texture_rect(PowerUps.texture("icon_slot"), slot, false)
+	var icon := slot_icon(p.ram_time, p.ghost_time, race.pickup, race.pickup_gave, race.pickup_age)
+	if icon == "":
+		return
+	var tex := PowerUps.texture(icon)
+	var k := minf((slot.size.x - 6.0) / tex.get_width(), (slot.size.y - 6.0) / tex.get_height())
+	var size := Vector2(tex.get_width(), tex.get_height()) * k
+	draw_texture_rect(tex, Rect2(slot.get_center() - size / 2.0, size), false)
+	var left := p.ram_time / PowerUps.RAM_TIME if p.ram_time > 0.0 else p.ghost_time / PowerUps.GHOST_TIME
+	if left > 0.0:
+		draw_rect(Rect2(slot.end.x + 4, slot.end.y - slot.size.y * left, 3, slot.size.y * left), Color("#7ad8ff"))
+
+
+## Which sprite the power-up slot shows (PowerUps.texture), or "" for an empty slot.
+static func slot_icon(ram_time: float, ghost_time: float, pickup: int, gave: int, age: float) -> String:
+	if ram_time > 0.0:
+		return "icon_ram"
+	if ghost_time > 0.0:
+		return "icon_ghost"
+	if pickup < 0 or age > 1.5:
+		return ""
+	if pickup == PowerUps.Kind.MYSTERY and age < 0.5:
+		return "reveal_%d" % (mini(3, int(age / 0.125)) + 1)
+	return "icon_" + PowerUps.IDS[gave]
+
+
+## Bursts over the car: a sparkle (or the clock) on a pickup, the impact when ramming.
+func _power_up_fx() -> void:
+	var car := Vector2(Cfg.SCREEN_W / 2.0, 262.0)
+	if race.pickup_age < 0.4:
+		var fx := "fx_clock" if race.pickup_gave == PowerUps.Kind.CLOCK else "fx_sparkle"
+		var tex := PowerUps.texture(fx)
+		var grow: float = 0.6 + race.pickup_age * 1.5
+		var size: Vector2 = Vector2(tex.get_width(), tex.get_height()) * grow
+		draw_texture_rect(tex, Rect2(car - size / 2.0, size), false, Color(1, 1, 1, 1.0 - race.pickup_age / 0.4))
+	if race.ram_flash > 0.0:
+		var tex := PowerUps.texture("fx_ram")
+		var size := Vector2(tex.get_width(), tex.get_height()) * 1.2
+		draw_texture_rect(tex, Rect2(car + Vector2(0, -30) - size / 2.0, size), false, Color(1, 1, 1, race.ram_flash / 0.3))

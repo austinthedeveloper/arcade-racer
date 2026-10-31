@@ -17,6 +17,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#6a6a68"), Color("#646462")],
 		"lane": Color("#efe9d6"),
 		"background": "res://assets/sprites/backgrounds/bayou_far.png",
+		"specials": ["airboat_trailer", "boat_trailer", "pickup_red"],
 	}
 
 
@@ -76,9 +77,15 @@ static func build() -> Track:
 	t.finish_building(final_straight + 60)
 
 	_decorate(t, causeways)
+	# An old steel truss bridge partway along the first causeway
+	var truss := t.free_spot(causeways[0].x + 60, 30)
+	for k in 5:
+		t.add_span(truss + k * 6, "bayou_truss")
 	t.add_sprite(landing_at, "bait_shop", 1.5)
 	t.add_sprite(landing_at + 12, "stilt_shack", -1.8)
 	t.add_sprite(landing_at + 30, "boat_dock", -1.4)
+	t.scatter(["crab_shack", "gator", "crawfish_sign", "live_oak", "mailboxes", "riverboat"], 150, 450, 1.8)
+	t.add_finish_crowd()
 	return t
 
 

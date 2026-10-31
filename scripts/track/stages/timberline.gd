@@ -16,6 +16,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#5d6068"), Color("#575a62")],
 		"lane": Color("#f4f4f4"),
 		"background": "res://assets/sprites/backgrounds/timberline_far.png",
+		"specials": ["log_truck", "suv_green", "street_sweeper"],
 	}
 
 
@@ -74,11 +75,14 @@ static func build() -> Track:
 	t.finish_building(final_straight + 60)
 
 	_decorate(t, snow_start, snow_end)
+	t.add_tunnel(t.free_spot(snow_start - 120, 35), 30, "covered_bridge", "covered_bridge_truss", 2)
 	t.add_sprite(cabins_at, "cabin", 1.5)
 	t.add_sprite(cabins_at + 25, "cabin", -1.6, true)
 	t.add_sprite(lookout_at, "lookout_tower", 1.8)
 	t.add_sprite(waterfall_at, "waterfall", -2.2)
 	t.add_sprite(lodge_at, "lodge", 1.6)
+	t.scatter(["chapel", "moose", "chairlift", "woodpile", "frozen_falls", "snowman"], 200, 450, 1.8)
+	t.add_finish_crowd()
 	return t
 
 

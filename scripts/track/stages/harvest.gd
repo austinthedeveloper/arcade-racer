@@ -16,6 +16,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#66625c"), Color("#605c56")],
 		"lane": Color("#f6efd8"),
 		"background": "res://assets/sprites/backgrounds/harvest_far.png",
+		"specials": ["tractor", "combine", "pickup_red"],
 	}
 
 
@@ -66,12 +67,15 @@ static func build() -> Track:
 	t.finish_building(final_straight + 60)
 
 	_decorate(t, fields_start, fields_end)
+	t.add_spans_at("harvest_trestle", [0.35, 0.7])
 	# The farm stop: barn and silos on the right, water tower across the road
 	t.add_sprite(farm_at, "barn", 1.7)
 	t.add_sprite(farm_at + 14, "silos", 1.6)
 	t.add_sprite(farm_at + 8, "water_tower", -1.9)
 	t.add_sprite(stand_at, "farm_stand", 1.3)
 	t.add_sprite(stand_at + 4, "scarecrow", -1.4)
+	t.scatter(["grain_elevator", "produce_cart", "balloon", "farm_truck", "crop_duster", "pumpkins"], 200, 450, 2.0)
+	t.add_finish_crowd()
 	return t
 
 

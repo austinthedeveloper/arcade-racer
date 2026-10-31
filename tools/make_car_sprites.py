@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Build in-game car sprites from the concept sheets.
 
-- Player car: the seven Vega steering frames, all at one scale, on equal cells in one strip.
+- Player cars: the seven steering frames, all at one scale, on equal cells in one strip.
   The nose-down (downhill) and nose-up (uphill) sheets, when they exist, become strips laid
   out the same way. Those sheets may hold 7, 3 (left, straight, right) or 1 (straight) frames;
-  fewer frames are repeated across the seven steering cells.
+  fewer frames are repeated across the seven steering cells. Only the Vega has pitched
+  sheets so far; the rest of the garage (GARAGE) gets a level strip each.
 - Traffic: rear views from the traffic sheets, one keyed sprite each.
 
 These stand in until the cars get a proper sprite pipeline.
@@ -26,7 +27,17 @@ TRAFFIC_BIG_WIDTH = 170
 TRAFFIC = [
     ("trf01_cars_A_v1.png", TRAFFIC_CAR_WIDTH, ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow"]),
     ("trf03_big_A_v1.png", TRAFFIC_BIG_WIDTH, ["semi", "bus", "box_truck", "rv", "carrier"]),
-    ("trf04_stage_specials_A_v1.png", TRAFFIC_CAR_WIDTH, ["surf_van", None, None, None, None, "taxi"]),
+    ("trf04_stage_specials_A_v1.png", TRAFFIC_CAR_WIDTH, [
+        "surf_van", "trolley", "log_truck", "tractor", "airboat_trailer", "taxi"]),
+    ("trf06_cars_more_A_v1.png", TRAFFIC_CAR_WIDTH, [
+        "pickup_red", "suv_green", "muscle_white", "van_navy", "tuk_tuk", "hatch_purple"]),
+    ("trf08_service_A_v1.png", TRAFFIC_BIG_WIDTH, [
+        "tow_truck", "cement_mixer", "tanker", "garbage_truck", "street_sweeper", "ice_cream_truck"]),
+    # The green combine on the specials sheet was rerolled as its own sheet (v2)
+    ("trf09_stage_specials_2_A_v1.png", TRAFFIC_CAR_WIDTH, [
+        "golf_cart", "jeep_red", "limo_white", "dump_truck", "boat_trailer", None, "news_truck",
+        "double_decker"]),
+    ("trf09_combine_A_v2.png", 220, ["combine"]),
 ]
 
 
@@ -47,17 +58,34 @@ def slice_sheet(path):
     return crops
 
 
-# (concept sheet, output strip, required)
+# (concept sheet, output strip, required, tallest cell as a multiple of the level strip's)
 PLAYER_SHEETS = [
-    ("car_vega_steer_sheet_A_v2.png", "vega_steer.png", True),
-    ("car_vega_steer_down_sheet_A_v1.png", "vega_steer_down.png", False),
-    ("car_vega_steer_up_sheet_A_v1.png", "vega_steer_up.png", False),
+    ("car_vega_steer_sheet_A_v2.png", "vega_steer.png", True, None),
+    ("car_vega_steer_down_sheet_A_v1.png", "vega_steer_down.png", False, 1.15),
+    # The generated uphill sheet looks down from far steeper than the game's pitch, so its
+    # car is twice as tall as the level one; it is squashed so the switch doesn't pop.
+    ("car_vega_steer_up_sheet_A_v1.png", "vega_steer_up.png", False, 1.35),
+]
+# The rest of the garage: level strips only; the game fakes their pitch (CarSprites.pitch_warp).
+# (car, steering sheet) -> assets/sprites/cars/<car>_steer.png
+GARAGE = [
+    ("bruiser", "car_bruiser_steer_sheet_A_v2.png"),
+    ("kestrel", "car_kestrel_steer_sheet_A_v2.png"),
+    ("sol", "car_sol_steer_sheet_A_v2.png"),
+    ("mesa", "car_mesa_steer_sheet_A_v2.png"),
+    ("phantom", "car_phantom_steer_sheet_A_v2.png"),
+    ("hauler", "car_hauler_steer_sheet_A_v1.png"),
+    ("zenith", "car_zenith_steer_sheet_A_v1.png"),
+    ("tempest", "car_tempest_steer_sheet_A_v1.png"),
+    ("skipper", "car_skipper_steer_sheet_A_v1.png"),
+    ("halo", "car_halo_steer_sheet_A_v1.png"),
+    ("cyclone", "car_cyclone_steer_sheet_A_v2.png"),
 ]
 # Which sheet frame fills each of the seven steering cells, by frame count
 STEER_CELLS = {7: [0, 1, 2, 3, 4, 5, 6], 3: [0, 0, 1, 1, 1, 2, 2], 1: [0] * 7}
 
 
-def make_player(sheet_path, out_path):
+def make_player(sheet_path, out_path, level_h=None, max_ratio=None):
     frames = slice_sheet(sheet_path)
     if len(frames) not in STEER_CELLS:
         sys.exit("%s: expected 7, 3 or 1 frames, found %d" % (sheet_path, len(frames)))
@@ -66,6 +94,9 @@ def make_player(sheet_path, out_path):
     scale = PLAYER_BODY_WIDTH / frames[len(frames) // 2].width
     frames = [pixelate_down(f, scale) for f in frames]
     frames = [frames[i] for i in STEER_CELLS[len(frames)]]
+    if level_h and max_ratio and max(f.height for f in frames) > level_h * max_ratio:
+        squash = level_h * max_ratio / max(f.height for f in frames)
+        frames = [f.resize((f.width, max(1, round(f.height * squash))), Image.NEAREST) for f in frames]
     cell_w = max(f.width for f in frames)
     cell_h = max(f.height for f in frames)
     strip = Image.new("RGBA", (cell_w * 7, cell_h), (0, 0, 0, 0))
@@ -75,6 +106,7 @@ def make_player(sheet_path, out_path):
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     strip.save(out_path)
     print("player", os.path.basename(out_path), strip.size, "cell", cell_w, cell_h)
+    return cell_h
 
 
 def make_traffic(concept_dir, out_dir):
@@ -98,10 +130,14 @@ def main():
         sys.exit(__doc__)
     concept_dir, project_dir = sys.argv[1], sys.argv[2]
     sprites = os.path.join(project_dir, "assets", "sprites")
-    for sheet, strip, required in PLAYER_SHEETS:
+    level_h = None
+    for sheet, strip, required, max_ratio in PLAYER_SHEETS:
         path = os.path.join(concept_dir, "cars", sheet)
         if required or os.path.exists(path):
-            make_player(path, os.path.join(sprites, "cars", strip))
+            h = make_player(path, os.path.join(sprites, "cars", strip), level_h, max_ratio)
+            level_h = level_h or h
+    for car, sheet in GARAGE:
+        make_player(os.path.join(concept_dir, "cars", sheet), os.path.join(sprites, "cars", car + "_steer.png"))
     make_traffic(concept_dir, os.path.join(sprites, "traffic"))
 
 

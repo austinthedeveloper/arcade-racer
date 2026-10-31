@@ -12,7 +12,7 @@ var _pictures: Array[Texture2D] = []
 func _ready() -> void:
 	super._ready()
 	for i in Cars.count():
-		_pictures.append(load(Cars.get_car(i)["picture"]))
+		_pictures.append(load(Cars.picture(Cars.get_car(i))))
 
 
 ## Moves the selection by `dir`, wrapping around; returns the new index.
