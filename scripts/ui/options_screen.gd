@@ -8,7 +8,7 @@ extends MenuScreen
 ## The two reset rows leave the wheel profiles alone; resetting the save asks first.
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, TIMER, POWER_UPS, MUSIC, SFX, CALIBRATE, RESET_OPTIONS, RESET_SAVE, SCREEN_SHAKE,
-	FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, BACK }
+	FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP, BACK }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -18,7 +18,7 @@ const PAGE_ROWS := [
 		Row.RESET_SAVE],
 	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
 	[Row.MUSIC, Row.SFX],
-	[Row.CALIBRATE],
+	[Row.CALIBRATE, Row.REMAP],
 	[Row.SCREEN_SHAKE, Row.FLASH],
 ]
 ## Shown on a page with no rows yet.
@@ -27,7 +27,8 @@ const PAGE_EMPTY := ["", "", "", "", ""]
 const SLOTS := 10
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "TIMER", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
-	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "BACK"]
+	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
+	"BACK"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -48,6 +49,7 @@ const HELP := [
 	"Dark lines over the picture, like an old arcade monitor.",
 	"Keys and pad: at speed, a gentle pull to the middle of your lane.",
 	"Brakes for you into corners you're taking too fast.",
+	"Choose the keys and buttons for nitro, pause and more, on each device.",
 	"Back to the title screen.",
 ]
 ## The rows that show ON or OFF.
@@ -261,6 +263,9 @@ func handle(m: MenuInput) -> void:
 			Row.CALIBRATE:
 				Audio.play("beep")
 				game.calibration.open()
+			Row.REMAP:
+				Audio.play("beep")
+				game.show_remap()
 			Row.RESET_OPTIONS:
 				reset_options()
 				Audio.play("beep")
@@ -309,7 +314,7 @@ func _draw() -> void:
 					var seg := Rect2(right - 150 + k * 13, y + mid - 6, 10, 12)
 					draw_rect(seg, (SKY if on else Color(SKY, 0.7)) if k < v else Color(1, 1, 1, 0.12))
 				_text(Vector2(right - 178, y + mid + 5), value_text(row), 10, col)
-			Row.CALIBRATE, Row.BACK:
+			Row.CALIBRATE, Row.REMAP, Row.BACK:
 				pass
 			Row.RESET_OPTIONS, Row.RESET_SAVE:
 				var t := row_text(row)

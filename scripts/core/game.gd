@@ -2,7 +2,7 @@ extends Node
 ## Main scene: the front end (title, options, stage select, car select) and the race it starts.
 ## Race dev flags (--autodrive, --stage=N, --race) skip the menus and go straight to a race.
 
-enum Screen { TITLE, OPTIONS, STAGES, CARS, RACE }
+enum Screen { TITLE, OPTIONS, STAGES, CARS, RACE, REMAP }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -67,13 +67,21 @@ func show_title(item := 0) -> void:
 	_set_menu(t, Screen.TITLE)
 
 
-## The options, on `page` (an OptionsScreen.Page) when given.
-func show_options(page := -1) -> void:
+## The options, on `page` (an OptionsScreen.Page) when given, with the cursor on `row`
+## (an OptionsScreen.Row) when given.
+func show_options(page := -1, row := -1) -> void:
 	var o := OptionsScreen.new()
 	if page >= 0:
 		o.page = page
 		o.index = 0  # on the page bar, so the page shows which it is
+	if row >= 0:
+		o.go_to(row)
 	_set_menu(o, Screen.OPTIONS)
+
+
+## Controls > REMAP BUTTONS.
+func show_remap() -> void:
+	_set_menu(RemapScreen.new(), Screen.REMAP)
 
 
 func show_stage_select() -> void:
@@ -129,6 +137,8 @@ func _open(which: String) -> void:
 			show_car_select()
 		"options":
 			show_options()
+		"remap":
+			show_remap()
 		_ when which.begins_with("options:"):
 			show_options(OptionsScreen.page_named(which.get_slice(":", 1)))
 		_:

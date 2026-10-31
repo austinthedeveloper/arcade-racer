@@ -10,7 +10,7 @@ godot --path .                                      # play
 godot --path . -- --autodrive --screenshots=200,700 --shot-dir=/tmp/shots   # hands-off run with screenshots (race flags skip the menus)
 godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screenshots=300 --shot-dir=/tmp/shots   # start partway in, in another car
 godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, options, stages, cars; options:audio etc. for an options page)
-godot --path . --resolution 1600x900 -- --settings-file=/tmp/opts.cfg --screen=options:display --shot-as-window --menu-shot=/tmp/d.png   # another options file; the shot laid out as the window shows it
+godot --path . --resolution 1600x900 -- --settings-file=/tmp/opts.cfg --profiles-file=/tmp/prof.cfg --screen=options:display --shot-as-window --menu-shot=/tmp/d.png   # other options and binding files; the shot laid out as the window shows it (also --screen=remap)
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
 python3 tools/make_stage_sprites.py assets/concept . neon      # rebuild a stage's background + roadside sprites (shared: race furniture)
