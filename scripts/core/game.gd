@@ -19,8 +19,8 @@ var calibration: CalibrationWizard
 var debug_overlay: InputDebugOverlay
 var _layer: CanvasLayer
 var _menu_shot := ""
-## Where the options screen goes back to. OptionsScreen always asks for the title
-## (show_title); opened from somewhere else, this sends it back there instead.
+## Where the options screen goes back to (close_options): the title unless whoever opened
+## it says otherwise.
 var _options_back := Callable()
 
 
@@ -67,12 +67,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## The title, with START (0) or OPTIONS (1) picked.
 func show_title(item := 0) -> void:
-	if screen == Screen.OPTIONS and _options_back.is_valid():
-		var back := _options_back
-		_options_back = Callable()
-		back.call()
-		return
-	_options_back = Callable()
 	var t := TitleScreen.new()
 	t.index = item
 	_set_menu(t, Screen.TITLE)
@@ -85,14 +79,28 @@ func show_mode_select(item := -1) -> void:
 	_set_menu(m, Screen.MODES)
 
 
-func show_options() -> void:
-	_set_menu(OptionsScreen.new(), Screen.OPTIONS)
+## The options, from the title unless `back` (with its name for the BACK row's help) says
+## where they go back to.
+func show_options(back := Callable(), back_name := "the title screen") -> void:
+	var o := OptionsScreen.new()
+	o.back_name = back_name
+	_options_back = back
+	_set_menu(o, Screen.OPTIONS)
 
 
 ## Options opened from mode select come back to it.
 func show_options_from_modes() -> void:
-	show_options()
-	_options_back = show_mode_select.bind(ModeSelect.Item.OPTIONS)
+	show_options(show_mode_select.bind(ModeSelect.Item.OPTIONS), "mode select")
+
+
+## Leaves the options for wherever they were opened from.
+func close_options() -> void:
+	var back := _options_back
+	_options_back = Callable()
+	if back.is_valid():
+		back.call()
+	else:
+		show_title(1)
 
 
 ## A playable mode picked on mode select.
