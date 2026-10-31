@@ -27,6 +27,11 @@ var offroad_mult := 1.0
 var nitro_max := Cfg.NITRO_CHARGES
 var nitro_duration := Cfg.NITRO_DURATION
 
+# Power-ups (PowerUps): seconds left on each
+var ram_time := 0.0  # traffic you hit flies off instead of crashing you
+var ghost_time := 0.0  # drive through traffic
+var rammed := false  # true for the tick the ram plate knocks a car away
+
 var road_y := 0.0  # road height under the car
 var air_height := 0.0  # car height above the road
 var airborne := false
@@ -58,6 +63,8 @@ func reset(start_position: float = 0.0) -> void:
 	speed = 0.0
 	nitro_charges = nitro_max
 	nitro_time = 0.0
+	ram_time = 0.0
+	ghost_time = 0.0
 	crash_time = 0.0
 	airborne = false
 	air_height = 0.0
@@ -88,6 +95,8 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 			nitro_charges -= 1
 			nitro_time = nitro_duration
 	nitro_time = maxf(0.0, nitro_time - dt)
+	ram_time = maxf(0.0, ram_time - dt)
+	ghost_time = maxf(0.0, ghost_time - dt)
 
 	var step := speed * dt
 	position = fposmod(position + step, track.length)
@@ -169,6 +178,7 @@ static func pitch_for_slope(slope: float) -> float:
 
 ## Checks roadside sprites and traffic in the player's segment.
 func collide(track: Track) -> void:
+	rammed = false
 	if crash_time > 0.0 or airborne:
 		return
 	var seg := track.find_segment(position + Cfg.PLAYER_Z)
@@ -187,12 +197,17 @@ func collide(track: Track) -> void:
 			if absf(x - center) < w_units * def["collide"] / 2.0 + half_car:
 				crash()
 				return
+	if ghost_time > 0.0:
+		return
 	for car in seg.cars:
-		if speed <= car.speed:
+		if speed <= car.speed or car.flung > 0.0:
 			continue
 		var car_half: float = half_car * car.width_mult
 		if absf(x - car.offset) < (half_car + car_half) * 0.8:
-			if speed - car.speed > Cfg.MAX_SPEED * 0.5:
+			if ram_time > 0.0:
+				Traffic.fling(car, x)
+				rammed = true
+			elif speed - car.speed > Cfg.MAX_SPEED * 0.5:
 				crash()
 			else:
 				speed = car.speed * (car.speed / speed)

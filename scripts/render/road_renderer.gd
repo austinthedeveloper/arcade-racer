@@ -138,6 +138,19 @@ func _draw_objects(seg: Segment) -> void:
 			continue
 		draw_texture_rect(def["tex"], rect, false, tint)
 
+	for pu: PowerUps.Pickup in seg.pickups:
+		if pu.taken:
+			continue
+		var s := seg.scale1
+		var tex := PowerUps.texture(PowerUps.road_sprite(pu.kind, time))
+		var h: float = PowerUps.WORLD_H * s * Cfg.PROJ
+		var w := h * tex.get_width() / float(tex.get_height())
+		var cx: float = seg.s1.x + s * pu.offset * Cfg.ROAD_WIDTH * Cfg.PROJ
+		var bob := roundf(sin(time * 4.0 + pu.segment) * h * 0.06)
+		if h < 1.0 or seg.s1.y - h >= seg.clip:
+			continue
+		draw_texture_rect(tex, Rect2(cx - w / 2.0, seg.s1.y - h + bob - h * 0.15, w, h), false, tint)
+
 	for car in seg.cars:
 		var p: float = car.percent
 		var s := lerpf(seg.scale1, seg.scale2, p)
@@ -146,6 +159,9 @@ func _draw_objects(seg: Segment) -> void:
 		var cy := lerpf(seg.s1.y, seg.s2.y, p)
 		if w < 1.0 or cy - w >= seg.clip or cx + w < 0.0 or cx - w > Cfg.SCREEN_W:
 			continue
+		if car.flung > 0.0:
+			# Rammed: arcs up and off the road
+			cy -= sin((1.0 - car.flung / Traffic.FLING_TIME) * PI) * w * 0.9
 		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog)
 
 	# Spans sit at the segment's near end, in front of its sprites and cars
@@ -231,8 +247,12 @@ func _draw_player() -> void:
 		lift += sin(k * PI) * w * 0.3
 	elif p.speed > 50.0 and not p.airborne:
 		y += roundf(randf_range(-1.0, 1.0) * (1.5 if p.offroad else 0.4) * p.speed / Cfg.MAX_SPEED)
+	# A ghost flickers see-through, brighter as it runs out
+	var alpha := 1.0
+	if p.ghost_time > 0.0:
+		alpha = 0.45 + (0.35 if p.ghost_time < 1.0 and int(time * 10.0) % 2 == 0 else 0.0)
 	CarSprites.draw_player(self, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking, p.nitro_time > 0.0,
-		time, roundf(lift), p.pitch)
+		time, roundf(lift), p.pitch, alpha)
 
 
 ## A stage's road colors, darkened for inside a tunnel or covered bridge.

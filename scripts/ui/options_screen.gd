@@ -4,13 +4,14 @@ extends MenuScreen
 ## Keyboard and gamepad: up/down picks a row, left/right changes it, confirm toggles or
 ## runs it. A wheel has no up/down, so steering picks the row and gas changes it.
 
-enum Row { AUTO_GAS, TRAFFIC, TIMER, MUSIC, SFX, CALIBRATE, BACK }
+enum Row { AUTO_GAS, TRAFFIC, TIMER, POWER_UPS, MUSIC, SFX, CALIBRATE, BACK }
 
-const LABELS := ["AUTO GAS", "TRAFFIC", "TIMER", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL", "BACK"]
+const LABELS := ["AUTO GAS", "TRAFFIC", "TIMER", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL", "BACK"]
 const HELP := [
 	"The car keeps the gas down, so you only steer. The brake still works.",
 	"How many cars share the road.",
 	"Time to reach each checkpoint. Relaxed gives more, Tight less.",
+	"Nitro cans, clocks, ram plates and ghosts to grab on the road.",
 	"Music loudness.",
 	"Engine, crash and menu sound loudness.",
 	"Set up a racing wheel and pedals (F2 also works).",
@@ -39,6 +40,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.traffic = _step(s.traffic, dir, s.Traffic.size(), wrap)
 		Row.TIMER:
 			s.timer = _step(s.timer, dir, s.Clock.size(), wrap)
+		Row.POWER_UPS:
+			s.power_ups = not s.power_ups
 		Row.MUSIC:
 			s.music_volume = _step(s.music_volume, dir, s.VOLUME_STEPS + 1, wrap)
 		Row.SFX:
@@ -59,6 +62,8 @@ static func value_text(row: int) -> String:
 			return s.TRAFFIC_NAMES[s.traffic]
 		Row.TIMER:
 			return s.TIMER_NAMES[s.timer]
+		Row.POWER_UPS:
+			return "ON" if s.power_ups else "OFF"
 		Row.MUSIC:
 			return str(s.music_volume)
 		Row.SFX:
@@ -132,7 +137,8 @@ func _draw() -> void:
 			_:
 				var t := value_text(row)
 				var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-				var on_col := Color("#5dff8a") if row == Row.AUTO_GAS and Settings.auto_gas else col
+				var lit := (row == Row.AUTO_GAS and Settings.auto_gas) or (row == Row.POWER_UPS and Settings.power_ups)
+				var on_col := Color("#5dff8a") if lit else col
 				_text(Vector2(right - 60 - tw / 2.0, y + 17), t, 12, on_col)
 				if on and not wheel:
 					_small_arrow(Vector2(right - 120, y + 12), -1)

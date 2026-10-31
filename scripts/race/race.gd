@@ -15,6 +15,12 @@ var track: Track
 var stage_index := 0  # into Stages
 var car_id := "car_vega"  # into Cars
 var player: PlayerCar
+var power_ups := PowerUps.new()
+var pickup := -1  # the last pickup taken (PowerUps.Kind), for the HUD
+var pickup_gave := -1  # what it gave (a mystery hubcap opens into another kind)
+var pickup_age := 99.0  # seconds since it was taken
+var picked_up := false  # true for the tick a pickup is taken
+var ram_flash := 0.0  # seconds left on the ram plate's impact flash
 var traffic: Traffic
 var state := State.COUNTDOWN
 var countdown := 3.0
@@ -78,6 +84,13 @@ func start_race() -> void:
 	CarSprites.use_car(car["strip"])
 	player.reset(_start_segment * Cfg.SEGMENT_LENGTH)
 	player.road_y = track.height_at(player.position + Cfg.PLAYER_Z)
+	power_ups = PowerUps.new()
+	if Settings.power_ups:
+		power_ups.place(track)
+	pickup = -1
+	pickup_gave = -1
+	pickup_age = 99.0
+	ram_flash = 0.0
 	traffic = Traffic.new()
 	traffic.spawn(track, 0 if _no_traffic else Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
 	state = State.COUNTDOWN
@@ -158,7 +171,11 @@ func _physics_process(dt: float) -> void:
 	player.update(dt, inp, track, state == State.RACING)
 	traffic.update(dt, track)
 	player.collide(track)
+	picked_up = false
+	pickup_age += dt
+	ram_flash = 0.3 if player.rammed else maxf(0.0, ram_flash - dt)
 	if state == State.RACING:
+		_check_pickups()
 		_check_progress()
 
 	background.offset += seg_before.curve * (player.speed * dt / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
@@ -178,6 +195,29 @@ func _physics_process(dt: float) -> void:
 	_frame += 1
 	if _screenshot_frames.has(_frame):
 		_save_screenshot()
+
+
+func _check_pickups() -> void:
+	var p := power_ups.take(track, player.position + Cfg.PLAYER_Z, player.x)
+	if p == null:
+		return
+	picked_up = true
+	pickup = p.kind
+	pickup_gave = power_ups.open(p.kind, time_left)
+	pickup_age = 0.0
+	match pickup_gave:
+		PowerUps.Kind.NITRO:
+			player.nitro_charges = mini(player.nitro_max, player.nitro_charges + 1)
+			_banner("NITRO +1", "", 1.2)
+		PowerUps.Kind.CLOCK:
+			time_left += PowerUps.CLOCK_BONUS
+			_banner("+%d SEC" % PowerUps.CLOCK_BONUS, "", 1.2)
+		PowerUps.Kind.RAM:
+			player.ram_time = PowerUps.RAM_TIME
+			_banner("RAM PLATE", "Traffic goes flying", 1.2)
+		PowerUps.Kind.GHOST:
+			player.ghost_time = PowerUps.GHOST_TIME
+			_banner("GHOST", "Drive right through", 1.2)
 
 
 func _check_progress() -> void:
