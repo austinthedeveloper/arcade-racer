@@ -12,8 +12,10 @@ godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screen
 godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, options, stages, cars)
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
-python3 tools/make_stage_sprites.py assets/concept . neon      # rebuild a stage's background + roadside sprites
+python3 tools/make_stage_sprites.py assets/concept . neon      # rebuild a stage's background + roadside sprites (shared: race furniture)
 python3 tools/make_ui_sprites.py assets/concept .   # rebuild the logo, title backdrop, stage postcards, car pictures
+python3 tools/make_span_sprites.py assets/concept . # rebuild tunnels, bridges, arches and race gates
+python3 tools/make_powerup_sprites.py assets/concept .   # rebuild the power-up pickups, icons and effects
 python3 tools/make_audio.py                         # rebuild the placeholder sounds (assets/audio/README.md)
 tools/export.sh 0.1.0                               # Windows/macOS/Web zips in build/release (needs export templates)
 ```
@@ -23,7 +25,7 @@ tools/export.sh 0.1.0                               # Windows/macOS/Web zips in 
 No addon. `tests/run_tests.gd` runs every `tests/test_*.gd` (methods named `test_*`, on a
 `TestSuite`, see `tests/suite.gd`). `tests/e2e_input.gd` boots the real main scene (title screen) and drives
 it through the input map: menus, then the race. The race itself is `scenes/race.tscn`. `tests/golden/` holds per-frame traces of autodriven races
-(Palm Coast with traffic and on a clear road, every other stage with traffic); `test_golden` replays them
+(Palm Coast with traffic and on a clear road, every other stage with traffic, default options so power-ups on); `test_golden` replays them
 and also checks every stage's autodriven race finishes in time. CI (`.github/workflows/ci.yml`) runs `tools/test.sh`. A pushed `v*` tag runs
 `.github/workflows/release.yml`: tests, `tools/export.sh`, then a GitHub Release with the zips.
 
