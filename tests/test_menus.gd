@@ -101,7 +101,9 @@ func test_menus_flow_into_the_race_and_back() -> void:
 	g.menu.handle(menu_input(false, true))
 	eq(g.screen, g.Screen.TITLE, "back on the title does nothing")
 	g.menu.handle(menu_input(true))
-	eq(g.screen, g.Screen.STAGES, "confirm: stage select")
+	eq(g.screen, g.Screen.MODES, "confirm: mode select")
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.STAGES, "confirm on GRAND TOUR: stage select")
 	g.menu.handle(menu_input(false, false, 1))
 	g.menu.handle(menu_input(false, false, 1))
 	g.menu.handle(menu_input(true))
@@ -125,7 +127,51 @@ func test_menus_flow_into_the_race_and_back() -> void:
 	eq(g.screen, g.Screen.TITLE, "quit: back to the title")
 	check(g.race == null, "race dropped")
 	g.menu.handle(menu_input(true))
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.STAGES, "title, mode select, stage select")
 	eq(g.menu.index, 3, "stage select opens where the tour got to")
+
+
+func test_mode_select_lists_every_mode() -> void:
+	var m := ModeSelect.new()
+	eq(ModeSelect.LABELS.size(), ModeSelect.Item.size(), "a label per mode")
+	eq(ModeSelect.HELP.size(), ModeSelect.Item.size(), "a help line per mode")
+	eq(m.move(-1), ModeSelect.Item.OPTIONS, "left wraps to OPTIONS")
+	eq(m.move(1), ModeSelect.Item.GRAND_TOUR, "right wraps to GRAND TOUR")
+	eq(m.pick(), ModeSelect.Item.GRAND_TOUR, "GRAND TOUR can be picked")
+	eq(m.notice_time, 0.0, "no notice for a built mode")
+	for item: int in [ModeSelect.Item.TIME_ATTACK, ModeSelect.Item.FREE_DRIVE]:
+		m.index = item
+		check(not ModeSelect.available(item), "%s isn't built yet" % ModeSelect.LABELS[item])
+		eq(m.pick(), -1, "so it can't be picked")
+		check(m.notice.ends_with("coming soon") and m.notice_time > 0.0, "a notice instead: " + m.notice)
+	m.index = ModeSelect.Item.OPTIONS
+	eq(m.pick(), ModeSelect.Item.OPTIONS, "OPTIONS can be picked")
+	m.free()
+
+
+func test_mode_select_leads_on_and_back() -> void:
+	var g := _game()
+	g.show_mode_select()
+	eq(g.menu.index, 0, "opens on GRAND TOUR")
+	g.menu.handle(menu_input(false, false, -1))
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.OPTIONS, "OPTIONS opens the options")
+	g.menu.handle(menu_input(false, true))
+	eq(g.screen, g.Screen.MODES, "back from them returns to mode select")
+	eq(g.menu.index, ModeSelect.Item.OPTIONS, "on OPTIONS")
+	g.menu.handle(menu_input(false, false, 1))
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.STAGES, "GRAND TOUR: stage select")
+	g.menu.handle(menu_input(false, true))
+	eq(g.screen, g.Screen.MODES, "back from stage select: mode select")
+	g.menu.handle(menu_input(false, true))
+	eq(g.screen, g.Screen.TITLE, "back again: the title")
+	g.menu.handle(menu_input(false, false, 1))
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.OPTIONS, "OPTIONS on the title still opens the options")
+	g.menu.handle(menu_input(false, true))
+	eq(g.screen, g.Screen.TITLE, "and those go back to the title")
 
 
 func test_quitting_needs_the_race_paused() -> void:

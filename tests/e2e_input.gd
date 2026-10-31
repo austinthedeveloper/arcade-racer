@@ -43,12 +43,25 @@ func _menu_script() -> Array:
 		["confirm", func() -> bool: return not _settings.auto_gas, "Enter turns auto gas off again"],
 		["back", func() -> bool: return g.screen == g.Screen.TITLE and g.menu.index == 1, "Backspace goes back to the title, on OPTIONS"],
 		["steer_left", func() -> bool: return g.menu.index == 0, "left picks START"],
-		["confirm", func() -> bool: return g.screen == g.Screen.STAGES, "Enter on the title opens stage select"],
+		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.index == 0, "Enter on the title opens mode select, on GRAND TOUR"],
+		["steer_right", func() -> bool: return g.menu.index == 1, "right picks SINGLE RACE"],
+		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.notice != "", "SINGLE RACE isn't built yet: a notice, no screen change"],
+		["steer_right", func() -> bool: return g.menu.index == 2, "right picks TIME ATTACK"],
+		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.notice.begins_with("Time Attack"), "TIME ATTACK says it's coming soon"],
+		["steer_right", func() -> bool: return g.menu.index == 3, "right picks FREE DRIVE"],
+		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.notice.begins_with("Free Drive"), "FREE DRIVE says it's coming soon"],
+		["steer_right", func() -> bool: return g.menu.index == 4, "right picks OPTIONS"],
+		["confirm", func() -> bool: return g.screen == g.Screen.OPTIONS, "Enter on OPTIONS opens the options"],
+		["back", func() -> bool: return g.screen == g.Screen.MODES and g.menu.index == 4, "back from those options returns to mode select"],
+		["steer_right", func() -> bool: return g.menu.index == 0, "right wraps to GRAND TOUR"],
+		["confirm", func() -> bool: return g.screen == g.Screen.STAGES, "Enter on GRAND TOUR opens stage select"],
 		["steer_right", func() -> bool: return g.menu.index == 1, "right picks stage 2"],
 		["steer_left", func() -> bool: return g.menu.index == 0, "left goes back to stage 1"],
 		["steer_left", func() -> bool: return g.menu.index == Stages.count() - 1, "left from stage 1 wraps to the last stage"],
 		["steer_right", func() -> bool: return g.menu.index == 0, "and right wraps back"],
-		["back", func() -> bool: return g.screen == g.Screen.TITLE, "Backspace on stage select goes back to the title"],
+		["back", func() -> bool: return g.screen == g.Screen.MODES and g.menu.index == 0, "Backspace on stage select goes back to mode select"],
+		["back", func() -> bool: return g.screen == g.Screen.TITLE, "and Backspace there goes back to the title"],
+		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.index == 0, "mode select remembers GRAND TOUR"],
 		["confirm", func() -> bool: return g.screen == g.Screen.STAGES and g.menu.index == 0, "back into stage select"],
 		["confirm", func() -> bool: return g.screen == g.Screen.CARS and g.stage_index == 0, "Enter picks the stage and opens car select"],
 		["pause", func() -> bool: return g.screen == g.Screen.STAGES, "Esc on car select goes back to stage select"],
@@ -208,21 +221,28 @@ func _tick() -> void:
 			_next(2)
 		16:
 			_send("confirm", false)
-			_check(_game.screen == _game.Screen.STAGES and _game.menu.index == 1,
-				"stage select opens on the stage the tour reached")
-			_settings.auto_gas = true  # (toggled through the options menu above)
+			_check(_game.screen == _game.Screen.MODES, "mode select")
 			_next(2)
 		17:
 			_send("confirm", true)
 			_next(2)
 		18:
 			_send("confirm", false)
-			_check(_game.screen == _game.Screen.CARS, "car select")
+			_check(_game.screen == _game.Screen.STAGES and _game.menu.index == 1,
+				"stage select opens on the stage the tour reached")
+			_settings.auto_gas = true  # (toggled through the options menu above)
 			_next(2)
 		19:
 			_send("confirm", true)
 			_next(2)
 		20:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.CARS, "car select")
+			_next(2)
+		21:
+			_send("confirm", true)
+			_next(2)
+		22:
 			_send("confirm", false)
 			_race = _game.race
 			_check(_race != null and _race.state == _race.State.COUNTDOWN, "a new race with auto gas on")
@@ -230,12 +250,12 @@ func _tick() -> void:
 				quit(1)
 				return
 			_next(260)  # the countdown, then over a second of driving
-		21:
+		23:
 			_check(_race.player.speed > Cfg.MAX_SPEED * 0.2, "auto gas: the car drives off with no key held")
 			_mark = _race.player.speed
 			_send("brake", true)
 			_next(30)
-		22:
+		24:
 			_send("brake", false)
 			_check(_race.player.speed < _mark, "auto gas: brake still slows the car")
 			_settings.auto_gas = false

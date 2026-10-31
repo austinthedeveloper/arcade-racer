@@ -1,13 +1,15 @@
 extends Node
-## Main scene: the front end (title, options, stage select, car select) and the race it starts.
+## Main scene: the front end (title, mode select, options, stage select, car select) and the
+## race it starts.
 ## Race dev flags (--autodrive, --stage=N, --race) skip the menus and go straight to a race.
 
-enum Screen { TITLE, OPTIONS, STAGES, CARS, RACE }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
 
 var screen := Screen.TITLE
+var mode_index := 0  # into ModeSelect.Item, the last mode picked
 var stage_index := 0  # into Stages
 var car_index := 0  # into Cars
 var menu: MenuScreen
@@ -17,6 +19,9 @@ var calibration: CalibrationWizard
 var debug_overlay: InputDebugOverlay
 var _layer: CanvasLayer
 var _menu_shot := ""
+## Where the options screen goes back to. OptionsScreen always asks for the title
+## (show_title); opened from somewhere else, this sends it back there instead.
+var _options_back := Callable()
 
 
 func _ready() -> void:
@@ -62,13 +67,38 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## The title, with START (0) or OPTIONS (1) picked.
 func show_title(item := 0) -> void:
+	if screen == Screen.OPTIONS and _options_back.is_valid():
+		var back := _options_back
+		_options_back = Callable()
+		back.call()
+		return
+	_options_back = Callable()
 	var t := TitleScreen.new()
 	t.index = item
 	_set_menu(t, Screen.TITLE)
 
 
+## Mode select, on the last mode picked (or `item`).
+func show_mode_select(item := -1) -> void:
+	var m := ModeSelect.new()
+	m.index = mode_index if item < 0 else item
+	_set_menu(m, Screen.MODES)
+
+
 func show_options() -> void:
 	_set_menu(OptionsScreen.new(), Screen.OPTIONS)
+
+
+## Options opened from mode select come back to it.
+func show_options_from_modes() -> void:
+	show_options()
+	_options_back = show_mode_select.bind(ModeSelect.Item.OPTIONS)
+
+
+## A playable mode picked on mode select.
+func choose_mode(item: int) -> void:
+	mode_index = item
+	show_stage_select()
 
 
 func show_stage_select() -> void:
@@ -124,6 +154,8 @@ func _open(which: String) -> void:
 			show_car_select()
 		"options":
 			show_options()
+		"modes":
+			show_mode_select()
 		_:
 			show_title()
 

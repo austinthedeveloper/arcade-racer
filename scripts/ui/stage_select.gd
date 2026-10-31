@@ -32,7 +32,7 @@ func handle(m: MenuInput) -> void:
 		game.stage_index = index
 		game.show_car_select()
 	elif m.back_pressed:
-		game.show_title()
+		game.show_mode_select()
 
 
 func _draw() -> void:
