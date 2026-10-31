@@ -189,6 +189,22 @@ func test_racers_side_by_side_are_pushed_apart() -> void:
 	near(a.position, 2000.0, 0.001, "no one moved along the road")
 
 
+func test_a_ghosted_car_drives_through_racers() -> void:
+	var t := flat_track()
+	var front := RivalCar.new()
+	front.reset(2000.0)
+	front.speed = 5000.0
+	var back := PlayerCar.new()
+	back.reset(1500.0)
+	back.speed = 9000.0
+	back.position = 1900.0
+	back.ghost_time = 2.0
+	Rivals.resolve_contacts([back, front], t)
+	check(not back.bumped and not front.bumped, "no contact")
+	eq(back.position, 1900.0, "not dropped behind")
+	eq(back.speed, 9000.0, "speed kept")
+
+
 func test_the_race_runs_its_rivals() -> void:
 	var r := race(true, false, 0)
 	eq(r.rivals.cars.size(), Rivals.COUNT, "a full field")
