@@ -3,10 +3,12 @@ extends MenuScreen
 ## Options: a list of rows, saved through the Settings autoload on every change.
 ## Keyboard and gamepad: up/down picks a row, left/right changes it, confirm toggles or
 ## runs it. A wheel has no up/down, so steering picks the row and gas changes it.
+## The two reset rows leave the wheel profiles alone; resetting the save asks first.
 
-enum Row { AUTO_GAS, TRAFFIC, TIMER, POWER_UPS, MUSIC, SFX, CALIBRATE, BACK }
+enum Row { AUTO_GAS, TRAFFIC, TIMER, POWER_UPS, MUSIC, SFX, CALIBRATE, RESET_OPTIONS, RESET_SAVE, BACK }
 
-const LABELS := ["AUTO GAS", "TRAFFIC", "TIMER", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL", "BACK"]
+const LABELS := ["AUTO GAS", "TRAFFIC", "TIMER", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
+	"RESET OPTIONS", "RESET SAVE DATA", "BACK"]
 const HELP := [
 	"The car keeps the gas down, so you only steer. The brake still works.",
 	"How many cars share the road.",
@@ -15,18 +17,46 @@ const HELP := [
 	"Music loudness.",
 	"Engine, crash and menu sound loudness.",
 	"Set up a racing wheel and pedals (F2 also works).",
+	"Every option above back to its default. Wheel setups are kept.",
+	"Erase tour progress, best times and unlocks. Wheel setups are kept.",
 	"Back to the title screen.",
 ]
-const ROW_H := 28.0
-const TOP := 58.0
+const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
+const ROW_H := 24.0
+const TOP := 56.0
 
 var index := 0  # into Row
+var confirming := false  # RESET SAVE DATA was selected once; selecting it again erases
+var done_row := -1  # a reset row that has just run, shown as DONE until the cursor moves
 
 
 ## Moves the cursor by `dir`, wrapping around; returns the new row.
 func move(dir: int) -> int:
 	index = posmod(index + dir, Row.size())
+	confirming = false
+	done_row = -1
 	return index
+
+
+## Options back to their defaults, saved. The save data and wheel profiles are untouched.
+func reset_options() -> void:
+	Settings.reset()
+	Settings.save()
+	done_row = Row.RESET_OPTIONS
+
+
+## Selecting RESET SAVE DATA: the first time asks, the second erases the save (a fresh one is
+## written). Options and wheel profiles are untouched. Returns true when it erased.
+func select_reset_save() -> bool:
+	if not confirming:
+		confirming = true
+		done_row = -1
+		return false
+	confirming = false
+	SaveData.reset()
+	SaveData.save()
+	done_row = Row.RESET_SAVE
+	return true
 
 
 ## Changes the row by `dir` and saves. `wrap` (confirm) cycles round; left/right stops at
@@ -71,6 +101,15 @@ static func value_text(row: int) -> String:
 	return ""
 
 
+## The right-hand text on this screen's row: values, or the reset rows' state.
+func row_text(row: int) -> String:
+	if row == done_row:
+		return "DONE"
+	if row == Row.RESET_SAVE and confirming:
+		return "SURE?"
+	return value_text(row)
+
+
 ## Control hints for this screen, worded for the device in use.
 static func options_hints() -> String:
 	match InputRouter.state.kind:
@@ -88,6 +127,11 @@ static func wheel_driven() -> bool:
 func handle(m: MenuInput) -> void:
 	var wheel := wheel_driven()
 	var pick := m.step() if wheel else m.step_y()
+	if confirming and not m.confirm_pressed and (pick != 0 or m.step() != 0 or m.back_pressed):
+		confirming = false  # anything but selecting again cancels the save reset
+		if pick == 0:
+			Audio.play("tick")
+			return
 	if pick != 0:
 		move(pick)
 		Audio.play("tick")
@@ -99,6 +143,12 @@ func handle(m: MenuInput) -> void:
 			Row.CALIBRATE:
 				Audio.play("beep")
 				game.calibration.open()
+			Row.RESET_OPTIONS:
+				reset_options()
+				Audio.play("beep")
+			Row.RESET_SAVE:
+				select_reset_save()
+				Audio.play("beep")
 			Row.BACK:
 				Audio.play("beep")
 				game.show_title(1)
@@ -116,6 +166,7 @@ func _draw() -> void:
 	_frame(panel)
 	draw_rect(panel, Color(0.04, 0.03, 0.1, 0.85))
 	var wheel := wheel_driven()
+	var mid := ROW_H / 2.0 - 2.0  # the row's vertical centre, above the gap
 	for row in Row.size():
 		var y := TOP + row * ROW_H
 		var on := row == index
@@ -123,27 +174,33 @@ func _draw() -> void:
 			draw_rect(Rect2(panel.position.x, y, panel.size.x, ROW_H - 4), Color(GOLD, 0.18 + 0.06 * sin(time * 5.0)))
 			draw_rect(Rect2(panel.position.x, y, 3, ROW_H - 4), GOLD)
 		var col := GOLD if on else Color.WHITE
-		_text(Vector2(panel.position.x + 16, y + 17), LABELS[row], 12, col)
+		_text(Vector2(panel.position.x + 16, y + mid + 5), LABELS[row], 12, col)
 		var right := panel.end.x - 20
 		match row:
 			Row.MUSIC, Row.SFX:
 				var v: int = Settings.music_volume if row == Row.MUSIC else Settings.sfx_volume
 				for i in Settings.VOLUME_STEPS:
-					var seg := Rect2(right - 150 + i * 13, y + 6, 10, 12)
+					var seg := Rect2(right - 150 + i * 13, y + mid - 6, 10, 12)
 					draw_rect(seg, (SKY if on else Color(SKY, 0.7)) if i < v else Color(1, 1, 1, 0.12))
-				_text(Vector2(right - 178, y + 17), value_text(row), 10, col)
+				_text(Vector2(right - 178, y + mid + 5), value_text(row), 10, col)
 			Row.CALIBRATE, Row.BACK:
 				pass
+			Row.RESET_OPTIONS, Row.RESET_SAVE:
+				var t := row_text(row)
+				var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+				var warn := Color("#ff5d5d") if row == Row.RESET_SAVE and confirming else Color("#5dff8a")
+				_text(Vector2(right - 60 - tw / 2.0, y + mid + 5), t, 12, warn)
 			_:
 				var t := value_text(row)
 				var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 				var lit := (row == Row.AUTO_GAS and Settings.auto_gas) or (row == Row.POWER_UPS and Settings.power_ups)
 				var on_col := Color("#5dff8a") if lit else col
-				_text(Vector2(right - 60 - tw / 2.0, y + 17), t, 12, on_col)
+				_text(Vector2(right - 60 - tw / 2.0, y + mid + 5), t, 12, on_col)
 				if on and not wheel:
-					_small_arrow(Vector2(right - 120, y + 12), -1)
-					_small_arrow(Vector2(right, y + 12), 1)
-	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, panel.end.y + 24), HELP[index], 10, Color(1, 1, 1, 0.85))
+					_small_arrow(Vector2(right - 120, y + mid), -1)
+					_small_arrow(Vector2(right, y + mid), 1)
+	var help: String = CONFIRM_HELP if confirming else HELP[index]
+	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, panel.end.y + 20), help, 10, Color(1, 1, 1, 0.85))
 	_footer(options_hints())
 
 
