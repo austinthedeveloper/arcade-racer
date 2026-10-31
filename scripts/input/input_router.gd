@@ -62,6 +62,7 @@ func _physics_process(dt: float) -> void:
 	if kb_target != 0.0 or throttle > 0.0 or brake > 0.0:
 		last_active_device = -1
 	var menu_x := kb_target
+	var menu_y := brake - throttle  # Down / S and Up / W
 	var menu_down := {
 		"confirm": down["confirm"],
 		"back": Input.is_action_pressed("back") or down["pause"],
@@ -78,6 +79,8 @@ func _physics_process(dt: float) -> void:
 			down[key] = down[key] or r.get(key, false)
 		if absf(r["menu_x"]) > absf(menu_x):
 			menu_x = r["menu_x"]
+		if absf(r["menu_y"]) > absf(menu_y):
+			menu_y = r["menu_y"]
 		menu_down["confirm"] = menu_down["confirm"] or r["menu_confirm"]
 		menu_down["back"] = menu_down["back"] or r["menu_back"]
 		if r["active"]:
@@ -92,6 +95,7 @@ func _physics_process(dt: float) -> void:
 	state.confirm_pressed = down["confirm"] and not _prev["confirm"]
 	_prev = down
 	menu.step_axis(clampf(menu_x, -1.0, 1.0), dt)
+	menu.step_axis_y(clampf(menu_y, -1.0, 1.0), dt)
 	menu.confirm_pressed = menu_down["confirm"] and not _prev_menu["confirm"]
 	menu.back_pressed = menu_down["back"] and not _prev_menu["back"]
 	_prev_menu = menu_down
@@ -128,6 +132,11 @@ func _read_pad(device: int, dt: float) -> Dictionary:
 		menu_x = -1.0
 	elif Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_RIGHT):
 		menu_x = 1.0
+	var menu_y := Input.get_joy_axis(device, JOY_AXIS_LEFT_Y)
+	if Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_UP):
+		menu_y = -1.0
+	elif Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_DOWN):
+		menu_y = 1.0
 	return {
 		"steer": s,
 		"throttle": throttle if throttle > 0.05 else 0.0,
@@ -138,6 +147,7 @@ func _read_pad(device: int, dt: float) -> Dictionary:
 		"confirm": a_btn,
 		"active": mag > PAD_DEADZONE or throttle > 0.05 or brake > 0.05 or nitro or a_btn,
 		"menu_x": menu_x,
+		"menu_y": menu_y,
 		"menu_confirm": a_btn or Input.is_joy_button_pressed(device, JOY_BUTTON_START),
 		"menu_back": Input.is_joy_button_pressed(device, JOY_BUTTON_B) or Input.is_joy_button_pressed(device, JOY_BUTTON_BACK),
 	}
@@ -161,6 +171,7 @@ func _read_wheel(device: int, prof: DeviceProfile) -> Dictionary:
 		"active": absf(steer) > 0.05 or throttle > 0.05 or brake > 0.05 or nitro,
 		# Any wheel button confirms too, so an uncalibrated wheel (pedals unused) gets through
 		"menu_x": steer,
+		"menu_y": 0.0,  # a wheel has no up/down; OptionsScreen lets it steer through rows
 		"menu_confirm": throttle > PEDAL_PRESS or not pressed_buttons(device).is_empty(),
 		"menu_back": brake > PEDAL_PRESS,
 	}

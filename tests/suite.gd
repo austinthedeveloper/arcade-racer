@@ -3,6 +3,7 @@ class_name TestSuite
 extends RefCounted
 
 const SCRATCH_PROFILES := "user://test_input_profiles.cfg"
+const SCRATCH_SETTINGS := "user://test_settings.cfg"
 const DT := 1.0 / 60.0
 
 var runner
@@ -16,6 +17,14 @@ static func use_scratch_profiles(router: Node) -> void:
 	if FileAccess.file_exists(SCRATCH_PROFILES):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SCRATCH_PROFILES))
 	router.load_profiles()
+
+
+## Points the Settings autoload at an empty options file of the tests' own (all defaults).
+static func use_scratch_settings(settings: Node) -> void:
+	settings.path = SCRATCH_SETTINGS
+	if FileAccess.file_exists(SCRATCH_SETTINGS):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SCRATCH_SETTINGS))
+	settings.load_settings()
 
 
 ## A straight, flat track `segments` long, for driving tests.
