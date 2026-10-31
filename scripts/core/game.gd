@@ -127,7 +127,7 @@ func start_race() -> void:
 	race = RACE_SCENE.instantiate()
 	race.stage_index = stage_index
 	race.car_id = Cars.get_car(car_index)["id"]
-	race.tour = mode_index != ModeSelect.Item.SINGLE_RACE
+	race.tour = mode_index == ModeSelect.Item.GRAND_TOUR
 	race.debug_overlay = debug_overlay
 	race.calibration = calibration
 	race.quit_requested.connect(_on_race_quit)

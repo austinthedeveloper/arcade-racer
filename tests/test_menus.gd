@@ -224,3 +224,19 @@ func test_single_race_runs_once_and_returns_to_the_menus() -> void:
 	check(g.race != null and g.race.tour, "GRAND TOUR races tour on")
 	TestSuite.ready_all(g.race)
 	g.race.quit_requested.emit()
+
+
+func test_only_the_grand_tour_tours() -> void:
+	# Review on #114: modes other than Single Race defaulted to tour = true.
+	var g := _game()
+	for item in [ModeSelect.Item.SINGLE_RACE, ModeSelect.Item.TIME_ATTACK, ModeSelect.Item.FREE_DRIVE]:
+		g.mode_index = item
+		g.start_race()
+		check(not g.race.tour, "%s: no tour" % ModeSelect.Item.keys()[item])
+		TestSuite.ready_all(g.race)
+		g.race.quit_requested.emit()
+	g.mode_index = ModeSelect.Item.GRAND_TOUR
+	g.start_race()
+	check(g.race.tour, "GRAND TOUR tours")
+	TestSuite.ready_all(g.race)
+	g.race.quit_requested.emit()
