@@ -432,8 +432,8 @@ func test_option_pages() -> void:
 	confirm.confirm_pressed = true
 	o.handle(confirm)
 	eq(o.page, OptionsScreen.Page.DISPLAY, "confirm on the page bar: next page")
-	eq(o.rows(), [OptionsScreen.Row.PAGE, OptionsScreen.Row.BACK], "an empty page still has BACK")
-	o.handle(down)
+	eq(o.rows(), [OptionsScreen.Row.PAGE, OptionsScreen.Row.UNITS, OptionsScreen.Row.BACK], "Display rows")
+	o.handle(up)
 	o.handle(confirm)
 	eq(g.screen, g.Screen.TITLE, "BACK from any page")
 	InputRouter.state = keep
@@ -466,3 +466,24 @@ func test_screen_flag_opens_a_page() -> void:
 	g._open("options:controls")
 	var o: OptionsScreen = g.menu
 	eq([g.screen, o.page, o.row()], [g.Screen.OPTIONS, OptionsScreen.Page.CONTROLS, OptionsScreen.Row.PAGE], "options:controls")
+
+
+func test_speed_units() -> void:
+	_clean()
+	eq(Settings.units, Settings.Units.MPH, "MPH by default")
+	eq(Settings.speed_in(Cfg.MAX_SPEED, Settings.Units.MPH), roundi(Cfg.DISPLAY_TOP_SPEED), "top speed in mph")
+	eq(Settings.speed_in(Cfg.MAX_SPEED, Settings.Units.KPH), roundi(Cfg.DISPLAY_TOP_SPEED * 1.609344), "in kph (319)")
+	eq(Settings.speed_in(Cfg.MAX_SPEED * 0.5, Settings.Units.MPH), 99, "half")
+	eq(Settings.speed_in(0.0, Settings.Units.KPH), 0, "standing")
+	eq(Settings.speedometer(Cfg.MAX_SPEED), [198, "MPH"], "speedometer in MPH")
+	var o := OptionsScreen.new()
+	o.go_to(OptionsScreen.Row.UNITS)
+	eq(o.page, OptionsScreen.Page.DISPLAY, "on the Display page")
+	o.change(OptionsScreen.Row.UNITS, 1, false)
+	eq(OptionsScreen.value_text(OptionsScreen.Row.UNITS), "KPH", "shown")
+	Settings.load_settings()
+	eq(Settings.speedometer(Cfg.MAX_SPEED), [319, "KPH"], "saved, and the speedometer says KPH")
+	o.change(OptionsScreen.Row.UNITS, 1, true)
+	eq(Settings.units, Settings.Units.MPH, "confirm cycles back")
+	o.free()
+	_clean()

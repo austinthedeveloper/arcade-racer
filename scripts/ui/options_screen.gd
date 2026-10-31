@@ -8,24 +8,24 @@ extends MenuScreen
 ## The two reset rows leave the wheel profiles alone; resetting the save asks first.
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, TIMER, POWER_UPS, MUSIC, SFX, CALIBRATE, RESET_OPTIONS, RESET_SAVE, SCREEN_SHAKE,
-	FLASH, BACK }
+	FLASH, UNITS, BACK }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
 ## The rows between the page bar and BACK on each page.
 const PAGE_ROWS := [
 	[Row.AUTO_GAS, Row.TRAFFIC, Row.TIMER, Row.POWER_UPS, Row.RESET_OPTIONS, Row.RESET_SAVE],
-	[],
+	[Row.UNITS],
 	[Row.MUSIC, Row.SFX],
 	[Row.CALIBRATE],
 	[Row.SCREEN_SHAKE, Row.FLASH],
 ]
 ## Shown on a page with no rows yet.
-const PAGE_EMPTY := ["", "Nothing here yet.", "", "", ""]
+const PAGE_EMPTY := ["", "", "", "", ""]
 ## The most rows any page has, page bar and BACK included: the panel's height.
 const SLOTS := 8
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "TIMER", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
-	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "BACK"]
+	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS", "BACK"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -39,6 +39,7 @@ const HELP := [
 	"Erase tour progress, best times and unlocks. Wheel setups are kept.",
 	"Camera shake and the nitro view stretch. 0 turns them off.",
 	"Impact flashes and the blinking clock. 0 turns them off.",
+	"Miles or kilometres per hour on the speedometer.",
 	"Back to the title screen.",
 ]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
@@ -135,6 +136,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.screen_shake = _step(s.screen_shake, dir, s.EFFECT_STEPS + 1, wrap)
 		Row.FLASH:
 			s.flash = _step(s.flash, dir, s.EFFECT_STEPS + 1, wrap)
+		Row.UNITS:
+			s.units = _step(s.units, dir, s.Units.size(), wrap)
 		_:
 			return false
 	s.save()
@@ -161,6 +164,8 @@ static func value_text(row: int) -> String:
 			return str(s.screen_shake)
 		Row.FLASH:
 			return str(s.flash)
+		Row.UNITS:
+			return s.UNIT_NAMES[s.units]
 	return ""
 
 

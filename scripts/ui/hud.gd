@@ -57,9 +57,9 @@ func _draw() -> void:
 	var pct := clampf(p.speed / (Cfg.MAX_SPEED * Cfg.NITRO_SPEED_MULT), 0.0, 1.0)
 	draw_arc(center, 44, PI, TAU, 24, Color(0, 0, 0, 0.55), 10)
 	draw_arc(center, 44, PI, PI + PI * pct, 24, Color("#ff5a2a") if pct > 0.8 else Color("#3ad0ff"), 6)
-	var mph := roundi(p.speed / Cfg.MAX_SPEED * Cfg.DISPLAY_TOP_SPEED)
-	_text_centered(Vector2(center.x, center.y - 4), str(mph), 22, Color.WHITE)
-	_text_centered(Vector2(center.x, center.y + 10), "MPH", 8, Color("#ffd23a"))
+	var shown: Array = Settings.speedometer(p.speed)
+	_text_centered(Vector2(center.x, center.y - 4), str(shown[0]), 22, Color.WHITE)
+	_text_centered(Vector2(center.x, center.y + 10), shown[1], 8, Color("#ffd23a"))
 
 	# Device, bottom left
 	var inp: DriveInput = InputRouter.state
