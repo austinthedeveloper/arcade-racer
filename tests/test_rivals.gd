@@ -189,6 +189,22 @@ func test_racers_side_by_side_are_pushed_apart() -> void:
 	near(a.position, 2000.0, 0.001, "no one moved along the road")
 
 
+func test_a_ghosted_car_drives_through_racers() -> void:
+	var t := flat_track()
+	var front := RivalCar.new()
+	front.reset(2000.0)
+	front.speed = 5000.0
+	var back := PlayerCar.new()
+	back.reset(1500.0)
+	back.speed = 9000.0
+	back.position = 1900.0
+	back.ghost_time = 2.0
+	Rivals.resolve_contacts([back, front], t)
+	check(not back.bumped and not front.bumped, "no contact")
+	eq(back.position, 1900.0, "not dropped behind")
+	eq(back.speed, 9000.0, "speed kept")
+
+
 func test_the_race_runs_its_rivals() -> void:
 	var r := race(true, false, 0)
 	eq(r.rivals.cars.size(), Rivals.COUNT, "a full field")
@@ -216,6 +232,16 @@ func test_standings_sort_by_distance_then_finishers_first() -> void:
 	eq(f.standings(p, -1.0)[0], f.cars[1], "a finisher leads whoever is still racing")
 	eq(f.place(p, 79.0), 1, "finished before the other finisher")
 	eq(f.place(p, 81.0), 2, "finished after it")
+
+
+func test_the_player_and_rivals_share_a_clock() -> void:
+	# Review on #104: race_time skipped the GO tick that Rivals.clock counted, so a
+	# same-tick photo finish always went to the player.
+	var r := race(true, false, 0)
+	run_until(r, func(): return r.state == r.State.RACING)
+	near(r.race_time, r.rivals.clock, 0.0001, "on the GO tick")
+	run_until(r, func(): return r.race_time > 3.0)
+	near(r.race_time, r.rivals.clock, 0.0001, "three seconds in")
 
 
 func test_ordinals() -> void:

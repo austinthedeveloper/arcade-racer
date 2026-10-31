@@ -11,6 +11,7 @@ var position := 0.0  # camera z, wrapped to the track length
 var last_position := 0.0  # position before this tick's move
 var distance := 0.0  # total distance driven, not wrapped
 var x := 0.0
+var last_x := 0.0  # x before this tick's steering
 var speed := 0.0
 var steer := 0.0  # smoothed steering, for visuals
 var pitch := 0.0  # smoothed nose angle for visuals: 1 full nose-down (downhill), -1 full nose-up
@@ -65,6 +66,7 @@ func reset(start_position: float = 0.0) -> void:
 	last_position = start_position
 	distance = 0.0
 	x = 0.0
+	last_x = 0.0
 	speed = 0.0
 	nitro_charges = nitro_max
 	nitro_time = 0.0
@@ -114,6 +116,7 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 
 	# Steering and the outward pull of curves
 	var rate := dt * Cfg.STEER_RATE * steer_mult * pct
+	last_x = x
 	if airborne:
 		rate *= Cfg.AIR_STEER
 	x += steer_in * rate
@@ -239,6 +242,8 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 		if gap <= -Cfg.CAR_LENGTH:
 			continue  # already passed
 		if gap < 0.0:
+			if speed <= car.speed and absf(last_x - car.offset) < reach:
+				continue  # a faster car catching you up from behind in your lane drives through
 			# Steered into a car beside you: pushed back out to your side, no snap behind it
 			x = car.offset + (reach if x >= car.offset else -reach)
 			speed *= 1.0 - Cfg.SIDESWIPE_SPEED_LOSS
