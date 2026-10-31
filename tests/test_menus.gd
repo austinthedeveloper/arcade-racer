@@ -140,6 +140,8 @@ func test_mode_select_lists_every_mode() -> void:
 	eq(m.move(1), ModeSelect.Item.GRAND_TOUR, "right wraps to GRAND TOUR")
 	eq(m.pick(), ModeSelect.Item.GRAND_TOUR, "GRAND TOUR can be picked")
 	eq(m.notice_time, 0.0, "no notice for a built mode")
+	m.index = ModeSelect.Item.SINGLE_RACE
+	eq(m.pick(), ModeSelect.Item.SINGLE_RACE, "SINGLE RACE can be picked")
 	for item: int in [ModeSelect.Item.TIME_ATTACK, ModeSelect.Item.FREE_DRIVE]:
 		m.index = item
 		check(not ModeSelect.available(item), "%s isn't built yet" % ModeSelect.LABELS[item])
@@ -190,3 +192,31 @@ func test_quitting_needs_the_race_paused() -> void:
 	drive(r, 1)
 	eq(quits[0], 1, "back while paused quits")
 	InputRouter.menu = keep
+
+
+func test_single_race_runs_once_and_returns_to_the_menus() -> void:
+	var g := _game()
+	g.show_mode_select()
+	g.menu.handle(menu_input(false, false, 1))
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.STAGES, "SINGLE RACE: stage select")
+	eq(g.mode_index, ModeSelect.Item.SINGLE_RACE, "the mode is kept")
+	g.menu.handle(menu_input(false, false, 1))
+	g.menu.handle(menu_input(true))
+	g.menu.handle(menu_input(true))
+	if not check(g.race != null, "race started"):
+		return
+	check(not g.race.tour, "the race knows it's a Single Race")
+	TestSuite.ready_all(g.race)
+	g.race.race_over.emit()
+	eq(g.screen, g.Screen.STAGES, "race over: back to stage select")
+	check(g.race == null, "race dropped")
+	eq(g.menu.index, 1, "on the stage just raced")
+	g.menu.handle(menu_input(false, true))
+	g.menu.handle(menu_input(false, false, -1))
+	g.menu.handle(menu_input(true))
+	g.menu.handle(menu_input(true))
+	g.menu.handle(menu_input(true))
+	check(g.race != null and g.race.tour, "GRAND TOUR races tour on")
+	TestSuite.ready_all(g.race)
+	g.race.quit_requested.emit()

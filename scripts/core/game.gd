@@ -119,19 +119,31 @@ func start_race() -> void:
 	race = RACE_SCENE.instantiate()
 	race.stage_index = stage_index
 	race.car_id = Cars.get_car(car_index)["id"]
+	race.tour = mode_index != ModeSelect.Item.SINGLE_RACE
 	race.debug_overlay = debug_overlay
 	race.calibration = calibration
 	race.quit_requested.connect(_on_race_quit)
+	race.race_over.connect(_on_race_over)
 	add_child(race)
 
 
 func _on_race_quit() -> void:
+	_drop_race()
+	show_title()
+
+
+## A Single Race finished: back to stage select for the next one.
+func _on_race_over() -> void:
+	_drop_race()
+	show_stage_select()
+
+
+func _drop_race() -> void:
 	stage_index = race.stage_index  # stage select opens on the stage the tour reached
 	race.queue_free()
 	race = null
 	Audio.stop_music()
 	Audio.set_paused(false)
-	show_title()
 
 
 func _set_menu(next: MenuScreen, to: Screen) -> void:

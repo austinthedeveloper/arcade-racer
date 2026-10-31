@@ -34,7 +34,7 @@ func _ready() -> void:
 
 ## Whether a mode can be played yet.
 static func available(item: int) -> bool:
-	return item == Item.GRAND_TOUR or item == Item.OPTIONS
+	return item != Item.TIME_ATTACK and item != Item.FREE_DRIVE
 
 
 ## Moves the selection by `dir`, wrapping around; returns the new index.

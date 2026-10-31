@@ -170,3 +170,36 @@ func test_a_restart_starts_the_clocks_over() -> void:
 	r.start_race()
 	eq(r._frame, 0, "frames from zero")
 	eq(InputRouter.speed_factor, 0.0, "pad steering back at rest")
+
+
+func test_a_single_race_ends_at_the_finish() -> void:
+	var r := race(false, false)
+	r.tour = false
+	var overs := [0]
+	r.race_over.connect(func() -> void: overs[0] += 1)
+	_finish(r)
+	eq(r.state, r.State.FINISHED, "finished")
+	check("menu" in r.banner_sub and not "Redrock" in r.banner_sub, "no next stage, the menu instead: " + r.banner_sub)
+	_confirm(r)
+	eq(overs[0], 1, "Enter: race over, back to the menus")
+	eq(r.stage_index, 0, "no stage-to-stage continuation")
+	var rs := input()
+	rs.restart_pressed = true
+	drive(r, 1, rs)
+	eq(r.state, r.State.COUNTDOWN, "R after the finish races the stage again")
+	eq(r.track.name, "Palm Coast Boulevard", "the same stage")
+
+
+func test_a_single_race_retries_after_time_up() -> void:
+	var r := race(false, false, 2)
+	r.tour = false
+	var overs := [0]
+	r.race_over.connect(func() -> void: overs[0] += 1)
+	drive(r, 181)
+	r.time_left = 0.1
+	drive(r, 10)
+	eq(r.state, r.State.TIME_UP, "time up")
+	_confirm(r)
+	eq(overs[0], 0, "no race over on a retry")
+	eq(r.state, r.State.COUNTDOWN, "Enter retries")
+	eq(r.stage_index, 2, "on the same stage")

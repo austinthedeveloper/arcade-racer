@@ -3,6 +3,8 @@ extends Node2D
 ## The game (game.gd) starts it from the menus; quit_requested asks to go back to them.
 
 signal quit_requested
+## A Single Race is over and the player confirmed the finish: back to the menus.
+signal race_over
 
 enum State { COUNTDOWN, RACING, FINISHED, TIME_UP }
 
@@ -18,6 +20,7 @@ const SHAKE_SETTLE := 12.0
 
 var track: Track
 var stage_index := 0  # into Stages
+var tour := true  # Grand Tour: a finish goes on to the next stage. false: a Single Race
 var car_id := "car_vega"  # into Cars
 var player: PlayerCar
 var power_ups := PowerUps.new()
@@ -157,7 +160,10 @@ func _physics_process(dt: float) -> void:
 		start_race()
 		return
 	if inp.confirm_pressed and state == State.FINISHED:
-		continue_tour()
+		if tour:
+			continue_tour()
+		else:
+			race_over.emit()
 		return
 	if inp.pause_pressed:
 		paused = not paused
@@ -248,6 +254,8 @@ func _check_progress() -> void:
 		var secs := fmod(race_time, 60.0)
 		var next := Stages.next(stage_index)
 		var prompt := "Enter: on to %s" % Stages.stage_name(next) if next >= 0 else "Tour complete!   Enter: race again"
+		if not tour:
+			prompt = "Enter: menu   R: race again"
 		_banner("FINISH!", "Time %d:%05.2f   %s" % [mins, secs, prompt], 999.0)
 
 
