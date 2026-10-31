@@ -216,6 +216,7 @@ func _physics_process(dt: float) -> void:
 	picked_up = false
 	pickup_age += dt
 	ram_flash = 0.3 if player.rammed else maxf(0.0, ram_flash - dt)
+	score.age_feed(dt)
 	if state == State.RACING:
 		score.watch(dt, player, track)
 		_check_pickups()
