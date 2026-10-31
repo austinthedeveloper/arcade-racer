@@ -33,3 +33,41 @@ jobs:
 
       - name: Tests (suites + e2e)
         run: tools/test.sh
+
+  # The exported Linux build (unsupported platform, kept so the export
+  # pipeline and a later Steam Deck test stay working) starts and plays.
+  smoke:
+    name: Linux export smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-godot
+        with:
+          templates: "true"
+
+      - name: Import the project
+        run: godot --headless --path . --import
+
+      - name: Export Linux
+        # A debug export, so script errors print SCRIPT ERROR for the check below
+        # (release templates are built without them); tools/export.sh ships release builds.
+        run: |
+          mkdir -p build/linux
+          godot --headless --path . --export-debug Linux build/linux/SundownRun.x86_64 2>&1 | tee build/export.log
+          test -s build/linux/SundownRun.x86_64
+          if grep -q "ERROR:" build/export.log; then exit 1; fi
+
+      - name: Run the exported build headless
+        run: |
+          # --autodrive (a user arg, after --) starts a race by itself. --quit-after
+          # counts frames and the race runs on physics ticks: --fixed-fps 60 makes them
+          # one tick a frame, so 1200 frames is the countdown and about 17 s of driving.
+          set +e
+          timeout 120 build/linux/SundownRun.x86_64 --headless --fixed-fps 60 --quit-after 1200 -- --autodrive 2>&1 | tee build/smoke.log
+          code=${PIPESTATUS[0]}
+          set -e
+          [ "$code" -eq 0 ] || { echo "exit code $code"; exit 1; }
+          grep -q "GO!" build/smoke.log || { echo "the race never started"; exit 1; }
+          if grep -q "SCRIPT ERROR" build/smoke.log; then exit 1; fi

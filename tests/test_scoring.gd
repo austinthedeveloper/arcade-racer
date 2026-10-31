@@ -12,11 +12,13 @@ func test_place_points() -> void:
 func test_near_miss() -> void:
 	var fast := Cfg.MAX_SPEED * 0.9
 	var half := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
-	check(Scoring.near_miss(0.0, fast, half * 2.0 + 0.05, 1.0), "a hand's width off its side")
-	check(not Scoring.near_miss(0.0, fast, half * 2.0 + Scoring.NEAR_MISS_ROOM + 0.05, 1.0), "a lane away")
+	check(Scoring.near_miss(0.0, fast, half * 2.0 - 0.05, 1.0), "shaving its side")
+	# Review on #118: lane center to lane center in the next lane is an ordinary pass
+	check(not Scoring.near_miss(0.0, fast, Traffic.LANE_OFFSETS[1] - Traffic.LANE_OFFSETS[0], 1.0), "a pass in the next lane")
+	check(not Scoring.near_miss(0.0, fast, half * 2.0 + 0.05, 1.0), "a hand's width off its side")
 	check(not Scoring.near_miss(0.0, fast, 0.1, 1.0), "that would have been a hit")
-	check(not Scoring.near_miss(0.0, Cfg.MAX_SPEED * 0.3, half * 2.0 + 0.05, 1.0), "too slow to count")
-	check(Scoring.near_miss(0.0, fast, half * 2.6 + 0.05, 1.6), "a wide truck's side")
+	check(not Scoring.near_miss(0.0, Cfg.MAX_SPEED * 0.3, half * 2.0 - 0.05, 1.0), "too slow to count")
+	check(Scoring.near_miss(0.0, fast, half * 2.6 - 0.05, 1.6), "a wide truck's side")
 
 
 func test_air() -> void:
@@ -80,16 +82,26 @@ func test_passing_close_to_traffic_is_a_near_miss() -> void:
 	var car := Traffic.TrafficCar.new()
 	car.z = p.position + Cfg.PLAYER_Z - 20.0  # its rear passed your nose this tick
 	car.last_z = car.z - 5.0
-	car.offset = 0.55
+	car.offset = 0.45
 	car.speed = Cfg.MAX_SPEED * 0.3
 	car.segment = t.find_segment(car.z)
 	car.segment.cars.append(car)
 	s.watch(DT, p, t)
 	eq(s.bonuses.size(), 1, "one near miss")
-	car.offset = 0.75
+	car.offset = 0.5
 	s.bonuses.clear()
 	s.watch(DT, p, t)
 	eq(s.bonuses.size(), 0, "a lane over is no near miss")
+
+
+func test_the_feed_fades_after_the_finish() -> void:
+	# Review on #118: the feed only aged while racing, so the finish's bonuses stayed up.
+	var r := race(true, false, 0)
+	r.score.add("NO CRASHES", Scoring.NO_CRASH)
+	r.state = r.State.FINISHED
+	drive(r, roundi(Scoring.FEED_TIME / DT) + 2, input(0.0))
+	eq(r.score.feed.size(), 0, "gone after FEED_TIME")
+	eq(r.score.bonuses.size(), 1, "still counted")
 
 
 func test_the_race_keeps_score() -> void:

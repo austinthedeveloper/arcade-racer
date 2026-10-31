@@ -13,6 +13,7 @@ var _wait := 0
 var _fails := 0
 var _mark := 0.0
 var _settings: Node
+var _router: Node
 
 
 func _initialize() -> void:
@@ -20,7 +21,8 @@ func _initialize() -> void:
 	# ticks in one frame could flush a press and its release together
 	Engine.max_physics_steps_per_frame = 1
 	Engine.physics_jitter_fix = 0.0
-	TestSuite.use_scratch_profiles(root.get_node("InputRouter"))
+	_router = root.get_node("InputRouter")
+	TestSuite.use_scratch_profiles(_router)
 	_settings = root.get_node("Settings")  # autoloads aren't globals in a SceneTree script
 	TestSuite.use_scratch_settings(_settings)
 	TestSuite.use_scratch_save(root.get_node("SaveData"))
@@ -38,11 +40,29 @@ func _menu_script() -> Array:
 		["steer_right", func() -> bool: return g.menu.index == 1, "right on the title picks OPTIONS"],
 		["confirm", func() -> bool: return g.screen == g.Screen.OPTIONS, "Enter opens the options"],
 		["confirm", func() -> bool: return _settings.auto_gas, "Enter on AUTO GAS turns it on"],
-		["brake", func() -> bool: return g.menu.index == g.menu.Row.TRAFFIC, "Down picks the next row"],
+		["brake", func() -> bool: return g.menu.row() == g.menu.Row.TRAFFIC, "Down picks the next row"],
 		["steer_left", func() -> bool: return _settings.traffic == _settings.Traffic.LIGHT, "Left lowers the traffic"],
 		["steer_right", func() -> bool: return _settings.traffic == _settings.Traffic.NORMAL, "Right raises it back"],
-		["accelerate", func() -> bool: return g.menu.index == g.menu.Row.AUTO_GAS, "Up goes back a row"],
+		["accelerate", func() -> bool: return g.menu.row() == g.menu.Row.AUTO_GAS, "Up goes back a row"],
 		["confirm", func() -> bool: return not _settings.auto_gas, "Enter turns auto gas off again"],
+		["accelerate", func() -> bool: return g.menu.row() == g.menu.Row.PAGE, "Up from the first option: the page bar"],
+		["steer_right", func() -> bool: return g.menu.page == g.menu.Page.DISPLAY, "Right on the page bar: Display"],
+		["steer_right", func() -> bool: return g.menu.page == g.menu.Page.AUDIO, "Right: Audio"],
+		["brake", func() -> bool: return g.menu.row() == g.menu.Row.MUSIC, "Down on Audio: music volume"],
+		["accelerate", func() -> bool: return g.menu.row() == g.menu.Row.PAGE, "Up: the page bar again"],
+		["steer_right", func() -> bool: return g.menu.page == g.menu.Page.CONTROLS, "Right: Controls"],
+		["brake", func() -> bool: return g.menu.row() == g.menu.Row.CALIBRATE, "Down on Controls: calibrate"],
+		["brake", func() -> bool: return g.menu.row() == g.menu.Row.REMAP, "Down: remap buttons"],
+		["confirm", func() -> bool: return g.screen == g.Screen.REMAP, "Enter opens the remap screen"],
+		["confirm", func() -> bool: return g.menu.listening == "nitro", "Enter on NITRO waits for a key"],
+		["key:N", func() -> bool: return _router.keyboard.binding("nitro") == [KEY_N] and g.menu.listening == "",
+			"pressing N binds nitro to it"],
+		["back", func() -> bool: return g.screen == g.Screen.OPTIONS and g.menu.row() == g.menu.Row.REMAP,
+			"Backspace goes back to the options, on remap"],
+		["accelerate", func() -> bool: return g.menu.row() == g.menu.Row.CALIBRATE, "Up: calibrate"],
+		["accelerate", func() -> bool: return g.menu.row() == g.menu.Row.PAGE, "Up: the page bar"],
+		["steer_right", func() -> bool: return g.menu.page == g.menu.Page.ACCESSIBILITY, "Right: Accessibility"],
+		["steer_right", func() -> bool: return g.menu.page == g.menu.Page.GAME, "Right wraps round to Game"],
 		["back", func() -> bool: return g.screen == g.Screen.TITLE and g.menu.index == 1, "Backspace goes back to the title, on OPTIONS"],
 		["steer_left", func() -> bool: return g.menu.index == 0, "left picks START"],
 		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.index == 0, "Enter on the title opens mode select, on GRAND TOUR"],
@@ -79,15 +99,20 @@ func _menu_script() -> Array:
 func _menus() -> bool:
 	var steps := _menu_script()
 	var entry: Array = steps[_menu_step / 2]
+	var key: String = entry[0]
 	if _menu_step % 2 == 0:
-		if entry[0] != "":
-			_send(entry[0], true)
+		if key.begins_with("key:"):
+			_send_key(OS.find_keycode_from_string(key.get_slice(":", 1)), true)
+		elif key != "":
+			_send(key, true)
 	else:
-		if entry[0] != "":
-			_send(entry[0], false)
+		if key.begins_with("key:"):
+			_send_key(OS.find_keycode_from_string(key.get_slice(":", 1)), false)
+		elif key != "":
+			_send(key, false)
 		_check(entry[1].call(), entry[2])
 	_menu_step += 1
-	_wait = 2
+	_wait = 20 if key.begins_with("key:") else 2  # a new binding settles before menu input counts
 	return _menu_step < steps.size() * 2
 
 
@@ -97,6 +122,14 @@ func _send(action: String, pressed: bool) -> void:
 	e.action = action
 	e.pressed = pressed
 	e.strength = 1.0 if pressed else 0.0
+	Input.parse_input_event(e)
+
+
+## A key by its physical keycode, as the keyboard sends it (for rebound keys).
+func _send_key(code: int, pressed: bool) -> void:
+	var e := InputEventKey.new()
+	e.physical_keycode = code
+	e.pressed = pressed
 	Input.parse_input_event(e)
 
 
@@ -188,11 +221,11 @@ func _tick() -> void:
 			_check(p.braking, "brake lights on")
 			_send("brake", false)
 			_send("accelerate", true)
-			_send("nitro", true)
+			_send_key(KEY_N, true)  # nitro, rebound to N in the remap screen
 			_next(2)
 		5:
-			_send("nitro", false)
-			_check(p.nitro_charges == Cfg.NITRO_CHARGES - 1 and p.nitro_time > 0.0, "nitro fires once")
+			_send_key(KEY_N, false)
+			_check(p.nitro_charges == Cfg.NITRO_CHARGES - 1 and p.nitro_time > 0.0, "the rebound N fires nitro once")
 			_send("pause", true)
 			_next(2)
 		6:

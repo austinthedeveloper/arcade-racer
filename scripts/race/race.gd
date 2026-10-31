@@ -14,11 +14,6 @@ const START_TIME := 45.0  # on the ARCADE timer; Settings scales both for the ot
 const CHECKPOINT_BONUS := 25.0
 const BACKGROUND_SCROLL := 0.0006  # per segment travelled, per unit of curve
 const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
-# Camera shake, in screen pixels, and how fast it settles (pixels per second)
-const SHAKE_CRASH := 5.0
-const SHAKE_LANDING := 3.0
-const SHAKE_OFFROAD := 1.5  # at top speed
-const SHAKE_SETTLE := 12.0
 
 var track: Track
 var stage_index := 0  # into Stages
@@ -73,7 +68,9 @@ var debug_overlay: InputDebugOverlay
 var calibration: CalibrationWizard
 var audio: RaceAudio
 
-var _shake := 0.0
+var _shake := 0.0  # camera shake as designed, in pixels; the screen shake option scales what shows
+var _fov_stretch := 0.0  # 0..Cfg.NITRO_FOV_STRETCH, eased while nitro burns
+var _was_airborne := false
 var _autodrive := false
 var _log_banners := false
 var _no_traffic := false
@@ -131,6 +128,9 @@ func start_race() -> void:
 	pickup_gave = -1
 	pickup_age = 99.0
 	ram_flash = 0.0
+	_shake = 0.0
+	_fov_stretch = 0.0
+	_was_airborne = false
 	traffic = Traffic.new()
 	var traffic_count := Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT)))
 	if _no_traffic or (time_attack and not Settings.attack_traffic):
@@ -138,6 +138,7 @@ func start_race() -> void:
 	traffic.spawn(track, traffic_count)
 	if tour and tour_state == null:
 		tour_state = Tour.new()
+		tour_state.start_stage = stage_index
 	rivals = Rivals.new()
 	rivals.spawn(track, player, car_id, 0 if _no_rivals or time_attack else Rivals.COUNT, Rivals.SEED + stage_index,
 		Difficulty.of(Settings.difficulty), tour_state.drivers if tour else [])
@@ -189,6 +190,24 @@ func continue_tour() -> void:
 	start_race()
 
 
+## R, or RESTART on the pause menu. In a tour, a stage that is over goes the way Enter
+## would (after_race), and one still running costs the continue; with none left it can't be
+## restarted. Returns false when it wasn't.
+func restart() -> bool:
+	if not tour:
+		start_race()
+		return true
+	if state == State.TIME_UP or state == State.FINISHED:
+		after_race()
+		return true
+	if not tour_state.use_continue():
+		resume()
+		_banner("NO CONTINUE LEFT", "", 1.5)
+		return false
+	start_race()
+	return true
+
+
 ## Enter (or R) after a finish or TIME UP.
 func after_race() -> void:
 	match after:
@@ -234,7 +253,7 @@ func pause_action(action: int) -> void:
 		PauseMenu.Action.RESUME:
 			resume()
 		PauseMenu.Action.RESTART:
-			start_race()
+			restart()
 		PauseMenu.Action.OPTIONS:
 			pause_menu.close()
 			options_requested.emit()
@@ -257,6 +276,8 @@ func _physics_process(dt: float) -> void:
 	var inp: DriveInput = Settings.drive_input(InputRouter.state)
 	if _autodrive:
 		inp = _autodrive_input()
+	else:
+		inp = Assists.apply(inp, player, track, Settings.steer_assist, Settings.brake_assist)
 	if calibration.visible:
 		_redraw()
 		return
@@ -266,11 +287,11 @@ func _physics_process(dt: float) -> void:
 		_redraw()
 		return
 	var over := state == State.TIME_UP or state == State.FINISHED
-	if over and (inp.confirm_pressed or (inp.restart_pressed and tour)):
+	if over and inp.confirm_pressed:
 		after_race()
 		return
 	if inp.restart_pressed:
-		start_race()
+		restart()
 		return
 	if inp.pause_pressed:
 		pause()
@@ -288,6 +309,7 @@ func _physics_process(dt: float) -> void:
 			if countdown <= 0.0:
 				state = State.RACING
 				_banner("GO!", "", 1.0)
+				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
 			if not time_attack:
@@ -310,6 +332,7 @@ func _physics_process(dt: float) -> void:
 	picked_up = false
 	pickup_age += dt
 	ram_flash = 0.3 if player.rammed else maxf(0.0, ram_flash - dt)
+	score.age_feed(dt)
 	if state == State.RACING:
 		score.watch(dt, player, track)
 		_check_pickups()
@@ -322,21 +345,42 @@ func _physics_process(dt: float) -> void:
 
 	background.offset += seg_before.curve * (player.speed * dt / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
 
-	# Camera shake: rough ground, landings, crashes
-	if player.crashed:
-		_shake = SHAKE_CRASH
-	elif player.landed:
-		_shake = maxf(_shake, SHAKE_LANDING)
-	elif player.offroad and player.speed > 100.0:
-		_shake = maxf(_shake, SHAKE_OFFROAD * player.speed_percent())
-	_shake = move_toward(_shake, 0.0, dt * SHAKE_SETTLE)
-	road.position = Vector2(roundf(randf_range(-1, 1) * _shake), roundf(randf_range(-1, 1) * _shake))
+	# Camera shake: rough ground, crests, landings, crashes. Display only (road.position).
+	_shake = shake_after(_shake, player, player.airborne and not _was_airborne, dt)
+	_was_airborne = player.airborne
+	var shown := Settings.shake_amount(_shake)
+	road.position = Vector2(roundf(randf_range(-1, 1) * shown), roundf(randf_range(-1, 1) * shown))
+	# Nitro widens the view a little (display only: the renderer's camera depth)
+	var stretch_to := Cfg.NITRO_FOV_STRETCH if player.nitro_time > 0.0 else 0.0
+	_fov_stretch = move_toward(_fov_stretch, stretch_to, dt * Cfg.NITRO_FOV_RATE)
+	road.camera_depth = camera_depth(_fov_stretch)
+	road.flash = Settings.flash_amount(1.0)
 	road.time += dt
 	road.camera_z = player.position
 	_redraw()
 	_frame += 1
 	if _screenshot_frames.has(_frame):
 		_save_screenshot(_frame)
+
+
+## Camera shake (pixels, as designed) after a tick: a crash sets it, a landing, a takeoff
+## over a crest and rough ground at speed kick it up, and it settles back to still.
+static func shake_after(shake: float, p: PlayerCar, took_off: bool, dt: float) -> float:
+	if p.crashed:
+		shake = Cfg.SHAKE_CRASH
+	elif p.landed:
+		shake = maxf(shake, Cfg.SHAKE_LANDING)
+	elif took_off:
+		shake = maxf(shake, Cfg.SHAKE_TAKEOFF)
+	elif p.offroad and p.speed > 100.0:
+		shake = maxf(shake, Cfg.SHAKE_OFFROAD * p.speed_percent())
+	return move_toward(shake, 0.0, dt * Cfg.SHAKE_SETTLE)
+
+
+## The renderer's camera depth for a nitro stretch (0..Cfg.NITRO_FOV_STRETCH), after the
+## screen shake option: Cfg.CAMERA_DEPTH with no stretch or with the option at 0.
+static func camera_depth(stretch: float) -> float:
+	return Cfg.CAMERA_DEPTH * (1.0 - Settings.shake_amount(stretch))
 
 
 ## Grades the start once it's known: the gas down in the window around GO, or too early.
@@ -437,6 +481,8 @@ func _tour_finish() -> String:
 		return "Enter: on to %s" % Stages.stage_name(next)
 	tour_state.complete = true
 	after = After.TOUR_DONE
+	if not tour_state.full():
+		return "Tour complete! Start from stage 1 for the Zenith.   Enter: menu"
 	if _saves():
 		SaveData.unlock(Tour.FINISH_UNLOCK)
 		SaveData.total_points += int(tour_state.points.get(Tour.YOU, 0))
@@ -444,13 +490,16 @@ func _tour_finish() -> String:
 	return "Tour complete!   Enter: menu"
 
 
-## Saves the finish (SaveData): best time for this stage and car, and the tour's progress.
+## Saves the finish (SaveData): best time for this stage and car, and the tour's progress
+## when the tour goes on from it.
 ## Autodriven runs and partway starts (dev flags) aren't the player's, so they aren't saved.
 ## Returns true for a new best time.
 func record_finish() -> bool:
 	if not _saves():
 		return false
-	return SaveData.record_finish(stage_index, car_id, race_time, place if not rivals.cars.is_empty() else 0, not time_attack)
+	var placed := not rivals.cars.is_empty()
+	var goes_on := tour and (not placed or Tour.advances(place))
+	return SaveData.record_finish(stage_index, car_id, race_time, place if placed else 0, goes_on)
 
 
 ## Time Attack: this run becomes the ghost when it beats the saved one.
@@ -518,9 +567,11 @@ func _autodrive_input() -> DriveInput:
 	return inp
 
 
-## The lane with the most open road ahead, keeping the current one on a tie.
+## The lane with the most open road ahead, keeping the current one on a tie. Anything slower
+## than cruising speed blocks a lane, so a slowed car doesn't sit behind a tractor.
 func _autodrive_lane() -> float:
 	const LOOKAHEAD := 40  # segments
+	var want := maxf(player.speed, Cfg.MAX_SPEED * 0.8)
 	var here := track.find_segment(player.position + Cfg.PLAYER_Z).index
 	var best: float = Traffic.LANE_OFFSETS[0]
 	var best_gap := -1
@@ -530,13 +581,13 @@ func _autodrive_lane() -> float:
 		var gap := LOOKAHEAD
 		for r in rivals.cars:
 			var ahead := wrapf(r.position - player.position, -track.length * 0.5, track.length * 0.5)
-			if ahead > 0.0 and absf(r.x - lane) < 0.3 and r.speed < player.speed:
+			if ahead > 0.0 and absf(r.x - lane) < 0.3 and r.speed < want:
 				gap = mini(gap, int(ahead / Cfg.SEGMENT_LENGTH))
 		for n in gap:
 			var ahead := track.segments[(here + n) % track.segments.size()]
 			var blocked := false
 			for car in ahead.cars:
-				if absf(car.offset - lane) < 0.3 and car.speed < player.speed:
+				if absf(car.offset - lane) < 0.3 and car.speed < want:
 					blocked = true
 			if blocked:
 				gap = n

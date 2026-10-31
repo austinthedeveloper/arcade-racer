@@ -27,7 +27,7 @@ func _draw() -> void:
 			_text(Vector2(12, 72), race.split_text(race.split), 10, Color("#5dff8a") if ahead else Color("#ff6a6a"))
 	else:
 		var t: float = race.time_left
-		var tcol := Color("#ff4040") if t < Cfg.LOW_TIME and int(t * 4.0) % 2 == 0 else Color.WHITE
+		var tcol := clock_color(t)
 		_text(Vector2(12, 46), str(ceili(t)), 30, tcol)
 
 	# Place, under the time
@@ -80,9 +80,9 @@ func _draw() -> void:
 	var pct := clampf(p.speed / (Cfg.MAX_SPEED * Cfg.NITRO_SPEED_MULT), 0.0, 1.0)
 	draw_arc(center, 44, PI, TAU, 24, Color(0, 0, 0, 0.55), 10)
 	draw_arc(center, 44, PI, PI + PI * pct, 24, Color("#ff5a2a") if pct > 0.8 else Color("#3ad0ff"), 6)
-	var mph := roundi(p.speed / Cfg.MAX_SPEED * Cfg.DISPLAY_TOP_SPEED)
-	_text_centered(Vector2(center.x, center.y - 4), str(mph), 22, Color.WHITE)
-	_text_centered(Vector2(center.x, center.y + 10), "MPH", 8, Color("#ffd23a"))
+	var shown: Array = Settings.speedometer(p.speed)
+	_text_centered(Vector2(center.x, center.y - 4), str(shown[0]), 22, Color.WHITE)
+	_text_centered(Vector2(center.x, center.y + 10), shown[1], 8, Color("#ffd23a"))
 
 	# Slipstream, over the speedometer: the meter filling, then the boost running down
 	var slip := Rect2(w - 98, Cfg.SCREEN_H - 82, 80, 4)
@@ -178,6 +178,20 @@ func _score_tally(top: Vector2) -> float:
 	return panel.end.y
 
 
+## The clock's color: white, then blinking red under Cfg.LOW_TIME. The flash option scales
+## the blink: at 0 the clock turns steady red instead.
+static func clock_color(t: float) -> Color:
+	if t >= Cfg.LOW_TIME:
+		return Color.WHITE
+	var red := Color("#ff4040")
+	return red if int(t * 4.0) % 2 == 0 else red.lerp(Color.WHITE, Settings.flash_amount(1.0))
+
+
+## The ram plate's impact flash (0.3 s when it hits) as an alpha, after the flash option.
+static func ram_flash_alpha(ram_flash: float) -> float:
+	return Settings.flash_amount(clampf(ram_flash / 0.3, 0.0, 1.0))
+
+
 func _text(pos: Vector2, s: String, size: int, col: Color) -> void:
 	UiText.draw(self, pos, s, size, col)
 
@@ -229,4 +243,4 @@ func _power_up_fx() -> void:
 	if race.ram_flash > 0.0:
 		var tex := PowerUps.texture("fx_ram")
 		var size := Vector2(tex.get_width(), tex.get_height()) * 1.2
-		draw_texture_rect(tex, Rect2(car + Vector2(0, -30) - size / 2.0, size), false, Color(1, 1, 1, race.ram_flash / 0.3))
+		draw_texture_rect(tex, Rect2(car + Vector2(0, -30) - size / 2.0, size), false, Color(1, 1, 1, ram_flash_alpha(race.ram_flash)))
