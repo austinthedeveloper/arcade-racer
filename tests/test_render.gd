@@ -72,3 +72,14 @@ func test_pitch_warp_matches_the_camera_geometry() -> void:
 		var warp := CarSprites.pitch_warp(pitch)
 		eq(signf(warp.x - 1.0), signf(roof), "roof grows as it turns to the camera (slope %s)" % slope)
 		eq(signf(warp.y - 1.0), signf(tail), "bumper grows as it turns to the camera (slope %s)" % slope)
+
+
+func test_hill_strips_are_in_and_not_much_taller_than_level() -> void:
+	CarSprites.load_all()
+	for row in [-1, 1]:
+		check(CarSprites.player_strips.has(row), "pitched strip %d is built" % row)
+	var level: float = CarSprites.player_strips[0]["cell"].y
+	for row in [-1, 1]:
+		var h: float = CarSprites.player_strips[row]["cell"].y
+		# Taller pops when the pitch switches strips; the tool squashes them (make_car_sprites.py)
+		check(h <= level * 1.4, "strip %d is %.0f px, level %.0f px" % [row, h, level])
