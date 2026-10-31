@@ -583,3 +583,25 @@ func test_view_rect_integer_and_fractional() -> void:
 	eq(Settings.view_rect(Vector2i(1600, 900), view, false), Rect2i(0, 0, 1600, 900), "fractional fills it")
 	eq(Settings.view_rect(Vector2i(1920, 929), view, true), Rect2i(320, 104, 1280, 720), "a short window: 2x")
 	eq(Settings.view_rect(Vector2i(320, 180), view, true), Rect2i(-160, -90, 640, 360), "never under 1x")
+
+
+func test_an_unmapped_pad_steers_through_options() -> void:
+	# A wheel the game doesn't recognize by name is read as a pad without a gamepad layout:
+	# it has no stick for up and down, so it steers through the rows like a wheel.
+	_clean()
+	var keep := _as_device(DriveInput.Kind.GAMEPAD)
+	InputRouter.state.mapped = false
+	check(OptionsScreen.wheel_driven(), "steering picks the rows")
+	check(OptionsScreen.options_hints().begins_with("Steer: choose"), "and the hints say so")
+	var g := _game()
+	g.show_options()
+	var o: OptionsScreen = g.menu
+	var start := o.row()
+	var steer := MenuInput.new()
+	steer.right_pressed = true
+	o.handle(steer)
+	eq(o.row(), start + 1, "steering right goes down a row")
+	InputRouter.state.mapped = true
+	check(not OptionsScreen.wheel_driven(), "a mapped gamepad uses up and down")
+	InputRouter.state = keep
+	_clean()
