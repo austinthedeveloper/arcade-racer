@@ -271,3 +271,32 @@ func test_power_ups_option_saves() -> void:
 	o.change(OptionsScreen.Row.POWER_UPS, 1, true)
 	check(Settings.power_ups, "back on")
 	o.free()
+
+
+func test_difficulty_saves_and_sets_the_timer() -> void:
+	_clean()
+	var o := OptionsScreen.new()
+	eq(OptionsScreen.value_text(OptionsScreen.Row.DIFFICULTY), "NORMAL", "normal by default")
+	o.change(OptionsScreen.Row.DIFFICULTY, 1, false)
+	eq(Settings.difficulty, Difficulty.Level.HARD, "harder")
+	eq(Settings.timer, Settings.Clock.TIGHT, "hard puts the timer on tight")
+	o.change(OptionsScreen.Row.TIMER, -1, false)
+	eq(Settings.timer, Settings.Clock.ARCADE, "the timer can still be changed")
+	Settings.load_settings()
+	eq(Settings.difficulty, Difficulty.Level.HARD, "saved")
+	eq(Settings.timer, Settings.Clock.ARCADE, "and the timer kept")
+	o.change(OptionsScreen.Row.DIFFICULTY, -1, false)
+	o.change(OptionsScreen.Row.DIFFICULTY, -1, false)
+	eq(Settings.timer, Settings.Clock.RELAXED, "easy relaxes it")
+	o.free()
+	_clean()
+
+
+func test_difficulty_reaches_the_race() -> void:
+	_clean()
+	Settings.difficulty = Difficulty.Level.EASY
+	var easy := race(false, false)
+	Settings.difficulty = Difficulty.Level.HARD
+	var hard := race(false, false)
+	check(easy.rivals.cars[0].base_top < hard.rivals.cars[0].base_top, "slower rivals on easy")
+	_clean()
