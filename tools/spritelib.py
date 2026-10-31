@@ -84,10 +84,11 @@ def _frame_medians(labels, near, bright, count):
     return medians
 
 
-def key_sheet(img):
+def key_sheet(img, fringe=1):
     """Keys out the sheet's background color (read from its corner): every patch of it that
-    touches the edge or is a real gap (GAP_DISTANCE, GAP_FRAME), plus a one-pixel rim of
-    magenta-ish fringe around those. Pink or purple paint stays."""
+    touches the edge or is a real gap (GAP_DISTANCE, GAP_FRAME), plus up to `fringe` pixels
+    of magenta-ish fringe around those (is_key, grown one pixel at a time). Pink or purple
+    paint stays, unless it touches the background within `fringe` pixels."""
     a = rgba(img)
     h, w = a.shape[:2]
     bg = a[1, 1, :3].astype(np.int16)
@@ -106,11 +107,13 @@ def key_sheet(img):
     keep = edge | gap
     keep[0] = False
     keyed = keep[labels]
-    fringe = np.zeros_like(keyed)
-    for dst, src in _shifts(keyed.shape):
-        fringe[dst] |= keyed[src]
-    fringe &= ~keyed & is_key(a)
-    a[keyed | fringe] = 0
+    keyish = is_key(a)
+    for _ in range(fringe):
+        grow = np.zeros_like(keyed)
+        for dst, src in _shifts(keyed.shape):
+            grow[dst] |= keyed[src]
+        keyed |= grow & keyish
+    a[keyed] = 0
     return Image.fromarray(a)
 
 
@@ -239,10 +242,12 @@ def in_reading_order(groups):
     return [g for row in rows for g in sorted(row["items"], key=lambda g: g["box"][0])]
 
 
-def slice_row(keyed):
+def slice_row(keyed, shape=None):
     """A keyed sheet's big objects (components) left to right, each trimmed, with pixels of
-    its neighbours inside its box cleared. For sheets of one row: cars, the palms."""
-    boxes, labels, step = components(keyed)
+    its neighbours inside its box cleared. For sheets of one row: cars, the palms. `shape`,
+    if given, is the same sheet keyed more lightly: objects are found on it, so a part that
+    `keyed` cut loose (a mirror on a stalk of fringe) still belongs to its object."""
+    boxes, labels, step = components(keyed if shape is None else shape)
     return [mask_crop(keyed, box, labels, step, {comp}) for box, comp in boxes]
 
 

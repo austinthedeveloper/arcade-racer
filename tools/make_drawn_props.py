@@ -11,6 +11,8 @@ import sys
 
 from PIL import Image, ImageDraw
 
+import manifest
+
 
 def canvas(w, h):
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
@@ -108,17 +110,26 @@ def make_bush(path):
     img.save(path)
 
 
+# name: (drawing function, world height, fraction of its width that collides), in
+# roadside/palm_coast/; the game reads the numbers from the manifest (tools/manifest.py)
+DRAWN = {
+    "billboard": (make_billboard, 3400, 0.9),
+    "lifeguard_tower": (make_lifeguard, 3000, 0.8),
+    "umbrella": (make_umbrella, 1300, 0.4),
+    "lamp_post": (make_lamp, 3800, 0.25),
+    "hotel": (make_hotel, 7500, 1),
+    "bush": (make_bush, 560, 0.6),
+}
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
     roadside = os.path.join(sys.argv[1], "assets", "sprites", "roadside", "palm_coast")
     os.makedirs(roadside, exist_ok=True)
-    make_billboard(os.path.join(roadside, "billboard.png"))
-    make_lifeguard(os.path.join(roadside, "lifeguard_tower.png"))
-    make_umbrella(os.path.join(roadside, "umbrella.png"))
-    make_lamp(os.path.join(roadside, "lamp_post.png"))
-    make_hotel(os.path.join(roadside, "hotel.png"))
-    make_bush(os.path.join(roadside, "bush.png"))
+    for name, (draw, _, _) in DRAWN.items():
+        draw(os.path.join(roadside, name + ".png"))
+    manifest.write(sys.argv[1])
 
 
 if __name__ == "__main__":

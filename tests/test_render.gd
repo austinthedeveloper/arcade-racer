@@ -143,3 +143,16 @@ func test_player_cars_show_no_key_magenta() -> void:
 				magenta += int(c.a > 0.5 and d < 60.0 / 255.0)
 		check(magenta <= 20, "%s straight frame has %d key-magenta pixels" % [id, magenta])
 	CarSprites.use_car("vega")
+
+
+func test_every_manifest_sprite_loads() -> void:
+	# The sprite tools write the manifest (tools/manifest.py); a name there with no texture
+	# would be skipped with only a warning.
+	SpriteLibrary.load_all()
+	CarSprites.load_all()
+	var m := SpriteLibrary.manifest()
+	eq(SpriteLibrary.defs.size(), m["roadside"].size(), "every roadside sprite")
+	eq(SpriteLibrary.spans.size(), m["spans"].size(), "every span")
+	eq(CarSprites.traffic.size(), m["traffic"].size(), "every traffic vehicle")
+	for id: String in Traffic.CARS + Traffic.BIG + Traffic.SPECIALS:
+		check(CarSprites.traffic.has(id), "traffic %s is in the manifest" % id)

@@ -12,7 +12,6 @@ extends RefCounted
 const PLAYER_DIR := "res://assets/sprites/cars/"
 const PITCH_SUFFIXES := {-1: "_up", 1: "_down"}
 const PLAYER_FRAMES := 7
-const TRAFFIC_DIR := "res://assets/sprites/traffic/"
 
 # Tallest a player car is drawn, as a multiple of its on-screen width (CarSprites.draw_scale)
 const MAX_HEIGHT := 0.85
@@ -23,17 +22,6 @@ const DECK_SPLIT := 0.55
 # Fallback stretch at full pitch: the deck grows this much nose-up and shrinks nose-down,
 # the bumper does the opposite at half the rate.
 const DECK_STRETCH := 0.35
-
-# World units per texture pixel. Each concept sheet was drawn at its own scale.
-const CAR_SCALE := 7.0
-const BIG_SCALE := 8.2
-## Traffic sprites by the scale their sheet was cut at (tools/make_car_sprites.py)
-const CAR_SHEET_IDS := ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow",
-	"surf_van", "trolley", "log_truck", "tractor", "airboat_trailer", "taxi",
-	"pickup_red", "suv_green", "muscle_white", "van_navy", "tuk_tuk", "hatch_purple",
-	"golf_cart", "jeep_red", "limo_white", "dump_truck", "boat_trailer", "news_truck", "double_decker"]
-const BIG_SHEET_IDS := ["semi", "bus", "box_truck", "rv", "carrier",
-	"tow_truck", "cement_mixer", "tanker", "garbage_truck", "street_sweeper", "ice_cream_truck", "combine"]
 
 ## The player's car: pitch row (-1 up, 0 level, 1 down) -> {"tex", "cell", "body_w"}
 static var player_strips: Dictionary = {}
@@ -46,10 +34,9 @@ static func load_all() -> void:
 	if not traffic.is_empty():
 		return
 	use_car("vega")
-	for id in CAR_SHEET_IDS:
-		_add_traffic(id, CAR_SCALE)
-	for id in BIG_SHEET_IDS:
-		_add_traffic(id, BIG_SCALE)
+	var m: Dictionary = SpriteLibrary.manifest()["traffic"]
+	for id: String in m:
+		_add_traffic(id, SpriteLibrary.SPRITES + m[id]["file"], m[id]["world_per_px"])
 
 
 ## Makes `strip_id`'s steering strips the player's (loaded once per car).
@@ -73,10 +60,11 @@ static func _load_strip(path: String) -> Dictionary:
 	return {"tex": tex, "cell": cell, "body_w": float(straight.get_used_rect().size.x)}
 
 
-static func _add_traffic(id: String, world_per_px: float) -> void:
-	var tex: Texture2D = load(TRAFFIC_DIR + id + ".png")
+## A traffic vehicle; world_per_px is its sheet's scale (each concept sheet was drawn at its own).
+static func _add_traffic(id: String, path: String, world_per_px: float) -> void:
+	var tex: Texture2D = load(path)
 	if tex == null:
-		push_warning("Missing traffic sprite: " + id)
+		push_warning("Missing traffic sprite: " + path)
 		return
 	traffic[id] = {"tex": tex, "world_w": tex.get_width() * world_per_px}
 
