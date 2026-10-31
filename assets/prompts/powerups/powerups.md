@@ -50,3 +50,13 @@ Sprite sheet of visual effects for an arcade racing game, in a row: a burst of g
 ```
 Sprite sheet for an arcade racing game, five frames in a row: a wooden crate with a glowing question mark bursting open, from closed, to lid popping, to planks flying apart with a flash of light, to an empty bright starburst, to a few fading sparkles. Consistent scale, each frame separate with clear gaps, isolated on a flat solid magenta #FF00FF background, no text. {STYLE}
 ```
+
+## PU-01R Mystery pickup reshaped
+- **Output:** `assets/concept/powerups/pu01_mystery_A_v2.png`
+- **Aspect:** 16:9
+- **Round:** 5
+- **Why:** round 4 review (docs/08-concept-review-round4.md): a wooden crate with a big question mark is the signature item of a famous platform game series. Give the mystery pickup its own shape; the other four pickups stay. If this is used, PU-02 and PU-04 need the same shape.
+
+```
+Sprite sheet for an arcade racing game, three frames in a row: an original mystery power-up pickup shaped like a chunky chrome hubcap spinning on its edge, its center glowing with swirling rainbow colors and small sparkles, hovering over a glowing ring of light. Frame 1 face-on, frame 2 turned three quarters, frame 3 edge-on. No question mark, no crate, no box, no text. Big, bold, readable at small sizes, thick dark outlines, each frame separate with clear gaps, isolated on a flat solid magenta #FF00FF background, consistent scale, no ground shadow. {STYLE}
+```

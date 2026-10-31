@@ -46,3 +46,13 @@ Sprite sheet for an arcade racing game: an original open-cockpit three-wheeled r
 ```
 Sprite sheet for an arcade racing game: an original open-cockpit three-wheeled reverse trike with two front wheels on exposed wishbone suspension arms outside the narrow body and one single extra-wide rear tire in the center, a slim pointed nose, two separate small windscreens for side-by-side seats, a tall rear spine fairing behind the seats, and a single horizontal taillight bar across the rear spine directly above the fat rear tire, with twin exhausts on either side of the rear tire, painted hot magenta with a black spine and black wheels, in a cartoonish crash tumble. Six frames in a row showing the car flipping end over end and rolling, with small sparks and debris, seen from behind the chase camera. Consistent scale, isolated on a flat solid magenta #FF00FF background. {STYLE}
 ```
+
+## CAR-CYCLONE-01R Reroll: exactly three wheels, rounder body
+- **Output:** `assets/concept/cars/car_cyclone_hero_A_v2.png`
+- **Aspect:** 4:3
+- **Round:** 5
+- **Why:** round 4 review (docs/08-concept-review-round4.md): v1 shows four or five wheels in every view (an extra wheel beside the fat rear tire), and its sharp angular body reads like a well-known real reverse trike. This keeps the layout and paint and makes the body round and the wheel count explicit.
+
+```
+Concept art of an original open-cockpit reverse trike with EXACTLY THREE WHEELS: two front wheels on long exposed suspension arms far outside the body, and ONE single extra-wide rear tire in the center under the tail, with no other wheels anywhere. The body is a smooth rounded teardrop pod like a jet fighter's drop tank, tapering to a rounded tail directly above the rear tire, a single bubble windscreen over two seats in tandem one behind the other, a short dorsal fin behind the rear seat, one horizontal taillight bar across the tail above the rear tire and twin exhausts on either side of it, painted hot magenta with a black spine and black wheels, seen from the rear three-quarter view on a sunny coastal road. No angular faceted panels, no side-by-side seats. Clearly fictional design that does not resemble any real production vehicle, not a motorcycle, no handlebars. Fictional badge shapes only, no real brand or logo. {STYLE}
+```

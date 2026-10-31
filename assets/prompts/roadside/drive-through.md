@@ -102,6 +102,16 @@ Road-spanning sprite for an arcade racing game set in Thunderhead Highway (storm
 Road-spanning sprite for an arcade racing game set in Skyline Finale (an invented harbor city at dusk): the base of a tall white cable-stayed bridge pylon shaped like a letter A, its two legs standing either side of a four-lane bridge deck and joining high above, fanned white cables running down from the top, small blue aviation lights. Not an art deco tower, not red or orange, not resembling any real bridge. Straight-on front view, perfectly symmetrical, the opening is filled with flat solid magenta #FF00FF, isolated on a flat solid magenta #FF00FF background, no ground shadow, no road, no cars, no readable text. {STYLE}
 ```
 
+## DT-SKYLINE-01R Bridge tower portal, road passes between the legs
+- **Output:** `assets/concept/roadside/dt_skyline_pylon_A_v2.png`
+- **Aspect:** 16:9
+- **Round:** 5
+- **Why:** round 4 review (docs/08-concept-review-round4.md): in v1 the two legs meet the deck in the middle of the road, so the cars would drive into them. The legs must stand outside the road.
+
+```
+Road-spanning sprite for an arcade racing game set in Skyline Finale (an invented harbor city at dusk): the base of a tall white cable-stayed bridge pylon shaped like a tall narrow letter H, two straight vertical white concrete legs standing at the far left and far right edges of a four-lane bridge deck with the whole road passing between them, the legs joined by one cross beam high above the road and rising far above it, fanned white cables running down from the top to both sides, small blue aviation lights on top. The space between the legs from the road up to the cross beam is completely open. Not an art deco tower, not red or orange, not resembling any real bridge. Straight-on front view, perfectly symmetrical, the opening is filled with flat solid magenta #FF00FF, isolated on a flat solid magenta #FF00FF background, no ground shadow, no road, no cars, no readable text. {STYLE}
+```
+
 ## DT-PALM-01 Boardwalk welcome arch
 - **Output:** `assets/concept/roadside/dt_palm_arch.png`
 - **Aspect:** 16:9

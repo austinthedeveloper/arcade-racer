@@ -97,4 +97,14 @@ Sprite sheet for an arcade racing game, original unbranded vehicles seen from be
 Sprite sheet for an arcade racing game: the same original beige family sedan seen straight from behind, four times in a row, identical in every way except the lights: taillights off, both brake lights glowing bright red, left amber turn signal blinking on, right amber turn signal blinking on. Same size and position in every frame, each car separate with clear gaps, isolated on a flat solid magenta #FF00FF background, no text, no plates. {STYLE}
 ```
 
+## TRF-09R Combine harvester recolor
+- **Output:** `assets/concept/traffic/trf09_combine_A_v2.png`
+- **Aspect:** 4:3
+- **Round:** 5
+- **Why:** round 4 review: the combine in TRF-09 is green with a yellow stripe, a famous real farm-equipment livery. Use this one in place of it.
+
+```
+Sprite for an arcade racing game: one original unbranded combine harvester seen straight from behind, driving on a road with its reel folded up, painted bright red with a cream stripe and a black grain spout, big tractor tires, an orange slow-vehicle triangle on the back, amber beacons on the cab roof. Isolated on a flat solid magenta #FF00FF background, centered, full subject visible, no ground shadow, no text, no logo. {STYLE}
+```
+
 Traffic that changes lanes flashes a turn signal first (docs/01-game-design.md, section 9). If the generator can't hold the car steady, the light glows can be cut from this sheet and drawn over any traffic sprite in engine.
