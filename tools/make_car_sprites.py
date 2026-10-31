@@ -18,7 +18,7 @@ import sys
 
 from PIL import Image
 
-from make_placeholder_sprites import components, key_out, pixelate_down
+from make_placeholder_sprites import components, is_key, pixelate_down
 
 PLAYER_BODY_WIDTH = 180  # straight-ahead frame, in texture pixels (about its on-screen width)
 TRAFFIC_CAR_WIDTH = 150  # widest vehicle on each sheet
@@ -41,9 +41,61 @@ TRAFFIC = [
 ]
 
 
+# Key color distance (sum of RGB differences) from the sheet's background that counts as
+# background. The plain magenta key (make_placeholder_sprites.is_key) also matches pink and
+# purple paint, which left holes in the Cyclone and the Zenith.
+KEY_DISTANCE = 90
+# A background-colored patch inside a car is a gap to see through (between a buggy's tubes)
+# only if it is this big (source pixels) and this close to the background on average;
+# smaller or less exact patches are paint highlights (the Zenith's iridescent purple).
+MIN_GAP_AREA = 150
+GAP_DISTANCE = 25
+
+
+def key_car_sheet(img):
+    """Keys out the sheet's background color (read from its corner): every patch of it that
+    touches the edge or is a real gap (MIN_GAP_AREA, GAP_DISTANCE), plus a
+    one-pixel rim of magenta-ish fringe around those. Pink or purple paint stays."""
+    img = img.convert("RGBA")
+    px = img.load()
+    w, h = img.size
+    bg = px[1, 1][:3]
+    dist = [[abs(px[x, y][0] - bg[0]) + abs(px[x, y][1] - bg[1]) + abs(px[x, y][2] - bg[2])
+             for x in range(w)] for y in range(h)]
+    near = [[d < KEY_DISTANCE for d in row] for row in dist]
+    seen = [[False] * w for _ in range(h)]
+    keyed = []
+    for sy in range(h):
+        for sx in range(w):
+            if seen[sy][sx] or not near[sy][sx]:
+                continue
+            patch, stack, edge = [], [(sx, sy)], False
+            seen[sy][sx] = True
+            while stack:
+                x, y = stack.pop()
+                patch.append((x, y))
+                edge = edge or x in (0, w - 1) or y in (0, h - 1)
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and not seen[ny][nx] and near[ny][nx]:
+                        seen[ny][nx] = True
+                        stack.append((nx, ny))
+            exact = sum(dist[y][x] for x, y in patch) / len(patch) < GAP_DISTANCE
+            if edge or (len(patch) >= MIN_GAP_AREA and exact):
+                keyed += patch
+    keyed_set = set(keyed)
+    fringe = set()
+    for x, y in keyed:
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in keyed_set and is_key(*px[nx, ny][:3]):
+                fringe.add((nx, ny))
+    for x, y in keyed_set | fringe:
+        px[x, y] = (0, 0, 0, 0)
+    return img
+
+
 def slice_sheet(path):
     """Keyed, trimmed sprites left to right. Pixels of other sprites inside a box are cleared."""
-    keyed = key_out(Image.open(path))
+    keyed = key_car_sheet(Image.open(path))
     boxes, label, step = components(keyed)
     crops = []
     for box, comp in boxes:

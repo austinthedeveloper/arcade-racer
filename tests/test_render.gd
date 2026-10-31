@@ -95,3 +95,26 @@ func test_tall_cars_are_drawn_smaller_not_taller() -> void:
 		var h: float = strip["cell"].y * CarSprites.draw_scale(100.0, strip)
 		check(h <= 100.0 * CarSprites.MAX_HEIGHT + 0.01, "%s at most %.2f x its width tall (%.1f)" % [id, CarSprites.MAX_HEIGHT, h])
 	CarSprites.use_car("vega")
+
+
+func test_player_cars_are_solid() -> void:
+	# Regression: the magenta key ate pink and purple paint (Cyclone, Zenith), so the road
+	# showed through the car.
+	for i in Cars.count():
+		var id: String = Cars.get_car(i)["strip"]
+		CarSprites.use_car(id)
+		var strip: Dictionary = CarSprites.player_strips[0]
+		var cell: Vector2 = strip["cell"]
+		var img: Image = strip["tex"].get_image()
+		var frame := img.get_region(Rect2i(Vector2i(int(cell.x) * (CarSprites.PLAYER_FRAMES / 2), 0), Vector2i(cell)))
+		var body := frame.get_used_rect()
+		# The middle of the body, below the roof line: rear deck, lights, bumper
+		var core := Rect2i(body.position + Vector2i(body.size.x * 3 / 10, body.size.y * 4 / 10),
+			Vector2i(body.size.x * 4 / 10, body.size.y * 4 / 10))
+		var solid := 0
+		for y in range(core.position.y, core.end.y):
+			for x in range(core.position.x, core.end.x):
+				solid += int(frame.get_pixel(x, y).a > 0.5)
+		var frac := solid / float(core.size.x * core.size.y)
+		check(frac > 0.98, "%s rear is solid (%.0f%%)" % [id, frac * 100.0])
+	CarSprites.use_car("vega")
