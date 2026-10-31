@@ -202,6 +202,7 @@ func _physics_process(dt: float) -> void:
 
 	InputRouter.speed_factor = player.speed_percent()
 	var seg_before := track.find_segment(player.position + Cfg.PLAYER_Z)
+	Draft.update(player, dt, state == State.RACING and Draft.in_wake(player, track, rivals.everyone(player)))
 	player.update(dt, inp, track, state == State.RACING)
 	traffic.update(dt, track)
 	rivals.update(dt, track, player, state != State.COUNTDOWN, finish_distance)

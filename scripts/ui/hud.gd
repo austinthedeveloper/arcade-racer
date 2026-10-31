@@ -73,6 +73,15 @@ func _draw() -> void:
 	_text_centered(Vector2(center.x, center.y - 4), str(mph), 22, Color.WHITE)
 	_text_centered(Vector2(center.x, center.y + 10), "MPH", 8, Color("#ffd23a"))
 
+	# Slipstream, over the speedometer: the meter filling, then the boost running down
+	var slip := Rect2(w - 98, Cfg.SCREEN_H - 82, 80, 4)
+	if p.draft > 0.0 or p.draft_time > 0.0:
+		_text(Vector2(slip.position.x, slip.position.y - 3), "SLIPSTREAM", 8, Color("#7ad8ff"))
+		draw_rect(slip.grow(1), Color(0, 0, 0, 0.55))
+		var fill := p.draft_time / Draft.BOOST_TIME if p.draft_time > 0.0 else p.draft
+		var col := Color("#ffe36a") if p.draft_time > 0.0 else Color("#7ad8ff")
+		draw_rect(Rect2(slip.position, Vector2(slip.size.x * fill, slip.size.y)), col)
+
 	# Device, bottom left
 	var inp: DriveInput = InputRouter.state
 	var dev: String = ["KEYBOARD", "GAMEPAD", "WHEEL"][inp.kind]

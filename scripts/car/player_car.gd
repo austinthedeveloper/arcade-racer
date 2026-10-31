@@ -21,6 +21,8 @@ var nitro_charges := Cfg.NITRO_CHARGES
 var nitro_time := 0.0
 var launch_time := 0.0  # seconds left on a launch boost from the start (Launch)
 var bog_time := 0.0  # seconds left bogged down after a jumped start
+var draft := 0.0  # slipstream meter, 0..1 (Draft)
+var draft_time := 0.0  # seconds left on a slipstream boost
 
 # The car's tuning (Cars.tuning); the defaults are the Vega's
 var top_speed := Cfg.MAX_SPEED
@@ -70,6 +72,8 @@ func reset(start_position: float = 0.0) -> void:
 	nitro_time = 0.0
 	launch_time = 0.0
 	bog_time = 0.0
+	draft = 0.0
+	draft_time = 0.0
 	ram_time = 0.0
 	ghost_time = 0.0
 	crash_time = 0.0
@@ -90,6 +94,8 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	var seg := track.find_segment(position + Cfg.PLAYER_Z)
 	var pct := speed / Cfg.MAX_SPEED
 	var top := top_speed * (Cfg.NITRO_SPEED_MULT if nitro_time > 0.0 else 1.0)
+	if draft_time > 0.0:
+		top *= Draft.SPEED_MULT
 
 	var throttle := 0.0
 	var brake := 0.0
