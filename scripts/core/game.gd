@@ -45,6 +45,8 @@ func _ready() -> void:
 			quick = quick or arg.begins_with(flag)
 		if arg == "--screen=pause":
 			pause_shot = true
+		elif arg == "--screen=results":
+			quick = true  # a race, staged to a finish (race.gd)
 		elif arg.begins_with("--screen="):
 			_open(arg.get_slice("=", 1))
 		elif arg.begins_with("--menu-shot="):
@@ -56,7 +58,7 @@ func _ready() -> void:
 	if pause_shot:
 		race.pause()
 	if _menu_shot != "":
-		_save_menu_shot()
+		_save_menu_shot(300 if quick else 30)
 
 
 func _physics_process(_dt: float) -> void:
@@ -181,7 +183,7 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 
 # --- Dev helpers: `godot -- --screen=stages --menu-shot=/tmp/stages.png` -------------
 # (--screen=pause starts a race and pauses it; add --at-segment=N to pause further in.
-# --car=car_mesa opens car select on that car.)
+# --car=car_mesa opens car select on that car. --screen=results stages a finish.)
 
 func _open(which: String) -> void:
 	match which:
@@ -197,8 +199,8 @@ func _open(which: String) -> void:
 			show_title()
 
 
-func _save_menu_shot() -> void:
-	for i in 30:
+func _save_menu_shot(frames: int) -> void:
+	for i in frames:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()

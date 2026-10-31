@@ -404,6 +404,7 @@ func _tick() -> void:
 			_send("accelerate", false)
 			_check(_race.state == _race.State.FINISHED and "menu" in _race.banner_sub,
 				"the Single Race finishes, and offers the menu: " + _race.banner_sub)
+			_check(_race.results.visible and _race.results.labels[0] == "CONTINUE", "the results screen, on CONTINUE")
 			_send("confirm", true)
 			_next(2)
 		50:

@@ -65,6 +65,9 @@ var banner_sub := ""
 var banner_time := 0.0
 var paused := false
 var pause_menu: PauseMenu
+var results: ResultsScreen  # after the finish (RC-5)
+var new_best_time := false  # this finish set the best time for the stage and car
+var best_before := {}  # SaveData.best for the stage and car before this finish
 
 var background: Background
 var road: RoadRenderer
@@ -81,6 +84,8 @@ var _log_banners := false
 var _no_traffic := false
 var _no_rivals := false
 var _start_segment := 0  # --at-segment=N: start the race this far in (screenshots)
+var _results_shot := false  # --screen=results: a staged finish, for a screenshot of the results
+var _staged := false  # this race was staged for a screenshot: nothing it does is saved
 var _screenshot_frames: Array[int] = []
 var _screenshot_dir := ""
 var _gas_since := NAN  # when the gas went down, in seconds from GO (Launch.grade)
@@ -100,6 +105,9 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.race = self
 	layer.add_child(hud)
+	results = ResultsScreen.new()
+	results.race = self
+	layer.add_child(results)
 	pause_menu = PauseMenu.new()
 	layer.add_child(pause_menu)
 	if debug_overlay == null:
@@ -154,6 +162,9 @@ func start_race() -> void:
 	player_finish = -1.0
 	touched_traffic = false
 	new_unlocks.clear()
+	new_best_time = false
+	best_before = SaveData.best(stage_index, car_id)
+	results.close()
 	score = Scoring.new()
 	launch = Launch.Grade.PENDING
 	_gas_since = NAN
@@ -267,8 +278,25 @@ func _physics_process(dt: float) -> void:
 			pause_action(pause_menu.choose(InputRouter.menu, inp.pause_pressed))
 		_redraw()
 		return
+	if results.visible:
+		if inp.restart_pressed:  # R: in a tour, on as ever; otherwise the stage again
+			if tour:
+				after_race()
+			else:
+				start_race()
+			return
+		match results.choose(InputRouter.menu, inp.confirm_pressed):
+			ResultsScreen.Choice.CONTINUE:
+				after_race()
+				return
+			ResultsScreen.Choice.RETRY:
+				start_race()
+				return
+			ResultsScreen.Choice.QUIT:
+				quit_requested.emit()
+				return
 	var over := state == State.TIME_UP or state == State.FINISHED
-	if over and (inp.confirm_pressed or (inp.restart_pressed and tour)):
+	if over and not results.visible and (inp.confirm_pressed or (inp.restart_pressed and tour)):
 		after_race()
 		return
 	if inp.restart_pressed:
@@ -335,6 +363,8 @@ func _physics_process(dt: float) -> void:
 	road.position = Vector2(roundf(randf_range(-1, 1) * _shake), roundf(randf_range(-1, 1) * _shake))
 	road.time += dt
 	road.camera_z = player.position
+	if _results_shot and state == State.RACING and race_time > 1.0:
+		_stage_results_shot()
 	_redraw()
 	_frame += 1
 	if _screenshot_frames.has(_frame):
@@ -404,7 +434,7 @@ func _check_progress() -> void:
 		score.finish(place, not rivals.cars.is_empty())
 		var before_furthest := SaveData.furthest_stage
 		var before_unlocks: Array = SaveData.unlocks.duplicate()
-		record_finish()
+		new_best_time = record_finish()
 		if time_attack:
 			_save_ghost()
 		var mins := int(race_time) / 60
@@ -421,6 +451,7 @@ func _check_progress() -> void:
 		new_unlocks = Unlocks.newly_open(before_furthest, before_unlocks, SaveData.furthest_stage, SaveData.unlocks)
 		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
 		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], 999.0)
+		results.open()
 
 
 ## A tour stage finished: points, then on, another go, or the end of the tour. Returns the
@@ -475,9 +506,10 @@ func timed() -> bool:
 	return not time_attack and not free_drive
 
 
-## Whether this race is the player's own, to save from: not autodriven, not started partway.
+## Whether this race is the player's own, to save from: not autodriven, not started partway,
+## not staged for a screenshot.
 func _saves() -> bool:
-	return not _autodrive and _start_segment == 0
+	return not _autodrive and _start_segment == 0 and not _staged
 
 
 func _banner(text: String, sub: String, seconds: float) -> void:
@@ -509,6 +541,8 @@ func _parse_dev_args() -> void:
 			_start_segment = int(arg.get_slice("=", 1))
 		elif arg == "--no-traffic":
 			_no_traffic = true
+		elif arg == "--screen=results":
+			_results_shot = true
 		elif arg == "--no-rivals":
 			_no_rivals = true
 		elif arg.begins_with("--screenshots="):
@@ -554,6 +588,24 @@ func _autodrive_lane() -> float:
 			best_gap = gap
 			best = lane
 	return best
+
+
+## --screen=results: a rival over the line ahead, the player second, the rest still out.
+func _stage_results_shot() -> void:
+	_results_shot = false
+	_staged = true
+	race_time = 62.48
+	rivals.clock = race_time
+	for i in rivals.cars.size():
+		var r: RivalCar = rivals.cars[i]
+		if i < 1:
+			r.distance = finish_distance + 900.0
+			r.finished = true
+			r.finish_time = 61.12
+		else:
+			r.distance = finish_distance - 2500.0 * i
+	player.distance = finish_distance + 1.0
+	_check_progress()
 
 
 func _save_screenshot(frame: int) -> void:
