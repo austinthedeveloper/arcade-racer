@@ -10,6 +10,7 @@ var track: Track
 var player: PlayerCar
 var player_strips: Dictionary = {}  # the player car's CarSprites.strips
 var camera_z := 0.0
+var camera_depth := Cfg.CAMERA_DEPTH  # the race eases it down for the nitro stretch
 var time := 0.0
 
 var _pts := PackedVector2Array()
@@ -51,7 +52,7 @@ func _draw() -> void:
 		var d := float(n) / Cfg.DRAW_DISTANCE
 		seg.fog = 1.0 - exp(-d * d * fog_density)
 		seg.clip = max_y
-		var in_front := seg.cam_z1 > Cfg.CAMERA_DEPTH
+		var in_front := seg.cam_z1 > camera_depth
 		seg.visible = in_front and seg.s2.y < seg.s1.y and seg.s2.y < max_y
 		if seg.visible:
 			max_y = minf(max_y, seg.s2.y)
@@ -69,8 +70,8 @@ func _draw() -> void:
 func _project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float) -> void:
 	seg.cam_z1 = seg.w1.z - cz
 	seg.cam_z2 = seg.w2.z - cz
-	seg.scale1 = Cfg.CAMERA_DEPTH / maxf(seg.cam_z1, 1.0)
-	seg.scale2 = Cfg.CAMERA_DEPTH / maxf(seg.cam_z2, 1.0)
+	seg.scale1 = camera_depth / maxf(seg.cam_z1, 1.0)
+	seg.scale2 = camera_depth / maxf(seg.cam_z2, 1.0)
 	var half_w := Cfg.SCREEN_W * 0.5
 	seg.s1 = Vector2(half_w - seg.scale1 * cx1 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale1 * (seg.w1.y - cam_y) * Cfg.PROJ)
 	seg.s2 = Vector2(half_w - seg.scale2 * cx2 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale2 * (seg.w2.y - cam_y) * Cfg.PROJ)
@@ -239,7 +240,7 @@ static func sprite_rect(sx: float, base_y: float, w: float, h: float, offset: fl
 
 func _draw_player() -> void:
 	var p := player
-	var s := Cfg.CAMERA_DEPTH / Cfg.PLAYER_Z
+	var s := camera_depth / Cfg.PLAYER_Z
 	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
 	var y := Cfg.HORIZON_Y + s * Cfg.CAMERA_HEIGHT * Cfg.PROJ
 	var lift := p.air_height * s * Cfg.PROJ

@@ -20,6 +20,14 @@ const FOG_DENSITY := 4.0
 const CAMERA_HEIGHT := 1000.0
 const CAMERA_DEPTH := 0.84  # 1 / tan(fov / 2), roughly a 100 degree field of view
 const PLAYER_Z := 1500.0  # distance from the camera to the player's car
+# Camera feel (display only; Settings.shake_amount scales all of it)
+const SHAKE_CRASH := 5.0  # screen pixels
+const SHAKE_LANDING := 3.0
+const SHAKE_TAKEOFF := 1.5  # leaving the road over a crest
+const SHAKE_OFFROAD := 1.5  # at top speed
+const SHAKE_SETTLE := 12.0  # pixels per second back to still
+const NITRO_FOV_STRETCH := 0.05  # camera depth eased down this fraction while nitro burns (wider view)
+const NITRO_FOV_RATE := 0.15  # fraction per second the stretch eases in and out
 
 # Cars
 const CAR_WIDTH := 1000.0  # world units; a lane is 1000 wide
