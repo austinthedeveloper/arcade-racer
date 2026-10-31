@@ -145,7 +145,7 @@ func test_checkpoints_split_against_the_ghost() -> void:
 	check(not is_nan(r.split), "a split")
 	check(r.split < 0.0, "ahead of a ghost that took longer to get there (%.2f)" % r.split)
 	check(r.banner_sub.ends_with("vs best"), r.banner_sub)
-	near(r.time_left, r.START_TIME, 1.0, "no time extension")
+	near(r.time_left, r.clock[0], 1.0, "no time extension")
 	eq(r.split_text(-1.234), "-1.23", "split text")
 	eq(r.split_text(0.5), "+0.50", "behind")
 	_clean()

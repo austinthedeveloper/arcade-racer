@@ -15,6 +15,7 @@ static func theme() -> Dictionary:
 		"rumble": [Color("#f4efe2"), Color("#b5402a")],
 		"road": [Color("#66625c"), Color("#605c56")],
 		"lane": Color("#f6efd8"),
+		"clock": [48, 38, 25, 19],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/harvest_far.png",
 		"specials": ["tractor", "combine", "pickup_red"],
 	}

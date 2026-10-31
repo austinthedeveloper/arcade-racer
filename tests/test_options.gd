@@ -129,16 +129,16 @@ func test_traffic_and_timer_options_reach_the_race() -> void:
 	Settings.timer = Settings.Clock.RELAXED
 	var r := race(false, true)
 	eq(r.traffic.cars.size(), roundi(r.TRAFFIC_COUNT * 0.5), "light traffic")
-	check(r.time_left > r.START_TIME, "relaxed: more time (%.0f)" % r.time_left)
-	check(r.checkpoint_bonus > r.CHECKPOINT_BONUS, "and bigger bonuses")
+	check(r.time_left > r.clock[0], "relaxed: more time (%.0f)" % r.time_left)
+	check(r.checkpoint_bonus > r.clock[1], "and bigger bonuses")
 	Settings.traffic = Settings.Traffic.HEAVY
 	Settings.timer = Settings.Clock.TIGHT
 	r.start_race()
 	check(r.traffic.cars.size() > r.TRAFFIC_COUNT, "heavy traffic")
-	check(r.time_left < r.START_TIME, "tight: less time")
+	check(r.time_left < r.clock[0], "tight: less time")
 	_clean()
 	r.start_race()
-	eq([r.traffic.cars.size(), r.time_left, r.checkpoint_bonus], [r.TRAFFIC_COUNT, r.START_TIME, r.CHECKPOINT_BONUS],
+	eq([r.traffic.cars.size(), r.time_left, r.checkpoint_bonus], [r.TRAFFIC_COUNT, r.clock[0], r.clock[1]],
 		"defaults keep the tuned race (golden traces)")
 
 

@@ -121,8 +121,8 @@ func test_carry_time_option() -> void:
 	r.time_left = 17.0
 	_finish(r, 0)
 	near(r.tour_state.carried, 17.0, 0.1, "carried")
-	var start: float = settings.race_time(r.START_TIME)
 	_confirm(r)
+	var start: float = settings.race_time(r.clock[0])
 	near(r.time_left, start + 17.0, 0.1, "into the next stage's clock")
 	settings.carry_time = false
 

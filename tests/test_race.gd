@@ -33,12 +33,14 @@ func test_checkpoints_extend_time_once_each() -> void:
 	var r := race(false, false)
 	drive(r, 181)
 	var before: float = r.time_left
+	var bonus: float = r.clock[1]
 	r.player.distance = r.checkpoint_distances[0] + 1.0
 	r._check_progress()
-	near(r.time_left, before + r.CHECKPOINT_BONUS, 0.001, "bonus added")
+	near(r.time_left, before + bonus, 0.001, "the stage's first bonus added")
 	eq(r.next_checkpoint, 1, "next checkpoint")
+	eq(r.checkpoint_bonus, r.clock[2], "the next one is the second bonus")
 	r._check_progress()
-	near(r.time_left, before + r.CHECKPOINT_BONUS, 0.001, "not added twice")
+	near(r.time_left, before + bonus, 0.001, "not added twice")
 	eq(r.banner, "CHECKPOINT!", "banner")
 
 
@@ -78,7 +80,7 @@ func test_restart_resets_everything() -> void:
 	rs.restart_pressed = true
 	drive(r, 1, rs)
 	eq(r.state, r.State.COUNTDOWN, "counting down again")
-	eq(r.time_left, r.START_TIME, "time reset")
+	eq(r.time_left, r.clock[0], "time reset")
 	eq(r.player.distance, 0.0, "back at the start")
 	eq(r.player.nitro_charges, Cfg.NITRO_CHARGES, "nitro refilled")
 	eq(r.traffic.cars.size(), r.TRAFFIC_COUNT, "traffic respawned")
@@ -106,7 +108,7 @@ func test_finishing_palm_coast_continues_to_redrock() -> void:
 	eq(r.stage_index, 1, "stage 2")
 	eq(r.track.name, "Redrock Canyon", "on to Redrock")
 	eq(r.state, r.State.COUNTDOWN, "counting down on the new stage")
-	eq(r.time_left, r.START_TIME, "fresh clock")
+	eq(r.time_left, r.clock[0], "fresh clock: Redrock's own")
 	eq(r.player.distance, 0.0, "at the start line")
 	eq(r.background.theme, r.track.theme, "the background shows Redrock")
 
@@ -395,3 +397,15 @@ func test_pause_menu_selection() -> void:
 	m.choose(held)
 	eq(m.index, 3, "once let go, it does")
 	m.free()
+
+
+func test_every_stage_has_its_own_clock() -> void:
+	var race_script: GDScript = load("res://scripts/race/race.gd")
+	for i in Stages.count():
+		var t := Stages.build(i)
+		var given: Array = t.theme.get("clock", [])
+		eq(given.size(), t.checkpoints.size() + 1, "%s: a start and a bonus per checkpoint" % t.name)
+		var c: Array[float] = race_script.stage_clock(t.theme, t.checkpoints.size())
+		eq(c[0], float(given[0]), "%s starts on its own time" % t.name)
+	var fallback: Array[float] = race_script.stage_clock({}, 2)
+	eq(fallback, [45.0, 25.0, 25.0] as Array[float], "a theme without one gets the defaults")
