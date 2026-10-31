@@ -67,14 +67,18 @@ static func _v0_to_v1(_cfg: ConfigFile) -> void:
 	pass
 
 
-func save() -> void:
-	var cfg := ConfigFile.new()
-	CfgVersion.stamp(cfg, VERSION)
+## Writes the save. Over a file from a newer build, its other keys are kept (CfgVersion.to_write);
+## `fresh` (resetting the save) writes only this build's keys.
+func save(fresh := false) -> void:
+	var cfg := CfgVersion.to_write(path, VERSION, fresh)
 	cfg.set_value("tour", "furthest_stage", furthest_stage)
 	cfg.set_value("tour", "total_points", total_points)
 	cfg.set_value("tour", "unlocks", Array(unlocks))
 	for key in bests:
-		cfg.set_value("best", key, bests[key])
+		var b = cfg.get_value("best", key, {})
+		var entry: Dictionary = b.duplicate() if b is Dictionary else {}
+		entry.merge(bests[key], true)
+		cfg.set_value("best", key, entry)
 	cfg.save(path)
 	changed.emit()
 

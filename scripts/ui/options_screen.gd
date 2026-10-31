@@ -41,7 +41,7 @@ func move(dir: int) -> int:
 ## Options back to their defaults, saved. The save data and wheel profiles are untouched.
 func reset_options() -> void:
 	Settings.reset()
-	Settings.save()
+	Settings.save(true)
 	done_row = Row.RESET_OPTIONS
 
 
@@ -54,7 +54,7 @@ func select_reset_save() -> bool:
 		return false
 	confirming = false
 	SaveData.reset()
-	SaveData.save()
+	SaveData.save(true)
 	done_row = Row.RESET_SAVE
 	return true
 
