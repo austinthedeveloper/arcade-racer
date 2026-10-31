@@ -32,6 +32,8 @@ var state := State.COUNTDOWN
 var countdown := 3.0
 var time_left := START_TIME
 var race_time := 0.0
+var place := 1  # the player's place in the field (Rivals.standings)
+var player_finish := -1.0  # race time the player finished in, -1 still racing
 var finish_distance := 1.0
 var checkpoint_bonus := CHECKPOINT_BONUS  # after the timer option
 var checkpoint_distances: Array[float] = []
@@ -114,6 +116,8 @@ func start_race() -> void:
 	time_left = Settings.race_time(START_TIME)
 	checkpoint_bonus = Settings.race_time(CHECKPOINT_BONUS)
 	race_time = 0.0
+	player_finish = -1.0
+	place = rivals.place(player, player_finish)
 	next_checkpoint = 0
 	banner = ""
 	paused = false
@@ -180,6 +184,7 @@ func _physics_process(dt: float) -> void:
 			if countdown <= 0.0:
 				state = State.RACING
 				_banner("GO!", "", 1.0)
+				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
 			time_left -= dt
@@ -195,6 +200,7 @@ func _physics_process(dt: float) -> void:
 	rivals.update(dt, track, player, state != State.COUNTDOWN, finish_distance)
 	player.collide(track)
 	Rivals.resolve_contacts(rivals.everyone(player), track)
+	place = rivals.place(player, player_finish)
 	picked_up = false
 	pickup_age += dt
 	ram_flash = 0.3 if player.rammed else maxf(0.0, ram_flash - dt)
@@ -251,11 +257,14 @@ func _check_progress() -> void:
 		_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0)
 	if player.distance >= finish_distance:
 		state = State.FINISHED
+		player_finish = race_time
+		place = rivals.place(player, player_finish)
 		var mins := int(race_time) / 60
 		var secs := fmod(race_time, 60.0)
 		var next := Stages.next(stage_index)
 		var prompt := "Enter: on to %s" % Stages.stage_name(next) if next >= 0 else "Tour complete!   Enter: race again"
-		_banner("FINISH!", "Time %d:%05.2f   %s" % [mins, secs, prompt], 999.0)
+		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
+		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], 999.0)
 
 
 func _banner(text: String, sub: String, seconds: float) -> void:

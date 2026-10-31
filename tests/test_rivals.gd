@@ -216,3 +216,61 @@ func test_the_race_runs_its_rivals() -> void:
 	eq(moved, Rivals.COUNT, "everyone pulled away after GO")
 	var none := race(true, false, 0, false)
 	check(none.rivals.cars.is_empty(), "a race can run without rivals")
+
+
+func test_standings_sort_by_distance_then_finishers_first() -> void:
+	var t := flat_track()
+	var p := _player()
+	var f := _field(t, 3)
+	p.distance = 5000.0
+	f.cars[0].distance = 9000.0
+	f.cars[1].distance = 4000.0
+	f.cars[2].distance = 6000.0
+	eq(f.place(p, -1.0), 3, "two rivals further on")
+	f.cars[1].finished = true
+	f.cars[1].finish_time = 80.0
+	eq(f.standings(p, -1.0)[0], f.cars[1], "a finisher leads whoever is still racing")
+	eq(f.place(p, 79.0), 1, "finished before the other finisher")
+	eq(f.place(p, 81.0), 2, "finished after it")
+
+
+func test_the_player_and_rivals_share_a_clock() -> void:
+	# Review on #104: race_time skipped the GO tick that Rivals.clock counted, so a
+	# same-tick photo finish always went to the player.
+	var r := race(true, false, 0)
+	run_until(r, func(): return r.state == r.State.RACING)
+	near(r.race_time, r.rivals.clock, 0.0001, "on the GO tick")
+	run_until(r, func(): return r.race_time > 3.0)
+	near(r.race_time, r.rivals.clock, 0.0001, "three seconds in")
+
+
+func test_ordinals() -> void:
+	eq([Rivals.ordinal(1), Rivals.ordinal(2), Rivals.ordinal(3), Rivals.ordinal(4), Rivals.ordinal(8)],
+		["1ST", "2ND", "3RD", "4TH", "8TH"], "ordinals")
+	eq([Rivals.ordinal(11), Rivals.ordinal(12), Rivals.ordinal(21)], ["11TH", "12TH", "21ST"], "teens")
+
+
+func test_overtaking_a_rival_moves_you_up() -> void:
+	var r := race(true, false, 0)
+	r.state = r.State.RACING
+	r.countdown = 0.0
+	for rv: RivalCar in r.rivals.cars:
+		rv.top_speed = Cfg.MAX_SPEED * 0.3  # a slow field to pass
+	drive(r, 1)
+	eq(r.place, Rivals.COUNT + 1, "last off the grid")
+	var best: int = r.place
+	var passes := 0
+	for i in 60 * 20:
+		drive(r, 1)
+		if r.place < best:
+			best = r.place
+			passes += 1
+	check(passes >= 3, "passed rivals one by one (%d passes)" % passes)
+	eq(r.place, 1, "in the lead")
+
+
+func test_progress_dots() -> void:
+	var bar := Rect2(100, 10, 200, 8)
+	eq(Hud.progress_x(bar, 0.0, 1000.0), 100.0, "start")
+	eq(Hud.progress_x(bar, 500.0, 1000.0), 200.0, "halfway")
+	eq(Hud.progress_x(bar, 2000.0, 1000.0), 300.0, "past the finish stays at the end")
