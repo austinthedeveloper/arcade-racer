@@ -132,3 +132,18 @@ func test_accessibility_page_rows() -> void:
 	eq(OptionsScreen.value_text(OptionsScreen.Row.FLASH), "9", "shown")
 	o.free()
 	_clean()
+
+
+func test_the_ghost_blink_follows_the_flash_slider() -> void:
+	# Review on #121: the ghost's wear-off blink (about 5 Hz) ignored FLASHING.
+	_clean()
+	eq(RoadRenderer.ghost_alpha(3.0, 0.0, 1.0), 0.45, "steady while it lasts")
+	near(RoadRenderer.ghost_alpha(0.5, 0.0, 1.0), 0.8, 0.0001, "blinks in its last second")
+	eq(RoadRenderer.ghost_alpha(0.5, 0.1, 1.0), 0.45, "and back")
+	eq(RoadRenderer.ghost_alpha(0.5, 0.0, 0.0), 0.45, "steady with flashing at 0")
+	near(RoadRenderer.ghost_alpha(0.5, 0.0, 0.5), 0.625, 0.0001, "half a blink at half")
+	var r := race(false, false)
+	Settings.flash = 0
+	drive(r, 1)
+	eq(r.road.flash, 0.0, "the race passes the option on")
+	_clean()

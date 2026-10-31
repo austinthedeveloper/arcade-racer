@@ -55,7 +55,14 @@ func test_skyline_run_matches_golden() -> void:
 
 
 func test_runs_are_reproducible() -> void:
-	eq(Golden.run("autodrive_traffic", 900), Golden.run("autodrive_traffic", 900), "same input, same trace")
+	# With rivals on the grid (EQ-6): their RNG is seeded per stage
+	var a := Golden.run("autodrive_traffic", 1500)
+	check(a[-1].contains("rivals="), "the trace has rival columns")
+	eq(a, Golden.run("autodrive_traffic", 1500), "same input, same trace")
+
+
+func test_a_race_without_rivals_has_no_rival_columns() -> void:
+	check(not Golden.run("autodrive_clear_road", 10)[-1].contains("rivals="), "the clear road keeps its old format")
 
 
 func test_autodriven_race_finishes_in_time() -> void:
@@ -71,6 +78,8 @@ func _finishes_in_time(stage: int) -> void:
 	eq(r.state, r.State.FINISHED, name + ": finished, not timed out")
 	eq(r.next_checkpoint, r.checkpoint_distances.size(), name + ": every checkpoint passed")
 	check(r.race_time > 60.0 and r.race_time < 120.0, "%s: a believable lap time (%.1f s)" % [name, r.race_time])
+	run_until(r, func(): return r.rivals.finished_count() == Rivals.COUNT, 60 * 60)
+	eq(r.rivals.finished_count(), Rivals.COUNT, name + ": every rival finishes")
 
 
 func test_every_stage_has_a_golden_scenario() -> void:
@@ -95,4 +104,7 @@ func test_the_snapshot_sees_power_ups() -> void:
 	r.power_ups.pickups[0].taken = false
 	r.traffic.cars[0].offset += 0.5
 	check(Golden.snapshot(r) != before, "a car out of its lane")
+	r.traffic.cars[0].offset -= 0.5
+	r.rivals.cars[3].x += 0.5
+	check(Golden.snapshot(r) != before, "a rival moved")
 	r.free()

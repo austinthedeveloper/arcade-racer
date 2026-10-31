@@ -74,6 +74,24 @@ The order above follows these dependencies. Moving an item earlier means moving 
 | Rivals change every golden trace | RC-1 | Seed the rivals' RNG and regenerate the traces as their own commit |
 | One developer, six themes | Everything | Each month has a release, so slipping an item moves it to the next month rather than breaking a build |
 
+## Tracking on GitHub
+
+The feature list is mirrored on GitHub (populated 2026-10-31), and the docs stay the source of the
+wording while GitHub tracks state:
+
+- **Issues.** One per feature, titled with its ID (`RC-8 Power slide`), labelled with its group
+  (`RC: racing core` and so on), its size (`size: S`, `M`, `L`) and `roadmap`. Dependencies in the
+  body read `WS-1 (#28)`, so GitHub cross-links them.
+- **Milestones.** M1 (November 2026) to M6 (April 2027), one per month of the table above, each
+  with its theme and due date. The milestones page is the month-by-month roadmap.
+- **Project.** [arcade racer roadmap](https://github.com/users/austinthedeveloper/projects/4) holds
+  every issue with Month, Group, Size, Start date and Target date fields, and a Status of Backlog,
+  Todo, In progress or Done. Month 1 starts in Todo, the rest in Backlog.
+
+When a feature is finished, close its issue; the project item follows. When a group doc changes a
+feature, update its issue to match. A new feature takes the next ID in its group doc and gets an
+issue in the same shape.
+
 ## Reading the group docs
 
 Each group doc has the same shape: what is built today, a feature table, open decisions and test
@@ -93,13 +111,10 @@ still need answers from Austin; 11 and 12 are decided by what was built.
 
 ## Doc debt found in this analysis
 
-These are tracked as EQ-1 and should be fixed in month 1.
+Fixed under EQ-1. The list that was here:
 
-- `docs/02-technical-design.md` section 10 still says Skyline is held back, the garage is
-  Vega-only and spans are skipped. It has nothing on power-ups, tuning, drive-throughs or traffic
-  specials (bug T3 in `docs/09`).
-- `README.md` says seven stages and one car; it is eight and twelve. Its docs list stops at `06`.
-- `docs/01-game-design.md` lists eight cars and calls Skyline a reroll in progress. The four
-  round 4 cars are in the game, so the roster table should be twelve.
-- `docs/03-art-direction.md` still presents the style choice as open; `docs/05` decided pixel art.
-- `docs/04-open-questions.md` marks power-ups and the four cars as proposals; both are built.
+- `docs/02-technical-design.md` section 10: checked against the code, with the power-up, tuning and traffic special notes filled out.
+- `README.md`: eight stages, twelve cars, the Power-ups option, the dev flags, and a docs list through `docs/09` and this folder.
+- `docs/01-game-design.md`: the roster is the twelve cars in `scripts/car/cars.gd`; Skyline Finale is built.
+- `docs/03-art-direction.md`: records the pixel art decision (`docs/05`).
+- `docs/04-open-questions.md`: questions 1, 11 and 12 are marked decided; 3 and 10 stay open.
