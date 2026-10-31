@@ -51,6 +51,44 @@ func test_crossing_the_finish_ends_the_race() -> void:
 	eq(r.state, r.State.FINISHED, "stays finished")
 
 
+func test_starting_partway_in_counts_the_road_behind() -> void:
+	var r := race(false, false)
+	var seg: int = r.track.checkpoints[1] + 5
+	r.set("_start_segment", seg)
+	r.start_race()
+	eq(r.player.distance, seg * Cfg.SEGMENT_LENGTH, "distance from the start of the route")
+	eq(r.next_checkpoint, 2, "the checkpoints behind are passed")
+	r.set("_start_segment", 0)
+	r.start_race()
+	eq(r.player.distance, 0.0, "from the start again")
+	eq(r.next_checkpoint, 0, "no checkpoints passed")
+
+
+func test_slow_motion_past_the_line() -> void:
+	var race_script: GDScript = load("res://scripts/race/race.gd")
+	var slow: float = race_script.FINISH_SLOWMO
+	eq(race_script.finish_time_scale(0.0), slow, "slow right after the line")
+	check(race_script.finish_time_scale(1.2) > slow, "speeding back up")
+	eq(race_script.finish_time_scale(10.0), 1.0, "full speed in the end")
+
+
+func test_the_car_brakes_to_a_stop_after_the_line() -> void:
+	var r := race(false, false)
+	drive(r, 181)
+	drive(r, 300, input(1.0))
+	var v: float = r.player.speed
+	check(v > Cfg.MAX_SPEED * 0.5, "flat out before the line")
+	r.player.distance = r.finish_distance + 1.0
+	r._check_progress()
+	var z: float = r.player.distance
+	drive(r, 1, input(1.0))
+	check(r.player.distance - z < v / 60.0 * 0.5, "the first tick past the line is in slow motion")
+	check(r.player.braking, "brake lights on")
+	var stopped := run_until(r, func() -> bool: return r.player.speed == 0.0, 600, input(1.0))
+	check(stopped > 0, "comes to a stop (%d ticks)" % stopped)
+	check(not r.player.braking, "brake lights off once stopped")
+
+
 func test_pause_freezes_the_race() -> void:
 	var r := race(false, false)
 	drive(r, 240, input(1.0))

@@ -15,6 +15,11 @@ const SHAKE_CRASH := 5.0
 const SHAKE_LANDING := 3.0
 const SHAKE_OFFROAD := 1.5  # at top speed
 const SHAKE_SETTLE := 12.0
+# After the finish line (finish_time_scale)
+const FINISH_SLOWMO := 0.35  # how fast the world runs just past the line
+const FINISH_SLOWMO_HOLD := 0.8  # seconds at that speed
+const FINISH_SLOWMO_EASE := 1.2  # seconds back up to full speed
+const FINISH_BRAKING := Cfg.MAX_SPEED / 3.0  # on top of coasting; stops from top speed in about 2 s
 
 var track: Track
 var stage_index := 0  # into Stages
@@ -31,6 +36,7 @@ var state := State.COUNTDOWN
 var countdown := 3.0
 var time_left := START_TIME
 var race_time := 0.0
+var finish_age := 0.0  # seconds since the finish line (real time, not slowed)
 var finish_distance := 1.0
 var checkpoint_bonus := CHECKPOINT_BONUS  # after the timer option
 var checkpoint_distances: Array[float] = []
@@ -116,6 +122,7 @@ func start_race() -> void:
 	time_left = Settings.race_time(START_TIME)
 	checkpoint_bonus = Settings.race_time(CHECKPOINT_BONUS)
 	race_time = 0.0
+	finish_age = 0.0
 	next_checkpoint = 0
 	banner = ""
 	paused = false
@@ -123,6 +130,11 @@ func start_race() -> void:
 	checkpoint_distances.clear()
 	for c in track.checkpoints:
 		checkpoint_distances.append(c * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z)
+	# Started partway in (--at-segment): that far along the route, past its checkpoints, so
+	# the finish is where it is drawn
+	player.distance = _start_segment * Cfg.SEGMENT_LENGTH
+	while next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
+		next_checkpoint += 1
 	background.set_theme(track.theme)
 	background.offset = 0.0
 	road.track = track
@@ -191,19 +203,29 @@ func _physics_process(dt: float) -> void:
 				state = State.TIME_UP
 				_banner("TIME UP", "Press R or Enter to try again", 999.0)
 
+	# Past the line the world drops into slow motion for a moment (sim, the world's tick), and
+	# the car brakes itself to a stop
+	var sim := dt
+	if state == State.FINISHED:
+		finish_age += dt
+		sim = dt * finish_time_scale(finish_age)
+
 	InputRouter.speed_factor = player.speed_percent()
 	var seg_before := track.find_segment(player.position + Cfg.PLAYER_Z)
-	player.update(dt, inp, track, state == State.RACING)
-	traffic.update(dt, track)
+	player.update(sim, inp, track, state == State.RACING)
+	traffic.update(sim, track)
 	player.collide(track)
+	if state == State.FINISHED:
+		player.speed = move_toward(player.speed, 0.0, FINISH_BRAKING * sim)
+		player.braking = player.speed > 0.0
 	picked_up = false
-	pickup_age += dt
-	ram_flash = 0.3 if player.rammed else maxf(0.0, ram_flash - dt)
+	pickup_age += sim
+	ram_flash = 0.3 if player.rammed else maxf(0.0, ram_flash - sim)
 	if state == State.RACING:
 		_check_pickups()
 		_check_progress()
 
-	background.offset += seg_before.curve * (player.speed * dt / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
+	background.offset += seg_before.curve * (player.speed * sim / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
 
 	# Camera shake: rough ground, landings, crashes
 	if player.crashed:
@@ -214,8 +236,8 @@ func _physics_process(dt: float) -> void:
 		_shake = maxf(_shake, SHAKE_OFFROAD * player.speed_percent())
 	_shake = move_toward(_shake, 0.0, dt * SHAKE_SETTLE)
 	road.position = Vector2(roundf(randf_range(-1, 1) * _shake), roundf(randf_range(-1, 1) * _shake))
-	road.time += dt
-	fx.update(dt, player, track)
+	road.time += sim
+	fx.update(sim, player, track)
 	fx.position = road.position
 	road.camera_z = player.position
 	_redraw()
@@ -254,11 +276,22 @@ func _check_progress() -> void:
 		_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0)
 	if player.distance >= finish_distance:
 		state = State.FINISHED
+		finish_age = 0.0
+		player.nitro_time = 0.0  # it brakes from here (see FINISH_BRAKING)
+		fx.celebrate(FxLayer.fireworks_for(track.theme))
 		var mins := int(race_time) / 60
 		var secs := fmod(race_time, 60.0)
 		var next := Stages.next(stage_index)
 		var prompt := "Enter: on to %s" % Stages.stage_name(next) if next >= 0 else "Tour complete!   Enter: race again"
 		_banner("FINISH!", "Time %d:%05.2f   %s" % [mins, secs, prompt], 999.0)
+
+
+## How fast the world runs `age` seconds after the finish line: FINISH_SLOWMO for a moment,
+## then easing back to full speed.
+static func finish_time_scale(age: float) -> float:
+	if age < FINISH_SLOWMO_HOLD:
+		return FINISH_SLOWMO
+	return lerpf(FINISH_SLOWMO, 1.0, clampf((age - FINISH_SLOWMO_HOLD) / FINISH_SLOWMO_EASE, 0.0, 1.0))
 
 
 func _banner(text: String, sub: String, seconds: float) -> void:

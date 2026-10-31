@@ -278,6 +278,31 @@ def finish_fanfare():
     return shot(finish(out))
 
 
+def crowd():
+    """The crowd at the finish line: a roar that swells and dies away, with clapping and a
+    few whistles. Loud on purpose (the cue is mixed hot in SoundBank)."""
+    seconds = 4.0
+    n = int(seconds * RATE)
+    # Roar: band-limited noise, wobbling like many voices, swelling in and fading out
+    roar = highpass(lowpass(noise(n), 2200.0), 250.0)
+    voices = highpass(lowpass(noise(n), 900.0), 400.0)
+    wobble = [1.0 + 0.25 * math.sin(2 * math.pi * 3.1 * i / RATE) * math.sin(2 * math.pi * 0.7 * i / RATE)
+              for i in range(n)]
+    swell = [min(1.0, i / (0.35 * RATE)) * min(1.0, (n - i) / (1.8 * RATE)) for i in range(n)]
+    out = [(0.8 * r + 0.6 * v) * w * s for r, v, w, s in zip(roar, voices, wobble, swell)]
+    # Clapping: short bright bursts scattered through the swell
+    clap = decay(highpass(noise(int(0.03 * RATE)), 1200.0), 0.006)
+    for k in range(140):
+        t = rng.uniform(0.15, seconds - 1.2)
+        add_at(out, clap, int(t * RATE), rng.uniform(0.25, 0.6) * swell[int(t * RATE)])
+    # Whistles: a few rising-then-falling sine glides
+    for t, f in ((0.4, 1900.0), (1.1, 2300.0), (1.9, 2100.0)):
+        up = tone("sine", f, 0.18, to=f * 1.35, vibrato=0.01)
+        down = tone("sine", f * 1.35, 0.3, to=f * 1.1, vibrato=0.01)
+        add_at(out, env(concat(up, down), attack=0.02, decay=0.1, sustain=0.8, release=0.1), int(t * RATE), 0.35)
+    return shot(finish(out), fade_out=0.2)
+
+
 def time_up():
     out = silence(1.5)
     for k, (a, b) in enumerate(((67, 66), (64, 63), (60, 55))):
@@ -369,6 +394,7 @@ FILES = {
     "sfx/finish.wav": finish_fanfare,
     "sfx/time_up.wav": time_up,
     "music/music_race.wav": music_race,
+    "sfx/crowd.wav": crowd,  # last, so the shared random stream leaves the others as they were
 }
 
 

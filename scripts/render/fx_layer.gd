@@ -2,7 +2,7 @@ class_name FxLayer
 extends Node2D
 ## Sprite particles between the road and the HUD (tools/make_fx_sprites.py): tire smoke,
 ## kick-up off the road by ground type, sparks on hits, nitro flames and speed lines, and a
-## puff on landing. Purely visual: it reads the car and never writes it, and its randomness
+## puff on landing; confetti at the finish, and fireworks on a stage that has them. Purely visual: it reads the car and never writes it, and its randomness
 ## is a generator of its own, so play (and the golden traces) can't tell it is there.
 ##
 ## Particles live in screen space in a fixed pool; at most SPAWN_CAP start in one tick and
@@ -37,7 +37,28 @@ const EFFECTS := {
 		"vel": [Vector2(90, -10), Vector2(170, 10)], "gravity": 0.0, "origin": Vector2(0.4, 0.9), "fade": 0.5},
 	"nitro_burst": {"sprite": "nitro_burst", "frames": 1, "life": 0.22, "scale": 0.8, "grow": 0.9,
 		"vel": [Vector2.ZERO, Vector2.ZERO], "gravity": 0.0, "origin": Vector2(0.5, 0.5), "fade": 0.6},
+	# The finish (celebrate): each particle picks one of "variants" as its sprite; "sway" is how
+	# far (pixels) it drifts side to side as it falls, flipping as it tumbles
+	"confetti": {"sprite": "confetti_1", "frames": 1, "life": 2.2, "scale": 1.6, "grow": 0.0,
+		"vel": [Vector2(-30, 70), Vector2(30, 140)], "gravity": 15.0, "origin": Vector2(0.5, 0.5), "fade": 0.2,
+		"variants": CONFETTI, "sway": 8.0},
+	"streamer": {"sprite": "streamer_1", "frames": 1, "life": 2.2, "scale": 1.5, "grow": 0.0,
+		"vel": [Vector2(-20, 60), Vector2(20, 110)], "gravity": 10.0, "origin": Vector2(0.5, 0.5), "fade": 0.2,
+		"variants": ["streamer_1", "streamer_2", "streamer_3", "streamer_4"], "sway": 12.0},
+	"firework": {"sprite": "firework_orange", "frames": 6, "life": 1.2, "scale": 1.3, "grow": 0.4,
+		"vel": [Vector2(-4, 4), Vector2(4, 14)], "gravity": 0.0, "origin": Vector2(0.5, 0.5), "fade": 0.35,
+		"variants": ["firework_orange", "firework_blue", "firework_red", "firework_green"]},
 }
+const CONFETTI := ["confetti_1", "confetti_2", "confetti_3", "confetti_4", "confetti_5", "confetti_6",
+	"confetti_7", "confetti_8", "confetti_9", "confetti_10", "confetti_11", "confetti_12", "confetti_13",
+	"confetti_14", "confetti_15", "confetti_16", "confetti_17", "confetti_18", "confetti_19"]
+## The finish: confetti everywhere for a few seconds, and on a stage whose theme says
+## "fireworks" (Skyline), bursts over the skyline for as long as the finish screen stays.
+const CONFETTI_TIME := 4.0  # seconds
+const CONFETTI_RATE := 40.0  # pieces per second (one in STREAMER_EVERY is a streamer)
+const STREAMER_EVERY := 5
+const FIREWORK_EVERY := 0.4  # seconds between bursts
+const FIREWORK_SKY := Rect2(50, 20, 540, 110)  # where they burst, on screen
 ## What comes off the road beside the asphalt, per Track.GROUND_* (grass, sand), unless a
 ## stage theme says otherwise with its own "kickup". "smoke" is hard ground (paving).
 const DEFAULT_KICKUP := ["dust", "sand"]
@@ -60,9 +81,16 @@ class Particle:
 	var vel := Vector2.ZERO
 	var age := 0.0
 	var flip := false
+	var sprite := ""  # its stem (one of the effect's variants)
+	var phase := 0.0  # where in its sway it started
 
 
 var particles: Array[Particle] = []
+var celebrating := false
+var fireworks := false
+var celebrate_age := 0.0
+var _confetti_due := 0.0  # pieces owed (CONFETTI_RATE), carried between ticks
+var _firework_due := 0.0  # seconds to the next burst
 var spawned := 0  # this tick, against SPAWN_CAP
 var dropped := 0  # spawns refused for the cap or a full pool, since the race started
 var player: PlayerCar
@@ -94,7 +122,46 @@ func clear() -> void:
 	_last_speed = 0.0
 	_last_nitro = 0.0
 	time = 0.0
+	celebrating = false
+	fireworks = false
+	celebrate_age = 0.0
 	_rng.seed = 2024
+
+
+## The car crossed the line: confetti, and fireworks if `with_fireworks`.
+func celebrate(with_fireworks: bool) -> void:
+	celebrating = true
+	fireworks = with_fireworks
+	celebrate_age = 0.0
+	_confetti_due = float(SPAWN_CAP) / 2.0  # a first handful straight away
+	_firework_due = 0.0
+
+
+## Whether a stage (its theme) ends with fireworks.
+static func fireworks_for(theme: Dictionary) -> bool:
+	return theme.get("fireworks", false)
+
+
+## Confetti pieces owed `age` seconds after the line, after `dt` more at CONFETTI_RATE, from
+## `due` owed before (the whole ones are spawned). None after CONFETTI_TIME.
+static func confetti_owed(age: float, dt: float, due: float) -> float:
+	return due + CONFETTI_RATE * dt if age < CONFETTI_TIME else 0.0
+
+
+func _celebration(dt: float) -> void:
+	celebrate_age += dt
+	_confetti_due = confetti_owed(celebrate_age, dt, _confetti_due)
+	while _confetti_due >= 1.0:
+		_confetti_due -= 1.0
+		var at := Vector2(_rng.randf_range(0.0, Cfg.SCREEN_W), _rng.randf_range(-24.0, -4.0))
+		if not spawn("streamer" if _rng.randi() % STREAMER_EVERY == 0 else "confetti", at, false):
+			_confetti_due = 0.0  # the cap: drop the rest, don't pile them up
+	if fireworks:
+		_firework_due -= dt
+		if _firework_due <= 0.0:
+			_firework_due += FIREWORK_EVERY
+			var sky := FIREWORK_SKY
+			spawn("firework", Vector2(_rng.randf_range(sky.position.x, sky.end.x), _rng.randf_range(sky.position.y, sky.end.y)), false)
 
 
 func alive_count() -> int:
@@ -120,6 +187,8 @@ func update(dt: float, p: PlayerCar, track: Track) -> void:
 		q.vel.y += e["gravity"] * dt
 		q.pos += q.vel * dt
 	react(p, track)
+	if celebrating:
+		_celebration(dt)
 
 
 ## Starts the particles for this tick's triggers (triggers) at the car's wheels and exhausts.
@@ -211,6 +280,9 @@ func spawn(effect: String, at: Vector2, flip: bool) -> bool:
 	q.age = 0.0
 	q.flip = flip
 	q.pos = at
+	var variants: Array = e.get("variants", [])
+	q.sprite = variants[_rng.randi() % variants.size()] if not variants.is_empty() else e["sprite"]
+	q.phase = _rng.randf() * TAU
 	var lo: Vector2 = e["vel"][0]
 	var hi: Vector2 = e["vel"][1]
 	q.vel = Vector2(_rng.randf_range(lo.x, hi.x) * (-1.0 if flip else 1.0), _rng.randf_range(lo.y, hi.y))
@@ -305,16 +377,24 @@ func _draw_particle(q: Particle) -> void:
 	var e: Dictionary = EFFECTS[q.effect]
 	var life: float = e["life"]
 	var k := q.age / life
-	var tex := texture(_frame_name(e["sprite"], e["frames"], frame_at(q.effect, q.age)))
+	var tex := texture(_frame_name(q.sprite, e["frames"], frame_at(q.effect, q.age)))
 	var scale_now: float = e["scale"] + e["grow"] * k
 	var size := Vector2(tex.get_width(), tex.get_height()) * scale_now
 	var o: Vector2 = e["origin"]
-	var ox := (1.0 - o.x) if q.flip else o.x
-	var pos := Vector2(roundf(q.pos.x - size.x * ox), roundf(q.pos.y - size.y * o.y))
+	var flip := q.flip
+	var at := q.pos
+	var sway: float = e.get("sway", 0.0)
+	if sway > 0.0:
+		# Drifts side to side, tumbling over as it goes
+		var swing := q.age * 5.0 + q.phase
+		at.x += sin(swing) * sway
+		flip = cos(swing * 2.0) < 0.0
+	var ox := (1.0 - o.x) if flip else o.x
+	var pos := Vector2(roundf(at.x - size.x * ox), roundf(at.y - size.y * o.y))
 	var fade: float = e["fade"]
 	var alpha := clampf((1.0 - k) / fade, 0.0, 1.0) if fade > 0.0 else 1.0
 	var rect := Rect2(pos, size)
-	if q.flip:
+	if flip:
 		rect = Rect2(pos.x + size.x, pos.y, -size.x, size.y)
 	draw_texture_rect(tex, rect, false, Color(1, 1, 1, alpha))
 
