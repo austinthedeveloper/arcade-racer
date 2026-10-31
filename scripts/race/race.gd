@@ -126,6 +126,7 @@ func start_race() -> void:
 	traffic.spawn(track, 0 if _no_traffic else Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
 	if tour and tour_state == null:
 		tour_state = Tour.new()
+		tour_state.start_stage = stage_index
 	rivals = Rivals.new()
 	rivals.spawn(track, player, car_id, 0 if _no_rivals else Rivals.COUNT, Rivals.SEED + stage_index,
 		Difficulty.of(Settings.difficulty), tour_state.drivers if tour else [])
@@ -166,6 +167,24 @@ func _exit_tree() -> void:
 func continue_tour() -> void:
 	stage_index = maxi(0, Stages.next(stage_index))
 	start_race()
+
+
+## R, or RESTART on the pause menu. In a tour, a stage that is over goes the way Enter
+## would (after_race), and one still running costs the continue; with none left it can't be
+## restarted. Returns false when it wasn't.
+func restart() -> bool:
+	if not tour:
+		start_race()
+		return true
+	if state == State.TIME_UP or state == State.FINISHED:
+		after_race()
+		return true
+	if not tour_state.use_continue():
+		resume()
+		_banner("NO CONTINUE LEFT", "", 1.5)
+		return false
+	start_race()
+	return true
 
 
 ## Enter (or R) after a finish or TIME UP.
@@ -213,7 +232,7 @@ func pause_action(action: int) -> void:
 		PauseMenu.Action.RESUME:
 			resume()
 		PauseMenu.Action.RESTART:
-			start_race()
+			restart()
 		PauseMenu.Action.OPTIONS:
 			pause_menu.close()
 			options_requested.emit()
@@ -245,11 +264,11 @@ func _physics_process(dt: float) -> void:
 		_redraw()
 		return
 	var over := state == State.TIME_UP or state == State.FINISHED
-	if over and (inp.confirm_pressed or (inp.restart_pressed and tour)):
+	if over and inp.confirm_pressed:
 		after_race()
 		return
 	if inp.restart_pressed:
-		start_race()
+		restart()
 		return
 	if inp.pause_pressed:
 		pause()
@@ -397,6 +416,8 @@ func _tour_finish() -> String:
 		return "Enter: on to %s" % Stages.stage_name(next)
 	tour_state.complete = true
 	after = After.TOUR_DONE
+	if not tour_state.full():
+		return "Tour complete! Start from stage 1 for the Zenith.   Enter: menu"
 	if not _autodrive and _start_segment == 0:
 		SaveData.unlock(Tour.FINISH_UNLOCK)
 		SaveData.total_points += int(tour_state.points.get(Tour.YOU, 0))
@@ -404,13 +425,16 @@ func _tour_finish() -> String:
 	return "Tour complete!   Enter: menu"
 
 
-## Saves the finish (SaveData): best time for this stage and car, and the tour's progress.
+## Saves the finish (SaveData): best time for this stage and car, and the tour's progress
+## when the tour goes on from it.
 ## Autodriven runs and partway starts (dev flags) aren't the player's, so they aren't saved.
 ## Returns true for a new best time.
 func record_finish() -> bool:
 	if _autodrive or _start_segment != 0:
 		return false
-	return SaveData.record_finish(stage_index, car_id, race_time, place if not rivals.cars.is_empty() else 0)
+	var placed := not rivals.cars.is_empty()
+	var goes_on := tour and (not placed or Tour.advances(place))
+	return SaveData.record_finish(stage_index, car_id, race_time, place if placed else 0, goes_on)
 
 
 func _banner(text: String, sub: String, seconds: float) -> void:
