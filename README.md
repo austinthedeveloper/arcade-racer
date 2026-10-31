@@ -18,10 +18,10 @@ An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports
 | Gas | Up or W | Right trigger or A | Gas pedal |
 | Brake | Down or S | Left trigger, B or X | Brake pedal |
 | Nitro (3 per race; 4 in the Halo EV) | Space or Shift | RB or Y | Button picked during calibration |
-| Pause | Esc or P | Start | |
+| Pause menu (resume, restart, options, quit to title) | Esc or P | Start | |
 | Restart the stage | R | Back | |
-| Next stage (after a finish), retry (after TIME UP) | Enter | A | |
-| Quit to title (while paused) | Backspace | B | Brake pedal |
+| Next stage (after a finish; Single Race: back to the menus), retry (after TIME UP) | Enter | A | |
+| Pause menu: choose / select / resume | Up, Down / Enter / Esc or Backspace | D-pad / A / B or Start | Steer / gas pedal / brake pedal |
 | Input debug overlay | F1 | | |
 | Calibrate wheel | F2 | | |
 

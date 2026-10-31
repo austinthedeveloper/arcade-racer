@@ -28,7 +28,7 @@ var clock := 0.0  # seconds since GO; runs on after the player finishes, unlike 
 ## Puts `count` rivals on the grid ahead of `player` (already reset at its start), in cars
 ## other than `player_car_id`, picked and tuned by `seed_value`.
 func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = COUNT, seed_value: int = SEED,
-		difficulty: Difficulty = Difficulty.of(Difficulty.Level.NORMAL)) -> void:
+		difficulty: Difficulty = Difficulty.of(Difficulty.Level.NORMAL), drivers: Array = []) -> void:
 	cars.clear()
 	band_ease = difficulty.band_ease
 	band_boost = difficulty.band_boost
@@ -38,8 +38,14 @@ func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = 
 	for prof in RivalProfile.roster():
 		if prof.car_id != player_car_id:
 			pool.append(prof)
+	var named: Array = []  # a tour keeps its drivers stage to stage
+	for want: String in drivers:
+		for prof: RivalProfile in pool:
+			if prof.driver == want:
+				named.append(prof)
 	for i in mini(count, pool.size()):
-		var prof: RivalProfile = pool.pop_at(rng.randi() % pool.size())
+		var pick := rng.randi() % pool.size()
+		var prof: RivalProfile = named[i] if i < named.size() else pool.pop_at(pick)
 		var car := Cars.find(prof.car_id)
 		var r := RivalCar.new(car, AIDriver.new(rng.randi(), prof.lane_bias, prof.style))
 		r.profile = prof
@@ -123,6 +129,14 @@ static func ordinal(n: int) -> String:
 	if n % 100 < 11 or n % 100 > 13:
 		suffix = ["TH", "ST", "ND", "RD", "TH", "TH", "TH", "TH", "TH", "TH"][n % 10]
 	return str(n) + suffix
+
+
+## The drivers' names, grid order.
+func driver_names() -> Array[String]:
+	var out: Array[String] = []
+	for r in cars:
+		out.append(r.profile.driver)
+	return out
 
 
 func finished_count() -> int:
