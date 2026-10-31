@@ -13,9 +13,12 @@ static func theme() -> Dictionary:
 		"below_horizon": Color("#1c2560"),
 		"grass": [Color("#77768a"), Color("#6f6e82")],  # waterfront paving
 		"sand": [Color("#22307a"), Color("#1e2b70")],  # harbor water
+		"kickup": ["smoke", "water"],  # FxLayer: what the wheels throw up off the grass, off the sand
+		"fireworks": true,  # over the harbor at the finish (FxLayer.celebrate)
 		"rumble": [Color("#e8e6ee"), Color("#d8283a")],
 		"road": [Color("#34323e"), Color("#302e3a")],
 		"lane": Color("#f2f0f6"),
+		"clock": [42, 39, 34, 30],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/skyline_far.png",
 		"specials": ["double_decker", "trolley", "news_truck", "taxi"],
 		"traffic": 80,
@@ -86,6 +89,10 @@ static func build() -> Track:
 		while i >= 0 and i < b.y - 20:
 			t.add_span(i, "skyline_pylon")
 			i = t.free_spot(i + 300, 20)
+	# Highway signs: route and exit boards on the right
+	t.scatter(["sign_green", "sign_green", "sign_green", "sign_green", "sign_green"], 120, 800, 1.5, 1)
+	t.add_road_signs()
+	t.add_race_furniture()
 	t.add_finish_crowd()
 	t.add_sprite(t.finish_index - 20, "crowd_barrier_city", -1.3)
 	t.add_sprite(t.finish_index + 20, "dolphin_balloon", -2.5)

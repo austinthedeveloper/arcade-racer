@@ -7,11 +7,6 @@ const SPRITES := "res://assets/sprites/"
 const MANIFEST := SPRITES + "manifest.json"
 ## World width of a span's opening: the road plus its rumble strips and a little margin.
 const SPAN_OPENING := Cfg.ROAD_WIDTH * 2.7
-## Roadside sprites that load but no stage places yet; test_track keeps this list honest.
-const UNPLACED := ["turn_left", "turn_right", "chevron_a", "chevron_b", "chevron_c", "bump_sign",
-	"tire_stack", "barrels_yellow", "cone_orange", "barricade", "barrier_orange", "inflatable_arch",
-	"sign_green", "sign_brown", "delineator", "rail_wood_a", "rail_wood_b", "rail_wood_short",
-	"rail_end", "rail_wood_long", "rail_concrete", "rail_concrete_end"]
 const MIN_OPENING := 0.2  # narrowest opening, as a fraction of a span's width, that is one
 
 static var defs: Dictionary = {}
@@ -31,7 +26,8 @@ static func load_all() -> void:
 		var e: Dictionary = m["spans"][id]
 		var fill: Color = Color(e["fill"]) if e["fill"] != null else Color.TRANSPARENT
 		var b: Array = e["banner"] if e["banner"] != null else [0.0, 0.0, 0.0, 0.0]
-		_add_span(id, SPRITES + e["file"], fill, e["ceiling"], Rect2(b[0], b[1], b[2], b[3]))
+		var solid: Array = e.get("solid", [0.0, 1.0])
+		_add_span(id, SPRITES + e["file"], fill, e["ceiling"], Rect2(b[0], b[1], b[2], b[3]), Vector2(solid[0], solid[1]))
 
 
 ## Every roadside sprite, span and traffic vehicle with its numbers (world height, collide
@@ -44,7 +40,9 @@ static func manifest() -> Dictionary:
 
 
 ## Adds a road-spanning sprite. Its world size comes from its opening, which must fit the road.
-static func _add_span(id: String, path: String, fill: Color, ceiling: bool, banner: Rect2) -> void:
+## `solid` is the part of it (left and right, as fractions of the width) that collides: all
+## of it, or the tunnel mouth between building faces drawn either side.
+static func _add_span(id: String, path: String, fill: Color, ceiling: bool, banner: Rect2, solid := Vector2(0.0, 1.0)) -> void:
 	var tex: Texture2D = load(path)
 	if tex == null:
 		push_warning("Missing span sprite: " + path)
@@ -62,6 +60,7 @@ static func _add_span(id: String, path: String, fill: Color, ceiling: bool, bann
 		"fill": fill,
 		"ceiling": ceiling,
 		"banner": banner,  # where gate text goes, as fractions of the sprite
+		"solid": solid,  # the part that collides, as fractions of the width
 	}
 
 
@@ -83,13 +82,14 @@ static func find_opening(img: Image) -> Vector2:
 
 
 ## A span's (left, right) edges in road half-widths from the road center: its opening and
-## its outer edges. Between them is the solid structure the car can hit.
+## the outer edges of its solid part. Between them is the structure the car can hit.
 static func span_edges(id: String) -> Dictionary:
 	var def: Dictionary = spans[id]
 	var w: float = def["world_w"] / Cfg.ROAD_WIDTH
 	var o: Vector2 = def["opening"]
+	var solid: Vector2 = def["solid"]
 	var center := (o.x + o.y) / 2.0
-	return {"inner": Vector2(o.x - center, o.y - center) * w, "outer": Vector2(-center, 1.0 - center) * w}
+	return {"inner": Vector2(o.x - center, o.y - center) * w, "outer": Vector2(solid.x - center, solid.y - center) * w}
 
 
 static func _add(id: String, path: String, world_h: float, collide: float) -> void:

@@ -10,7 +10,7 @@ func _flat(n: int) -> Track:
 
 
 func test_every_span_loads_with_an_opening_that_fits_the_road() -> void:
-	eq(SpriteLibrary.spans.size(), 14, "span sprites")
+	eq(SpriteLibrary.spans.size(), 15, "span sprites")
 	for id: String in SpriteLibrary.spans:
 		var e := SpriteLibrary.span_edges(id)
 		var inner: Vector2 = e["inner"]
@@ -97,6 +97,64 @@ func test_tunnel_covers_and_clears_its_segments() -> void:
 	check(t.segments[14].spans.is_empty(), "none between")
 	eq(t.segments[22].spans, ["neon_tunnel"] as Array[String], "exit")
 	check(not t.segments[30].sprites.is_empty(), "roadside past the tunnel untouched")
+	t.add_tunnel(35, 8, "neon_tunnel", "neon_tunnel_ring", 3, "neon_tunnel_exit")
+	eq(t.segments[43].spans, ["neon_tunnel_exit"] as Array[String], "a separate exit piece")
+
+
+func test_tunnel_darkens_toward_the_middle() -> void:
+	var t := _flat(80)
+	t.add_tunnel(10, 40, "neon_tunnel", "neon_tunnel_ring")
+	eq(t.segments[10].depth, 0.0, "open at the mouth")
+	check(t.segments[11].depth > 0.0 and t.segments[11].depth < t.segments[15].depth, "ramps in")
+	eq(t.segments[30].depth, 1.0, "darkest in the middle")
+	check(t.segments[49].depth < t.segments[45].depth, "ramps out toward the exit")
+	eq(t.segments[50].depth, 0.0, "open at the exit")
+	eq(Track.tunnel_depth(0, 40), 0.0, "mouth")
+	near(Track.tunnel_depth(5, 40), 5.0 / Track.TUNNEL_RAMP, 0.0001, "partway in")
+	eq(Track.tunnel_depth(20, 4), 0.0, "past the end clamps")
+	var theme := NeonStrip.theme()
+	var mouth := RoadRenderer.covered_colors(theme, 0.0)
+	var deep := RoadRenderer.covered_colors(theme, 1.0)
+	for key in ["grass", "road", "rumble"]:
+		var c0: Color = mouth[key][0]
+		var c1: Color = deep[key][0]
+		check(c1.get_luminance() < c0.get_luminance(), "%s darker deep inside" % key)
+		check(c0.get_luminance() < (theme[key][0] as Color).get_luminance(), "%s darker than outside" % key)
+
+
+func test_neon_tunnel_has_building_faces_that_do_not_collide() -> void:
+	var faced: Dictionary = SpriteLibrary.spans["neon_tunnel"]
+	var plain: Dictionary = SpriteLibrary.spans["neon_tunnel_exit"]
+	check(faced["world_w"] > plain["world_w"] * 2.0, "buildings either side make it much wider")
+	check(faced["world_h"] > plain["world_h"], "and taller")
+	var a := SpriteLibrary.span_edges("neon_tunnel")
+	var b := SpriteLibrary.span_edges("neon_tunnel_exit")
+	for k in 2:
+		near(a["inner"][k], b["inner"][k], 0.0001, "same opening")
+		near(a["outer"][k], b["outer"][k], 0.0001, "only the mouth collides")
+	var outer: Vector2 = a["outer"]
+	var outside := outer.y + 1.0
+	var seg := Segment.new()
+	seg.spans.append("neon_tunnel")
+	check(not PlayerCar.hits_span(seg, outside, 0.25), "driving past the building faces")
+
+
+func test_wall_strip_follows_the_road_edge() -> void:
+	var seg := Segment.new()
+	seg.s1 = Vector2(320.0, 300.0)
+	seg.s2 = Vector2(330.0, 200.0)
+	seg.sw1 = 200.0
+	seg.sw2 = 100.0
+	seg.scale1 = 0.01
+	seg.scale2 = 0.005
+	var p := RoadRenderer.wall_strip(seg, 1.5, 100.0, 50.0)
+	eq(p[0], Vector2(320.0 + 300.0, 300.0 - 0.01 * 100.0 * Cfg.PROJ), "near end, out on the right, raised")
+	eq(p[1], Vector2(330.0 + 150.0, 200.0 - 0.005 * 100.0 * Cfg.PROJ), "far end")
+	near(p[0].y - p[3].y, 0.01 * 50.0 * Cfg.PROJ, 0.0001, "near thickness")
+	near(p[1].y - p[2].y, 0.005 * 50.0 * Cfg.PROJ, 0.0001, "far thickness")
+	var thin := RoadRenderer.wall_strip(seg, -1.0, 0.0, 1.0)
+	check(thin[0].y - thin[3].y >= 1.0, "at least a pixel tall")
+	check(thin[0].x < seg.s1.x, "negative offset is on the left")
 
 
 func test_every_stage_has_its_drive_through_pieces() -> void:

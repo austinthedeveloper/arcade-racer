@@ -18,6 +18,7 @@ var sprites: Array = []  # [{"id": String, "offset": float, "flip": bool}]
 var cars: Array = []  # traffic cars currently in this segment
 var spans: Array[String] = []  # road-spanning sprite ids (SpriteLibrary.spans) at the near end
 var covered := false  # inside a tunnel or covered bridge: darker, no sky
+var depth := 0.0  # how far into the tunnel, 0 at a mouth to 1 well inside: darker still
 var pickups: Array = []  # PowerUps.Pickup lying in this segment
 
 # Projection results, rewritten every frame by the renderer

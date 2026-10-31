@@ -4,6 +4,8 @@ extends RefCounted
 
 const SCRATCH_PROFILES := "user://test_input_profiles.cfg"
 const SCRATCH_SETTINGS := "user://test_settings.cfg"
+const SCRATCH_SAVE := "user://test_save.cfg"
+const SCRATCH_GHOSTS := "user://test_ghosts"
 const DT := 1.0 / 60.0
 
 var runner
@@ -27,6 +29,24 @@ static func use_scratch_settings(settings: Node) -> void:
 	settings.load_settings()
 
 
+## Points the SaveData autoload at an empty save file of the tests' own (a fresh save).
+static func use_scratch_save(save_data: Node) -> void:
+	save_data.path = SCRATCH_SAVE
+	for f in [SCRATCH_SAVE, SCRATCH_SAVE + ".bad", SCRATCH_SAVE + ".tmp"]:
+		if FileAccess.file_exists(f):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
+	save_data.load_save()
+
+
+## Points Time Attack ghosts (Ghost.dir) at an empty folder of the tests' own.
+static func use_scratch_ghosts() -> void:
+	Ghost.dir = SCRATCH_GHOSTS
+	var d := DirAccess.open(SCRATCH_GHOSTS)
+	if d != null:
+		for f in d.get_files():
+			d.remove(f)
+
+
 ## A straight, flat track `segments` long, for driving tests.
 static func flat_track(segments: int = 600) -> Track:
 	var t := Track.new()
@@ -37,12 +57,13 @@ static func flat_track(segments: int = 600) -> Track:
 
 
 ## The race scene, ready, outside the tree (nothing draws or ticks on its own; tests
-## call _physics_process). Autodrive, traffic and stage (index into Stages) as asked.
-static func new_race(autodrive := false, traffic := true, stage := 0) -> Node:
+## call _physics_process). Autodrive, traffic, rivals and stage (index into Stages) as asked.
+static func new_race(autodrive := false, traffic := true, stage := 0, rivals := true) -> Node:
 	var r: Node = load("res://scenes/race.tscn").instantiate()
 	r.set("stage_index", stage)
 	r.set("_autodrive", autodrive)
 	r.set("_no_traffic", not traffic)
+	r.set("_no_rivals", not rivals)
 	ready_all(r)
 	return r
 
@@ -56,8 +77,8 @@ static func ready_all(node: Node) -> void:
 
 
 ## A race for this suite, freed after it.
-func race(autodrive := false, traffic := true, stage := 0) -> Node:
-	var r := new_race(autodrive, traffic, stage)
+func race(autodrive := false, traffic := true, stage := 0, rivals := true) -> Node:
+	var r := new_race(autodrive, traffic, stage, rivals)
 	_nodes.append(r)
 	return r
 

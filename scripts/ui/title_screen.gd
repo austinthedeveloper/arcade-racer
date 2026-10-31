@@ -1,6 +1,6 @@
 class_name TitleScreen
 extends MenuScreen
-## Attract screen: the logo over the Palm Coast sunset, with START (on to stage select)
+## Attract screen: the logo over the Palm Coast sunset, with START (on to mode select)
 ## and OPTIONS side by side so a wheel can steer between them.
 
 const LOGO := "res://assets/sprites/ui/logo.png"
@@ -38,7 +38,7 @@ func handle(m: MenuInput) -> void:
 	elif m.confirm_pressed:
 		Audio.play("beep")
 		if index == 0:
-			game.show_stage_select()
+			game.show_mode_select()
 		else:
 			game.show_options()
 
