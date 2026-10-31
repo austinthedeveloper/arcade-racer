@@ -91,6 +91,14 @@ func _draw() -> void:
 	if hint != "":
 		_text_centered(Vector2(w / 2.0, 70), hint, 10, Color("#ffd23a"))
 
+	# Bonuses as they're earned, right of center; the tally under the finish banner
+	for i in race.score.feed.size():
+		var b: Dictionary = race.score.feed[i]
+		var a := clampf((Scoring.FEED_TIME - b["age"]) / 0.4, 0.0, 1.0)
+		_text_centered(Vector2(w * 0.78, 110 + i * 16), "%s +%d" % [b["name"], b["points"]], 12, Color("#5dff8a", a))
+	if race.state == race.State.FINISHED:
+		_score_tally(Vector2(w / 2.0, 182))
+
 	# Banners
 	if race.counting_down():
 		_text_centered(Vector2(w / 2.0, 130), str(ceili(race.countdown)), 64, Color("#ffd23a"))
@@ -108,6 +116,21 @@ func _draw() -> void:
 ## Where a racer `distance` along the stage sits on the progress bar.
 static func progress_x(bar: Rect2, distance: float, finish_distance: float) -> float:
 	return bar.position.x + bar.size.x * clampf(distance / finish_distance, 0.0, 1.0)
+
+
+func _score_tally(top: Vector2) -> void:
+	var rows: Array[Dictionary] = race.score.summary()
+	var panel := Rect2(top.x - 120, top.y - 12, 240, 16 + 13 * (rows.size() + 1))
+	draw_rect(panel, Color(0, 0, 0, 0.55))
+	for i in rows.size():
+		var r: Dictionary = rows[i]
+		var label: String = r["name"] if r["count"] == 1 else "%s x%d" % [r["name"], r["count"]]
+		var y := top.y + i * 13
+		_text(Vector2(panel.position.x + 10, y), label, 10, Color.WHITE)
+		_text(Vector2(panel.end.x - 40, y), "+%d" % r["points"], 10, Color("#5dff8a"))
+	var ty := top.y + rows.size() * 13 + 2
+	_text(Vector2(panel.position.x + 10, ty), "POINTS", 11, Color("#ffd23a"))
+	_text(Vector2(panel.end.x - 40, ty), str(race.score.total()), 11, Color("#ffd23a"))
 
 
 func _text(pos: Vector2, s: String, size: int, col: Color) -> void:

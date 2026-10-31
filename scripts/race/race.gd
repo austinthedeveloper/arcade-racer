@@ -33,6 +33,7 @@ var countdown := 3.0
 var time_left := START_TIME
 var race_time := 0.0
 var launch: Launch.Grade = Launch.Grade.PENDING  # how the player's start went
+var score := Scoring.new()
 var place := 1  # the player's place in the field (Rivals.standings)
 var player_finish := -1.0  # race time the player finished in, -1 still racing
 var finish_distance := 1.0
@@ -120,6 +121,7 @@ func start_race() -> void:
 	checkpoint_bonus = Settings.race_time(CHECKPOINT_BONUS)
 	race_time = 0.0
 	player_finish = -1.0
+	score = Scoring.new()
 	launch = Launch.Grade.PENDING
 	_gas_since = NAN
 	place = rivals.place(player, player_finish)
@@ -214,6 +216,7 @@ func _physics_process(dt: float) -> void:
 	pickup_age += dt
 	ram_flash = 0.3 if player.rammed else maxf(0.0, ram_flash - dt)
 	if state == State.RACING:
+		score.watch(dt, player, track)
 		_check_pickups()
 		_check_progress()
 
@@ -283,12 +286,14 @@ func _check_pickups() -> void:
 func _check_progress() -> void:
 	if next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
+		score.checkpoint()
 		time_left += checkpoint_bonus
 		_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0)
 	if player.distance >= finish_distance:
 		state = State.FINISHED
 		player_finish = race_time
 		place = rivals.place(player, player_finish)
+		score.finish(place, not rivals.cars.is_empty())
 		var mins := int(race_time) / 60
 		var secs := fmod(race_time, 60.0)
 		var next := Stages.next(stage_index)
