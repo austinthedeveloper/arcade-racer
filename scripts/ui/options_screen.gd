@@ -8,7 +8,7 @@ extends MenuScreen
 ## The two reset rows leave the wheel profiles alone; resetting the save asks first.
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
-	RESET_SAVE, BACK }
+	RESET_SAVE, SCREEN_SHAKE, FLASH, BACK }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -18,14 +18,14 @@ const PAGE_ROWS := [
 	[],
 	[Row.MUSIC, Row.SFX],
 	[Row.CALIBRATE],
-	[],
+	[Row.SCREEN_SHAKE, Row.FLASH],
 ]
 ## Shown on a page with no rows yet.
-const PAGE_EMPTY := ["", "Nothing here yet.", "", "", "Nothing here yet."]
+const PAGE_EMPTY := ["", "Nothing here yet.", "", "", ""]
 ## The most rows any page has, page bar and BACK included: the panel's height.
 const SLOTS := 10
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
-	"RESET OPTIONS", "RESET SAVE DATA", "BACK"]
+	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "BACK"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -39,6 +39,8 @@ const HELP := [
 	"Set up a racing wheel and pedals (F2 also works).",
 	"Every option, on every page, back to its default. Wheel setups are kept.",
 	"Erase tour progress, best times and unlocks. Wheel setups are kept.",
+	"Camera shake and the nitro view stretch. 0 turns them off.",
+	"Impact flashes and the blinking clock. 0 turns them off.",
 	"Back to %s.",
 ]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
@@ -139,6 +141,10 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.music_volume = _step(s.music_volume, dir, s.VOLUME_STEPS + 1, wrap)
 		Row.SFX:
 			s.sfx_volume = _step(s.sfx_volume, dir, s.VOLUME_STEPS + 1, wrap)
+		Row.SCREEN_SHAKE:
+			s.screen_shake = _step(s.screen_shake, dir, s.EFFECT_STEPS + 1, wrap)
+		Row.FLASH:
+			s.flash = _step(s.flash, dir, s.EFFECT_STEPS + 1, wrap)
 		_:
 			return false
 	s.save()
@@ -165,6 +171,10 @@ static func value_text(row: int) -> String:
 			return str(s.music_volume)
 		Row.SFX:
 			return str(s.sfx_volume)
+		Row.SCREEN_SHAKE:
+			return str(s.screen_shake)
+		Row.FLASH:
+			return str(s.flash)
 	return ""
 
 
@@ -268,9 +278,9 @@ func _draw() -> void:
 		_text(Vector2(panel.position.x + 16, y + mid + 5), LABELS[row], 12, col)
 		var right := panel.end.x - 20
 		match row:
-			Row.MUSIC, Row.SFX:
-				var v: int = Settings.music_volume if row == Row.MUSIC else Settings.sfx_volume
-				for k in Settings.VOLUME_STEPS:
+			Row.MUSIC, Row.SFX, Row.SCREEN_SHAKE, Row.FLASH:
+				var v := int(value_text(row))
+				for k in Settings.VOLUME_STEPS:  # EFFECT_STEPS is the same ten
 					var seg := Rect2(right - 150 + k * 13, y + mid - 6, 10, 12)
 					draw_rect(seg, (SKY if on else Color(SKY, 0.7)) if k < v else Color(1, 1, 1, 0.12))
 				_text(Vector2(right - 178, y + mid + 5), value_text(row), 10, col)

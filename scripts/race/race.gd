@@ -14,11 +14,6 @@ const START_TIME := 45.0  # on the ARCADE timer; Settings scales both for the ot
 const CHECKPOINT_BONUS := 25.0
 const BACKGROUND_SCROLL := 0.0006  # per segment travelled, per unit of curve
 const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
-# Camera shake, in screen pixels, and how fast it settles (pixels per second)
-const SHAKE_CRASH := 5.0
-const SHAKE_LANDING := 3.0
-const SHAKE_OFFROAD := 1.5  # at top speed
-const SHAKE_SETTLE := 12.0
 
 var track: Track
 var stage_index := 0  # into Stages
@@ -64,7 +59,9 @@ var debug_overlay: InputDebugOverlay
 var calibration: CalibrationWizard
 var audio: RaceAudio
 
-var _shake := 0.0
+var _shake := 0.0  # camera shake as designed, in pixels; the screen shake option scales what shows
+var _fov_stretch := 0.0  # 0..Cfg.NITRO_FOV_STRETCH, eased while nitro burns
+var _was_airborne := false
 var _autodrive := false
 var _log_banners := false
 var _no_traffic := false
@@ -122,6 +119,9 @@ func start_race() -> void:
 	pickup_gave = -1
 	pickup_age = 99.0
 	ram_flash = 0.0
+	_shake = 0.0
+	_fov_stretch = 0.0
+	_was_airborne = false
 	traffic = Traffic.new()
 	traffic.spawn(track, 0 if _no_traffic else Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
 	if tour and tour_state == null:
@@ -315,21 +315,42 @@ func _physics_process(dt: float) -> void:
 
 	background.offset += seg_before.curve * (player.speed * dt / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
 
-	# Camera shake: rough ground, landings, crashes
-	if player.crashed:
-		_shake = SHAKE_CRASH
-	elif player.landed:
-		_shake = maxf(_shake, SHAKE_LANDING)
-	elif player.offroad and player.speed > 100.0:
-		_shake = maxf(_shake, SHAKE_OFFROAD * player.speed_percent())
-	_shake = move_toward(_shake, 0.0, dt * SHAKE_SETTLE)
-	road.position = Vector2(roundf(randf_range(-1, 1) * _shake), roundf(randf_range(-1, 1) * _shake))
+	# Camera shake: rough ground, crests, landings, crashes. Display only (road.position).
+	_shake = shake_after(_shake, player, player.airborne and not _was_airborne, dt)
+	_was_airborne = player.airborne
+	var shown := Settings.shake_amount(_shake)
+	road.position = Vector2(roundf(randf_range(-1, 1) * shown), roundf(randf_range(-1, 1) * shown))
+	# Nitro widens the view a little (display only: the renderer's camera depth)
+	var stretch_to := Cfg.NITRO_FOV_STRETCH if player.nitro_time > 0.0 else 0.0
+	_fov_stretch = move_toward(_fov_stretch, stretch_to, dt * Cfg.NITRO_FOV_RATE)
+	road.camera_depth = camera_depth(_fov_stretch)
+	road.flash = Settings.flash_amount(1.0)
 	road.time += dt
 	road.camera_z = player.position
 	_redraw()
 	_frame += 1
 	if _screenshot_frames.has(_frame):
 		_save_screenshot(_frame)
+
+
+## Camera shake (pixels, as designed) after a tick: a crash sets it, a landing, a takeoff
+## over a crest and rough ground at speed kick it up, and it settles back to still.
+static func shake_after(shake: float, p: PlayerCar, took_off: bool, dt: float) -> float:
+	if p.crashed:
+		shake = Cfg.SHAKE_CRASH
+	elif p.landed:
+		shake = maxf(shake, Cfg.SHAKE_LANDING)
+	elif took_off:
+		shake = maxf(shake, Cfg.SHAKE_TAKEOFF)
+	elif p.offroad and p.speed > 100.0:
+		shake = maxf(shake, Cfg.SHAKE_OFFROAD * p.speed_percent())
+	return move_toward(shake, 0.0, dt * Cfg.SHAKE_SETTLE)
+
+
+## The renderer's camera depth for a nitro stretch (0..Cfg.NITRO_FOV_STRETCH), after the
+## screen shake option: Cfg.CAMERA_DEPTH with no stretch or with the option at 0.
+static func camera_depth(stretch: float) -> float:
+	return Cfg.CAMERA_DEPTH * (1.0 - Settings.shake_amount(stretch))
 
 
 ## Grades the start once it's known: the gas down in the window around GO, or too early.

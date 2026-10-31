@@ -13,6 +13,8 @@ var player: PlayerCar
 var player_strips: Dictionary = {}  # the player car's CarSprites.strips
 var rivals: Array[RivalCar] = []
 var camera_z := 0.0
+var camera_depth := Cfg.CAMERA_DEPTH  # the race eases it down for the nitro stretch
+var flash := 1.0  # the FLASHING option's share of the designed blink (Settings.flash_amount(1.0))
 var time := 0.0
 
 var _pts := PackedVector2Array()
@@ -67,7 +69,7 @@ func _draw() -> void:
 		var d := float(n) / Cfg.DRAW_DISTANCE
 		seg.fog = 1.0 - exp(-d * d * fog_density)
 		seg.clip = max_y
-		var in_front := seg.cam_z1 > Cfg.CAMERA_DEPTH
+		var in_front := seg.cam_z1 > camera_depth
 		seg.visible = in_front and seg.s2.y < seg.s1.y and seg.s2.y < max_y
 		if seg.visible:
 			max_y = minf(max_y, seg.s2.y)
@@ -108,8 +110,8 @@ static func behind(z: float, player_z: float, length: float) -> bool:
 func _project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float) -> void:
 	seg.cam_z1 = seg.w1.z - cz
 	seg.cam_z2 = seg.w2.z - cz
-	seg.scale1 = Cfg.CAMERA_DEPTH / maxf(seg.cam_z1, 1.0)
-	seg.scale2 = Cfg.CAMERA_DEPTH / maxf(seg.cam_z2, 1.0)
+	seg.scale1 = camera_depth / maxf(seg.cam_z1, 1.0)
+	seg.scale2 = camera_depth / maxf(seg.cam_z2, 1.0)
 	var half_w := Cfg.SCREEN_W * 0.5
 	seg.s1 = Vector2(half_w - seg.scale1 * cx1 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale1 * (seg.w1.y - cam_y) * Cfg.PROJ)
 	seg.s2 = Vector2(half_w - seg.scale2 * cx2 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale2 * (seg.w2.y - cam_y) * Cfg.PROJ)
@@ -308,7 +310,7 @@ func _draw_rival(seg: Segment, r: RivalCar, tint: Color) -> void:
 
 func _draw_player() -> void:
 	var p := player
-	var s := Cfg.CAMERA_DEPTH / Cfg.PLAYER_Z
+	var s := camera_depth / Cfg.PLAYER_Z
 	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
 	var y := Cfg.HORIZON_Y + s * Cfg.CAMERA_HEIGHT * Cfg.PROJ
 	var lift := p.air_height * s * Cfg.PROJ
@@ -322,9 +324,16 @@ func _draw_player() -> void:
 	# A ghost flickers see-through, brighter as it runs out
 	var alpha := 1.0
 	if p.ghost_time > 0.0:
-		alpha = 0.45 + (0.35 if p.ghost_time < 1.0 and int(time * 10.0) % 2 == 0 else 0.0)
+		alpha = ghost_alpha(p.ghost_time, time, flash)
 	CarSprites.draw_player(self, player_strips, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking, p.nitro_time > 0.0,
 		time, roundf(lift), p.pitch, alpha)
+
+
+## The ghosted player's see-through alpha: it blinks brighter in its last second, by as much
+## as the FLASHING option allows (`flash`, 0..1; steady at 0).
+static func ghost_alpha(ghost_time: float, t: float, flash_share: float) -> float:
+	var blink := ghost_time < 1.0 and int(t * 10.0) % 2 == 0
+	return 0.45 + (0.35 * flash_share if blink else 0.0)
 
 
 ## A stage's road colors, darkened for inside a tunnel or covered bridge (worked out once

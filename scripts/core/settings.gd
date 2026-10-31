@@ -12,8 +12,10 @@ const TRAFFIC_MULT := [0.5, 1.0, 1.4]
 const TIMER_NAMES := ["RELAXED", "ARCADE", "TIGHT"]
 const TIMER_MULT := [1.35, 1.0, 0.85]  # on the start time and checkpoint bonuses
 const VOLUME_STEPS := 10
+const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, the most)
 ## The settings.cfg format (CfgVersion). 0: no version field. 1: the same keys, versioned.
-const VERSION := 1
+## 2: [accessibility] screen_shake and flash (missing: the designed level).
+const VERSION := 2
 
 ## Where options are saved. Tests point this at a scratch file.
 var path := "user://settings.cfg"
@@ -25,6 +27,8 @@ var difficulty: int = Difficulty.Level.NORMAL
 var carry_time := false  # Grand Tour: clock left at a finish carries into the next stage
 var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
 var sfx_volume := 10
+var screen_shake := 10  # 0..EFFECT_STEPS; scales camera shake and the nitro FOV stretch
+var flash := 10  # 0..EFFECT_STEPS; scales flashes and blinking warnings
 ## The version of the file last loaded (VERSION when there was no file).
 var loaded_version := VERSION
 
@@ -43,6 +47,8 @@ func reset() -> void:
 	carry_time = false
 	music_volume = 10
 	sfx_volume = 10
+	screen_shake = EFFECT_STEPS
+	flash = EFFECT_STEPS
 	apply_volumes()
 
 
@@ -60,17 +66,25 @@ func load_settings() -> void:
 		carry_time = bool(cfg.get_value("play", "carry_time", carry_time))
 		music_volume = clampi(int(cfg.get_value("audio", "music", music_volume)), 0, VOLUME_STEPS)
 		sfx_volume = clampi(int(cfg.get_value("audio", "sfx", sfx_volume)), 0, VOLUME_STEPS)
+		screen_shake = clampi(int(cfg.get_value("accessibility", "screen_shake", screen_shake)), 0, EFFECT_STEPS)
+		flash = clampi(int(cfg.get_value("accessibility", "flash", flash)), 0, EFFECT_STEPS)
 	apply_volumes()
 
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2])
 
 
 ## Version 1 only added the version field: the keys are as they were.
 static func _v0_to_v1(_cfg: ConfigFile) -> void:
 	pass
+
+
+## Version 2 added screen shake and flash, at the designed level until the player turns them down.
+static func _v1_to_v2(cfg: ConfigFile) -> void:
+	cfg.set_value("accessibility", "screen_shake", EFFECT_STEPS)
+	cfg.set_value("accessibility", "flash", EFFECT_STEPS)
 
 
 ## Writes the options. Over a file from a newer build, its other keys are kept
@@ -85,6 +99,8 @@ func save(fresh := false) -> void:
 	cfg.set_value("play", "carry_time", carry_time)
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
+	cfg.set_value("accessibility", "screen_shake", screen_shake)
+	cfg.set_value("accessibility", "flash", flash)
 	cfg.save(path)
 	apply_volumes()
 	changed.emit()
@@ -98,6 +114,17 @@ func drive_input(inp: DriveInput) -> DriveInput:
 	var out := inp.copy()
 	out.throttle = 0.0 if inp.brake > 0.05 else 1.0
 	return out
+
+
+## A camera effect (shake in pixels, the nitro FOV stretch) after the screen shake option:
+## the designed amount at 10, none at 0, never more than designed.
+func shake_amount(designed: float) -> float:
+	return designed * clampi(screen_shake, 0, EFFECT_STEPS) / float(EFFECT_STEPS)
+
+
+## A flash's strength (alpha, or how far a blink goes) after the flash option, as above.
+func flash_amount(designed: float) -> float:
+	return designed * clampi(flash, 0, EFFECT_STEPS) / float(EFFECT_STEPS)
 
 
 ## Picks a difficulty and puts the timer option on its default (it can still be changed after).
