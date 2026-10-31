@@ -33,3 +33,42 @@ jobs:
 
       - name: Tests (suites + e2e)
         run: tools/test.sh
+
+  screenshots:
+    # tools/shots.sh renders menus and races windowed (the headless dummy driver draws
+    # nothing), so it runs under a virtual X display with the GL Compatibility renderer
+    # on Mesa's software OpenGL. The references in tests/shots/ were rendered on macOS;
+    # until a run here shows the Linux numbers sit inside the tolerances, a mismatch is
+    # reported (and the rendered shots uploaded) without failing the build.
+    name: Screenshot regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-godot
+
+      - name: Virtual display and software OpenGL
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Pillow
+        run: pip install pillow
+
+      - name: Screenshots (tools/shots.sh)
+        env:
+          SHOTS_DIR: ${{ runner.temp }}/shots
+          SHOTS_GODOT_ARGS: --rendering-driver opengl3 --display-driver x11
+        run: xvfb-run -a -s "-screen 0 1280x720x24" tools/shots.sh
+
+      - name: Keep the rendered shots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: screenshots
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore

@@ -11,6 +11,8 @@ godot --path . -- --autodrive --screenshots=200,700 --shot-dir=/tmp/shots   # ha
 godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screenshots=300 --shot-dir=/tmp/shots   # start partway in, in another car
 godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, options, stages, cars)
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
+tools/shots.sh                                      # screenshot regression vs tests/shots/ (needs a display, PIL; SHOTS_PYTHON=...)
+tools/shots.sh --update                             # rewrite tests/shots/ after a deliberate visual change
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
 python3 tools/make_stage_sprites.py assets/concept . neon      # rebuild a stage's background + roadside sprites (shared: race furniture)
 python3 tools/make_ui_sprites.py assets/concept .   # rebuild the logo, title backdrop, stage postcards, car pictures
@@ -32,7 +34,8 @@ No addon. `tests/run_tests.gd` runs every `tests/test_*.gd` (methods named `test
 `TestSuite`, see `tests/suite.gd`). `tests/e2e_input.gd` boots the real main scene (title screen) and drives
 it through the input map: menus, then the race. The race itself is `scenes/race.tscn`. `tests/golden/` holds per-frame traces of autodriven races
 (Palm Coast with traffic and on a clear road, every other stage with traffic, default options so power-ups on); `test_golden` replays them
-and also checks every stage's autodriven race finishes in time. CI (`.github/workflows/ci.yml`) runs `tools/test.sh`. A pushed `v*` tag runs
+and also checks every stage's autodriven race finishes in time. `tools/shots.sh` renders four menus and two race frames at a fixed 60 fps and compares them with
+`tests/shots/` (`tools/shots.py`: a difference hash plus a color difference). CI (`.github/workflows/ci.yml`) runs `tools/test.sh`, and `tools/shots.sh` under xvfb. A pushed `v*` tag runs
 `.github/workflows/release.yml`: tests, `tools/export.sh`, then a GitHub Release with the zips.
 
 - Add or extend tests with every change.
@@ -45,7 +48,8 @@ and also checks every stage's autodriven race finishes in time. CI (`.github/wor
 
 1. `tools/test.sh` passes. Golden traces stay unchanged unless the change is meant to alter
    play; regenerate them and give the reason in the commit.
-2. Look at a screenshot of anything visual.
+2. Look at a screenshot of anything visual. `tools/shots.sh` passes; after a deliberate visual
+   change, `tools/shots.sh --update`, look at the new `tests/shots/` images and say why in the commit.
 
 ## Git
 
