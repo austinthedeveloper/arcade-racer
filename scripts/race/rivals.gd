@@ -110,7 +110,8 @@ func finished_count() -> int:
 
 
 ## Racers bumping each other. A car that comes up behind another drops behind it at a little
-## under its speed; two already side by side are pushed apart. Nobody crashes.
+## under its speed; two already side by side are pushed apart. Nobody crashes. A ghosted car
+## (the GHOST power-up) drives right through the others.
 static func resolve_contacts(racers: Array, track: Track) -> void:
 	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
 	var reach := half_car * 2.0 * Cfg.HIT_OVERLAP
@@ -118,7 +119,7 @@ static func resolve_contacts(racers: Array, track: Track) -> void:
 		for j in range(i + 1, racers.size()):
 			var a: PlayerCar = racers[i]
 			var b: PlayerCar = racers[j]
-			if a.airborne or b.airborne or absf(a.x - b.x) >= reach:
+			if a.airborne or b.airborne or a.ghost_time > 0.0 or b.ghost_time > 0.0 or absf(a.x - b.x) >= reach:
 				continue
 			var dz := wrapf(b.position - a.position, -track.length * 0.5, track.length * 0.5)
 			if absf(dz) >= CONTACT_LENGTH:

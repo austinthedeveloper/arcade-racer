@@ -1,5 +1,5 @@
-# Builds Windows, macOS and Web with tools/export.sh. A pushed v* tag
-# (e.g. v0.1.0) publishes a GitHub Release with the three zips; a manual
+# Builds Windows, macOS, Web and Linux with tools/export.sh. A pushed v* tag
+# (e.g. v0.1.0) publishes a GitHub Release with the zips; a manual
 # run only uploads them as a workflow artifact, to try a build first.
 name: Release
 
@@ -37,7 +37,7 @@ jobs:
           else v="$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)-dev.${GITHUB_SHA::7}"; fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
-      - name: Export Windows, macOS, Web
+      - name: Export Windows, macOS, Web, Linux
         run: tools/export.sh "${{ steps.version.outputs.version }}"
 
       - uses: actions/upload-artifact@v6
@@ -58,6 +58,7 @@ jobs:
           - **Windows:** \`SundownRun-$VERSION-windows.zip\`. Unzip and run \`SundownRun.exe\`. It isn't code-signed, so SmartScreen may warn: choose *More info*, then *Run anyway*.
           - **macOS** (Intel and Apple Silicon): \`SundownRun-$VERSION-macos.zip\`. Unzip and move *Sundown Run* to Applications. It isn't notarized, so the first time right-click it and choose *Open* (or run \`xattr -cr "/Applications/Sundown Run.app"\` if macOS says it is damaged).
           - **Web:** \`SundownRun-$VERSION-web.zip\`. Serve the folder from any static web server (for example \`python3 -m http.server\` inside it) and open \`index.html\`; opening the file directly doesn't work. Works on itch.io as an HTML upload.
+          - **Linux** (x86_64, unsupported, for testing only): \`SundownRun-$VERSION-linux.zip\`. Unzip, \`chmod +x SundownRun.x86_64\` if needed, and run it.
 
           Keyboard, gamepads and wheels are supported; see the README for controls and wheel calibration (F2).
           NOTES
