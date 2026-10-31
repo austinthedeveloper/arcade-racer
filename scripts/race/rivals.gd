@@ -64,6 +64,39 @@ func everyone(player: PlayerCar) -> Array:
 	return all
 
 
+## Everyone in race order: finishers first by finish time, then the rest by distance.
+## `player_finish` is the player's finish time, or a negative number while still racing.
+func standings(player: PlayerCar, player_finish: float) -> Array:
+	var order := everyone(player)
+	var done := func(car: PlayerCar) -> float:
+		if car == player:
+			return player_finish
+		return (car as RivalCar).finish_time if (car as RivalCar).finished else -1.0
+	order.sort_custom(func(a: PlayerCar, b: PlayerCar) -> bool:
+		var ta: float = done.call(a)
+		var tb: float = done.call(b)
+		if ta >= 0.0 or tb >= 0.0:
+			if ta < 0.0 or tb < 0.0:
+				return ta >= 0.0
+			if ta != tb:
+				return ta < tb
+		return a.distance > b.distance)
+	return order
+
+
+## The player's place, 1 for the lead.
+func place(player: PlayerCar, player_finish: float) -> int:
+	return standings(player, player_finish).find(player) + 1
+
+
+## 1ST, 2ND, 3RD, 4TH...
+static func ordinal(n: int) -> String:
+	var suffix := "TH"
+	if n % 100 < 11 or n % 100 > 13:
+		suffix = ["TH", "ST", "ND", "RD", "TH", "TH", "TH", "TH", "TH", "TH"][n % 10]
+	return str(n) + suffix
+
+
 func finished_count() -> int:
 	var n := 0
 	for r in cars:
