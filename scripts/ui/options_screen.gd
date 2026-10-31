@@ -15,11 +15,15 @@ const HELP := [
 	"Music loudness.",
 	"Engine, crash and menu sound loudness.",
 	"Set up a racing wheel and pedals (F2 also works).",
-	"Back to the title screen.",
+	"Back to %s.",
 ]
+## Rows the race only reads when a stage starts.
+const NEXT_RACE := [Row.TRAFFIC, Row.TIMER, Row.POWER_UPS]
 const ROW_H := 28.0
 const TOP := 58.0
 
+var back_name := "the title screen"  # where BACK goes, for its help line
+var in_race := false  # opened from the pause menu: some rows only change the next race
 var index := 0  # into Row
 
 
@@ -101,12 +105,21 @@ func handle(m: MenuInput) -> void:
 				game.calibration.open()
 			Row.BACK:
 				Audio.play("beep")
-				game.show_title(1)
+				game.close_options()
 			_:
 				change(index, 1, true)
 				Audio.play("beep")
 	elif m.back_pressed:
-		game.show_title(1)
+		game.close_options()
+
+
+## The help line for the picked row.
+func help_text() -> String:
+	if index == Row.BACK:
+		return HELP[index] % back_name
+	if in_race and NEXT_RACE.has(index):
+		return HELP[index] + " From the next race."
+	return HELP[index]
 
 
 func _draw() -> void:
@@ -143,7 +156,7 @@ func _draw() -> void:
 				if on and not wheel:
 					_small_arrow(Vector2(right - 120, y + 12), -1)
 					_small_arrow(Vector2(right, y + 12), 1)
-	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, panel.end.y + 24), HELP[index], 10, Color(1, 1, 1, 0.85))
+	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, panel.end.y + 24), help_text(), 10, Color(1, 1, 1, 0.85))
 	_footer(options_hints())
 
 
