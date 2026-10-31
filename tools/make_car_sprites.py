@@ -45,16 +45,27 @@ TRAFFIC = [
 # background. The plain magenta key (make_placeholder_sprites.is_key) also matches pink and
 # purple paint, which left holes in the Cyclone and the Zenith.
 KEY_DISTANCE = 90
-# A background-colored patch inside a car is a gap to see through (between a buggy's tubes)
-# only if it is this big (source pixels) and this close to the background on average;
-# smaller or less exact patches are paint highlights (the Zenith's iridescent purple).
-MIN_GAP_AREA = 150
-GAP_DISTANCE = 25
+# A background-colored patch inside a car is a gap to see through (between a buggy's tubes,
+# under the Mesa's axle) if it is this close to the background on average, whatever its size,
+# or if it is framed by dark parts: the median brightest channel of the pixels around it is
+# under GAP_FRAME (thin gaps, like under the Mesa's light bar, are mostly shaded magenta).
+# Paint is further off and sits in bright paint: the Zenith's iridescent purple averages 40
+# or more and its surroundings 200 or more.
+GAP_DISTANCE = 40
+GAP_FRAME = 200
+
+
+def is_gap(patch, frame, dist, px):
+    """Whether a background-colored patch inside a car is a gap (see GAP_DISTANCE, GAP_FRAME)."""
+    if sum(dist[y][x] for x, y in patch) / len(patch) < GAP_DISTANCE:
+        return True
+    brightest = sorted(max(px[x, y][:3]) for x, y in frame)
+    return brightest[len(brightest) // 2] < GAP_FRAME
 
 
 def key_car_sheet(img):
     """Keys out the sheet's background color (read from its corner): every patch of it that
-    touches the edge or is a real gap (MIN_GAP_AREA, GAP_DISTANCE), plus a
+    touches the edge or is a real gap (GAP_DISTANCE, GAP_FRAME), plus a
     one-pixel rim of magenta-ish fringe around those. Pink or purple paint stays."""
     img = img.convert("RGBA")
     px = img.load()
@@ -69,18 +80,21 @@ def key_car_sheet(img):
         for sx in range(w):
             if seen[sy][sx] or not near[sy][sx]:
                 continue
-            patch, stack, edge = [], [(sx, sy)], False
+            patch, stack, edge, frame = [], [(sx, sy)], False, set()
             seen[sy][sx] = True
             while stack:
                 x, y = stack.pop()
                 patch.append((x, y))
                 edge = edge or x in (0, w - 1) or y in (0, h - 1)
                 for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-                    if 0 <= nx < w and 0 <= ny < h and not seen[ny][nx] and near[ny][nx]:
+                    if not (0 <= nx < w and 0 <= ny < h):
+                        continue
+                    if not near[ny][nx]:
+                        frame.add((nx, ny))
+                    elif not seen[ny][nx]:
                         seen[ny][nx] = True
                         stack.append((nx, ny))
-            exact = sum(dist[y][x] for x, y in patch) / len(patch) < GAP_DISTANCE
-            if edge or (len(patch) >= MIN_GAP_AREA and exact):
+            if edge or is_gap(patch, frame, dist, px):
                 keyed += patch
     keyed_set = set(keyed)
     fringe = set()
