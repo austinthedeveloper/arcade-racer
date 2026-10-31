@@ -6,6 +6,16 @@ extends Node2D
 ## projecting each segment's ends to the screen. Pass 2 paints far-to-near (road band,
 ## then that segment's sprites and cars), so nearer road and hills cover what's behind them.
 
+## Tunnel interiors: COVERED_RAMP more darkening deep inside than at a mouth, in COVERED_STEPS
+## steps; neon tubes (theme "tunnel_lights") TUBE_OFFSET road half-widths out, on the frames'
+## inner walls, TUBE_HEIGHT up and TUBE_THICK tall, broken every TUBE_EVERY segments.
+const COVERED_RAMP := 0.3
+const COVERED_STEPS := 8
+const TUBE_OFFSET := 1.34
+const TUBE_HEIGHT := 1250.0
+const TUBE_THICK := 70.0
+const TUBE_EVERY := 4
+
 var track: Track
 var player: PlayerCar
 var player_strips: Dictionary = {}  # the player car's CarSprites.strips
@@ -16,7 +26,7 @@ var _pts := PackedVector2Array()
 var _cols := PackedColorArray()
 var _idx := PackedInt32Array()
 var _fog_color := Color.WHITE
-var _covered: Dictionary = {}  # _covered_theme: the darkened colors
+var _covered: Array[Dictionary] = []  # _covered_theme: the darkened colors, per depth step
 var _covered_from: Dictionary = {}  # and the theme they were made from
 var _font: Font
 
@@ -81,8 +91,9 @@ func _project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float) -> 
 func _draw_segment(seg: Segment, theme: Dictionary) -> void:
 	var b := seg.band
 	var fog := seg.fog
+	var lights: Array = theme.get("tunnel_lights", []) if seg.covered else []
 	if seg.covered:
-		theme = _covered_theme(theme)
+		theme = _covered_theme(theme, seg.depth)
 	var x1 := seg.s1.x
 	var y1 := seg.s1.y
 	var w1 := seg.sw1
@@ -121,6 +132,9 @@ func _draw_segment(seg: Segment, theme: Dictionary) -> void:
 			_quad(Vector2(lx1 - l1 / 2.0, y1), Vector2(lx1 + l1 / 2.0, y1), Vector2(lx2 + l2 / 2.0, y2), Vector2(lx2 - l2 / 2.0, y2), lane_col)
 			lx1 += lane_w1
 			lx2 += lane_w2
+
+	if not lights.is_empty() and seg.index % TUBE_EVERY != TUBE_EVERY - 1:
+		_tunnel_lights(seg, lights)
 
 	RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), _idx, _pts, _cols)
 
@@ -167,9 +181,10 @@ func _draw_objects(seg: Segment) -> void:
 			cy -= sin((1.0 - car.flung / Traffic.FLING_TIME) * PI) * w * 0.9
 		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog)
 
-	# Spans sit at the segment's near end, in front of its sprites and cars
+	# Spans sit at the segment's near end, in front of its sprites and cars; a tunnel's
+	# frames dim with depth like its road
 	for id in seg.spans:
-		_draw_span(seg, id, "", tint)
+		_draw_span(seg, id, "", tint.darkened(COVERED_RAMP * seg.depth))
 	var gate := gate_for(seg.flags)
 	if gate != "":
 		_draw_span(seg, gate, gate_label(seg.flags), tint)
@@ -258,16 +273,51 @@ func _draw_player() -> void:
 		time, roundf(lift), p.pitch, alpha)
 
 
-## A stage's road colors, darkened for inside a tunnel or covered bridge (worked out once
-## per stage; the stage's theme is left alone).
-func _covered_theme(theme: Dictionary) -> Dictionary:
+## A stage's road colors darkened for `depth` into a tunnel or covered bridge (worked out
+## once per stage, in COVERED_STEPS steps; the stage's theme is left alone).
+func _covered_theme(theme: Dictionary, depth: float) -> Dictionary:
 	if not is_same(theme, _covered_from):
-		_covered = {}
-		for key in ["grass", "sand", "rumble", "road"]:
-			_covered[key] = [theme[key][0].darkened(0.45), theme[key][1].darkened(0.5)]
-		_covered["lane"] = theme["lane"].darkened(0.3)
+		_covered.clear()
+		for step in COVERED_STEPS + 1:
+			_covered.append(covered_colors(theme, float(step) / COVERED_STEPS))
 		_covered_from = theme
-	return _covered
+	return _covered[roundi(clampf(depth, 0.0, 1.0) * COVERED_STEPS)]
+
+
+## The road colors inside a tunnel: darkened at the mouth, darker still at `depth` 1.
+static func covered_colors(theme: Dictionary, depth: float) -> Dictionary:
+	var extra := COVERED_RAMP * depth
+	var out := {}
+	for key in ["grass", "sand", "rumble", "road"]:
+		out[key] = [theme[key][0].darkened(0.45 + extra), theme[key][1].darkened(0.5 + extra)]
+	out["lane"] = theme["lane"].darkened(0.3 + extra)
+	return out
+
+
+## Neon tubes down a tunnel's walls, one color each side, with a glow around each and a
+## thin line along the foot of the wall. Drawn with the segment, so nearer frames cover them.
+func _tunnel_lights(seg: Segment, lights: Array) -> void:
+	for k in 2:
+		var side := -1.0 if k == 0 else 1.0
+		var col: Color = _fogged(lights[k], seg.fog)
+		var glow := Color(col, 0.35)
+		_quad_pts(wall_strip(seg, side * TUBE_OFFSET, TUBE_HEIGHT - TUBE_THICK, TUBE_THICK * 3.0), glow)
+		_quad_pts(wall_strip(seg, side * TUBE_OFFSET, TUBE_HEIGHT, TUBE_THICK), col)
+		_quad_pts(wall_strip(seg, side * TUBE_OFFSET, TUBE_HEIGHT - TUBE_THICK * 0.35, TUBE_THICK * 0.3), col.lightened(0.6))
+		_quad_pts(wall_strip(seg, side * TUBE_OFFSET * 0.97, 0.0, TUBE_THICK * 0.5), Color(col, 0.7))
+
+
+## A strip along a segment `offset` road half-widths from the center, its bottom `height`
+## above the road and `thick` tall (world units): near bottom, far bottom, far top, near top.
+## At least a pixel tall on screen.
+static func wall_strip(seg: Segment, offset: float, height: float, thick: float) -> PackedVector2Array:
+	var y1 := seg.s1.y - seg.scale1 * height * Cfg.PROJ
+	var y2 := seg.s2.y - seg.scale2 * height * Cfg.PROJ
+	var t1 := maxf(1.0, seg.scale1 * thick * Cfg.PROJ)
+	var t2 := maxf(1.0, seg.scale2 * thick * Cfg.PROJ)
+	var x1 := seg.s1.x + offset * seg.sw1
+	var x2 := seg.s2.x + offset * seg.sw2
+	return PackedVector2Array([Vector2(x1, y1), Vector2(x2, y2), Vector2(x2, y2 - t2), Vector2(x1, y1 - t1)])
 
 
 func _ground(theme: Dictionary, kind: int, b: int, fog: float) -> Color:
@@ -277,6 +327,10 @@ func _ground(theme: Dictionary, kind: int, b: int, fog: float) -> Color:
 
 func _fogged(c: Color, fog: float) -> Color:
 	return c.lerp(_fog_color, fog)
+
+
+func _quad_pts(p: PackedVector2Array, col: Color) -> void:
+	_quad(p[0], p[1], p[2], p[3], col)
 
 
 func _quad(a: Vector2, b: Vector2, c: Vector2, d: Vector2, col: Color) -> void:
