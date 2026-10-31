@@ -12,9 +12,11 @@ static func theme() -> Dictionary:
 		"below_horizon": Color("#3d6b3a"),
 		"grass": [Color("#4f8f3a"), Color("#467f33")],  # forest floor
 		"sand": [Color("#f2f6fb"), Color("#e1e9f3")],  # snow
+		"kickup": ["dust", "snow"],  # FxLayer: what the wheels throw up off the grass, off the sand
 		"rumble": [Color("#f4f4f4"), Color("#c0392b")],
 		"road": [Color("#5d6068"), Color("#575a62")],
 		"lane": Color("#f4f4f4"),
+		"clock": [31, 33, 35, 24],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/timberline_far.png",
 		"specials": ["log_truck", "suv_green", "street_sweeper"],
 	}
@@ -78,6 +80,10 @@ static func build() -> Track:
 	t.add_sprite(waterfall_at, "waterfall", -2.2)
 	t.add_sprite(lodge_at, "lodge", 1.6)
 	t.scatter(["chapel", "moose", "chairlift", "woodpile", "frozen_falls", "snowman"], 200, 450, 1.8)
+	# Brown scenic-route signs on the right
+	t.scatter(["sign_brown", "sign_brown", "sign_brown", "sign_brown", "sign_brown"], 120, 800, 1.5, 1)
+	t.add_road_signs(false)  # the bends have their own chevron boards (_decorate)
+	t.add_race_furniture()
 	t.add_finish_crowd()
 	return t
 

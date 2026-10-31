@@ -7,6 +7,7 @@ const GOLD := Color("#ffd23a")
 const SKY := Color("#3ad0ff")
 const NIGHT := Color("#140c2a")
 const TITLE_BG := "res://assets/sprites/ui/title_bg.png"
+const LOCKED_TINT := Color(0.18, 0.16, 0.26)  # a locked car or stage's picture
 
 var game: Node  # game.gd
 var time := 0.0  # seconds on this screen, for blinking and bobbing
@@ -82,6 +83,16 @@ func _frame(r: Rect2, glow: Color = Color.TRANSPARENT) -> void:
 func _arrow(c: Vector2, dir: int, col: Color) -> void:
 	var d := float(dir)
 	draw_colored_polygon(PackedVector2Array([c + Vector2(8 * d, 0), c + Vector2(-6 * d, -10), c + Vector2(-6 * d, 10)]), col)
+
+
+## A padlock centred on `c`, `scale` times its 20-pixel height.
+func _lock(c: Vector2, scale: float) -> void:
+	var body := Rect2(c + Vector2(-7, -1) * scale, Vector2(14, 11) * scale)
+	draw_arc(c + Vector2(0, -2) * scale, 4.5 * scale, PI, TAU, 12, GOLD, 2.0 * scale)
+	draw_line(c + Vector2(-4.5, -2) * scale, c + Vector2(-4.5, 0) * scale, GOLD, 2.0 * scale)
+	draw_line(c + Vector2(4.5, -2) * scale, c + Vector2(4.5, 0) * scale, GOLD, 2.0 * scale)
+	draw_rect(body, GOLD)
+	draw_rect(Rect2(c + Vector2(-1, 3) * scale, Vector2(2, 4) * scale), NIGHT)
 
 
 func _text(pos: Vector2, s: String, size: int, col: Color) -> void:
