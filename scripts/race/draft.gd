@@ -5,7 +5,10 @@ extends RefCounted
 
 const LENGTH := 1200.0  # world units behind a car its wake reaches
 const WIDTH := 0.35  # road half-widths either side of its center
-const MIN_SPEED := 0.5  # share of Cfg.MAX_SPEED below which there's no wake to sit in
+const MIN_SPEED := 0.5  # share of Cfg.MAX_SPEED below which a racer leaves no wake to sit in
+## Big vehicles run at 0.25 to 0.4 of top speed (Traffic.BIG_SPEED): their wake counts while you
+## keep up with one, at this share of its speed or more.
+const KEEP_UP := 0.8
 const FILL_TIME := 1.5  # seconds in the wake to fill the meter
 const DECAY_TIME := 1.0  # seconds out of it to empty
 const BOOST_TIME := 3.0
@@ -14,11 +17,11 @@ const SPEED_MULT := 1.08  # on top speed while the boost runs
 
 ## Whether `me` sits in the wake of a racer or a big vehicle (Traffic.BIG) ahead.
 static func in_wake(me: PlayerCar, track: Track, racers: Array) -> bool:
-	if me.speed < Cfg.MAX_SPEED * MIN_SPEED or me.airborne or me.crash_time > 0.0:
+	if me.airborne or me.crash_time > 0.0:
 		return false
 	var nose := me.position + Cfg.PLAYER_Z
 	for other: PlayerCar in racers:
-		if other == me:
+		if other == me or me.speed < Cfg.MAX_SPEED * MIN_SPEED:
 			continue
 		var ahead := wrapf(other.position - me.position, -track.length * 0.5, track.length * 0.5)
 		if ahead > 0.0 and ahead < LENGTH and absf(other.x - me.x) < WIDTH:
@@ -26,7 +29,7 @@ static func in_wake(me: PlayerCar, track: Track, racers: Array) -> bool:
 	var here := track.find_segment(nose).index
 	for k in ceili(LENGTH / Cfg.SEGMENT_LENGTH) + 1:
 		for car: Traffic.TrafficCar in track.segments[(here + k) % track.segments.size()].cars:
-			if not Traffic.BIG.has(car.sprite) or not car.solid():
+			if not Traffic.BIG.has(car.sprite) or not car.solid() or me.speed < car.speed * KEEP_UP:
 				continue
 			var ahead := wrapf(car.z - nose, -track.length * 0.5, track.length * 0.5)
 			if ahead > 0.0 and ahead < LENGTH and absf(car.offset - me.x) < WIDTH:

@@ -36,8 +36,10 @@ func test_the_wake_of_a_semi() -> void:
 	semi.z = nose + 600.0
 	check(not Draft.in_wake(me, t, [me]), "a car is too small to hide behind")
 	semi.sprite = "semi"
-	me.speed = Cfg.MAX_SPEED * 0.3
-	check(not Draft.in_wake(me, t, [me]), "no wake to speak of at low speed")
+	me.speed = semi.speed
+	check(Draft.in_wake(me, t, [me]), "keeping up with it at its own speed")
+	me.speed = semi.speed * 0.5
+	check(not Draft.in_wake(me, t, [me]), "dropping back from it")
 
 
 func test_the_wake_of_a_racer() -> void:
@@ -46,6 +48,9 @@ func test_the_wake_of_a_racer() -> void:
 	var other := _car(4800.0, Cfg.MAX_SPEED * 0.8)
 	check(Draft.in_wake(me, t, [me, other]), "behind a rival")
 	check(not Draft.in_wake(other, t, [me, other]), "not in front of one")
+	me.speed = Cfg.MAX_SPEED * 0.3
+	other.speed = me.speed
+	check(not Draft.in_wake(me, t, [me, other]), "no wake to speak of at low speed")
 
 
 func test_the_meter_fills_in_the_wake_and_empties_out_of_it() -> void:
@@ -90,8 +95,14 @@ func test_the_race_drafts() -> void:
 	for c: Traffic.TrafficCar in r.traffic.cars:
 		c.segment.cars.erase(c)
 	r.traffic.cars.clear()
+	# Review on #106: at a real big-vehicle speed (Traffic.BIG_SPEED) the meter could never fill
 	var semi := _big(r.track, p.position + Cfg.PLAYER_Z + 700.0, 0.0)
-	semi.speed = p.speed
+	semi.speed = Cfg.MAX_SPEED * Traffic.BIG_SPEED[1]
+	p.speed = semi.speed
 	r.traffic.cars.append(semi)
-	drive(r, 30, input(0.5))
-	check(p.draft > 0.2, "filling behind the semi (%.2f)" % p.draft)
+	var filled := false
+	for i in int(Draft.FILL_TIME * 60.0) + 10:
+		p.speed = semi.speed  # sitting in behind it
+		drive(r, 1, input(0.0))
+		filled = filled or p.draft_time > 0.0
+	check(filled, "a full meter behind the semi")
