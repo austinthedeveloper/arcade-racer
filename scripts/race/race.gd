@@ -112,7 +112,8 @@ func start_race() -> void:
 	traffic = Traffic.new()
 	traffic.spawn(track, 0 if _no_traffic else Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
 	rivals = Rivals.new()
-	rivals.spawn(track, player, car_id, 0 if _no_rivals else Rivals.COUNT, Rivals.SEED + stage_index)
+	rivals.spawn(track, player, car_id, 0 if _no_rivals else Rivals.COUNT, Rivals.SEED + stage_index,
+		Difficulty.of(Settings.difficulty))
 	state = State.COUNTDOWN
 	countdown = 3.0
 	time_left = Settings.race_time(START_TIME)

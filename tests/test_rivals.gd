@@ -343,3 +343,32 @@ func test_an_aggressive_driver_only_blocks_for_a_while() -> void:
 		blocked += int(me.driver.target == 0.75)
 	check(blocked <= roundi(AIDriver.BLOCK_TIME / DT) + 1, "blocks for BLOCK_TIME at most (%d ticks)" % blocked)
 	near(me.driver.target, 0.0, 0.001, "then lets it by")
+
+
+func test_difficulty_levels() -> void:
+	var easy := Difficulty.of(Difficulty.Level.EASY)
+	var normal := Difficulty.of(Difficulty.Level.NORMAL)
+	var hard := Difficulty.of(Difficulty.Level.HARD)
+	check(easy.rival_pace < normal.rival_pace and normal.rival_pace < hard.rival_pace, "rivals quicker as it gets harder")
+	check(easy.band_ease > hard.band_ease, "easy rivals wait for you more")
+	check(easy.band_boost < hard.band_boost, "hard rivals catch up more")
+	eq([easy.timer, normal.timer, hard.timer], [0, 1, 2], "relaxed, arcade and tight clocks")
+	for d in [easy, normal, hard]:
+		check(d.band_ease <= Rivals.BAND_MAX and d.band_boost <= Rivals.BAND_MAX, "within the band's cap")
+		for gap in [-1e6, 1e6]:
+			var b := Rivals.band(gap, d.band_ease, d.band_boost)
+			check(absf(b - 1.0) <= Rivals.BAND_MAX, "band capped (%.3f)" % b)
+		check(Rivals.COUNT > 0 and d.rival_pace * 0.97 <= 1.0, "even a hard rival tops out at its car's speed")
+
+
+func test_difficulty_reaches_the_field() -> void:
+	var t := flat_track()
+	var easy := Rivals.new()
+	var hard := Rivals.new()
+	easy.spawn(t, _player(), "car_vega", Rivals.COUNT, Rivals.SEED, Difficulty.of(Difficulty.Level.EASY))
+	hard.spawn(t, _player(), "car_vega", Rivals.COUNT, Rivals.SEED, Difficulty.of(Difficulty.Level.HARD))
+	for i in Rivals.COUNT:
+		eq(easy.cars[i].car_id, hard.cars[i].car_id, "the same drivers")
+		check(easy.cars[i].base_top < hard.cars[i].base_top, "slower on easy")
+	eq(easy.band_ease, Difficulty.of(Difficulty.Level.EASY).band_ease, "easy band")
+	eq(hard.band_boost, Difficulty.of(Difficulty.Level.HARD).band_boost, "hard band")

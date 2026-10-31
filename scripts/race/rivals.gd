@@ -27,8 +27,11 @@ var clock := 0.0  # seconds since GO; runs on after the player finishes, unlike 
 
 ## Puts `count` rivals on the grid ahead of `player` (already reset at its start), in cars
 ## other than `player_car_id`, picked and tuned by `seed_value`.
-func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = COUNT, seed_value: int = SEED) -> void:
+func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = COUNT, seed_value: int = SEED,
+		difficulty: Difficulty = Difficulty.of(Difficulty.Level.NORMAL)) -> void:
 	cars.clear()
+	band_ease = difficulty.band_ease
+	band_boost = difficulty.band_boost
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var pool: Array = []
@@ -40,7 +43,7 @@ func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = 
 		var car := Cars.find(prof.car_id)
 		var r := RivalCar.new(car, AIDriver.new(rng.randi(), prof.lane_bias, prof.style))
 		r.profile = prof
-		r.top_speed *= prof.pace
+		r.top_speed *= prof.pace * difficulty.rival_pace
 		r.base_top = r.top_speed
 		var ahead := GRID_FRONT - i * GRID_STEP
 		r.reset(player.position + ahead)
