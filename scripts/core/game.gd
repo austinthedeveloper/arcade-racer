@@ -86,10 +86,13 @@ func show_mode_select(item := -1) -> void:
 
 
 ## The options, from the title unless `back` (with its name for the BACK row's help) says
-## where they go back to.
-func show_options(back := Callable(), back_name := "the title screen") -> void:
+## where they go back to; on `page` (an OptionsScreen.Page) when given.
+func show_options(back := Callable(), back_name := "the title screen", page := -1) -> void:
 	var o := OptionsScreen.new()
 	o.back_name = back_name
+	if page >= 0:
+		o.page = page
+		o.index = 0  # on the page bar, so the page shows which it is
 	_options_back = back
 	_set_menu(o, Screen.OPTIONS)
 
@@ -195,6 +198,8 @@ func _open(which: String) -> void:
 			show_options()
 		"modes":
 			show_mode_select()
+		_ when which.begins_with("options:"):
+			show_options(Callable(), "the title screen", OptionsScreen.page_named(which.get_slice(":", 1)))
 		_:
 			show_title()
 
