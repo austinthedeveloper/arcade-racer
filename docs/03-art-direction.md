@@ -11,15 +11,15 @@
 3. **Chunky and confident.** Bold outlines or strong value separation, no muddy detail. Cars are slightly exaggerated: wide stance, big wheels, low roofs.
 4. **Arcade attitude.** Chrome logos, italic type, lens flares, starbursts, "CHECKPOINT!" banners. Loud, fun, never gritty.
 
-## 2. Style options (needs decision)
+## 2. Style (decided: pixel art)
 
 | Option | Look | Pros | Cons |
 |---|---|---|---|
-| **A. High-color pixel art** (recommended) | 640x360, crisp pixels, 32-bit era arcade sprites, rich but controlled palettes | Cohesive, authentic, scales cleanly, achievable sprite sizes | Pixel art takes skilled cleanup; generated images need redrawing |
+| **A. High-color pixel art** (chosen) | 640x360, crisp pixels, 32-bit era arcade sprites, rich but controlled palettes | Cohesive, authentic, scales cleanly, achievable sprite sizes | Pixel art takes skilled cleanup; generated images need redrawing |
 | **B. Hi-res pre-rendered sprites** | 1280x720+, smooth shaded sprites like late-90s pre-rendered CG | Easier to produce car rotations by rendering 3D models; very "90s arcade cabinet" | Can look dated or plasticky without care; bigger textures |
 | **C. Painted / illustrated sprites** | Hand-painted, flat-shaded vector-ish look | Distinctive, modern-retro | Hardest to keep consistent across many sprites and frames |
 
-The prompts in `assets/prompts/` include a swappable style block so we can generate concepts in all three and pick.
+**Decision:** Option A. The round 1 concept review (`docs/05-concept-review-round1.md`) picked pixel art and named `ka02_gameplay_palm_A_v1.png` the target style frame: B and C read as modern illustration, and C loses the pixel crunch that makes speed feel arcade. The game runs at 640x360 and `assets/prompts/00-style-guide.md` has the pixel art style block (STYLE-A) for prompts. B and C stay in the table as the options that were not taken.
 
 ## 3. Screen composition
 
@@ -42,7 +42,7 @@ The prompts in `assets/prompts/` include a swappable style block so we can gener
 - Player car occupies roughly **25% of screen width**, centered, bottom ~10% margin.
 - HUD stays in the top band and bottom corners; never over the road center.
 
-## 4. Sprite specifications (assuming Option A, 640x360)
+## 4. Sprite specifications (Option A, 640x360)
 
 | Asset | Authored size (approx) | Pivot | Notes |
 |---|---|---|---|
@@ -54,8 +54,6 @@ The prompts in `assets/prompts/` include a swappable style block so we can gener
 | Small props (cones, signs, cactus) | 32 to 96 px | bottom center | |
 | Background layers | 1280 to 2560 x 360 px, tiling horizontally | — | 3 to 4 layers per stage |
 | HUD elements | Native resolution | — | May render at output res for crisp text |
-
-For Option B, double all sizes.
 
 **Rules for all sprites:**
 - Transparent background, no baked shadows on the ground (the engine draws a simple blob shadow).
@@ -112,7 +110,7 @@ Sprite-based effects only: tire smoke puffs, sparks, dust plumes off-road, water
 
 ## 10. Concept phase plan
 
-1. **Round 1, style frames:** the key art + one mock gameplay screenshot of Palm Coast Boulevard, generated in each style option (A, B, C). Pick a direction.
+1. **Round 1, style frames:** the key art + one mock gameplay screenshot of Palm Coast Boulevard, generated in each style option (A, B, C). Done: pixel art was picked (`docs/05`).
 2. **Round 2, hero assets:** 3 to 4 cars, Palm Coast roadside set and background layers, logo concepts.
 3. **Round 3, breadth:** remaining stages, traffic, UI, FX.
 

@@ -193,6 +193,7 @@ func _physics_process(dt: float) -> void:
 			if countdown <= 0.0:
 				state = State.RACING
 				_banner("GO!", "", 1.0)
+				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
 			time_left -= dt
@@ -344,9 +345,11 @@ func _autodrive_input() -> DriveInput:
 	return inp
 
 
-## The lane with the most open road ahead, keeping the current one on a tie.
+## The lane with the most open road ahead, keeping the current one on a tie. Anything slower
+## than cruising speed blocks a lane, so a slowed car doesn't sit behind a tractor.
 func _autodrive_lane() -> float:
 	const LOOKAHEAD := 40  # segments
+	var want := maxf(player.speed, Cfg.MAX_SPEED * 0.8)
 	var here := track.find_segment(player.position + Cfg.PLAYER_Z).index
 	var best: float = Traffic.LANE_OFFSETS[0]
 	var best_gap := -1
@@ -356,13 +359,13 @@ func _autodrive_lane() -> float:
 		var gap := LOOKAHEAD
 		for r in rivals.cars:
 			var ahead := wrapf(r.position - player.position, -track.length * 0.5, track.length * 0.5)
-			if ahead > 0.0 and absf(r.x - lane) < 0.3 and r.speed < player.speed:
+			if ahead > 0.0 and absf(r.x - lane) < 0.3 and r.speed < want:
 				gap = mini(gap, int(ahead / Cfg.SEGMENT_LENGTH))
 		for n in gap:
 			var ahead := track.segments[(here + n) % track.segments.size()]
 			var blocked := false
 			for car in ahead.cars:
-				if absf(car.offset - lane) < 0.3 and car.speed < player.speed:
+				if absf(car.offset - lane) < 0.3 and car.speed < want:
 					blocked = true
 			if blocked:
 				gap = n
