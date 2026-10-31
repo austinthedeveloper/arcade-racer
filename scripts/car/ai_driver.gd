@@ -25,6 +25,8 @@ const NITRO_RATE := 0.6  # chance per second of firing nitro once everything all
 const BLOCK_RANGE := 1500.0  # world units: an aggressive driver blocks a faster car this close behind...
 const BLOCK_TIME := 1.5  # ...for this long at most...
 const BLOCK_REST := 5.0  # ...then lets it by for this long
+const BLOCK_FORGET := 0.5  # block seconds forgotten per second without a car to block, so a
+                           # chaser dropping back for a moment doesn't restart the clock
 const ERRATIC_REACT := 0.35  # seconds an erratic driver sticks to a lane before looking again...
 const ERRATIC_LOOKAHEAD := 25  # ...seeing this many segments ahead
 const SWERVE_RATE := 0.25  # chance per second an erratic driver picks a new line
@@ -58,7 +60,7 @@ func drive(me: PlayerCar, track: Track, racers: Array, dt: float) -> DriveInput:
 		var chaser := blocking_target(me, track, racers) if _resting <= 0.0 else null
 		_resting = maxf(0.0, _resting - dt)
 		if chaser == null:
-			_blocking = 0.0
+			_blocking = maxf(0.0, _blocking - dt * BLOCK_FORGET)
 		else:
 			want = clampf(chaser.x, -edge, edge)
 			_blocking += dt
