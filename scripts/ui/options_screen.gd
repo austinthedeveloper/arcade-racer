@@ -8,7 +8,7 @@ extends MenuScreen
 ## The two reset rows leave the wheel profiles alone; resetting the save asks first.
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
-	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, BACK }
+	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, BACK }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -18,7 +18,7 @@ const PAGE_ROWS := [
 	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
 	[Row.MUSIC, Row.SFX],
 	[Row.CALIBRATE],
-	[Row.SCREEN_SHAKE, Row.FLASH],
+	[Row.SCREEN_SHAKE, Row.FLASH, Row.STEER_ASSIST, Row.BRAKE_ASSIST],
 ]
 ## Shown on a page with no rows yet.
 const PAGE_EMPTY := ["", "", "", "", ""]
@@ -26,7 +26,7 @@ const PAGE_EMPTY := ["", "", "", "", ""]
 const SLOTS := 10
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
-	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "BACK"]
+	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "BACK"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -47,10 +47,13 @@ const HELP := [
 	"Scale by whole steps only, for even, sharp pixels. Leaves a border.",
 	"Wait for the display between frames: no tearing.",
 	"Dark lines over the picture, like an old arcade monitor.",
+	"Keys and pad: at speed, a gentle pull to the middle of your lane.",
+	"Brakes for you into corners you're taking too fast.",
 	"Back to %s.",
 ]
 ## The rows that show ON or OFF.
-const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES]
+const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES,
+	Row.STEER_ASSIST, Row.BRAKE_ASSIST]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
 ## Rows the race only reads when a stage starts.
 const NEXT_RACE := [Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS]
@@ -163,6 +166,10 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.vsync = not s.vsync
 		Row.SCANLINES:
 			s.scanlines = not s.scanlines
+		Row.STEER_ASSIST:
+			s.steer_assist = not s.steer_assist
+		Row.BRAKE_ASSIST:
+			s.brake_assist = not s.brake_assist
 		_:
 			return false
 	s.save()
@@ -212,6 +219,10 @@ static func toggled(row: int) -> bool:
 			return s.vsync
 		Row.SCANLINES:
 			return s.scanlines
+		Row.STEER_ASSIST:
+			return s.steer_assist
+		Row.BRAKE_ASSIST:
+			return s.brake_assist
 	return false
 
 

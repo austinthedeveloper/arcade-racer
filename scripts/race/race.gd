@@ -255,6 +255,8 @@ func _physics_process(dt: float) -> void:
 	var inp: DriveInput = Settings.drive_input(InputRouter.state)
 	if _autodrive:
 		inp = _autodrive_input()
+	else:
+		inp = Assists.apply(inp, player, track, Settings.steer_assist, Settings.brake_assist)
 	if calibration.visible:
 		_redraw()
 		return
