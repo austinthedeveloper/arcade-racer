@@ -323,3 +323,55 @@ func test_pause_menu_selection() -> void:
 	m.choose(held)
 	eq(m.index, 3, "once let go, it does")
 	m.free()
+
+
+# --- Attract-mode demo ----------------------------------------------------------------
+
+func _demo(stage := 0) -> Node:
+	var r := race(false, true, stage)
+	r.demo = true
+	r.start_race()
+	return r
+
+
+func test_a_demo_drives_itself_with_traffic() -> void:
+	var s: Node = runner.root.get_node("Settings")
+	s.traffic = s.Traffic.LIGHT
+	var r := _demo()
+	s.traffic = s.Traffic.NORMAL
+	eq(r.state, r.State.RACING, "no countdown")
+	eq(r.traffic.cars.size(), int(r.track.theme.get("traffic", r.TRAFFIC_COUNT)), "full traffic whatever the options say")
+	var held := input(0.0, -1.0, 1.0)
+	held.pause_pressed = true
+	drive(r, 120, held)
+	check(r.player.speed > Cfg.MAX_SPEED * 0.3, "autodriven, the player's brake ignored")
+	check(not r.paused, "and their pause")
+
+
+func test_a_demo_ends_itself() -> void:
+	var r := _demo()
+	var quits := [0]
+	r.quit_requested.connect(func() -> void: quits[0] += 1)
+	drive(r, 10)
+	eq(quits[0], 0, "driving along")
+	r.race_time = Attract.DEMO_SECONDS
+	drive(r, 1)
+	eq(quits[0], 1, "after DEMO_SECONDS")
+	r.start_race()
+	r.player.distance = r.finish_distance + 1.0
+	drive(r, 1)
+	eq(quits[0], 2, "at the finish")
+	r.start_race()
+	r.time_left = 0.01
+	drive(r, 1)
+	eq(quits[0], 3, "at time up")
+
+
+func test_a_demo_saves_nothing() -> void:
+	TestSuite.use_scratch_settings(runner.root.get_node("Settings"))
+	TestSuite.use_scratch_profiles(runner.root.get_node("InputRouter"))
+	var r := _demo(1)
+	run_until(r, func() -> bool: return r.demo_over(), 5000)
+	check(r.demo_over(), "the demo ran to its end")
+	check(not FileAccess.file_exists(TestSuite.SCRATCH_SETTINGS), "no options written")
+	check(not FileAccess.file_exists(TestSuite.SCRATCH_PROFILES), "no input profiles written")

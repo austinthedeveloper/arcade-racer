@@ -367,6 +367,42 @@ func _tick() -> void:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES and _game.race == null, "Enter after the finish goes back to stage select")
 			_check(not is_instance_valid(_race) or _race.is_queued_for_deletion(), "the race is gone")
+			# Attract mode: back to the title and leave it be (a short wait, not 20 s)
+			_game.attract_delay = 0.5
+			_send("back", true)
+			_next(2)
+		48:
+			_send("back", false)
+			_next(2)
+		49:
+			_send("back", true)
+			_next(2)
+		50:
+			_send("back", false)
+			_check(_game.screen == _game.Screen.TITLE, "back to the title")
+			_next(40)  # the 0.5 s delay and a little
+		51:
+			_race = _game.race
+			_check(_game.screen == _game.Screen.RACE and _race != null and _race.demo,
+				"left alone, the title starts a demo race")
+			if _race == null:
+				quit(1)
+				return
+			_check(_race.traffic.cars.size() > 0, "with traffic")
+			_mark = _race.player.distance
+			_next(60)
+		52:
+			_check(_race.player.distance > _mark and _race.player.speed > 0.0, "the demo drives itself")
+			_check(_game.stage_index == 1, "the demo leaves the player's stage pick alone")
+			_send("confirm", true)
+			_next(2)
+		53:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.TITLE and _game.race == null, "any input ends the demo, back to the title")
+			_check(not is_instance_valid(_race) or _race.is_queued_for_deletion(), "the demo race is gone")
+			_next(4)
+		54:
+			_check(_game.screen == _game.Screen.TITLE, "the press that ended it doesn't also pick START")
 			_next()
 		_:
 			print("\n%s" % ("e2e passed" if _fails == 0 else "e2e: %d failed" % _fails))

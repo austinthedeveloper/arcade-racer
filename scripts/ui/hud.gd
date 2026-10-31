@@ -1,17 +1,32 @@
 class_name Hud
 extends Control
-## In-race HUD: timer, route progress, nitro, speedometer and center banners.
+## In-race HUD: timer, route progress, nitro, speedometer and center banners. In an
+## attract-mode demo: the logo and PRESS START instead.
+
+const LOGO := "res://assets/sprites/ui/logo.png"
+const DEMO_LOGO_SCALE := 0.6
 
 var race: Node  # race.gd
+var time := 0.0  # seconds since the HUD appeared, for blinking
+
+var _logo: Texture2D
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	_logo = load(LOGO)
+
+
+func _process(dt: float) -> void:
+	time += dt
 
 
 func _draw() -> void:
 	if race == null or race.player == null:
+		return
+	if race.demo:
+		_draw_demo()
 		return
 	var p: PlayerCar = race.player
 	var w := float(Cfg.SCREEN_W)
@@ -77,6 +92,21 @@ func _draw() -> void:
 		_text_centered(Vector2(w / 2.0, 130), race.banner, 44, Color("#ffd23a"))
 		if race.banner_sub != "":
 			_text_centered(Vector2(w / 2.0, 156), race.banner_sub, 14, Color.WHITE)
+
+
+## The demo's overlay: the logo up top, the stage under it, PRESS START blinking below.
+func _draw_demo() -> void:
+	var w := float(Cfg.SCREEN_W)
+	var y := 8.0
+	if _logo != null:
+		var size := Vector2(_logo.get_width(), _logo.get_height()) * DEMO_LOGO_SCALE
+		draw_texture_rect(_logo, Rect2(Vector2(roundf((w - size.x) / 2.0), y), size.round()), false)
+		y += size.y
+	draw_rect(Rect2(w / 2.0 - 90, y + 1, 180, 13), Color(0, 0, 0, 0.45))
+	_text_centered(Vector2(w / 2.0, y + 11), race.track.name.to_upper(), 9, Color(1, 1, 1, 0.9))
+	draw_rect(Rect2(0, Cfg.SCREEN_H - 34, w, 20), Color(0, 0, 0, 0.45))
+	if fmod(time, 1.0) < 0.65:
+		_text_centered(Vector2(w / 2.0, Cfg.SCREEN_H - 19), "PRESS START", 12, Color("#ffd23a"))
 
 
 func _text(pos: Vector2, s: String, size: int, col: Color) -> void:

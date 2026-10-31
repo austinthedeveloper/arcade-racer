@@ -23,6 +23,11 @@ const SHAKE_SETTLE := 12.0
 var track: Track
 var stage_index := 0  # into Stages
 var tour := true  # Grand Tour: a finish goes on to the next stage. false: a Single Race
+## An attract-mode demo (Attract): autodriven with traffic, no countdown, the player's
+## controls ignored (the game watches them to end it). It ends itself (quit_requested) at
+## the finish, at time up or after Attract.DEMO_SECONDS, and it never saves anything:
+## anything a race records (best times, progress) must skip a demo.
+var demo := false
 var car_id := "car_vega"  # into Cars
 var player: PlayerCar
 var power_ups := PowerUps.new()
@@ -112,9 +117,10 @@ func start_race() -> void:
 	pickup_age = 99.0
 	ram_flash = 0.0
 	traffic = Traffic.new()
-	traffic.spawn(track, 0 if _no_traffic else Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
-	state = State.COUNTDOWN
-	countdown = 3.0
+	var cars := int(track.theme.get("traffic", TRAFFIC_COUNT))
+	traffic.spawn(track, 0 if _no_traffic else (cars if demo else Settings.traffic_count(cars)))
+	state = State.RACING if demo else State.COUNTDOWN
+	countdown = 0.0 if demo else 3.0
 	time_left = Settings.race_time(START_TIME)
 	checkpoint_bonus = Settings.race_time(CHECKPOINT_BONUS)
 	race_time = 0.0
@@ -173,6 +179,11 @@ func pause_action(action: int) -> void:
 			quit_requested.emit()
 
 
+## A demo is done: it reached the finish, ran out of time or ran its length.
+func demo_over() -> bool:
+	return state == State.FINISHED or state == State.TIME_UP or race_time >= Attract.DEMO_SECONDS
+
+
 func counting_down() -> bool:
 	return state == State.COUNTDOWN
 
@@ -186,7 +197,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(dt: float) -> void:
 	var inp: DriveInput = Settings.drive_input(InputRouter.state)
-	if _autodrive:
+	if _autodrive or demo:
 		inp = _autodrive_input()
 	if calibration.visible:
 		_redraw()
@@ -236,6 +247,9 @@ func _physics_process(dt: float) -> void:
 	if state == State.RACING:
 		_check_pickups()
 		_check_progress()
+	if demo and demo_over():
+		quit_requested.emit()
+		return
 
 	background.offset += seg_before.curve * (player.speed * dt / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
 
