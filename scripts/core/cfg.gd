@@ -53,6 +53,8 @@ const TAKEOFF_SPEED := MAX_SPEED * 0.4  # slower than this, a crest doesn't laun
 const HIT_OVERLAP := 0.8  # cars hit when they overlap this much of their combined half-widths
 const CRASH_CLOSING_SPEED := MAX_SPEED * 0.5  # closing faster than this crashes; slower bumps
 const BUMP_GAP := 50.0  # world units a bump leaves between you and the car you hit
+const CAR_LENGTH := 400.0  # world units along the road a car counts as beside you
+const SIDESWIPE_SPEED_LOSS := 0.05  # share of your speed a side-swipe scrubs off
 
 # Race clock
 const LOW_TIME := 10.0  # seconds left when the clock flashes and ticks

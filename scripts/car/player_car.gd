@@ -11,6 +11,7 @@ var position := 0.0  # camera z, wrapped to the track length
 var last_position := 0.0  # position before this tick's move
 var distance := 0.0  # total distance driven, not wrapped
 var x := 0.0
+var last_x := 0.0  # x before this tick's steering
 var speed := 0.0
 var steer := 0.0  # smoothed steering, for visuals
 var pitch := 0.0  # smoothed nose angle for visuals: 1 full nose-down (downhill), -1 full nose-up
@@ -63,6 +64,7 @@ func reset(start_position: float = 0.0) -> void:
 	last_position = start_position
 	distance = 0.0
 	x = 0.0
+	last_x = 0.0
 	speed = 0.0
 	nitro_charges = nitro_max
 	nitro_time = 0.0
@@ -108,6 +110,7 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 
 	# Steering and the outward pull of curves
 	var rate := dt * Cfg.STEER_RATE * steer_mult * pct
+	last_x = x
 	if airborne:
 		rate *= Cfg.AIR_STEER
 	x += steer_in * rate
@@ -219,21 +222,44 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 	if ghost_time > 0.0:
 		return false
 	for car in seg.cars:
-		if speed <= car.speed or car.flung > 0.0:
+		if not car.solid():
 			continue
 		var car_half: float = half_car * car.width_mult
-		if absf(x - car.offset) < (half_car + car_half) * Cfg.HIT_OVERLAP:
-			if ram_time > 0.0:
-				Traffic.fling(car, x)
-				rammed = true
-			elif speed - car.speed > Cfg.CRASH_CLOSING_SPEED:
-				crash()
-			else:
-				speed = car.speed * (car.speed / speed)
-				bumped = true
-				move_to(car.z - Cfg.PLAYER_Z - Cfg.BUMP_GAP, track)
+		var reach: float = (half_car + car_half) * Cfg.HIT_OVERLAP
+		if absf(x - car.offset) >= reach:
+			continue
+		var gap := gap_when_tick_began(car, track)
+		if gap <= -Cfg.CAR_LENGTH:
+			continue  # already passed
+		if gap < 0.0:
+			if speed <= car.speed and absf(last_x - car.offset) < reach:
+				continue  # a faster car catching you up from behind in your lane drives through
+			# Steered into a car beside you: pushed back out to your side, no snap behind it
+			x = car.offset + (reach if x >= car.offset else -reach)
+			speed *= 1.0 - Cfg.SIDESWIPE_SPEED_LOSS
+			bumped = true
 			return true
+		if speed <= car.speed:
+			continue
+		if ram_time > 0.0:
+			Traffic.fling(car, x)
+			rammed = true
+		elif speed - car.speed > Cfg.CRASH_CLOSING_SPEED:
+			crash()
+		else:
+			speed = car.speed * (car.speed / speed)
+			bumped = true
+			move_to(car.z - Cfg.PLAYER_Z - Cfg.BUMP_GAP, track)
+		return true
 	return false
+
+
+## How far `car`'s rear was ahead of this car's nose when the tick began. Negative means
+## already beside it (a touch is a side-swipe, not running into the back of it); -CAR_LENGTH
+## or less means past it.
+func gap_when_tick_began(car: Traffic.TrafficCar, track: Track) -> float:
+	var car_was: float = car.z if is_nan(car.last_z) else car.last_z
+	return wrapf(car_was - (last_position + Cfg.PLAYER_Z), -track.length * 0.5, track.length * 0.5)
 
 
 ## Puts the car at track position `z` (wrapped), moving `distance` by the same amount so
