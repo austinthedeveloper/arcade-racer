@@ -244,11 +244,21 @@ func _check_progress() -> void:
 		_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0)
 	if player.distance >= finish_distance:
 		state = State.FINISHED
+		record_finish()
 		var mins := int(race_time) / 60
 		var secs := fmod(race_time, 60.0)
 		var next := Stages.next(stage_index)
 		var prompt := "Enter: on to %s" % Stages.stage_name(next) if next >= 0 else "Tour complete!   Enter: race again"
 		_banner("FINISH!", "Time %d:%05.2f   %s" % [mins, secs, prompt], 999.0)
+
+
+## Saves the finish (SaveData): best time for this stage and car, and the tour's progress.
+## Autodriven runs and partway starts (dev flags) aren't the player's, so they aren't saved.
+## Returns true for a new best time.
+func record_finish() -> bool:
+	if _autodrive or _start_segment != 0:
+		return false
+	return SaveData.record_finish(stage_index, car_id, race_time)
 
 
 func _banner(text: String, sub: String, seconds: float) -> void:
