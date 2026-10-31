@@ -89,7 +89,7 @@ tools/test.sh test_race        # only tests whose name contains "test_race"
 
 ## Releases
 
-`tools/export.sh [version]` builds Windows, macOS (universal) and Web into `build/release/SundownRun-<version>-<platform>.zip`. It needs the Godot 4.7.2 export templates (Editor > Manage Export Templates). The presets are in `export_presets.cfg`.
+`tools/export.sh [version]` builds Windows, macOS (universal), Web and Linux into `build/release/SundownRun-<version>-<platform>.zip`. It needs the Godot 4.7.2 export templates (Editor > Manage Export Templates). The presets are in `export_presets.cfg`.
 
 To publish, bump `config/version` in `project.godot`, then push a tag:
 
@@ -97,7 +97,7 @@ To publish, bump `config/version` in `project.godot`, then push a tag:
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-`.github/workflows/release.yml` runs the tests, exports the three builds and creates the GitHub Release with the zips and download notes. Running the workflow by hand (Actions > Release > Run workflow) builds the zips as a workflow artifact without publishing. The builds are not code-signed or notarized, so Windows SmartScreen and macOS Gatekeeper warn on first launch; the release notes say how to get past that.
+`.github/workflows/release.yml` runs the tests, exports the builds and creates the GitHub Release with the zips and download notes. Running the workflow by hand (Actions > Release > Run workflow) builds the zips as a workflow artifact without publishing. The builds are not code-signed or notarized, so Windows SmartScreen and macOS Gatekeeper warn on first launch; the release notes say how to get past that. The Linux x86_64 zip is not a supported platform and is for testing only (CI smoke-runs it headlessly; a Steam Deck test may follow).
 
 ## Docs
 
