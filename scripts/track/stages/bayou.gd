@@ -70,11 +70,7 @@ static func build() -> Track:
 	t.straight(Track.LENGTH_LONG)
 	causeways.append(Vector2i(start, t.segments.size()))
 
-	var n := t.segments.size()
-	t.segments[14].flags |= Segment.FLAG_START
-	for f in [0.25, 0.5, 0.75]:
-		t.add_checkpoint(int(n * f))
-	t.finish_building(final_straight + 60)
+	t.finish_stage(final_straight)
 
 	_decorate(t, causeways)
 	# An old steel truss bridge partway along the first causeway

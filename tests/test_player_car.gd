@@ -299,10 +299,7 @@ func test_every_car_has_its_sprites_and_picture() -> void:
 	for i in Cars.count():
 		var car := Cars.get_car(i)
 		check(ResourceLoader.exists(Cars.picture(car)), car["name"] + " showroom picture")
-		CarSprites.use_car(car["strip"])
-		check(CarSprites.player_strips.has(0), car["name"] + " steering strip")
-		eq(CarSprites.player_car, car["strip"], car["name"] + " is the player's car")
-	CarSprites.use_car("vega")
+		check(CarSprites.strips(car["strip"]).has(0), car["name"] + " steering strip")
 	eq(Cars.find("car_nope")["id"], "car_vega", "unknown ids fall back to the Vega")
 
 

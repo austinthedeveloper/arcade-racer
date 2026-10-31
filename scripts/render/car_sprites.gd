@@ -23,33 +23,29 @@ const DECK_SPLIT := 0.55
 # the bumper does the opposite at half the rate.
 const DECK_STRETCH := 0.35
 
-## The player's car: pitch row (-1 up, 0 level, 1 down) -> {"tex", "cell", "body_w"}
-static var player_strips: Dictionary = {}
-static var player_car := ""
-static var _strip_sets: Dictionary = {}  # car strip id -> its player_strips
+static var _strip_sets: Dictionary = {}  # car strip id -> its strips
 static var traffic: Dictionary = {}
 
 
 static func load_all() -> void:
 	if not traffic.is_empty():
 		return
-	use_car("vega")
 	var m: Dictionary = SpriteLibrary.manifest()["traffic"]
 	for id: String in m:
 		_add_traffic(id, SpriteLibrary.SPRITES + m[id]["file"], m[id]["world_per_px"])
 
 
-## Makes `strip_id`'s steering strips the player's (loaded once per car).
-static func use_car(strip_id: String) -> void:
+## A car's steering strips (Cars.LIST "strip"), loaded once per car: pitch row (-1 up, 0
+## level, 1 down) -> {"tex", "cell", "body_w"}. The level row is always there.
+static func strips(strip_id: String) -> Dictionary:
 	if not _strip_sets.has(strip_id):
-		var strips := {0: _load_strip(PLAYER_DIR + strip_id + "_steer.png")}
+		var rows := {0: _load_strip(PLAYER_DIR + strip_id + "_steer.png")}
 		for row: int in PITCH_SUFFIXES:
 			var path: String = PLAYER_DIR + strip_id + "_steer" + PITCH_SUFFIXES[row] + ".png"
 			if ResourceLoader.exists(path):
-				strips[row] = _load_strip(path)
-		_strip_sets[strip_id] = strips
-	player_strips = _strip_sets[strip_id]
-	player_car = strip_id
+				rows[row] = _load_strip(path)
+		_strip_sets[strip_id] = rows
+	return _strip_sets[strip_id]
 
 
 static func _load_strip(path: String) -> Dictionary:
@@ -69,14 +65,15 @@ static func _add_traffic(id: String, path: String, world_per_px: float) -> void:
 	traffic[id] = {"tex": tex, "world_w": tex.get_width() * world_per_px}
 
 
-## base: bottom-center of the car on the road. w: on-screen body width.
+## car: the player car's strips (strips). base: bottom-center of the car on the road.
+## w: on-screen body width.
 ## steer: -1 full left .. 1 full right; beyond that it keeps the hardest frame.
 ## pitch: 1 full nose-down (downhill) .. -1 full nose-up (see PlayerCar.pitch).
 ## alpha: below 1 for a see-through car (the ghost power-up).
-static func draw_player(ci: CanvasItem, base: Vector2, w: float, steer: float, brake: bool, nitro: bool,
+static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float, steer: float, brake: bool, nitro: bool,
 		t: float, lift: float = 0.0, pitch: float = 0.0, alpha: float = 1.0) -> void:
-	var row := pitch_row(pitch, player_strips.keys())
-	var strip: Dictionary = player_strips[row]
+	var row := pitch_row(pitch, car.keys())
+	var strip: Dictionary = car[row]
 	var tex: Texture2D = strip["tex"]
 	var cell: Vector2 = strip["cell"]
 	var k := draw_scale(w, strip)

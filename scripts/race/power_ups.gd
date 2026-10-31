@@ -12,7 +12,8 @@ const SPOTS := [0.12, 0.3, 0.47, 0.64, 0.81]
 ## Chance of each kind on the road (mystery most often), and out of a mystery hubcap
 const ROAD_WEIGHTS := [0.15, 0.15, 0.15, 0.15, 0.4]
 const MYSTERY_WEIGHTS := [0.3, 0.25, 0.25, 0.2, 0.0]
-## Below this much time left, a mystery hubcap is much more likely to be a clock
+## Below this much time left, a mystery hubcap is much more likely to be a clock: a little
+## earlier than the clock flashes (Cfg.LOW_TIME), so the help comes before the panic
 const LOW_TIME := 12.0
 const CLOCK_BONUS := 3.0
 const RAM_TIME := 5.0

@@ -205,6 +205,14 @@ func needs_calibration(device: int) -> bool:
 	return p.kind == DeviceProfile.Kind.WHEEL and not p.calibrated
 
 
+## The title screen's and the race's prompt to calibrate a connected wheel, or "".
+func wheel_hint() -> String:
+	for d in Input.get_connected_joypads():
+		if needs_calibration(d):
+			return "Wheel detected: press F2 to calibrate steering and pedals"
+	return ""
+
+
 func save_profile(profile: DeviceProfile) -> void:
 	_saved[profile.guid] = profile
 	_write_profiles()

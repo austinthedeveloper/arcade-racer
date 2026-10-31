@@ -8,6 +8,7 @@ extends Node2D
 
 var track: Track
 var player: PlayerCar
+var player_strips: Dictionary = {}  # the player car's CarSprites.strips
 var camera_z := 0.0
 var time := 0.0
 
@@ -15,6 +16,8 @@ var _pts := PackedVector2Array()
 var _cols := PackedColorArray()
 var _idx := PackedInt32Array()
 var _fog_color := Color.WHITE
+var _covered: Dictionary = {}  # _covered_theme: the darkened colors
+var _covered_from: Dictionary = {}  # and the theme they were made from
 var _font: Font
 
 
@@ -251,19 +254,20 @@ func _draw_player() -> void:
 	var alpha := 1.0
 	if p.ghost_time > 0.0:
 		alpha = 0.45 + (0.35 if p.ghost_time < 1.0 and int(time * 10.0) % 2 == 0 else 0.0)
-	CarSprites.draw_player(self, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking, p.nitro_time > 0.0,
+	CarSprites.draw_player(self, player_strips, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking, p.nitro_time > 0.0,
 		time, roundf(lift), p.pitch, alpha)
 
 
-## A stage's road colors, darkened for inside a tunnel or covered bridge.
+## A stage's road colors, darkened for inside a tunnel or covered bridge (worked out once
+## per stage; the stage's theme is left alone).
 func _covered_theme(theme: Dictionary) -> Dictionary:
-	if not theme.has("_covered"):
-		var dark := {}
+	if not is_same(theme, _covered_from):
+		_covered = {}
 		for key in ["grass", "sand", "rumble", "road"]:
-			dark[key] = [theme[key][0].darkened(0.45), theme[key][1].darkened(0.5)]
-		dark["lane"] = theme["lane"].darkened(0.3)
-		theme["_covered"] = dark
-	return theme["_covered"]
+			_covered[key] = [theme[key][0].darkened(0.45), theme[key][1].darkened(0.5)]
+		_covered["lane"] = theme["lane"].darkened(0.3)
+		_covered_from = theme
+	return _covered
 
 
 func _ground(theme: Dictionary, kind: int, b: int, fog: float) -> Color:

@@ -14,6 +14,10 @@ const HILL_LOW := 20.0
 const HILL_MEDIUM := 40.0
 const HILL_HIGH := 60.0
 
+const START_SEGMENT := 14  # where the start line is drawn
+const CHECKPOINT_FRACTIONS := [0.25, 0.5, 0.75]
+const FINISH_INTO_STRAIGHT := 60  # segments into the final straight
+
 const GROUND_GRASS := 0
 const GROUND_SAND := 1
 
@@ -210,6 +214,17 @@ func add_finish_crowd() -> void:
 func add_checkpoint(index: int) -> void:
 	segments[index].flags |= Segment.FLAG_CHECKPOINT
 	checkpoints.append(index)
+
+
+## Every stage ends the same way: the start line a little way in, checkpoints at a quarter,
+## a half and three quarters of the way, and the finish FINISH_INTO_STRAIGHT segments into the
+## final straight (which starts at segment `final_straight`). Call after the last road piece.
+func finish_stage(final_straight: int) -> void:
+	var n := segments.size()
+	segments[START_SEGMENT].flags |= Segment.FLAG_START
+	for f: float in CHECKPOINT_FRACTIONS:
+		add_checkpoint(int(n * f))
+	finish_building(final_straight + FINISH_INTO_STRAIGHT)
 
 
 func finish_building(finish_at: int) -> void:

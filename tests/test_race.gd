@@ -151,3 +151,22 @@ func test_the_tour_runs_through_every_stage_in_order() -> void:
 		_confirm(r)
 		eq(r.stage_index, i, "stage %d" % (i + 1))
 		eq(r.track.name, Stages.stage_name(i), "on to " + Stages.stage_name(i))
+
+
+func test_the_renderer_draws_the_chosen_car() -> void:
+	var r := race(false, false)
+	check(r.road.player_strips == CarSprites.strips("vega"), "the Vega by default")
+	r.car_id = "car_mesa"
+	r.start_race()
+	check(r.road.player_strips == CarSprites.strips("mesa"), "the Mesa once chosen")
+
+
+func test_a_restart_starts_the_clocks_over() -> void:
+	# Regression: the frame count (autodrive nitro timing, screenshot frames) ran on across
+	# restarts, and the pad's speed sensitivity kept the last race's speed.
+	var r := race(true, false)
+	drive(r, 400)
+	check(r._frame > 0 and InputRouter.speed_factor > 0.0, "counting while racing")
+	r.start_race()
+	eq(r._frame, 0, "frames from zero")
+	eq(InputRouter.speed_factor, 0.0, "pad steering back at rest")

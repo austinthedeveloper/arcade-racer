@@ -10,6 +10,11 @@ const START_TIME := 45.0  # on the ARCADE timer; Settings scales both for the ot
 const CHECKPOINT_BONUS := 25.0
 const BACKGROUND_SCROLL := 0.0006  # per segment travelled, per unit of curve
 const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
+# Camera shake, in screen pixels, and how fast it settles (pixels per second)
+const SHAKE_CRASH := 5.0
+const SHAKE_LANDING := 3.0
+const SHAKE_OFFROAD := 1.5  # at top speed
+const SHAKE_SETTLE := 12.0
 
 var track: Track
 var stage_index := 0  # into Stages
@@ -33,7 +38,6 @@ var next_checkpoint := 0
 var banner := ""
 var banner_sub := ""
 var banner_time := 0.0
-var wheel_hint := ""
 var paused := false
 
 var background: Background
@@ -52,7 +56,9 @@ var _no_traffic := false
 var _start_segment := 0  # --at-segment=N: start the race this far in (screenshots)
 var _screenshot_frames: Array[int] = []
 var _screenshot_dir := ""
-var _frame := 0
+var _frame := 0  # physics ticks since this race (re)started
+## The dev flags are for the race the game starts with; later races come from the menus.
+static var _dev_args_read := false
 
 
 func _ready() -> void:
@@ -74,18 +80,20 @@ func _ready() -> void:
 		layer.add_child(calibration)
 	audio = RaceAudio.new(self)
 	add_child(audio)
-	InputRouter.devices_changed.connect(_update_wheel_hint)
-	_parse_dev_args()
+	if not _dev_args_read:
+		_dev_args_read = true
+		_parse_dev_args()
 	start_race()
 
 
 func start_race() -> void:
+	InputRouter.speed_factor = 0.0
+	_frame = 0
 	track = Stages.build(stage_index)
 	player = PlayerCar.new()
 	var car := Cars.find(car_id)
 	player.setup(car)
 	CarSprites.load_all()
-	CarSprites.use_car(car["strip"])
 	player.reset(_start_segment * Cfg.SEGMENT_LENGTH)
 	player.road_y = track.height_at(player.position + Cfg.PLAYER_Z)
 	power_ups = PowerUps.new()
@@ -113,7 +121,12 @@ func start_race() -> void:
 	background.offset = 0.0
 	road.track = track
 	road.player = player
-	_update_wheel_hint()
+	road.player_strips = CarSprites.strips(car["strip"])
+
+
+## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
+func _exit_tree() -> void:
+	InputRouter.speed_factor = 0.0
 
 
 ## After a finish: on to the next stage, or back to the first after the last.
@@ -186,19 +199,19 @@ func _physics_process(dt: float) -> void:
 
 	# Camera shake: rough ground, landings, crashes
 	if player.crashed:
-		_shake = 5.0
+		_shake = SHAKE_CRASH
 	elif player.landed:
-		_shake = maxf(_shake, 3.0)
+		_shake = maxf(_shake, SHAKE_LANDING)
 	elif player.offroad and player.speed > 100.0:
-		_shake = maxf(_shake, 1.5 * player.speed_percent())
-	_shake = move_toward(_shake, 0.0, dt * 12.0)
+		_shake = maxf(_shake, SHAKE_OFFROAD * player.speed_percent())
+	_shake = move_toward(_shake, 0.0, dt * SHAKE_SETTLE)
 	road.position = Vector2(roundf(randf_range(-1, 1) * _shake), roundf(randf_range(-1, 1) * _shake))
 	road.time += dt
 	road.camera_z = player.position
 	_redraw()
 	_frame += 1
 	if _screenshot_frames.has(_frame):
-		_save_screenshot()
+		_save_screenshot(_frame)
 
 
 func _check_pickups() -> void:
@@ -244,13 +257,6 @@ func _banner(text: String, sub: String, seconds: float) -> void:
 	banner_time = seconds
 	if _log_banners:
 		print("[autodrive] %.1fs  %s  %s" % [race_time, text, sub])
-
-
-func _update_wheel_hint() -> void:
-	wheel_hint = ""
-	for d in Input.get_connected_joypads():
-		if InputRouter.needs_calibration(d):
-			wheel_hint = "Wheel detected: press F2 to calibrate steering and pedals"
 
 
 func _redraw() -> void:
@@ -315,9 +321,9 @@ func _autodrive_lane() -> float:
 	return best
 
 
-func _save_screenshot() -> void:
+func _save_screenshot(frame: int) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	var dir := _screenshot_dir if _screenshot_dir != "" else "user://screenshots"
 	DirAccess.make_dir_recursive_absolute(dir)
-	img.save_png("%s/frame_%05d.png" % [dir, _frame])
+	img.save_png("%s/frame_%05d.png" % [dir, frame])
