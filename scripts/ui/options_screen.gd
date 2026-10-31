@@ -8,14 +8,14 @@ extends MenuScreen
 ## The two reset rows leave the wheel profiles alone; resetting the save asks first.
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, TIMER, POWER_UPS, MUSIC, SFX, CALIBRATE, RESET_OPTIONS, RESET_SAVE, SCREEN_SHAKE,
-	FLASH, UNITS, BACK }
+	FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, BACK }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
 ## The rows between the page bar and BACK on each page.
 const PAGE_ROWS := [
 	[Row.AUTO_GAS, Row.TRAFFIC, Row.TIMER, Row.POWER_UPS, Row.RESET_OPTIONS, Row.RESET_SAVE],
-	[Row.UNITS],
+	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
 	[Row.MUSIC, Row.SFX],
 	[Row.CALIBRATE],
 	[Row.SCREEN_SHAKE, Row.FLASH],
@@ -25,7 +25,8 @@ const PAGE_EMPTY := ["", "", "", "", ""]
 ## The most rows any page has, page bar and BACK included: the panel's height.
 const SLOTS := 8
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "TIMER", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
-	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS", "BACK"]
+	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
+	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "BACK"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -40,8 +41,14 @@ const HELP := [
 	"Camera shake and the nitro view stretch. 0 turns them off.",
 	"Impact flashes and the blinking clock. 0 turns them off.",
 	"Miles or kilometres per hour on the speedometer.",
+	"Fill the screen, or play in a window.",
+	"Scale by whole steps only, for even, sharp pixels. Leaves a border.",
+	"Wait for the display between frames: no tearing.",
+	"Dark lines over the picture, like an old arcade monitor.",
 	"Back to the title screen.",
 ]
+## The rows that show ON or OFF.
+const TOGGLES := [Row.AUTO_GAS, Row.POWER_UPS, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
 const ROW_H := 24.0
 const TOP := 56.0
@@ -138,6 +145,14 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.flash = _step(s.flash, dir, s.EFFECT_STEPS + 1, wrap)
 		Row.UNITS:
 			s.units = _step(s.units, dir, s.Units.size(), wrap)
+		Row.FULLSCREEN:
+			s.fullscreen = not s.fullscreen
+		Row.INTEGER_SCALE:
+			s.integer_scale = not s.integer_scale
+		Row.VSYNC:
+			s.vsync = not s.vsync
+		Row.SCANLINES:
+			s.scanlines = not s.scanlines
 		_:
 			return false
 	s.save()
@@ -148,14 +163,10 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 static func value_text(row: int) -> String:
 	var s: Node = Settings
 	match row:
-		Row.AUTO_GAS:
-			return "ON" if s.auto_gas else "OFF"
 		Row.TRAFFIC:
 			return s.TRAFFIC_NAMES[s.traffic]
 		Row.TIMER:
 			return s.TIMER_NAMES[s.timer]
-		Row.POWER_UPS:
-			return "ON" if s.power_ups else "OFF"
 		Row.MUSIC:
 			return str(s.music_volume)
 		Row.SFX:
@@ -166,7 +177,28 @@ static func value_text(row: int) -> String:
 			return str(s.flash)
 		Row.UNITS:
 			return s.UNIT_NAMES[s.units]
+		Row.FULLSCREEN:
+			return "FULLSCREEN" if s.fullscreen else "WINDOWED"
+	if TOGGLES.has(row):
+		return "ON" if toggled(row) else "OFF"
 	return ""
+
+
+## Whether an ON/OFF row (TOGGLES) is on.
+static func toggled(row: int) -> bool:
+	var s: Node = Settings
+	match row:
+		Row.AUTO_GAS:
+			return s.auto_gas
+		Row.POWER_UPS:
+			return s.power_ups
+		Row.INTEGER_SCALE:
+			return s.integer_scale
+		Row.VSYNC:
+			return s.vsync
+		Row.SCANLINES:
+			return s.scanlines
+	return false
 
 
 ## The right-hand text on this screen's row: values, or the reset rows' state.
@@ -275,7 +307,7 @@ func _draw() -> void:
 			_:
 				var t := value_text(row)
 				var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-				var lit := (row == Row.AUTO_GAS and Settings.auto_gas) or (row == Row.POWER_UPS and Settings.power_ups)
+				var lit := toggled(row)
 				var on_col := Color("#5dff8a") if lit else col
 				_text(Vector2(right - 60 - tw / 2.0, y + mid + 5), t, 12, on_col)
 				if on and not wheel:

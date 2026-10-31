@@ -110,7 +110,7 @@ func test_settings_v2_to_v3_adds_units() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(FIXTURES + "settings_v2.cfg")
 	eq(Settings.migrate(cfg), 2, "from version 2")
-	eq([CfgVersion.of(cfg), cfg.get_value("display", "units")], [3, Settings.Units.MPH], "version 3, MPH as before")
+	eq([CfgVersion.of(cfg), cfg.get_value("display", "units")], [Settings.VERSION, Settings.Units.MPH], "migrated on, MPH as before")
 	eq(cfg.get_value("accessibility", "screen_shake"), 3, "the rest untouched")
 
 
@@ -119,6 +119,33 @@ func test_settings_v3_loads() -> void:
 	eq(_load_settings("settings_v3.cfg"), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 3, 0,
 		Settings.Units.KPH], "every option")
 	eq(Settings.loaded_version, 3, "version 3")
+	_clean()
+
+
+func _display_values() -> Array:
+	return [Settings.fullscreen, Settings.integer_scale, Settings.vsync, Settings.scanlines]
+
+
+func test_settings_v3_to_v4_adds_display() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v3.cfg")
+	eq(Settings.migrate(cfg), 3, "from version 3")
+	eq([CfgVersion.of(cfg), cfg.get_value("display", "fullscreen"), cfg.get_value("display", "integer_scale"),
+		cfg.get_value("display", "vsync"), cfg.get_value("display", "scanlines")], [4, false, false, true, false],
+		"version 4: windowed, fractional, V-Sync, no scanlines, as before")
+	eq(cfg.get_value("display", "units"), Settings.Units.KPH, "units untouched")
+	_clean()
+	eq(_load_settings("settings_v3.cfg")[8], Settings.Units.KPH, "v3 loads")
+	eq(_display_values(), [false, false, true, false], "with the display defaults")
+	_clean()
+
+
+func test_settings_v4_loads() -> void:
+	_clean()
+	eq(_load_settings("settings_v4.cfg"), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 3, 0,
+		Settings.Units.KPH], "every earlier option")
+	eq(_display_values(), [true, true, false, true], "the display options")
+	eq(Settings.loaded_version, 4, "version 4")
 	_clean()
 
 
