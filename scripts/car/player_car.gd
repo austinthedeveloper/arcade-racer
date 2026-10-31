@@ -219,21 +219,42 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 	if ghost_time > 0.0:
 		return false
 	for car in seg.cars:
-		if speed <= car.speed or car.flung > 0.0:
+		if not car.solid():
 			continue
 		var car_half: float = half_car * car.width_mult
-		if absf(x - car.offset) < (half_car + car_half) * Cfg.HIT_OVERLAP:
-			if ram_time > 0.0:
-				Traffic.fling(car, x)
-				rammed = true
-			elif speed - car.speed > Cfg.CRASH_CLOSING_SPEED:
-				crash()
-			else:
-				speed = car.speed * (car.speed / speed)
-				bumped = true
-				move_to(car.z - Cfg.PLAYER_Z - Cfg.BUMP_GAP, track)
+		var reach: float = (half_car + car_half) * Cfg.HIT_OVERLAP
+		if absf(x - car.offset) >= reach:
+			continue
+		var gap := gap_when_tick_began(car, track)
+		if gap <= -Cfg.CAR_LENGTH:
+			continue  # already passed
+		if gap < 0.0:
+			# Steered into a car beside you: pushed back out to your side, no snap behind it
+			x = car.offset + (reach if x >= car.offset else -reach)
+			speed *= 1.0 - Cfg.SIDESWIPE_SPEED_LOSS
+			bumped = true
 			return true
+		if speed <= car.speed:
+			continue
+		if ram_time > 0.0:
+			Traffic.fling(car, x)
+			rammed = true
+		elif speed - car.speed > Cfg.CRASH_CLOSING_SPEED:
+			crash()
+		else:
+			speed = car.speed * (car.speed / speed)
+			bumped = true
+			move_to(car.z - Cfg.PLAYER_Z - Cfg.BUMP_GAP, track)
+		return true
 	return false
+
+
+## How far `car`'s rear was ahead of this car's nose when the tick began. Negative means
+## already beside it (a touch is a side-swipe, not running into the back of it); -CAR_LENGTH
+## or less means past it.
+func gap_when_tick_began(car: Traffic.TrafficCar, track: Track) -> float:
+	var car_was: float = car.z if is_nan(car.last_z) else car.last_z
+	return wrapf(car_was - (last_position + Cfg.PLAYER_Z), -track.length * 0.5, track.length * 0.5)
 
 
 ## Puts the car at track position `z` (wrapped), moving `distance` by the same amount so
