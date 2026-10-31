@@ -5,9 +5,9 @@ extends MenuScreen
 ## runs it. A wheel has no up/down, so steering picks the row and gas changes it.
 ## The two reset rows leave the wheel profiles alone; resetting the save asks first.
 
-enum Row { AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, MUSIC, SFX, CALIBRATE, RESET_OPTIONS, RESET_SAVE, BACK }
+enum Row { AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS, RESET_SAVE, BACK }
 
-const LABELS := ["AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
+const LABELS := ["AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "BACK"]
 const HELP := [
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -16,6 +16,7 @@ const HELP := [
 	"Time to reach each checkpoint. Relaxed gives more, Tight less.",
 	"Grand Tour: time left at a finish carries into the next stage.",
 	"Nitro cans, clocks, ram plates and ghosts to grab on the road.",
+	"Every car and stage open now, without earning them. Progress is kept.",
 	"Music loudness.",
 	"Engine, crash and menu sound loudness.",
 	"Set up a racing wheel and pedals (F2 also works).",
@@ -24,7 +25,7 @@ const HELP := [
 	"Back to the title screen.",
 ]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
-const ROW_H := 20.0
+const ROW_H := 19.0
 const TOP := 56.0
 
 var index := 0  # into Row
@@ -78,6 +79,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.carry_time = not s.carry_time
 		Row.POWER_UPS:
 			s.power_ups = not s.power_ups
+		Row.UNLOCK_ALL:
+			s.unlock_all = not s.unlock_all
 		Row.MUSIC:
 			s.music_volume = _step(s.music_volume, dir, s.VOLUME_STEPS + 1, wrap)
 		Row.SFX:
@@ -104,6 +107,8 @@ static func value_text(row: int) -> String:
 			return "ON" if s.carry_time else "OFF"
 		Row.POWER_UPS:
 			return "ON" if s.power_ups else "OFF"
+		Row.UNLOCK_ALL:
+			return "ON" if s.unlock_all else "OFF"
 		Row.MUSIC:
 			return str(s.music_volume)
 		Row.SFX:
@@ -204,7 +209,7 @@ func _draw() -> void:
 				var t := value_text(row)
 				var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 				var lit := (row == Row.AUTO_GAS and Settings.auto_gas) or (row == Row.POWER_UPS and Settings.power_ups) \
-					or (row == Row.CARRY_TIME and Settings.carry_time)
+					or (row == Row.CARRY_TIME and Settings.carry_time) or (row == Row.UNLOCK_ALL and Settings.unlock_all)
 				var on_col := Color("#5dff8a") if lit else col
 				_text(Vector2(right - 60 - tw / 2.0, y + mid + 5), t, 12, on_col)
 				if on and not wheel:

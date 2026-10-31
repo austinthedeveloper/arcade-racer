@@ -96,6 +96,7 @@ func test_prompts_follow_the_device() -> void:
 
 
 func test_menus_flow_into_the_race_and_back() -> void:
+	SaveData.furthest_stage = 3  # stage 3 reached (Unlocks)
 	var g := _game()
 	eq(g.screen, g.Screen.TITLE, "boots to the title")
 	g.menu.handle(menu_input(false, true))
@@ -130,6 +131,7 @@ func test_menus_flow_into_the_race_and_back() -> void:
 	g.menu.handle(menu_input(true))
 	eq(g.screen, g.Screen.STAGES, "title, mode select, stage select")
 	eq(g.menu.index, 3, "stage select opens where the tour got to")
+	SaveData.furthest_stage = 0
 
 
 func test_mode_select_lists_every_mode() -> void:

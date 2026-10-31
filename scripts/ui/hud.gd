@@ -106,6 +106,9 @@ func _draw() -> void:
 			_text_centered(Vector2(w / 2.0, end_y + 14), "TOUR   %s   %d PTS" % [Rivals.ordinal(tr.standing_of(Tour.YOU)),
 				tr.points[Tour.YOU]], 11, Color("#ffd23a"))
 
+	if ended and not race.new_unlocks.is_empty():
+		_text_centered(Vector2(w / 2.0, 92), unlock_line(race.new_unlocks), 12, Color("#5dff8a", 0.6 + 0.4 * sin(race.road.time * 6.0)))
+
 	# Banners
 	if race.counting_down():
 		_text_centered(Vector2(w / 2.0, 130), str(ceili(race.countdown)), 64, Color("#ffd23a"))
@@ -113,6 +116,14 @@ func _draw() -> void:
 		_text_centered(Vector2(w / 2.0, 130), race.banner, 44, Color("#ffd23a"))
 		if race.banner_sub != "":
 			_text_centered(Vector2(w / 2.0, 156), race.banner_sub, 14, Color.WHITE)
+
+
+## The finish's notice of cars it opened (Unlocks.newly_open).
+static func unlock_line(ids: Array[String]) -> String:
+	var names: Array[String] = []
+	for id in ids:
+		names.append(String(Cars.find(id)["name"]).to_upper())
+	return ("NEW CAR: " if ids.size() == 1 else "NEW CARS: ") + ", ".join(names)
 
 
 ## Where a racer `distance` along the stage sits on the progress bar.

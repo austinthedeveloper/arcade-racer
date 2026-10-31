@@ -38,6 +38,9 @@ func _ready() -> void:
 	var quick := false
 	var pause_shot := false
 	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--car="):
+			car_index = maxi(0, Cars.LIST.find(Cars.find(arg.get_slice("=", 1))))
+	for arg in OS.get_cmdline_user_args():
 		for flag: String in RACE_FLAGS:
 			quick = quick or arg.begins_with(flag)
 		if arg == "--screen=pause":
@@ -175,7 +178,8 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 
 
 # --- Dev helpers: `godot -- --screen=stages --menu-shot=/tmp/stages.png` -------------
-# (--screen=pause starts a race and pauses it; add --at-segment=N to pause further in.)
+# (--screen=pause starts a race and pauses it; add --at-segment=N to pause further in.
+# --car=car_mesa opens car select on that car.)
 
 func _open(which: String) -> void:
 	match which:
