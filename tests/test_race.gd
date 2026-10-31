@@ -5,9 +5,11 @@ extends TestSuite
 func test_countdown_then_go() -> void:
 	var r := race(false, false)
 	eq(r.state, r.State.COUNTDOWN, "starts counting down")
-	drive(r, 170, input(1.0))
+	drive(r, 60, input(1.0))
+	eq(r.player.speed, 0.0, "the car waits")
+	drive(r, 110, input(1.0))
 	eq(r.state, r.State.COUNTDOWN, "still counting at 2.8 s")
-	eq(r.player.speed, 0.0, "the car waits for GO")
+	check(r.player.speed > 0.0 and r.player.speed <= Launch.ROLL_SPEED, "rolling slowly to the line")
 	drive(r, 20, input(1.0))
 	eq(r.state, r.State.RACING, "racing after 3 s")
 	eq(r.banner, "GO!", "GO banner")
@@ -170,3 +172,72 @@ func test_a_restart_starts_the_clocks_over() -> void:
 	r.start_race()
 	eq(r._frame, 0, "frames from zero")
 	eq(InputRouter.speed_factor, 0.0, "pad steering back at rest")
+
+
+func test_launch_window_edges() -> void:
+	var G := Launch.Grade
+	eq(Launch.grade(-Launch.WINDOW_BEFORE - 0.01, 0.0), G.BOG, "just too early bogs")
+	eq(Launch.grade(-Launch.WINDOW_BEFORE, 0.0), G.LAUNCH, "the first moment of the window")
+	eq(Launch.grade(0.0, 0.0), G.LAUNCH, "on GO")
+	eq(Launch.grade(Launch.WINDOW_AFTER, Launch.WINDOW_AFTER), G.LAUNCH, "the last moment of the window")
+	eq(Launch.grade(Launch.WINDOW_AFTER + 0.01, 0.2), G.NONE, "just too late is a plain start")
+	eq(Launch.grade(NAN, 0.05), G.PENDING, "no gas yet, still in the window")
+	eq(Launch.grade(NAN, Launch.WINDOW_AFTER + 0.01), G.NONE, "no gas through the window")
+
+
+## Counts down with the gas off, presses it `before` seconds before GO (negative: after), and
+## drives a second past GO.
+func _start(before: float) -> Node:
+	var r := race(false, false, 0, false)
+	var gas_at := roundi((3.0 - before) / DT)
+	for i in 240:
+		drive(r, 1, input(1.0 if i >= gas_at else 0.0))
+	return r
+
+
+func test_gas_in_the_window_launches() -> void:
+	var r := _start(0.2)
+	eq(r.launch, Launch.Grade.LAUNCH, "launched")
+	check(r.banner == "LAUNCH!" or r.player.launch_time < Launch.BOOST_TIME, "LAUNCH banner")
+	var plain := _start(-0.5)
+	eq(plain.launch, Launch.Grade.NONE, "a late start is plain")
+	check(r.player.speed > plain.player.speed * 1.2, "the launch is quicker off the line (%.0f vs %.0f)" % [r.player.speed, plain.player.speed])
+
+
+func test_gas_held_from_the_start_bogs() -> void:
+	var r := race(false, false, 0, false)
+	drive(r, 182, input(1.0))
+	eq(r.launch, Launch.Grade.BOG, "bogged")
+	eq(r.banner_sub, "Too early!", "told why")
+	check(r.player.bog_time > 0.0, "bogging")
+	var clean := _start(0.2)
+	drive(r, 58, input(1.0))
+	check(r.player.speed < clean.player.speed, "slower away than a launch")
+
+
+func test_the_banner_says_launch() -> void:
+	var r := race(false, false, 0, false)
+	for i in 182:
+		drive(r, 1, input(1.0 if i >= 170 else 0.0))
+	eq(r.banner, "LAUNCH!", "LAUNCH banner")
+
+
+func test_rivals_launch_from_their_seed() -> void:
+	var a := race(false, false, 0)
+	var b := race(false, false, 0)
+	drive(a, 182)
+	drive(b, 182)
+	var launched := 0
+	for i in a.rivals.cars.size():
+		eq(a.rivals.cars[i].launch_time, b.rivals.cars[i].launch_time, "rival %d launches the same each time" % i)
+		launched += int(a.rivals.cars[i].launch_time > 0.0)
+	check(launched > 0 and launched < Rivals.COUNT, "some launch, not all (%d)" % launched)
+
+
+func test_auto_gas_never_bogs() -> void:
+	var settings: Node = runner.root.get_node("Settings")
+	settings.auto_gas = true
+	var r := race(false, false, 0, false)
+	drive(r, 182, input())
+	eq(r.launch, Launch.Grade.NONE, "a plain start")
+	settings.load_settings()
