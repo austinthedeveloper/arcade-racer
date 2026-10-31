@@ -107,6 +107,10 @@ git tag v0.1.0 && git push origin v0.1.0
 - [Open questions](docs/04-open-questions.md): decisions needed before we build
 - [Concept review, round 1](docs/05-concept-review-round1.md)
 - [Concept review, round 2](docs/06-concept-review-round2.md)
+- [Art prompts, round 4](docs/07-art-prompts-round4.md)
+- [Concept review, round 4](docs/08-concept-review-round4.md)
+- [Known bugs and cleanup plan](docs/09-known-bugs-and-cleanup.md)
+- [Roadmap, November 2026 to April 2027](docs/roadmap/00-overview.md): the six-month feature list, split into eight group docs
 
 ## Concept art prompts
 

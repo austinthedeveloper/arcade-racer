@@ -1,7 +1,7 @@
 # Sundown Run (working title)
 
 Original sprite-based pseudo-3D arcade racer in Godot 4.7 (GL Compatibility, 640x360).
-Design docs are in `docs/`, concept art prompts in `assets/prompts/`.
+Design docs are in `docs/`, the six-month roadmap in `docs/roadmap/` (feature IDs like RC-1), concept art prompts in `assets/prompts/`.
 
 ```sh
 tools/test.sh                                       # all Godot tests, headless (must pass)
