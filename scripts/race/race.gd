@@ -10,7 +10,9 @@ signal options_requested
 
 enum State { COUNTDOWN, RACING, FINISHED, TIME_UP }
 
-const START_TIME := 45.0  # on the ARCADE timer; Settings scales both for the others
+## The clock on the ARCADE timer, for a stage whose theme has no "clock" of its own (each
+## stage sets one, WS-11); Settings scales it for the others.
+const START_TIME := 45.0
 const CHECKPOINT_BONUS := 25.0
 const BACKGROUND_SCROLL := 0.0006  # per segment travelled, per unit of curve
 const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
@@ -57,7 +59,8 @@ var player_finish := -1.0  # race time the player finished in, -1 still racing
 var touched_traffic := false  # the player has touched a traffic car this stage (Unlocks secret)
 var new_unlocks: Array[String] = []  # car ids this finish opened, for the HUD
 var finish_distance := 1.0
-var checkpoint_bonus := CHECKPOINT_BONUS  # after the timer option
+var checkpoint_bonus := CHECKPOINT_BONUS  # the next checkpoint's, after the timer option
+var clock: Array[float] = []  # this stage's ARCADE clock: start, then each checkpoint (stage_clock)
 var checkpoint_distances: Array[float] = []
 var next_checkpoint := 0
 var banner := ""
@@ -155,9 +158,10 @@ func start_race() -> void:
 		tour_state.drivers = rivals.driver_names()
 	state = State.COUNTDOWN
 	countdown = 3.0
-	time_left = Settings.race_time(START_TIME) + (tour_state.carried if tour else 0.0)
+	clock = stage_clock(track.theme, track.checkpoints.size())
+	time_left = Settings.race_time(clock[0]) + (tour_state.carried if tour else 0.0)
 	after = After.RETRY
-	checkpoint_bonus = Settings.race_time(CHECKPOINT_BONUS)
+	checkpoint_bonus = Settings.race_time(clock[1]) if clock.size() > 1 else 0.0
 	race_time = 0.0
 	player_finish = -1.0
 	touched_traffic = false
@@ -427,6 +431,7 @@ func _check_progress() -> void:
 		else:
 			time_left += checkpoint_bonus
 			_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0)
+			checkpoint_bonus = Settings.race_time(clock[next_checkpoint + 1]) if next_checkpoint + 1 < clock.size() else 0.0
 	if player.distance >= finish_distance:
 		state = State.FINISHED
 		player_finish = race_time
@@ -499,6 +504,16 @@ func _save_ghost() -> void:
 ## Seconds against a best: "-1.23" ahead, "+0.50" behind.
 static func split_text(seconds: float) -> String:
 	return ("-" if seconds < 0.0 else "+") + "%.2f" % absf(seconds)
+
+
+## A stage's clock on ARCADE: seconds to start with, then the bonus at each of its
+## `checkpoints`. From the theme's "clock", filled out with the defaults.
+static func stage_clock(theme: Dictionary, checkpoints: int) -> Array[float]:
+	var out: Array[float] = []
+	var given: Array = theme.get("clock", [])
+	for i in checkpoints + 1:
+		out.append(float(given[i]) if i < given.size() else (START_TIME if i == 0 else CHECKPOINT_BONUS))
+	return out
 
 
 ## Whether the clock runs down to TIME UP (not in Time Attack or Free Drive).

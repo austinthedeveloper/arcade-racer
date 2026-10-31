@@ -14,6 +14,7 @@ static func theme() -> Dictionary:
 		"rumble": [Color("#f4f4f4"), Color("#d8262e")],
 		"road": [Color("#6e6e79"), Color("#686873")],
 		"lane": Color("#f0f0f0"),
+		"clock": [42, 39, 36, 27],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/palm_coast_far.png",
 		"specials": ["surf_van", "golf_cart", "ice_cream_truck"],
 	}
