@@ -31,8 +31,9 @@ static func use_scratch_settings(settings: Node) -> void:
 ## Points the SaveData autoload at an empty save file of the tests' own (a fresh save).
 static func use_scratch_save(save_data: Node) -> void:
 	save_data.path = SCRATCH_SAVE
-	if FileAccess.file_exists(SCRATCH_SAVE):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SCRATCH_SAVE))
+	for f in [SCRATCH_SAVE, SCRATCH_SAVE + ".bad", SCRATCH_SAVE + ".tmp"]:
+		if FileAccess.file_exists(f):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
 	save_data.load_save()
 
 
