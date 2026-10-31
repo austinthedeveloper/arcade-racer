@@ -255,12 +255,12 @@ func test_save_over_a_newer_file_keeps_its_keys() -> void:
 
 func test_profiles_saved_over_a_newer_file_keep_its_keys() -> void:
 	_clean()
-	_load_profiles("input_profiles_v2.cfg")
+	_load_profiles("input_profiles_future.cfg")
 	InputRouter._saved.erase(PAD)
 	InputRouter._write_profiles()
 	var cfg := ConfigFile.new()
 	cfg.load(TestSuite.SCRATCH_PROFILES)
-	eq([CfgVersion.of(cfg), cfg.get_value("meta", "layout")], [2, "per-device"], "version 2 and its [meta] kept")
+	eq([CfgVersion.of(cfg), cfg.get_value("meta", "layout")], [99, "per-device"], "version 99 and its [meta] kept")
 	eq(cfg.get_value(WHEEL, "ffb_strength"), 0.8, "a key this build doesn't know kept in the profile")
 	check(not cfg.has_section(PAD), "a dropped profile is gone")
 	_clean()
@@ -285,10 +285,39 @@ func test_profiles_v0_load_as_before() -> void:
 
 func test_profiles_newer_version_loads_what_it_knows() -> void:
 	_clean()
-	var v2 := _load_profiles("input_profiles_v2.cfg")
-	eq(InputRouter.profiles_version, 2, "version 2 read")
-	eq(v2, _load_profiles("input_profiles_v0.cfg"), "the known keys of the same profiles")
+	var future := _load_profiles("input_profiles_future.cfg")
+	eq(InputRouter.profiles_version, 99, "version 99 read")
+	eq(future, _load_profiles("input_profiles_v0.cfg"), "the known keys of the same profiles")
 	_clean()
+
+
+func test_profiles_v1_loads_with_default_bindings() -> void:
+	_clean()
+	var v1 := _load_profiles("input_profiles_v1.cfg")
+	eq([v1[WHEEL]["bindings"], v1[PAD]["bindings"], InputRouter.keyboard.bindings], [{}, {}, {}], "no rebinds")
+	var wheel: DeviceProfile = InputRouter._saved[WHEEL]
+	eq(wheel.binding("nitro"), [4], "the wheel's nitro is its calibrated button")
+	eq(InputRouter.keyboard.binding("nitro"), [KEY_SPACE, KEY_SHIFT], "keyboard defaults")
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "input_profiles_v1.cfg")
+	eq(InputRouter.migrate_profiles(cfg), 1, "from version 1")
+	eq(CfgVersion.of(cfg), InputRouter.PROFILES_VERSION, "migrated on")
+	eq(cfg.get_value(WHEEL, "nitro_button"), 4, "profiles untouched")
+	_clean()
+
+
+func test_profiles_v2_loads_bindings() -> void:
+	_clean()
+	var v2 := _load_profiles("input_profiles_v2.cfg")
+	eq(InputRouter.profiles_version, 2, "version 2")
+	eq(v2[PAD]["bindings"], {"nitro": 2, "view": -1}, "the pad's rebinds")
+	var pad: DeviceProfile = InputRouter._saved[PAD]
+	eq([pad.binding("nitro"), pad.binding("view"), pad.binding("pause")], [[JOY_BUTTON_X], [], [JOY_BUTTON_START]],
+		"rebound, unbound, default")
+	eq(InputRouter.keyboard.binding("nitro"), [KEY_N], "the keyboard's rebind")
+	check(not InputRouter._saved.has(DeviceProfile.KEYBOARD_GUID), "the keyboard isn't a joypad profile")
+	_clean()
+	eq(InputRouter.keyboard.binding("nitro"), [KEY_SPACE, KEY_SHIFT], "a fresh file: defaults again")
 
 
 func test_profiles_write_the_version() -> void:

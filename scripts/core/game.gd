@@ -3,7 +3,7 @@ extends Node
 ## race it starts.
 ## Race dev flags (--autodrive, --stage=N, --race) skip the menus and go straight to a race.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -22,6 +22,7 @@ var _menu_shot := ""
 ## Where the options screen goes back to (close_options): the title unless whoever opened
 ## it says otherwise.
 var _options_back := Callable()
+var _options_back_name := "the title screen"
 
 
 func _ready() -> void:
@@ -86,15 +87,30 @@ func show_mode_select(item := -1) -> void:
 
 
 ## The options, from the title unless `back` (with its name for the BACK row's help) says
-## where they go back to; on `page` (an OptionsScreen.Page) when given.
-func show_options(back := Callable(), back_name := "the title screen", page := -1) -> void:
+## where they go back to; on `page` (an OptionsScreen.Page) when given, with the cursor on
+## `row` (an OptionsScreen.Row) when given.
+func show_options(back := Callable(), back_name := "the title screen", page := -1, row := -1) -> void:
 	var o := OptionsScreen.new()
 	o.back_name = back_name
 	if page >= 0:
 		o.page = page
 		o.index = 0  # on the page bar, so the page shows which it is
+	if row >= 0:
+		o.go_to(row)
 	_options_back = back
+	_options_back_name = back_name
 	_set_menu(o, Screen.OPTIONS)
+
+
+## Controls > REMAP BUTTONS.
+func show_remap() -> void:
+	_set_menu(RemapScreen.new(), Screen.REMAP)
+
+
+## Back from remapping: the options again, on REMAP BUTTONS, still going back where they did.
+func close_remap() -> void:
+	show_options(_options_back, _options_back_name, OptionsScreen.Page.CONTROLS, OptionsScreen.Row.REMAP)
+	menu.in_race = race != null
 
 
 ## Options opened from mode select come back to it.
@@ -196,6 +212,8 @@ func _open(which: String) -> void:
 			show_car_select()
 		"options":
 			show_options()
+		"remap":
+			show_remap()
 		"modes":
 			show_mode_select()
 		_ when which.begins_with("options:"):
