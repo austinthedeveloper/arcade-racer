@@ -1,7 +1,7 @@
 class_name StageSelect
 extends MenuScreen
 ## Stage select: the chosen stage's postcard big, every stage as a thumbnail along the
-## bottom. The tour runs on from the chosen stage.
+## bottom. A Grand Tour runs on from the chosen stage; a Single Race is just that stage.
 
 const THUMB := Vector2(72, 40)
 const THUMB_GAP := 80.0
@@ -32,7 +32,7 @@ func handle(m: MenuInput) -> void:
 		game.stage_index = index
 		game.show_car_select()
 	elif m.back_pressed:
-		game.show_title()
+		game.show_mode_select()
 
 
 func _draw() -> void:
@@ -63,6 +63,8 @@ func _draw() -> void:
 
 
 func _tour_line() -> String:
+	if game != null and game.mode_index == ModeSelect.Item.SINGLE_RACE:
+		return "Single Race: one run on this stage"
 	var last := Stages.count() - 1
 	if index == last:
 		return "The final stage"

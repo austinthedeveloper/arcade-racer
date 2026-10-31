@@ -16,9 +16,9 @@ func section(cfg: ConfigFile, preset_name: String) -> String:
 	return ""
 
 
-func test_windows_macos_and_web_presets() -> void:
+func test_windows_macos_web_and_linux_presets() -> void:
 	var cfg := presets()
-	var want := {"Windows": "Windows Desktop", "macOS": "macOS", "Web": "Web"}
+	var want := {"Windows": "Windows Desktop", "macOS": "macOS", "Web": "Web", "Linux": "Linux"}
 	for preset_name: String in want:
 		var s := section(cfg, preset_name)
 		check(s != "", "preset " + preset_name)
@@ -36,6 +36,10 @@ func test_builds_run_without_extra_setup() -> void:
 	# One .exe, no loose .pck next to it.
 	check(cfg.get_value(section(cfg, "Windows") + ".options", "binary_format/embed_pck") == true,
 		"Windows embeds the pck")
+	# Linux: one x86_64 binary, no loose .pck.
+	var lin := section(cfg, "Linux") + ".options"
+	check(cfg.get_value(lin, "binary_format/embed_pck") == true, "Linux embeds the pck")
+	check(cfg.get_value(lin, "binary_format/architecture") == "x86_64", "Linux x86_64")
 	# No threads: plays from any static host (no COOP/COEP headers needed).
 	check(cfg.get_value(section(cfg, "Web") + ".options", "variant/thread_support") == false,
 		"Web build is single-threaded")

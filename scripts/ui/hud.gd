@@ -22,6 +22,13 @@ func _draw() -> void:
 	var tcol := clock_color(t)
 	_text(Vector2(12, 46), str(ceili(t)), 30, tcol)
 
+	# Place, under the time
+	if not race.rivals.cars.is_empty():
+		_text(Vector2(12, 64), "POS", 10, Color("#ffd23a"))
+		var field: int = race.rivals.cars.size() + 1
+		_text(Vector2(12, 88), str(race.place), 24, Color.WHITE)
+		_text(Vector2(16 + 16 * str(race.place).length(), 88), "/%d" % field, 12, Color(1, 1, 1, 0.8))
+
 	# Route progress, top center
 	var bar := Rect2(w / 2.0 - 110, 12, 220, 8)
 	draw_rect(bar.grow(2), Color(0, 0, 0, 0.55))
@@ -31,6 +38,11 @@ func _draw() -> void:
 		var cx: float = bar.position.x + bar.size.x * clampf(d / race.finish_distance, 0.0, 1.0)
 		draw_rect(Rect2(cx - 1, bar.position.y - 3, 2, bar.size.y + 6), Color("#ffd23a"))
 	draw_rect(Rect2(bar.end.x - 2, bar.position.y - 3, 4, bar.size.y + 6), Color.WHITE)
+	for r: RivalCar in race.rivals.cars:
+		var rx := progress_x(bar, r.distance, race.finish_distance)
+		draw_rect(Rect2(rx - 2, bar.position.y + 2, 4, 4), Color("#ff4f8b"))
+	var you := progress_x(bar, p.distance, race.finish_distance)
+	draw_rect(Rect2(you - 2, bar.position.y + 1, 4, 6), Color.WHITE)
 	_text(Vector2(bar.position.x, bar.end.y + 14), ("STAGE %d  " % (race.stage_index + 1)) + race.track.name.to_upper(), 9, Color(1, 1, 1, 0.85))
 
 	# Nitro, top right
@@ -61,6 +73,15 @@ func _draw() -> void:
 	_text_centered(Vector2(center.x, center.y - 4), str(shown[0]), 22, Color.WHITE)
 	_text_centered(Vector2(center.x, center.y + 10), shown[1], 8, Color("#ffd23a"))
 
+	# Slipstream, over the speedometer: the meter filling, then the boost running down
+	var slip := Rect2(w - 98, Cfg.SCREEN_H - 82, 80, 4)
+	if p.draft > 0.0 or p.draft_time > 0.0:
+		_text(Vector2(slip.position.x, slip.position.y - 3), "SLIPSTREAM", 8, Color("#7ad8ff"))
+		draw_rect(slip.grow(1), Color(0, 0, 0, 0.55))
+		var fill := p.draft_time / Draft.BOOST_TIME if p.draft_time > 0.0 else p.draft
+		var col := Color("#ffe36a") if p.draft_time > 0.0 else Color("#7ad8ff")
+		draw_rect(Rect2(slip.position, Vector2(slip.size.x * fill, slip.size.y)), col)
+
 	# Device, bottom left
 	var inp: DriveInput = InputRouter.state
 	var dev: String = ["KEYBOARD", "GAMEPAD", "WHEEL"][inp.kind]
@@ -70,6 +91,21 @@ func _draw() -> void:
 	if hint != "":
 		_text_centered(Vector2(w / 2.0, 70), hint, 10, Color("#ffd23a"))
 
+	# Bonuses as they're earned, right of center; the tally under the finish banner
+	for i in race.score.feed.size():
+		var b: Dictionary = race.score.feed[i]
+		var a := clampf((Scoring.FEED_TIME - b["age"]) / 0.4, 0.0, 1.0)
+		_text_centered(Vector2(w * 0.78, 110 + i * 16), "%s +%d" % [b["name"], b["points"]], 12, Color("#5dff8a", a))
+	var ended: bool = race.state == race.State.FINISHED or race.state == race.State.TIME_UP
+	if ended and race.tour and (race.after == race.After.TOUR_DONE or race.after == race.After.TOUR_OVER):
+		_tour_standings(Vector2(w / 2.0, 182), "FINAL STANDINGS" if race.after == race.After.TOUR_DONE else "TOUR OVER")
+	elif race.state == race.State.FINISHED:
+		var end_y := _score_tally(Vector2(w / 2.0, 182))
+		if race.tour and race.tour_state.points.has(Tour.YOU):
+			var tr: Tour = race.tour_state
+			_text_centered(Vector2(w / 2.0, end_y + 14), "TOUR   %s   %d PTS" % [Rivals.ordinal(tr.standing_of(Tour.YOU)),
+				tr.points[Tour.YOU]], 11, Color("#ffd23a"))
+
 	# Banners
 	if race.counting_down():
 		_text_centered(Vector2(w / 2.0, 130), str(ceili(race.countdown)), 64, Color("#ffd23a"))
@@ -77,11 +113,42 @@ func _draw() -> void:
 		_text_centered(Vector2(w / 2.0, 130), race.banner, 44, Color("#ffd23a"))
 		if race.banner_sub != "":
 			_text_centered(Vector2(w / 2.0, 156), race.banner_sub, 14, Color.WHITE)
-	if race.paused:
-		draw_rect(Rect2(0, 0, w, Cfg.SCREEN_H), Color(0, 0, 0, 0.5))
-		_text_centered(Vector2(w / 2.0, 150), "PAUSED", 40, Color.WHITE)
-		_text_centered(Vector2(w / 2.0, 176), "Esc / Start to resume    R / Back to restart", 12, Color(1, 1, 1, 0.8))
-		_text_centered(Vector2(w / 2.0, 194), "Backspace / B / brake to quit to the title screen", 12, Color(1, 1, 1, 0.8))
+
+
+## Where a racer `distance` along the stage sits on the progress bar.
+static func progress_x(bar: Rect2, distance: float, finish_distance: float) -> float:
+	return bar.position.x + bar.size.x * clampf(distance / finish_distance, 0.0, 1.0)
+
+
+## The tour's standings, most points first, the player picked out.
+func _tour_standings(top: Vector2, title: String) -> void:
+	var rows: Array[Dictionary] = race.tour_state.standings()
+	var panel := Rect2(top.x - 120, top.y - 12, 240, 30 + 12 * rows.size())
+	draw_rect(panel, Color(0, 0, 0, 0.6))
+	_text_centered(Vector2(top.x, top.y + 1), title, 11, Color("#ffd23a"))
+	for i in rows.size():
+		var r: Dictionary = rows[i]
+		var y := top.y + 16 + i * 12
+		var col := Color("#5dff8a") if r["name"] == Tour.YOU else Color.WHITE
+		_text(Vector2(panel.position.x + 10, y), "%d  %s" % [i + 1, r["name"]], 10, col)
+		_text(Vector2(panel.end.x - 40, y), str(r["points"]), 10, col)
+
+
+## Returns the y under the last row.
+func _score_tally(top: Vector2) -> float:
+	var rows: Array[Dictionary] = race.score.summary()
+	var panel := Rect2(top.x - 120, top.y - 12, 240, 16 + 13 * (rows.size() + 1))
+	draw_rect(panel, Color(0, 0, 0, 0.55))
+	for i in rows.size():
+		var r: Dictionary = rows[i]
+		var label: String = r["name"] if r["count"] == 1 else "%s x%d" % [r["name"], r["count"]]
+		var y := top.y + i * 13
+		_text(Vector2(panel.position.x + 10, y), label, 10, Color.WHITE)
+		_text(Vector2(panel.end.x - 40, y), "+%d" % r["points"], 10, Color("#5dff8a"))
+	var ty := top.y + rows.size() * 13 + 2
+	_text(Vector2(panel.position.x + 10, ty), "POINTS", 11, Color("#ffd23a"))
+	_text(Vector2(panel.end.x - 40, ty), str(race.score.total()), 11, Color("#ffd23a"))
+	return panel.end.y
 
 
 ## The clock's color: white, then blinking red under Cfg.LOW_TIME. The flash option scales
