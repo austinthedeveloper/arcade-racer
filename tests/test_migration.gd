@@ -131,8 +131,8 @@ func test_settings_v3_to_v4_adds_display() -> void:
 	cfg.load(FIXTURES + "settings_v3.cfg")
 	eq(Settings.migrate(cfg), 3, "from version 3")
 	eq([CfgVersion.of(cfg), cfg.get_value("display", "fullscreen"), cfg.get_value("display", "integer_scale"),
-		cfg.get_value("display", "vsync"), cfg.get_value("display", "scanlines")], [4, false, false, true, false],
-		"version 4: windowed, fractional, V-Sync, no scanlines, as before")
+		cfg.get_value("display", "vsync"), cfg.get_value("display", "scanlines")], [Settings.VERSION, false, false, true, false],
+		"migrated on: windowed, fractional, V-Sync, no scanlines, as before")
 	eq(cfg.get_value("display", "units"), Settings.Units.KPH, "units untouched")
 	_clean()
 	eq(_load_settings("settings_v3.cfg")[8], Settings.Units.KPH, "v3 loads")
@@ -146,6 +146,19 @@ func test_settings_v4_loads() -> void:
 		Settings.Units.KPH], "every earlier option")
 	eq(_display_values(), [true, true, false, true], "the display options")
 	eq(Settings.loaded_version, 4, "version 4")
+	_clean()
+
+
+func test_settings_v4_to_v5_adds_assists() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v4.cfg")
+	eq(Settings.migrate(cfg), 4, "from version 4")
+	eq([CfgVersion.of(cfg), cfg.get_value("play", "steer_assist"), cfg.get_value("play", "brake_assist")], [Settings.VERSION, false, false],
+		"migrated on: both assists off, as before")
+	eq(cfg.get_value("display", "scanlines"), true, "the rest untouched")
+	_clean()
+	_load_settings("settings_v4.cfg")
+	eq([Settings.steer_assist, Settings.brake_assist], [false, false], "v4 loads with the assists off")
 	_clean()
 
 

@@ -8,13 +8,14 @@ extends MenuScreen
 ## The two reset rows leave the wheel profiles alone; resetting the save asks first.
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, TIMER, POWER_UPS, MUSIC, SFX, CALIBRATE, RESET_OPTIONS, RESET_SAVE, SCREEN_SHAKE,
-	FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, BACK }
+	FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, BACK }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
 ## The rows between the page bar and BACK on each page.
 const PAGE_ROWS := [
-	[Row.AUTO_GAS, Row.TRAFFIC, Row.TIMER, Row.POWER_UPS, Row.RESET_OPTIONS, Row.RESET_SAVE],
+	[Row.AUTO_GAS, Row.TRAFFIC, Row.TIMER, Row.POWER_UPS, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.RESET_OPTIONS,
+		Row.RESET_SAVE],
 	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
 	[Row.MUSIC, Row.SFX],
 	[Row.CALIBRATE],
@@ -23,10 +24,10 @@ const PAGE_ROWS := [
 ## Shown on a page with no rows yet.
 const PAGE_EMPTY := ["", "", "", "", ""]
 ## The most rows any page has, page bar and BACK included: the panel's height.
-const SLOTS := 8
+const SLOTS := 10
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "TIMER", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
-	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "BACK"]
+	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "BACK"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -45,13 +46,16 @@ const HELP := [
 	"Scale by whole steps only, for even, sharp pixels. Leaves a border.",
 	"Wait for the display between frames: no tearing.",
 	"Dark lines over the picture, like an old arcade monitor.",
+	"Keys and pad: at speed, a gentle pull to the middle of your lane.",
+	"Brakes for you into corners you're taking too fast.",
 	"Back to the title screen.",
 ]
 ## The rows that show ON or OFF.
-const TOGGLES := [Row.AUTO_GAS, Row.POWER_UPS, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES]
+const TOGGLES := [Row.AUTO_GAS, Row.POWER_UPS, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.STEER_ASSIST,
+	Row.BRAKE_ASSIST]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
-const ROW_H := 24.0
-const TOP := 56.0
+const ROW_H := 20.0
+const TOP := 54.0
 
 var page := 0  # a Page
 var index := 1  # into rows(): 0 is the page bar; opens on the first option
@@ -153,6 +157,10 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.vsync = not s.vsync
 		Row.SCANLINES:
 			s.scanlines = not s.scanlines
+		Row.STEER_ASSIST:
+			s.steer_assist = not s.steer_assist
+		Row.BRAKE_ASSIST:
+			s.brake_assist = not s.brake_assist
 		_:
 			return false
 	s.save()
@@ -198,6 +206,10 @@ static func toggled(row: int) -> bool:
 			return s.vsync
 		Row.SCANLINES:
 			return s.scanlines
+		Row.STEER_ASSIST:
+			return s.steer_assist
+		Row.BRAKE_ASSIST:
+			return s.brake_assist
 	return false
 
 
