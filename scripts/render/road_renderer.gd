@@ -313,8 +313,8 @@ func _draw_rival(seg: Segment, r: RivalCar, tint: Color) -> void:
 	if r.crash_time > 0.0:
 		steer = sin(r.crash_time * 20.0) * 2.0
 		lift += sin(r.crash_time / Cfg.CRASH_DURATION * PI) * w * 0.3
-	CarSprites.draw_player(self, r.strips, Vector2(roundf(cx), roundf(cy)), w, steer, r.braking, r.nitro_time > 0.0,
-		time, roundf(lift), r.pitch, 1.0, tint)
+	CarSprites.draw_player(self, r.strips, Vector2(roundf(cx), roundf(cy)), w, steer, r.braking,
+		roundf(lift), r.pitch, 1.0, tint)
 
 
 ## Where the ghost is on the track (its distance from the start line, wrapped).
@@ -331,8 +331,8 @@ func _draw_ghost(seg: Segment) -> void:
 	var cy := lerpf(seg.s1.y, seg.s2.y, p)
 	if w < 1.0 or cy - w >= seg.clip or cx + w < 0.0 or cx - w > Cfg.SCREEN_W:
 		return
-	CarSprites.draw_player(self, ghost_strips, Vector2(roundf(cx), roundf(cy)), w, ghost.z, false, false,
-		time, 0.0, 0.0, GHOST_ALPHA, GHOST_TINT)
+	CarSprites.draw_player(self, ghost_strips, Vector2(roundf(cx), roundf(cy)), w, ghost.z, false,
+		0.0, 0.0, GHOST_ALPHA, GHOST_TINT)
 
 
 func _draw_player() -> void:
@@ -352,8 +352,8 @@ func _draw_player() -> void:
 	var alpha := 1.0
 	if p.ghost_time > 0.0:
 		alpha = ghost_alpha(p.ghost_time, time, flash)
-	CarSprites.draw_player(self, player_strips, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking, p.nitro_time > 0.0,
-		time, roundf(lift), p.pitch, alpha)
+	CarSprites.draw_player(self, player_strips, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking,
+		roundf(lift), p.pitch, alpha)
 
 
 ## The ghosted player's see-through alpha: it blinks brighter in its last second, by as much

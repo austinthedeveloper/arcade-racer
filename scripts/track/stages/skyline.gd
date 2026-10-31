@@ -13,6 +13,7 @@ static func theme() -> Dictionary:
 		"below_horizon": Color("#1c2560"),
 		"grass": [Color("#77768a"), Color("#6f6e82")],  # waterfront paving
 		"sand": [Color("#22307a"), Color("#1e2b70")],  # harbor water
+		"kickup": ["smoke", "water"],  # FxLayer: what the wheels throw up off the grass, off the sand
 		"rumble": [Color("#e8e6ee"), Color("#d8283a")],
 		"road": [Color("#34323e"), Color("#302e3a")],
 		"lane": Color("#f2f0f6"),

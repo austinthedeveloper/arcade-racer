@@ -78,7 +78,7 @@ tests/                      test runner, suites, golden traces, end-to-end smoke
 tools/                      test.sh, sprite-cutting scripts, make_audio.py (placeholder sound)
 ```
 
-For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--car=car_mesa` picks a car by id (the ids are in `scripts/car/cars.gd`), `--at-segment=N` starts N segments into the stage, `--no-traffic` removes traffic, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|options|stages|cars --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits. Left on the title for 20 seconds, the game plays an autodriven demo race (attract mode) until any key or button; `--attract-delay=N` changes the wait and `--screen=demo` starts one straight away.
+For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--car=car_mesa` picks a car by id (the ids are in `scripts/car/cars.gd`), `--at-segment=N` starts N segments into the stage, `--no-traffic` removes traffic, `--drive-x=1.8` starts the car on that line (past 1 is off the road) and keeps autodrive on it, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|options|stages|cars --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits. Left on the title for 20 seconds, the game plays an autodriven demo race (attract mode) until any key or button; `--attract-delay=N` changes the wait and `--screen=demo` starts one straight away.
 
 ## Tests
 

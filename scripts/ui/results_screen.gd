@@ -193,7 +193,7 @@ func _podium(field: Array[Dictionary]) -> void:
 		var r: Dictionary = field[i]
 		var strips := _strips(r["car"])
 		if not strips.is_empty():
-			CarSprites.draw_player(self, strips, Vector2(x, block.position.y), 64.0 if i == 0 else 56.0, 0.0, false, false, time)
+			CarSprites.draw_player(self, strips, Vector2(x, block.position.y), 64.0 if i == 0 else 56.0, 0.0, false)
 		var name_col := Color("#5dff8a") if r["you"] else Color.WHITE
 		_text_centered(Vector2(x, block.end.y + 12), r["name"], 9, name_col)
 
@@ -213,7 +213,7 @@ func _field_panel(field: Array[Dictionary]) -> void:
 		_badge(Vector2(PANEL.position.x + 20, y + (ROW_H - 4) / 2.0), int(r["place"]))
 		var strips := _strips(r["car"])
 		if not strips.is_empty():
-			CarSprites.draw_player(self, strips, Vector2(band.position.x + 24, band.end.y - 2), 34.0, 0.0, false, false, time)
+			CarSprites.draw_player(self, strips, Vector2(band.position.x + 24, band.end.y - 2), 34.0, 0.0, false)
 		_text(Vector2(band.position.x + 46, y + 12), r["name"], 9, Color.WHITE)
 		_text(Vector2(band.position.x + 46, y + 22), String(Cars.find(r["car"])["name"]).to_upper(), 7, Color(1, 1, 1, 0.7))
 		var t: float = r["time"]
