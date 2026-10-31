@@ -40,7 +40,15 @@ func reset() -> void:
 func load_save() -> void:
 	reset()
 	var cfg := ConfigFile.new()
-	if cfg.load(path) != OK:
+	var err := cfg.load(path)
+	if err == ERR_FILE_NOT_FOUND:
+		return
+	if err != OK:
+		# Unreadable (a cut-off write, a bad hand edit): kept aside, not overwritten by the
+		# next save, so it can be recovered.
+		var bad := ProjectSettings.globalize_path(path + ".bad")
+		DirAccess.rename_absolute(ProjectSettings.globalize_path(path), bad)
+		push_warning("Couldn't read %s (error %d); moved it to %s and started fresh" % [path, err, bad])
 		return
 	loaded_version = migrate(cfg)
 	furthest_stage = clampi(int(cfg.get_value("tour", "furthest_stage", 0)), 0, Stages.count() - 1)
@@ -67,15 +75,27 @@ static func _v0_to_v1(_cfg: ConfigFile) -> void:
 	pass
 
 
-func save() -> void:
-	var cfg := ConfigFile.new()
-	CfgVersion.stamp(cfg, VERSION)
+## Writes the save. Over a file from a newer build, its other keys are kept (CfgVersion.to_write);
+## `fresh` (resetting the save) writes only this build's keys.
+func save(fresh := false) -> void:
+	var cfg := CfgVersion.to_write(path, VERSION, fresh)
 	cfg.set_value("tour", "furthest_stage", furthest_stage)
 	cfg.set_value("tour", "total_points", total_points)
 	cfg.set_value("tour", "unlocks", Array(unlocks))
 	for key in bests:
-		cfg.set_value("best", key, bests[key])
-	cfg.save(path)
+		var b = cfg.get_value("best", key, {})
+		var entry: Dictionary = b.duplicate() if b is Dictionary else {}
+		entry.merge(bests[key], true)
+		cfg.set_value("best", key, entry)
+	# Written whole to a side file and then renamed over the save, so a crash mid-write
+	# never leaves a cut-off save.
+	var tmp := path + ".tmp"
+	var err := cfg.save(tmp)
+	if err == OK:
+		err = DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(path))
+	if err != OK:
+		push_error("Couldn't save progress to %s (error %d)" % [path, err])
+		return
 	changed.emit()
 
 
@@ -89,9 +109,9 @@ func best(stage: int, car_id: String) -> Dictionary:
 
 
 ## Records a finished stage: the best time and placing for the stage and car (place 0 is
-## "no placing"; lower is better), and the tour reaching the stage after it (unless
-## `reach_next` is off: a Time Attack run opens nothing). Saves when anything changed.
-## Returns true for a new best time.
+## "no placing"; lower is better), and with `reach_next` the tour reaching the stage after it
+## (a Time Attack run or a Single Race opens nothing). Saves when anything changed. Returns
+## true for a new best time.
 func record_finish(stage: int, car_id: String, time: float, place: int = 0, reach_next := true) -> bool:
 	var dirty := false
 	var key := best_key(stage, car_id)

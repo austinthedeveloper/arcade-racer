@@ -6,7 +6,9 @@ extends RefCounted
 
 const PLACE_POINTS := [20, 15, 12, 10, 8, 6, 4, 2]
 const NEAR_MISS := 1
-const NEAR_MISS_ROOM := 0.15  # road half-widths between the two cars' sides, at most
+## Road half-widths between the two cars' sides, under: 0 is closer than lane center to lane
+## center, so an ordinary pass in the next lane doesn't count; you have to shave it.
+const NEAR_MISS_ROOM := 0.0
 const NEAR_MISS_SPEED := 0.6  # share of Cfg.MAX_SPEED, at least
 const AIR := 1
 const BIG_AIR := 2
@@ -29,14 +31,15 @@ static func place_points(place: int) -> int:
 	return PLACE_POINTS[place - 1] if place >= 1 and place <= PLACE_POINTS.size() else 0
 
 
-## Passing a car with no more than NEAR_MISS_ROOM between your sides, at speed.
+## Passing a car with less than NEAR_MISS_ROOM between your sides (overlapping a little,
+## short of a hit), at speed.
 static func near_miss(x: float, speed: float, car_offset: float, car_width_mult: float) -> bool:
 	if speed < Cfg.MAX_SPEED * NEAR_MISS_SPEED:
 		return false
 	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
 	var both := half_car * (1.0 + car_width_mult)
 	var between := absf(x - car_offset) - both
-	return between >= -both * (1.0 - Cfg.HIT_OVERLAP) and between <= NEAR_MISS_ROOM
+	return between >= -both * (1.0 - Cfg.HIT_OVERLAP) and between < NEAR_MISS_ROOM
 
 
 ## Points for a jump `seconds` long.
@@ -84,11 +87,15 @@ func add(bonus_name: String, points: int) -> void:
 		feed.pop_front()
 
 
-## One racing tick for the player, after it moved and collided.
-func watch(dt: float, p: PlayerCar, track: Track) -> void:
+## Every tick, racing or not, so the finish's bonuses fade from the HUD too.
+func age_feed(dt: float) -> void:
 	for f in feed:
 		f["age"] += dt
 	feed = feed.filter(func(f: Dictionary) -> bool: return f["age"] < FEED_TIME)
+
+
+## One racing tick for the player, after it moved and collided.
+func watch(dt: float, p: PlayerCar, track: Track) -> void:
 	if p.crashed:
 		crashes += 1
 	if p.crashed or p.bumped:
