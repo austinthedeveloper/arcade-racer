@@ -73,9 +73,10 @@ static func _v0_to_v1(_cfg: ConfigFile) -> void:
 	pass
 
 
-func save() -> void:
-	var cfg := ConfigFile.new()
-	CfgVersion.stamp(cfg, VERSION)
+## Writes the options. Over a file from a newer build, its other keys are kept
+## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
+func save(fresh := false) -> void:
+	var cfg := CfgVersion.to_write(path, VERSION, fresh)
 	cfg.set_value("play", "auto_gas", auto_gas)
 	cfg.set_value("play", "traffic", traffic)
 	cfg.set_value("play", "timer", timer)
