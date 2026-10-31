@@ -19,6 +19,8 @@ var offroad := false
 
 var nitro_charges := Cfg.NITRO_CHARGES
 var nitro_time := 0.0
+var launch_time := 0.0  # seconds left on a launch boost from the start (Launch)
+var bog_time := 0.0  # seconds left bogged down after a jumped start
 
 # The car's tuning (Cars.tuning); the defaults are the Vega's
 var top_speed := Cfg.MAX_SPEED
@@ -66,6 +68,8 @@ func reset(start_position: float = 0.0) -> void:
 	speed = 0.0
 	nitro_charges = nitro_max
 	nitro_time = 0.0
+	launch_time = 0.0
+	bog_time = 0.0
 	ram_time = 0.0
 	ghost_time = 0.0
 	crash_time = 0.0
@@ -98,6 +102,8 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 			nitro_charges -= 1
 			nitro_time = nitro_duration
 	nitro_time = maxf(0.0, nitro_time - dt)
+	launch_time = maxf(0.0, launch_time - dt)
+	bog_time = maxf(0.0, bog_time - dt)
 	ram_time = maxf(0.0, ram_time - dt)
 	ghost_time = maxf(0.0, ghost_time - dt)
 
@@ -123,6 +129,10 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	elif not airborne:
 		if throttle > 0.01:
 			var boost := Cfg.NITRO_ACCEL_MULT if nitro_time > 0.0 else 1.0
+			if launch_time > 0.0:
+				boost *= Launch.BOOST_ACCEL
+			elif bog_time > 0.0:
+				boost *= Launch.BOG_ACCEL
 			speed += Cfg.ACCEL * accel_mult * boost * throttle * (Cfg.ACCEL_START - Cfg.ACCEL_FADE * speed / top) * dt
 		if brake > 0.01:
 			speed -= Cfg.BRAKING * brake * dt

@@ -46,6 +46,9 @@ func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = 
 ## sprites like the player. Records each finish at `finish_distance`.
 func update(dt: float, track: Track, player: PlayerCar, racing: bool, finish_distance: float) -> void:
 	if racing:
+		if clock == 0.0:
+			for r in cars:
+				Launch.apply(r, Launch.rival_grade(r.driver.rng))
 		clock += dt
 	var racers := everyone(player)
 	for r in cars:

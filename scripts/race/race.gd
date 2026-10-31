@@ -32,6 +32,7 @@ var state := State.COUNTDOWN
 var countdown := 3.0
 var time_left := START_TIME
 var race_time := 0.0
+var launch: Launch.Grade = Launch.Grade.PENDING  # how the player's start went
 var place := 1  # the player's place in the field (Rivals.standings)
 var player_finish := -1.0  # race time the player finished in, -1 still racing
 var finish_distance := 1.0
@@ -60,6 +61,7 @@ var _no_rivals := false
 var _start_segment := 0  # --at-segment=N: start the race this far in (screenshots)
 var _screenshot_frames: Array[int] = []
 var _screenshot_dir := ""
+var _gas_since := NAN  # when the gas went down, in seconds from GO (Launch.grade)
 var _frame := 0  # physics ticks since this race (re)started
 ## The dev flags are for the race the game starts with; later races come from the menus.
 static var _dev_args_read := false
@@ -117,6 +119,8 @@ func start_race() -> void:
 	checkpoint_bonus = Settings.race_time(CHECKPOINT_BONUS)
 	race_time = 0.0
 	player_finish = -1.0
+	launch = Launch.Grade.PENDING
+	_gas_since = NAN
 	place = rivals.place(player, player_finish)
 	next_checkpoint = 0
 	banner = ""
@@ -178,9 +182,13 @@ func _physics_process(dt: float) -> void:
 		return
 
 	banner_time = maxf(0.0, banner_time - dt)
+	_watch_launch(inp)
 	match state:
 		State.COUNTDOWN:
 			countdown -= dt
+			if countdown <= Launch.ROLL_TIME:
+				for car: PlayerCar in rivals.everyone(player):
+					car.speed = Launch.ROLL_SPEED
 			if countdown <= 0.0:
 				state = State.RACING
 				_banner("GO!", "", 1.0)
@@ -224,6 +232,27 @@ func _physics_process(dt: float) -> void:
 	_frame += 1
 	if _screenshot_frames.has(_frame):
 		_save_screenshot(_frame)
+
+
+## Grades the start once it's known: the gas down in the window around GO, or too early.
+func _watch_launch(inp: DriveInput) -> void:
+	if launch != Launch.Grade.PENDING:
+		return
+	var now := -countdown if state == State.COUNTDOWN else race_time
+	if inp.throttle >= Launch.GAS_DOWN:
+		if is_nan(_gas_since):
+			_gas_since = now
+	else:
+		_gas_since = NAN
+	if state == State.COUNTDOWN:
+		return
+	# Auto gas holds the gas for the player all through the countdown: a plain start, no bog
+	launch = Launch.Grade.NONE if Settings.auto_gas and not _autodrive else Launch.grade(_gas_since, now)
+	Launch.apply(player, launch)
+	if launch == Launch.Grade.LAUNCH:
+		_banner("LAUNCH!", "", 1.0)
+	elif launch == Launch.Grade.BOG:
+		_banner("GO!", "Too early!", 1.0)
 
 
 func _check_pickups() -> void:
@@ -307,7 +336,7 @@ func _parse_dev_args() -> void:
 func _autodrive_input() -> DriveInput:
 	var inp := DriveInput.new()
 	var seg := track.find_segment(player.position + Cfg.PLAYER_Z + 3000.0)
-	inp.throttle = 1.0
+	inp.throttle = 0.0 if state == State.COUNTDOWN and countdown > 0.1 else 1.0
 	inp.steer = clampf((seg.curve * 0.25) + (_autodrive_lane() - player.x) * 1.5, -1.0, 1.0)
 	inp.nitro_pressed = _frame % 600 == 300
 	return inp
