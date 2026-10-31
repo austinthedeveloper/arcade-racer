@@ -255,7 +255,7 @@ func test_title_reaches_options_and_back() -> void:
 	m = MenuInput.new()
 	m.confirm_pressed = true
 	g.menu.handle(m)
-	eq(g.screen, g.Screen.STAGES, "START: stage select")
+	eq(g.screen, g.Screen.MODES, "START: mode select")
 	eq(OptionsScreen.LABELS.size(), OptionsScreen.Row.size(), "a label per row")
 	eq(OptionsScreen.HELP.size(), OptionsScreen.Row.size(), "help per row")
 	_clean()

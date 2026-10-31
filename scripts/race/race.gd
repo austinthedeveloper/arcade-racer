@@ -3,6 +3,10 @@ extends Node2D
 ## The game (game.gd) starts it from the menus; quit_requested asks to go back to them.
 
 signal quit_requested
+## A Single Race is over and the player confirmed the finish: back to the menus.
+signal race_over
+## OPTIONS on the pause menu: the game shows the options, then calls options_closed.
+signal options_requested
 
 enum State { COUNTDOWN, RACING, FINISHED, TIME_UP }
 
@@ -18,6 +22,7 @@ const SHAKE_SETTLE := 12.0
 
 var track: Track
 var stage_index := 0  # into Stages
+var tour := true  # Grand Tour: a finish goes on to the next stage. false: a Single Race
 var car_id := "car_vega"  # into Cars
 var player: PlayerCar
 var power_ups := PowerUps.new()
@@ -44,6 +49,7 @@ var banner := ""
 var banner_sub := ""
 var banner_time := 0.0
 var paused := false
+var pause_menu: PauseMenu
 
 var background: Background
 var road: RoadRenderer
@@ -79,6 +85,8 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.race = self
 	layer.add_child(hud)
+	pause_menu = PauseMenu.new()
+	layer.add_child(pause_menu)
 	if debug_overlay == null:
 		debug_overlay = InputDebugOverlay.new()
 		layer.add_child(debug_overlay)
@@ -127,7 +135,7 @@ func start_race() -> void:
 	place = rivals.place(player, player_finish)
 	next_checkpoint = 0
 	banner = ""
-	paused = false
+	resume()
 	finish_distance = track.finish_index * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z
 	checkpoint_distances.clear()
 	for c in track.checkpoints:
@@ -151,6 +159,36 @@ func continue_tour() -> void:
 	start_race()
 
 
+func pause() -> void:
+	paused = true
+	pause_menu.has_options = not options_requested.get_connections().is_empty()
+	pause_menu.open()
+
+
+func resume() -> void:
+	paused = false
+	pause_menu.close()
+
+
+## Back from the options the pause menu opened: the menu again, still paused.
+func options_closed() -> void:
+	pause_menu.reopen()
+
+
+## Carries out what the pause menu picked (PauseMenu.Action).
+func pause_action(action: int) -> void:
+	match action:
+		PauseMenu.Action.RESUME:
+			resume()
+		PauseMenu.Action.RESTART:
+			start_race()
+		PauseMenu.Action.OPTIONS:
+			pause_menu.close()
+			options_requested.emit()
+		PauseMenu.Action.QUIT:
+			quit_requested.emit()
+
+
 func counting_down() -> bool:
 	return state == State.COUNTDOWN
 
@@ -169,18 +207,22 @@ func _physics_process(dt: float) -> void:
 	if calibration.visible:
 		_redraw()
 		return
+	if paused:
+		if pause_menu.visible:  # (hidden while the options are up)
+			pause_action(pause_menu.choose(InputRouter.menu, inp.pause_pressed))
+		_redraw()
+		return
 	if inp.restart_pressed or (inp.confirm_pressed and state == State.TIME_UP):
 		start_race()
 		return
 	if inp.confirm_pressed and state == State.FINISHED:
-		continue_tour()
+		if tour:
+			continue_tour()
+		else:
+			race_over.emit()
 		return
 	if inp.pause_pressed:
-		paused = not paused
-	elif paused and InputRouter.menu.back_pressed:
-		quit_requested.emit()
-		return
-	if paused:
+		pause()
 		_redraw()
 		return
 
@@ -298,6 +340,8 @@ func _check_progress() -> void:
 		var secs := fmod(race_time, 60.0)
 		var next := Stages.next(stage_index)
 		var prompt := "Enter: on to %s" % Stages.stage_name(next) if next >= 0 else "Tour complete!   Enter: race again"
+		if not tour:
+			prompt = "Enter: menu   R: race again"
 		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
 		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], 999.0)
 
