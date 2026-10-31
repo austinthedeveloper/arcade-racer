@@ -166,3 +166,9 @@ func test_cars_behind_the_player_are_drawn_over_it() -> void:
 		drawn.append(seg)
 	eq(RoadRenderer.player_slot(drawn, 42), 2, "the player's segment in the near-to-far list")
 	eq(RoadRenderer.player_slot(drawn, 7), -1, "not drawn: the player goes last")
+
+
+func test_only_cars_close_behind_are_drawn_over_the_player() -> void:
+	# Cars nearer the camera than that filled the screen at a grid start.
+	eq(RoadRenderer.behind_from(7), 7 - RoadRenderer.BEHIND_SEGMENTS, "one segment behind the player's")
+	eq(RoadRenderer.behind_from(1), 0, "no further than the camera's own")

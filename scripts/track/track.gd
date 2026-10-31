@@ -17,6 +17,7 @@ const HILL_HIGH := 60.0
 const START_SEGMENT := 14  # where the start line is drawn
 const CHECKPOINT_FRACTIONS := [0.25, 0.5, 0.75]
 const FINISH_INTO_STRAIGHT := 60  # segments into the final straight
+const TUNNEL_RAMP := 10.0  # segments from a tunnel mouth to its darkest
 
 ## Curves this sharp or sharper get a turn sign before them and chevrons on the outside.
 const SHARP_CURVE := CURVE_MEDIUM
@@ -163,15 +164,24 @@ func add_span(index: int, id: String) -> void:
 
 
 ## A tunnel or covered bridge from segment `start` for `length` segments: the entrance, then
-## an interior frame every `every` segments, with the roadside cleared and the road darkened.
-func add_tunnel(start: int, length: int, entrance: String, ring: String, every := 3) -> void:
+## an interior frame every `every` segments, with the roadside cleared and the road darkened,
+## more so deeper in. The far end is `exit` (the entrance again if "").
+func add_tunnel(start: int, length: int, entrance: String, ring: String, every := 3, exit := "") -> void:
 	add_span(start, entrance)
+	var end := mini(start + length, segments.size() - 1)
 	for i in range(start + 1, mini(start + length, segments.size())):
 		segments[i].covered = true
+		segments[i].depth = tunnel_depth(i - start, end - start)
 		segments[i].sprites.clear()
 		if (i - start) % every == 0:
 			add_span(i, ring)
-	add_span(mini(start + length, segments.size() - 1), entrance)
+	add_span(end, exit if exit != "" else entrance)
+
+
+## How far into a tunnel `length` segments long segment `k` of it is: 0 at either mouth, up to
+## 1 once TUNNEL_RAMP segments in.
+static func tunnel_depth(k: int, length: int) -> float:
+	return clampf(float(mini(k, length - k)) / TUNNEL_RAMP, 0.0, 1.0)
 
 
 ## The first segment at or after `index` with no race gate or span within `margin` segments.
