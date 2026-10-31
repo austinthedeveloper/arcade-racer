@@ -11,8 +11,8 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	if race == null or race.player == null:
-		return
+	if race == null or race.player == null or race.results.visible:
+		return  # (the results screen covers it)
 	var p: PlayerCar = race.player
 	var w := float(Cfg.SCREEN_W)
 
@@ -113,7 +113,9 @@ func _draw() -> void:
 		var a := clampf((Scoring.FEED_TIME - b["age"]) / 0.4, 0.0, 1.0)
 		_text_centered(Vector2(w * 0.78, 110 + i * 16), "%s +%d" % [b["name"], b["points"]], 12, Color("#5dff8a", a))
 	var ended: bool = race.state == race.State.FINISHED or race.state == race.State.TIME_UP
-	if ended and race.tour and (race.after == race.After.TOUR_DONE or race.after == race.After.TOUR_OVER):
+	if race.results.visible:
+		pass  # the results screen has the place, time, tally and standings
+	elif ended and race.tour and (race.after == race.After.TOUR_DONE or race.after == race.After.TOUR_OVER):
 		_tour_standings(Vector2(w / 2.0, 182), "FINAL STANDINGS" if race.after == race.After.TOUR_DONE else "TOUR OVER")
 	elif race.state == race.State.FINISHED:
 		var end_y := _score_tally(Vector2(w / 2.0, 182))
@@ -122,13 +124,13 @@ func _draw() -> void:
 			_text_centered(Vector2(w / 2.0, end_y + 14), "TOUR   %s   %d PTS" % [Rivals.ordinal(tr.standing_of(Tour.YOU)),
 				tr.points[Tour.YOU]], 11, Color("#ffd23a"))
 
-	if ended and not race.new_unlocks.is_empty():
+	if ended and not race.new_unlocks.is_empty() and not race.results.visible:
 		_text_centered(Vector2(w / 2.0, 92), unlock_line(race.new_unlocks), 12, Color("#5dff8a", 0.6 + 0.4 * sin(race.road.time * 6.0)))
 
 	# Banners
 	if race.counting_down():
 		_text_centered(Vector2(w / 2.0, 130), str(ceili(race.countdown)), 64, Color("#ffd23a"))
-	if race.banner != "" and race.banner_time > 0.0:
+	if race.banner != "" and race.banner_time > 0.0 and not race.results.visible:
 		_text_centered(Vector2(w / 2.0, 130), race.banner, 44, Color("#ffd23a"))
 		if race.banner_sub != "":
 			_text_centered(Vector2(w / 2.0, 156), race.banner_sub, 14, Color.WHITE)
