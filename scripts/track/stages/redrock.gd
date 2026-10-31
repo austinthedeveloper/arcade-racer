@@ -70,6 +70,8 @@ static func build() -> Track:
 
 	_decorate(t, canyon_start, canyon_end, diner_at)
 	t.add_spans_at("redrock_arch", [0.3, 0.42, 0.62])
+	t.scatter(["water_tower_wood", "dino", "rusty_truck", "cattle_sign", "butte", "arrow_sign"], 250, 450, 1.8)
+	t.add_finish_crowd()
 	return t
 
 

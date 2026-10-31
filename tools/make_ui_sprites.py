@@ -15,8 +15,10 @@ import sys
 
 from PIL import Image
 
-# Stage order matches Stages.NAMES; Skyline is held back.
-STAGES = ["palm-coast", "redrock", "neon", "timberline", "bayou", "harvest", "thunder"]
+# Stage order matches Stages.NAMES
+STAGES = ["palm-coast", "redrock", "neon", "timberline", "bayou", "harvest", "thunder", "skyline"]
+# Composite version per stage where the first one was rerolled
+COMPOSITE = {"skyline": "A_v2"}
 POSTCARD = (224, 126)
 LOGO_WIDTH = 360
 VEGA_CROP = (180, 470, 1320, 1000)  # the car and a little road, in the hero art
@@ -70,7 +72,7 @@ def main():
     print("title_bg", title.size)
 
     for stage in STAGES:
-        src = Image.open(os.path.join(concept, "backgrounds", stage + "_composite_A_v1.png"))
+        src = Image.open(os.path.join(concept, "backgrounds", "%s_composite_%s.png" % (stage, COMPOSITE.get(stage, "A_v1"))))
         card = quantize(crop_16_9(src).resize(POSTCARD, Image.LANCZOS))
         name = "postcard_" + stage.replace("-", "_") + ".png"
         card.save(os.path.join(out, name))

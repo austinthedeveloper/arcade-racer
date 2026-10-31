@@ -3,9 +3,9 @@ extends RefCounted
 ## The stages in Grand Tour order. A race runs them one after another.
 
 const NAMES := ["Palm Coast Boulevard", "Redrock Canyon", "Neon Strip", "Timberline Pass",
-	"Bayou Causeway", "Harvest Valley", "Thunderhead Highway"]
+	"Bayou Causeway", "Harvest Valley", "Thunderhead Highway", "Skyline Finale"]
 ## Stage select pictures (tools/make_ui_sprites.py), in the same order.
-const POSTCARDS := ["palm_coast", "redrock", "neon", "timberline", "bayou", "harvest", "thunder"]
+const POSTCARDS := ["palm_coast", "redrock", "neon", "timberline", "bayou", "harvest", "thunder", "skyline"]
 
 
 static func count() -> int:
@@ -26,6 +26,8 @@ static func build(index: int) -> Track:
 			return HarvestValley.build()
 		6:
 			return Thunderhead.build()
+		7:
+			return SkylineFinale.build()
 		_:
 			return PalmCoast.build()
 

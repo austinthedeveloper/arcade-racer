@@ -80,6 +80,8 @@ static func build() -> Track:
 	t.add_sprite(lookout_at, "lookout_tower", 1.8)
 	t.add_sprite(waterfall_at, "waterfall", -2.2)
 	t.add_sprite(lodge_at, "lodge", 1.6)
+	t.scatter(["chapel", "moose", "chairlift", "woodpile", "frozen_falls", "snowman"], 200, 450, 1.8)
+	t.add_finish_crowd()
 	return t
 
 

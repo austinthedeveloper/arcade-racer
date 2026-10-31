@@ -83,6 +83,8 @@ static func build() -> Track:
 	t.add_sprite(landing_at, "bait_shop", 1.5)
 	t.add_sprite(landing_at + 12, "stilt_shack", -1.8)
 	t.add_sprite(landing_at + 30, "boat_dock", -1.4)
+	t.scatter(["crab_shack", "gator", "crawfish_sign", "live_oak", "mailboxes", "riverboat"], 150, 450, 1.8)
+	t.add_finish_crowd()
 	return t
 
 

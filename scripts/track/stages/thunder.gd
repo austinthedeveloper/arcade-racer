@@ -66,6 +66,8 @@ static func build() -> Track:
 	t.add_spans_at("thunder_overpass", [0.15, 0.45, 0.6, 0.88])
 	t.add_sprite(stop_at, "truck_stop", 1.6)
 	t.add_sprite(stop_at + 20, "motel", -1.7)
+	t.scatter(["grain_bin", "storm_cellar", "windmill_old", "radar_dome", "flasher_barricade", "tree_bent"], 250, 450, 1.9)
+	t.add_finish_crowd()
 	return t
 
 

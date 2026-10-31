@@ -31,6 +31,12 @@ static func load_all() -> void:
 	_add("lamp_post", "lamp_post.png", 3800.0, 0.25)
 	_add("hotel", "hotel.png", 7500.0, 1.0)
 	_add("bush", "bush.png", 560.0, 0.6)
+	_add("pier", "pier.png", 4200.0, 1.0)
+	_add("ice_cream_stand", "ice_cream_stand.png", 3600.0, 0.9)
+	_add("surfboards", "surfboards.png", 2200.0, 0.8)
+	_add("lighthouse", "lighthouse.png", 8000.0, 0.5)
+	_add("bikes", "bikes.png", 1200.0, 0.9)
+	_add("gull_post", "gull_post.png", 1500.0, 0.4)
 
 	_dir = ROADSIDE + "redrock/"
 	_add("saguaro_a", "saguaro_a.png", 3600.0, 0.3)
@@ -50,6 +56,12 @@ static func load_all() -> void:
 	_add("fence", "fence.png", 1300.0, 1.0)
 	_add("skull_post", "skull_post.png", 1700.0, 0.3)
 	_add("road_sign", "road_sign.png", 2400.0, 0.9)
+	_add("water_tower_wood", "water_tower_wood.png", 6500.0, 0.6)
+	_add("rusty_truck", "rusty_truck.png", 1800.0, 1.0)
+	_add("dino", "dino.png", 7000.0, 0.6)
+	_add("cattle_sign", "cattle_sign.png", 2200.0, 0.5)
+	_add("butte", "butte.png", 9000.0, 0.9)
+	_add("arrow_sign", "arrow_sign.png", 4200.0, 0.4)
 
 	_dir = ROADSIDE + "neon/"
 	for id in ["casino_spire", "casino_lotus", "casino_round", "casino_star", "casino_wave", "casino_crown"]:
@@ -62,6 +74,12 @@ static func load_all() -> void:
 	_add("street_lamp_b", "street_lamp_b.png", 3000.0, 0.2)
 	_add("palm_lit", "palm_lit.png", 4200.0, 0.3)
 	_add("fountain", "fountain.png", 2800.0, 1.0)
+	_add("slot_machine", "slot_machine.png", 7500.0, 1.0)
+	_add("cowboy_boot", "cowboy_boot.png", 6000.0, 0.8)
+	_add("palm_lights", "palm_lights.png", 4600.0, 0.3)
+	_add("casino_entrance", "casino_entrance.png", 6500.0, 1.0)
+	_add("fountain_show", "fountain_show.png", 5000.0, 0.9)
+	_add("searchlight", "searchlight.png", 3000.0, 0.7)
 
 	_dir = ROADSIDE + "timberline/"
 	_add("pine_a", "pine_a.png", 6400.0, 0.25)
@@ -79,6 +97,12 @@ static func load_all() -> void:
 	_add("guardrail", "guardrail.png", 900.0, 1.0)
 	_add("chevron_sign", "chevron_sign.png", 1900.0, 0.8)
 	_add("snow_cliff", "snow_cliff.png", 7000.0, 1.0)
+	_add("chairlift", "chairlift.png", 7500.0, 0.3)
+	_add("chapel", "chapel.png", 6500.0, 1.0)
+	_add("frozen_falls", "frozen_falls.png", 9000.0, 1.0)
+	_add("moose", "moose.png", 2600.0, 0.6)
+	_add("woodpile", "woodpile.png", 1600.0, 1.0)
+	_add("snowman", "snowman.png", 1500.0, 0.5)
 
 	_dir = ROADSIDE + "bayou/"
 	_add("cypress_a", "cypress_a.png", 8000.0, 0.15)
@@ -96,6 +120,14 @@ static func load_all() -> void:
 	_add("piling", "piling.png", 2000.0, 0.8)
 	for id in ["rail_wood_a", "rail_wood_b", "rail_wood_short", "rail_end", "rail_wood_long", "rail_concrete", "rail_concrete_end"]:
 		_add(id, id + ".png", 1000.0, 1.0)
+	_add("crab_shack", "crab_shack.png", 5500.0, 1.0)
+	_add("gator", "gator.png", 700.0, 0.0)
+	_add("crawfish_sign", "crawfish_sign.png", 3000.0, 0.8)
+	_add("live_oak", "live_oak.png", 7000.0, 0.3)
+	_add("riverboat", "riverboat.png", 5500.0, 1.0)
+	_add("mailboxes", "mailboxes.png", 1300.0, 0.9)
+
+	_dir = ROADSIDE + "harvest/"
 
 	_dir = ROADSIDE + "harvest/"
 	_add("barn", "barn.png", 6500.0, 1.0)
@@ -110,6 +142,12 @@ static func load_all() -> void:
 	_add("hay_bale", "hay_bale.png", 800.0, 1.0)
 	_add("scarecrow", "scarecrow.png", 1800.0, 0.3)
 	_add("farm_fence", "farm_fence.png", 900.0, 1.0)
+	_add("grain_elevator", "grain_elevator.png", 10000.0, 1.0)
+	_add("balloon", "balloon.png", 4000.0, 0.0)
+	_add("farm_truck", "farm_truck.png", 2000.0, 1.0)
+	_add("produce_cart", "produce_cart.png", 2400.0, 1.0)
+	_add("crop_duster", "crop_duster.png", 4200.0, 1.0)
+	_add("pumpkins", "pumpkins.png", 1500.0, 0.9)
 
 	_dir = ROADSIDE + "thunder/"
 	_add("truck_stop", "truck_stop.png", 6500.0, 1.0)
@@ -132,6 +170,53 @@ static func load_all() -> void:
 	_add("puddle_a", "puddle_a.png", 500.0, 0.0)
 	_add("puddle_b", "puddle_b.png", 500.0, 0.0)
 	_add("wrecked_sign", "wrecked_sign.png", 3200.0, 0.8)
+	_add("grain_bin", "grain_bin.png", 7000.0, 0.9)
+	_add("storm_cellar", "storm_cellar.png", 1800.0, 1.0)
+	_add("windmill_old", "windmill_old.png", 6500.0, 0.3)
+	_add("flasher_barricade", "flasher_barricade.png", 1100.0, 0.9)
+	_add("radar_dome", "radar_dome.png", 8000.0, 0.6)
+	_add("tree_bent", "tree_bent.png", 3600.0, 0.3)
+
+	_dir = ROADSIDE + "skyline/"
+	for id in ["tower_twin", "tower_glass", "tower_round", "office_a", "deco_tower", "hotel_sky", "clock_tower"]:
+		_add(id, id + ".png", 11000.0, 1.0)
+	for id in ["galleria", "cafe", "apartments", "deco_pink", "brick_loft", "office_b", "office_c"]:
+		_add(id, id + ".png", 7500.0, 1.0)
+	_add("harbor_lamp", "harbor_lamp.png", 3600.0, 0.2)
+	_add("harbor_lamp_double", "harbor_lamp_double.png", 3600.0, 0.2)
+	_add("traffic_light", "traffic_light.png", 3000.0, 0.2)
+	_add("traffic_light_arm", "traffic_light_arm.png", 3400.0, 0.15)
+	_add("subway", "subway.png", 3200.0, 1.0)
+	_add("crowd_barrier_city", "crowd_barrier_city.png", 1500.0, 1.0)
+	for id in ["bridge_tower_x", "bridge_tower_h", "bridge_tower_a", "bridge_tower_slim"]:
+		_add(id, id + ".png", 16000.0, 0.4)
+	_add("harbor_crane", "harbor_crane.png", 11000.0, 0.6)
+	_add("ferry_terminal", "ferry_terminal.png", 5500.0, 1.0)
+	_add("dolphin_balloon", "dolphin_balloon.png", 6000.0, 0.0)
+	for id in ["flag_a", "flag_b", "flag_c", "flag_d", "flag_e"]:
+		_add(id, id + ".png", 3800.0, 0.1)
+	_add("news_van", "news_van.png", 1900.0, 1.0)
+	_add("fireworks_barge", "fireworks_barge.png", 2600.0, 1.0)
+
+	# Race furniture for every stage
+	_dir = ROADSIDE + "shared/"
+	_add("guardrail_steel", "guardrail_steel.png", 650.0, 1.0)
+	_add("barrier_red", "barrier_red.png", 900.0, 1.0)
+	_add("tire_stack", "tire_stack.png", 1000.0, 1.0)
+	_add("barrels_yellow", "barrels_yellow.png", 900.0, 1.0)
+	_add("cone_orange", "cone_orange.png", 650.0, 0.0)
+	_add("barricade", "barricade.png", 1000.0, 0.9)
+	_add("barrier_orange", "barrier_orange.png", 900.0, 1.0)
+	_add("crowd", "crowd.png", 1800.0, 1.0)
+	_add("grandstand", "grandstand.png", 4200.0, 1.0)
+	_add("flagman", "flagman.png", 1900.0, 0.4)
+	_add("camera_tower", "camera_tower.png", 4500.0, 0.6)
+	_add("inflatable_arch", "inflatable_arch.png", 3800.0, 0.3)
+	for id in ["turn_left", "turn_right", "chevron_a", "chevron_b", "chevron_c", "bump_sign"]:
+		_add(id, id + ".png", 2100.0, 0.4)
+	_add("sign_green", "sign_green.png", 3200.0, 0.8)
+	_add("sign_brown", "sign_brown.png", 3200.0, 0.8)
+	_add("delineator", "delineator.png", 1100.0, 0.5)
 
 
 	# id, texture, color that fills beside it (and above it for a tunnel ring), banner text box
