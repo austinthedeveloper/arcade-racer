@@ -270,9 +270,13 @@ static func _profiles_v0_to_v1(_cfg: ConfigFile) -> void:
 	pass
 
 
+## Over a file from a newer build, keys this build doesn't know survive inside each profile
+## (CfgVersion.to_write); profiles reset since are dropped.
 func _write_profiles() -> void:
-	var cfg := ConfigFile.new()
-	CfgVersion.stamp(cfg, PROFILES_VERSION)
+	var cfg := CfgVersion.to_write(profile_path, PROFILES_VERSION)
+	for section in cfg.get_sections():
+		if section != CfgVersion.SECTION and not _saved.has(section):
+			cfg.erase_section(section)
 	for guid in _saved:
 		(_saved[guid] as DeviceProfile).save_to(cfg)
 	cfg.save(profile_path)

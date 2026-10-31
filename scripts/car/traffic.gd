@@ -13,10 +13,19 @@ class TrafficCar:
 	var segment: Segment
 	var flung := 0.0  # seconds left in the air after a ram plate hit
 	var fling_dir := 0.0
+	var lane := 0.0  # the lane a rammed car was knocked out of, and drives back to
+	var returning := false  # rammed and landed, drifting back to its lane; not solid yet
+	var last_z := NAN  # z before this tick's move (NAN until it has moved)
+
+
+	## Whether the player can hit it: not while flying off or drifting back after a ram.
+	func solid() -> bool:
+		return flung <= 0.0 and not returning
 
 const LANE_OFFSETS := [-0.75, -0.25, 0.25, 0.75]
 const FLING_TIME := 0.8  # how long a rammed car flies
 const FLING_SPEED := 4.0  # road half-widths per second sideways
+const RETURN_SPEED := 1.2  # road half-widths per second, drifting back to its lane after landing
 const CARS := ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow",
 	"pickup_red", "suv_green", "muscle_white", "van_navy", "hatch_purple"]
 const BIG := ["semi", "bus", "box_truck", "rv", "carrier", "garbage_truck"]
@@ -44,6 +53,7 @@ func spawn(track: Track, count: int, seed_value: int = 7) -> void:
 	for i in count:
 		var car := TrafficCar.new()
 		car.z = rng.randf_range(40.0, track.segments.size() - 10.0) * Cfg.SEGMENT_LENGTH
+		car.last_z = car.z
 		car.offset = LANE_OFFSETS[rng.randi() % LANE_OFFSETS.size()]
 		var roll := rng.randf()
 		if roll < BIG_SHARE:
@@ -66,6 +76,11 @@ func update(dt: float, track: Track) -> void:
 		if car.flung > 0.0:
 			car.flung = maxf(0.0, car.flung - dt)
 			car.offset = clampf(car.offset + car.fling_dir * FLING_SPEED * dt, -4.0, 4.0)
+			car.returning = car.flung <= 0.0
+		elif car.returning:
+			car.offset = move_toward(car.offset, car.lane, RETURN_SPEED * dt)
+			car.returning = car.offset != car.lane
+		car.last_z = car.z
 		car.z = fposmod(car.z + car.speed * dt, track.length)
 		car.percent = fposmod(car.z, Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH
 		var seg := track.find_segment(car.z)
@@ -75,7 +90,9 @@ func update(dt: float, track: Track) -> void:
 			car.segment = seg
 
 
-## Knocks a car flying off the road, away from `from_x`.
+## Knocks a car flying off the road, away from `from_x`. It lands, then drives back to its lane.
 static func fling(car: TrafficCar, from_x: float) -> void:
+	if car.flung <= 0.0 and not car.returning:
+		car.lane = car.offset
 	car.flung = FLING_TIME
 	car.fling_dir = 1.0 if car.offset >= from_x else -1.0
