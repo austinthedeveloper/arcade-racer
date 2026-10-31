@@ -24,7 +24,7 @@ func _clean() -> void:
 
 func _settings_values() -> Array:
 	return [Settings.auto_gas, Settings.traffic, Settings.timer, Settings.power_ups, Settings.music_volume,
-		Settings.sfx_volume]
+		Settings.sfx_volume, Settings.screen_shake, Settings.flash, Settings.units]
 
 
 func _load_settings(fixture: String) -> Array:
@@ -82,17 +82,92 @@ func test_settings_v0_loads_as_before() -> void:
 	_clean()
 	var v0 := _load_settings("settings_v0.cfg")
 	eq(Settings.loaded_version, 0, "unversioned is version 0")
-	eq(v0, [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7], "every option")
+	eq(v0, [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 10, 10, Settings.Units.MPH],
+		"every option; shake and flash as designed")
 	eq(_load_settings("settings_v1.cfg"), v0, "version 1: the same options")
 	eq(Settings.loaded_version, 1, "version 1")
 	_clean()
 
 
+func test_settings_v1_to_v2_adds_shake_and_flash() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v1.cfg")
+	eq(Settings.migrate(cfg), 1, "from version 1")
+	eq([cfg.get_value("accessibility", "screen_shake"), cfg.get_value("accessibility", "flash")],
+		[10, 10], "shake and flash at the designed level")
+	eq(cfg.get_value("audio", "music"), 3, "the rest untouched")
+
+
+func test_settings_v2_loads() -> void:
+	_clean()
+	eq(_load_settings("settings_v2.cfg"), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 3, 0, Settings.Units.MPH],
+		"every option")
+	eq(Settings.loaded_version, 2, "version 2")
+	_clean()
+
+
+func test_settings_v2_to_v3_adds_units() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v2.cfg")
+	eq(Settings.migrate(cfg), 2, "from version 2")
+	eq([CfgVersion.of(cfg), cfg.get_value("display", "units")], [Settings.VERSION, Settings.Units.MPH], "migrated on, MPH as before")
+	eq(cfg.get_value("accessibility", "screen_shake"), 3, "the rest untouched")
+
+
+func test_settings_v3_loads() -> void:
+	_clean()
+	eq(_load_settings("settings_v3.cfg"), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 3, 0,
+		Settings.Units.KPH], "every option")
+	eq(Settings.loaded_version, 3, "version 3")
+	_clean()
+
+
+func _display_values() -> Array:
+	return [Settings.fullscreen, Settings.integer_scale, Settings.vsync, Settings.scanlines]
+
+
+func test_settings_v3_to_v4_adds_display() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v3.cfg")
+	eq(Settings.migrate(cfg), 3, "from version 3")
+	eq([CfgVersion.of(cfg), cfg.get_value("display", "fullscreen"), cfg.get_value("display", "integer_scale"),
+		cfg.get_value("display", "vsync"), cfg.get_value("display", "scanlines")], [Settings.VERSION, false, false, true, false],
+		"migrated on: windowed, fractional, V-Sync, no scanlines, as before")
+	eq(cfg.get_value("display", "units"), Settings.Units.KPH, "units untouched")
+	_clean()
+	eq(_load_settings("settings_v3.cfg")[8], Settings.Units.KPH, "v3 loads")
+	eq(_display_values(), [false, false, true, false], "with the display defaults")
+	_clean()
+
+
+func test_settings_v4_loads() -> void:
+	_clean()
+	eq(_load_settings("settings_v4.cfg"), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 3, 0,
+		Settings.Units.KPH], "every earlier option")
+	eq(_display_values(), [true, true, false, true], "the display options")
+	eq(Settings.loaded_version, 4, "version 4")
+	_clean()
+
+
+func test_settings_v4_to_v5_adds_assists() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v4.cfg")
+	eq(Settings.migrate(cfg), 4, "from version 4")
+	eq([CfgVersion.of(cfg), cfg.get_value("play", "steer_assist"), cfg.get_value("play", "brake_assist")], [Settings.VERSION, false, false],
+		"migrated on: both assists off, as before")
+	eq(cfg.get_value("display", "scanlines"), true, "the rest untouched")
+	_clean()
+	_load_settings("settings_v4.cfg")
+	eq([Settings.steer_assist, Settings.brake_assist], [false, false], "v4 loads with the assists off")
+	_clean()
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
-	var v2 := _load_settings("settings_v2.cfg")
-	eq(Settings.loaded_version, 2, "version 2 read")
-	eq(v2, [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7], "the known options")
+	var future := _load_settings("settings_future.cfg")
+	eq(Settings.loaded_version, 99, "version 99 read")
+	eq(future, [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 4, 10, Settings.Units.KPH],
+		"the known options (flash clamped to the designed level)")
 	_clean()
 
 
@@ -104,7 +179,7 @@ func test_settings_save_writes_the_version() -> void:
 	cfg.load(TestSuite.SCRATCH_SETTINGS)
 	eq(CfgVersion.of(cfg), Settings.VERSION, "saved as the current version")
 	Settings.load_settings()
-	eq(_settings_values(), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7], "same options")
+	eq(_settings_values(), [true, Settings.Traffic.LIGHT, Settings.Clock.TIGHT, false, 3, 7, 10, 10, Settings.Units.MPH], "same options")
 	_clean()
 	eq(Settings.loaded_version, Settings.VERSION, "no file: the current version")
 
@@ -138,6 +213,59 @@ func test_save_writes_the_version() -> void:
 	_clean()
 
 
+# Review on #112: saving over a newer file used to rebuild it from scratch at this build's
+# version, dropping what the newer build wrote, which it would then migrate as an old file.
+func test_settings_saved_over_a_newer_file_keep_its_keys() -> void:
+	_clean()
+	_load_settings("settings_future.cfg")
+	Settings.traffic = Settings.Traffic.HEAVY
+	Settings.save()
+	var cfg := ConfigFile.new()
+	cfg.load(TestSuite.SCRATCH_SETTINGS)
+	eq(CfgVersion.of(cfg), 99, "still version 99")
+	eq(cfg.get_value("play", "traffic"), Settings.Traffic.HEAVY, "the change written")
+	eq([cfg.get_value("play", "rivals"), cfg.get_value("audio", "announcer"), cfg.get_value("display", "crt_filter")],
+		["HARD", 5, true], "the newer build's options kept")
+	eq(cfg.get_value("accessibility", "strobe_filter"), true, "in known sections too")
+	Settings.save(true)
+	cfg = ConfigFile.new()
+	cfg.load(TestSuite.SCRATCH_SETTINGS)
+	eq([CfgVersion.of(cfg), cfg.has_section_key("display", "crt_filter")], [Settings.VERSION, false], "a reset starts fresh")
+	_clean()
+
+
+func test_save_over_a_newer_file_keeps_its_keys() -> void:
+	_clean()
+	_load_save("save_v2.cfg")
+	SaveData.record_finish(0, "car_vega", 70.0)
+	var cfg := ConfigFile.new()
+	cfg.load(TestSuite.SCRATCH_SAVE)
+	eq(CfgVersion.of(cfg), 2, "still version 2")
+	eq(cfg.get_value("medals", "palm_coast"), "gold", "[medals] kept")
+	eq(cfg.get_value("tour", "rivals_beaten"), 4, "unknown tour keys kept")
+	var b: Dictionary = cfg.get_value("best", "palm_coast/car_vega")
+	eq([b.get("time"), b.get("place"), b.get("ghost")], [70.0, 1, "replays/palm.bin"], "the new best, with the newer build's ghost path")
+	SaveData.reset()
+	SaveData.save(true)
+	cfg = ConfigFile.new()
+	cfg.load(TestSuite.SCRATCH_SAVE)
+	eq([CfgVersion.of(cfg), cfg.has_section("medals")], [SaveData.VERSION, false], "a reset starts fresh")
+	_clean()
+
+
+func test_profiles_saved_over_a_newer_file_keep_its_keys() -> void:
+	_clean()
+	_load_profiles("input_profiles_future.cfg")
+	InputRouter._saved.erase(PAD)
+	InputRouter._write_profiles()
+	var cfg := ConfigFile.new()
+	cfg.load(TestSuite.SCRATCH_PROFILES)
+	eq([CfgVersion.of(cfg), cfg.get_value("meta", "layout")], [99, "per-device"], "version 99 and its [meta] kept")
+	eq(cfg.get_value(WHEEL, "ffb_strength"), 0.8, "a key this build doesn't know kept in the profile")
+	check(not cfg.has_section(PAD), "a dropped profile is gone")
+	_clean()
+
+
 func test_profiles_v0_load_as_before() -> void:
 	_clean()
 	var v0 := _load_profiles("input_profiles_v0.cfg")
@@ -157,10 +285,39 @@ func test_profiles_v0_load_as_before() -> void:
 
 func test_profiles_newer_version_loads_what_it_knows() -> void:
 	_clean()
-	var v2 := _load_profiles("input_profiles_v2.cfg")
-	eq(InputRouter.profiles_version, 2, "version 2 read")
-	eq(v2, _load_profiles("input_profiles_v0.cfg"), "the known keys of the same profiles")
+	var future := _load_profiles("input_profiles_future.cfg")
+	eq(InputRouter.profiles_version, 99, "version 99 read")
+	eq(future, _load_profiles("input_profiles_v0.cfg"), "the known keys of the same profiles")
 	_clean()
+
+
+func test_profiles_v1_loads_with_default_bindings() -> void:
+	_clean()
+	var v1 := _load_profiles("input_profiles_v1.cfg")
+	eq([v1[WHEEL]["bindings"], v1[PAD]["bindings"], InputRouter.keyboard.bindings], [{}, {}, {}], "no rebinds")
+	var wheel: DeviceProfile = InputRouter._saved[WHEEL]
+	eq(wheel.binding("nitro"), [4], "the wheel's nitro is its calibrated button")
+	eq(InputRouter.keyboard.binding("nitro"), [KEY_SPACE, KEY_SHIFT], "keyboard defaults")
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "input_profiles_v1.cfg")
+	eq(InputRouter.migrate_profiles(cfg), 1, "from version 1")
+	eq(CfgVersion.of(cfg), InputRouter.PROFILES_VERSION, "migrated on")
+	eq(cfg.get_value(WHEEL, "nitro_button"), 4, "profiles untouched")
+	_clean()
+
+
+func test_profiles_v2_loads_bindings() -> void:
+	_clean()
+	var v2 := _load_profiles("input_profiles_v2.cfg")
+	eq(InputRouter.profiles_version, 2, "version 2")
+	eq(v2[PAD]["bindings"], {"nitro": 2, "view": -1}, "the pad's rebinds")
+	var pad: DeviceProfile = InputRouter._saved[PAD]
+	eq([pad.binding("nitro"), pad.binding("view"), pad.binding("pause")], [[JOY_BUTTON_X], [], [JOY_BUTTON_START]],
+		"rebound, unbound, default")
+	eq(InputRouter.keyboard.binding("nitro"), [KEY_N], "the keyboard's rebind")
+	check(not InputRouter._saved.has(DeviceProfile.KEYBOARD_GUID), "the keyboard isn't a joypad profile")
+	_clean()
+	eq(InputRouter.keyboard.binding("nitro"), [KEY_SPACE, KEY_SHIFT], "a fresh file: defaults again")
 
 
 func test_profiles_write_the_version() -> void:

@@ -18,8 +18,9 @@ const WHEEL_NAME_HINTS := [
 const PAD_DEADZONE := 0.12
 const PAD_GAMMA := 1.6
 ## The input_profiles.cfg format (CfgVersion). 0: no version field, one section per GUID.
-## 1: the same, plus [meta] version.
-const PROFILES_VERSION := 1
+## 1: the same, plus [meta] version. 2: a bindings key per profile, and a [keyboard] section
+## of keyboard bindings (missing: the defaults).
+const PROFILES_VERSION := 2
 const PEDAL_PRESS := 0.5  # a pedal past this confirms (gas) or goes back (brake) in menus
 
 ## Where wheel and pad profiles are saved. Tests point this at a scratch file.
@@ -30,6 +31,8 @@ var state := DriveInput.new()
 var menu := MenuInput.new()
 var speed_factor := 0.0  # set by the race each tick, for speed-sensitive pad steering
 var last_active_device := -1  # -1 is the keyboard
+## The keyboard's bindings (RemapScreen), put on the InputMap by apply_keyboard_bindings.
+var keyboard := DeviceProfile.keyboard()
 
 var _saved: Dictionary = {}  # guid -> DeviceProfile
 var _transient: Dictionary = {}  # device id -> DeviceProfile, for devices without a saved profile
@@ -42,6 +45,10 @@ var _prev_menu := {"confirm": false, "back": false}
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	process_physics_priority = -100
+	# Dev flag: --profiles-file=PATH reads (and saves) another profile file, for screenshots.
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--profiles-file="):
+			profile_path = arg.get_slice("=", 1)
 	_register_actions()
 	load_profiles()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
@@ -75,7 +82,7 @@ func _physics_process(dt: float) -> void:
 
 	for device in Input.get_connected_joypads():
 		var prof := get_profile(device)
-		var r: Dictionary = _read_wheel(device, prof) if prof.kind == DeviceProfile.Kind.WHEEL else _read_pad(device, dt)
+		var r: Dictionary = _read_wheel(device, prof) if prof.kind == DeviceProfile.Kind.WHEEL else _read_pad(device, prof, dt)
 		if absf(r["steer"]) > absf(steer):
 			steer = r["steer"]
 		throttle = maxf(throttle, r["throttle"])
@@ -113,7 +120,7 @@ func _physics_process(dt: float) -> void:
 		state.device_name = "Keyboard"
 
 
-func _read_pad(device: int, dt: float) -> Dictionary:
+func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
 	var ax := Input.get_joy_axis(device, JOY_AXIS_LEFT_X)
 	var mag := absf(ax)
 	var target := 0.0
@@ -131,7 +138,7 @@ func _read_pad(device: int, dt: float) -> Dictionary:
 	var throttle := maxf(Input.get_joy_axis(device, JOY_AXIS_TRIGGER_RIGHT), 1.0 if a_btn else 0.0)
 	var brake_btn := Input.is_joy_button_pressed(device, JOY_BUTTON_B) or Input.is_joy_button_pressed(device, JOY_BUTTON_X)
 	var brake := maxf(Input.get_joy_axis(device, JOY_AXIS_TRIGGER_LEFT), 1.0 if brake_btn else 0.0)
-	var nitro := Input.is_joy_button_pressed(device, JOY_BUTTON_RIGHT_SHOULDER) or Input.is_joy_button_pressed(device, JOY_BUTTON_Y)
+	var nitro := prof.pressed("nitro", device)
 	var menu_x := ax
 	if Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_LEFT):
 		menu_x = -1.0
@@ -147,13 +154,13 @@ func _read_pad(device: int, dt: float) -> Dictionary:
 		"throttle": throttle if throttle > 0.05 else 0.0,
 		"brake": brake if brake > 0.05 else 0.0,
 		"nitro": nitro,
-		"pause": Input.is_joy_button_pressed(device, JOY_BUTTON_START),
+		"pause": prof.pressed("pause", device),
 		"restart": Input.is_joy_button_pressed(device, JOY_BUTTON_BACK),
 		"confirm": a_btn,
 		"active": mag > PAD_DEADZONE or throttle > 0.05 or brake > 0.05 or nitro or a_btn,
 		"menu_x": menu_x,
 		"menu_y": menu_y,
-		"menu_confirm": a_btn or Input.is_joy_button_pressed(device, JOY_BUTTON_START),
+		"menu_confirm": a_btn or prof.pressed("pause", device),
 		"menu_back": Input.is_joy_button_pressed(device, JOY_BUTTON_B) or Input.is_joy_button_pressed(device, JOY_BUTTON_BACK),
 	}
 
@@ -167,12 +174,13 @@ func _read_wheel(device: int, prof: DeviceProfile) -> Dictionary:
 			throttle = DeviceProfile.pedal(Input.get_joy_axis(device, prof.throttle_axis), prof.throttle_rest, prof.throttle_full)
 		if prof.brake_axis >= 0:
 			brake = DeviceProfile.pedal(Input.get_joy_axis(device, prof.brake_axis), prof.brake_rest, prof.brake_full)
-	var nitro := prof.nitro_button >= 0 and Input.is_joy_button_pressed(device, prof.nitro_button)
+	var nitro := prof.pressed("nitro", device)
 	return {
 		"steer": steer,
 		"throttle": throttle,
 		"brake": brake,
 		"nitro": nitro,
+		"pause": prof.pressed("pause", device),
 		"active": absf(steer) > 0.05 or throttle > 0.05 or brake > 0.05 or nitro,
 		# Any wheel button confirms too, so an uncalibrated wheel (pedals unused) gets through
 		"menu_x": steer,
@@ -251,18 +259,22 @@ func pressed_buttons(device: int) -> Array[int]:
 func load_profiles() -> void:
 	var cfg := ConfigFile.new()
 	_saved.clear()
+	_transient.clear()
+	keyboard = DeviceProfile.keyboard()
 	profiles_version = PROFILES_VERSION
-	if cfg.load(profile_path) != OK:
-		return
-	profiles_version = migrate_profiles(cfg)
-	for section in cfg.get_sections():
-		if section != CfgVersion.SECTION:
-			_saved[section] = DeviceProfile.load_from(cfg, section)
+	if cfg.load(profile_path) == OK:
+		profiles_version = migrate_profiles(cfg)
+		for section in cfg.get_sections():
+			if section == DeviceProfile.KEYBOARD_GUID:
+				keyboard.bindings = DeviceProfile.load_from(cfg, section).bindings
+			elif section != CfgVersion.SECTION:
+				_saved[section] = DeviceProfile.load_from(cfg, section)
+	apply_keyboard_bindings()
 
 
 ## Brings a loaded input_profiles.cfg up to PROFILES_VERSION; returns the version it had.
 static func migrate_profiles(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, PROFILES_VERSION, [_profiles_v0_to_v1])
+	return CfgVersion.migrate(cfg, PROFILES_VERSION, [_profiles_v0_to_v1, _profiles_v1_to_v2])
 
 
 ## Version 1 only added the [meta] version: every other section is still a profile by GUID.
@@ -270,12 +282,65 @@ static func _profiles_v0_to_v1(_cfg: ConfigFile) -> void:
 	pass
 
 
+## Version 2 added bindings. A profile without them, and no [keyboard] section, means the
+## defaults, as before: nothing to change.
+static func _profiles_v1_to_v2(_cfg: ConfigFile) -> void:
+	pass
+
+
+## Over a file from a newer build, keys this build doesn't know survive inside each profile
+## (CfgVersion.to_write); profiles reset since are dropped.
 func _write_profiles() -> void:
-	var cfg := ConfigFile.new()
-	CfgVersion.stamp(cfg, PROFILES_VERSION)
+	var cfg := CfgVersion.to_write(profile_path, PROFILES_VERSION)
+	for section in cfg.get_sections():
+		if section != CfgVersion.SECTION and not _saved.has(section):
+			cfg.erase_section(section)
 	for guid in _saved:
 		(_saved[guid] as DeviceProfile).save_to(cfg)
+	if not keyboard.bindings.is_empty():
+		cfg.set_value(DeviceProfile.KEYBOARD_GUID, "bindings", keyboard.bindings)
 	cfg.save(profile_path)
+
+
+# --- Bindings (RemapScreen) ------------------------------------------------------
+
+## The devices bindings can be set for: -1 (the keyboard), then each connected joypad.
+func binding_devices() -> Array[int]:
+	var out: Array[int] = [-1]
+	out.append_array(Input.get_connected_joypads())
+	return out
+
+
+## The profile holding `device`'s bindings (-1: the keyboard).
+func binding_profile(device: int) -> DeviceProfile:
+	return keyboard if device < 0 else get_profile(device)
+
+
+## Saves a device's bindings (the keyboard's, or a joypad's whole profile) and uses them.
+func save_bindings(profile: DeviceProfile) -> void:
+	if profile.kind == DeviceProfile.Kind.KEYBOARD:
+		keyboard = profile
+		_write_profiles()
+		apply_keyboard_bindings()
+		devices_changed.emit()
+	else:
+		save_profile(profile)
+
+
+## Puts the keyboard's bindings on the InputMap's remappable actions.
+func apply_keyboard_bindings() -> void:
+	for action: String in DeviceProfile.REMAP_ACTIONS:
+		if not InputMap.has_action(action):
+			InputMap.add_action(action)
+		InputMap.action_erase_events(action)
+		for code in keyboard.binding(action):
+			InputMap.action_add_event(action, key_event(code))
+
+
+static func key_event(code: int) -> InputEventKey:
+	var ev := InputEventKey.new()
+	ev.physical_keycode = code
+	return ev
 
 
 func _on_joy_connection_changed(device: int, _connected: bool) -> void:
@@ -288,18 +353,13 @@ func _on_joy_connection_changed(device: int, _connected: bool) -> void:
 
 # --- Keyboard actions ----------------------------------------------------------
 
+## The fixed keys (DeviceProfile.KEYBOARD_FIXED); the remappable ones (nitro, pause, and
+## shift_up, shift_down, horn and view, which have no effect in play yet) come from the
+## keyboard's bindings in apply_keyboard_bindings.
 func _register_actions() -> void:
-	_add_action("steer_left", [KEY_LEFT, KEY_A])
-	_add_action("steer_right", [KEY_RIGHT, KEY_D])
-	_add_action("accelerate", [KEY_UP, KEY_W])
-	_add_action("brake", [KEY_DOWN, KEY_S])
-	_add_action("nitro", [KEY_SPACE, KEY_SHIFT])
-	_add_action("pause", [KEY_ESCAPE, KEY_P])
-	_add_action("restart", [KEY_R])
-	_add_action("confirm", [KEY_ENTER, KEY_KP_ENTER])
-	_add_action("back", [KEY_BACKSPACE])
-	_add_action("debug_input", [KEY_F1])
-	_add_action("calibrate", [KEY_F2])
+	for action: String in DeviceProfile.KEYBOARD_FIXED:
+		_add_action(action, DeviceProfile.KEYBOARD_FIXED[action])
+	apply_keyboard_bindings()
 
 
 func _add_action(action: String, keys: Array) -> void:
@@ -307,6 +367,4 @@ func _add_action(action: String, keys: Array) -> void:
 		return
 	InputMap.add_action(action)
 	for k in keys:
-		var ev := InputEventKey.new()
-		ev.physical_keycode = k
-		InputMap.action_add_event(action, ev)
+		InputMap.action_add_event(action, key_event(k))

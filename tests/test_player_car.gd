@@ -257,6 +257,43 @@ func test_steering_into_a_car_alongside_is_a_side_swipe() -> void:
 	near(p.speed, Cfg.MAX_SPEED * (1.0 - Cfg.SIDESWIPE_SPEED_LOSS), 0.01, "a little speed lost")
 
 
+func _car_beside(t: Track, p: PlayerCar, offset: float, speed: float) -> Traffic.TrafficCar:
+	var c := Traffic.TrafficCar.new()
+	c.z = p.position + Cfg.PLAYER_Z - 100.0
+	c.last_z = c.z
+	c.offset = offset
+	c.speed = speed
+	c.segment = t.find_segment(c.z)
+	c.segment.cars.append(c)
+	return c
+
+
+func test_a_faster_car_catching_you_up_drives_through() -> void:
+	# Review on #102: a faster car arriving from behind in your lane snapped you aside.
+	var t := flat_track()
+	var p := _car()
+	p.reset(4000.0)
+	p.speed = Cfg.MAX_SPEED * 0.2
+	_car_beside(t, p, 0.0, Cfg.MAX_SPEED * 0.4)
+	p.collide(t)
+	check(not p.crashed and not p.bumped, "no contact")
+	eq(p.x, 0.0, "not pushed aside")
+	eq(p.speed, Cfg.MAX_SPEED * 0.2, "speed kept")
+
+
+func test_steering_into_a_faster_car_beside_you_is_a_side_swipe() -> void:
+	var t := flat_track()
+	var p := _car()
+	p.reset(4000.0)
+	p.speed = Cfg.MAX_SPEED * 0.2
+	p.last_x = -0.6  # was in the next lane at the tick's start
+	p.x = 0.0
+	_car_beside(t, p, 0.25, Cfg.MAX_SPEED * 0.4)
+	p.collide(t)
+	check(p.bumped, "a nudge")
+	check(p.x < 0.25 - 0.39, "pushed back out to the left (%.2f)" % p.x)
+
+
 func test_a_car_you_have_passed_is_not_hit() -> void:
 	var t := flat_track()
 	var p := _car(Cfg.MAX_SPEED)

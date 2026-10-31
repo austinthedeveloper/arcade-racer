@@ -18,6 +18,13 @@ const START_SEGMENT := 14  # where the start line is drawn
 const CHECKPOINT_FRACTIONS := [0.25, 0.5, 0.75]
 const FINISH_INTO_STRAIGHT := 60  # segments into the final straight
 
+## Curves this sharp or sharper get a turn sign before them and chevrons on the outside.
+const SHARP_CURVE := CURVE_MEDIUM
+const SIGN_AHEAD := 30  # segments before a sharp curve, jump or bumps that its warning sign stands
+const CHEVRON_EVERY := 8
+const RAIL_REACH := 10  # segments: rails stand every 10 (Bayou, Timberline), so a run has one this close
+const CHEVRONS := ["chevron_a", "chevron_b", "chevron_c"]
+
 const GROUND_GRASS := 0
 const GROUND_SAND := 1
 
@@ -27,6 +34,8 @@ var segments: Array[Segment] = []
 var length := 0.0
 var checkpoints: Array[int] = []
 var finish_index := 0
+## First segment of every jump and bumpy stretch, for the bump signs (add_road_signs).
+var hazards: Array[int] = []
 
 var _ground_left := GROUND_GRASS
 var _ground_right := GROUND_GRASS
@@ -125,12 +134,14 @@ func s_curves() -> void:
 
 
 func bumps() -> void:
+	hazards.append(segments.size())
 	for h in [5.0, -2.0, -5.0, 8.0, 5.0, -7.0, 5.0, -2.0]:
 		add_road(10, 10, 10, 0.0, h)
 
 
 ## A short, sharp crest that launches fast cars into the air.
 func jump(height: float = HILL_LOW * 0.6) -> void:
+	hazards.append(segments.size())
 	add_road(10, 15, 5, 0.0, height)
 	add_road(5, 15, 10, 0.0, -height)
 
@@ -209,6 +220,95 @@ func add_finish_crowd() -> void:
 	add_sprite(f - 30, "grandstand", 2.0)
 	add_sprite(f - 12, "camera_tower", -2.0)
 	add_sprite(f - 4, "flagman", 1.15)
+
+
+## Warning signs: a turn arrow before every sharp curve (SHARP_CURVE) and, with `chevrons`,
+## chevrons along its outside where no rail already runs; a bump sign before every jump and
+## bumpy stretch. Call after the stage's spans, tunnels and rails: nothing goes under a span,
+## in a tunnel or on a race gate.
+func add_road_signs(chevrons := true) -> void:
+	for run in sharp_curves():
+		var first: int = run.x
+		var dir := signf(segments[first].curve)
+		var outside := -dir
+		_add_sign(first - SIGN_AHEAD, "turn_right" if dir > 0.0 else "turn_left", outside * 1.5, false)
+		if chevrons:
+			var k := 0
+			for i in range(first, run.y, CHEVRON_EVERY):
+				if railed(i, outside):
+					continue
+				# The chevron art points right; mirrored, it points into a left-hand curve
+				_add_sign(i, CHEVRONS[k % CHEVRONS.size()], outside * 1.5, dir < 0.0)
+				k += 1
+	for h in hazards:
+		_add_sign(h - SIGN_AHEAD, "bump_sign", 1.3, false)
+
+
+## Whether a rail (a "rail_" or "guardrail" sprite) stands on `side` (-1 left, 1 right) within
+## RAIL_REACH segments of `index`: the bend is lined already, chevrons would stand on it.
+func railed(index: int, side: float) -> bool:
+	for i in range(maxi(0, index - RAIL_REACH), mini(segments.size(), index + RAIL_REACH + 1)):
+		for sp in segments[i].sprites:
+			var id: String = sp["id"]
+			if (id.begins_with("rail_") or id == "guardrail") and signf(sp["offset"]) == side:
+				return true
+	return false
+
+
+## Each stretch of sharp curve as (first segment, end): segments in a row at least
+## SHARP_CURVE sharp, bending the same way.
+func sharp_curves() -> Array[Vector2i]:
+	var runs: Array[Vector2i] = []
+	var i := 0
+	while i < segments.size():
+		var c := segments[i].curve
+		if absf(c) < SHARP_CURVE:
+			i += 1
+			continue
+		var j := i
+		while j < segments.size() and absf(segments[j].curve) >= SHARP_CURVE and signf(segments[j].curve) == signf(c):
+			j += 1
+		runs.append(Vector2i(i, j))
+		i = j
+	return runs
+
+
+## True if a roadside prop can stand at segment `index`: on the track, not on a race gate,
+## under a span or in a tunnel.
+func open_roadside(index: int) -> bool:
+	if index < 0 or index >= segments.size():
+		return false
+	var seg := segments[index]
+	return seg.flags == 0 and seg.spans.is_empty() and not seg.covered
+
+
+func _add_sign(index: int, id: String, offset: float, flip: bool) -> void:
+	if open_roadside(index):
+		add_sprite(index, id, offset, flip)
+
+
+## Race furniture: tire stacks, barrels and a sponsor arch around the start line, cones,
+## delineators, barricades and barriers at every checkpoint. Call after the stage's spans and
+## tunnels, like add_road_signs.
+func add_race_furniture() -> void:
+	var s := START_SEGMENT
+	for k in [-12, -8, -4, 4, 8, 12]:
+		_add_sign(s + k, "tire_stack", -1.15, false)
+		_add_sign(s + k, "tire_stack", 1.15, true)
+	_add_sign(s - 6, "barrels_yellow", -1.5, false)
+	_add_sign(s + 6, "barrels_yellow", 1.5, true)
+	_add_sign(s + 18, "inflatable_arch", 1.35, false)
+	for c in checkpoints:
+		for k in range(-24, -12, 4):
+			_add_sign(c + k, "delineator", -1.1, false)
+			_add_sign(c + k, "delineator", 1.1, true)
+		for k in range(-12, 0, 3):
+			_add_sign(c + k, "cone_orange", -1.05, false)
+			_add_sign(c + k, "cone_orange", 1.05, true)
+		_add_sign(c - 2, "barricade", -1.2, false)
+		_add_sign(c - 2, "barricade", 1.2, true)
+		_add_sign(c + 4, "barrier_orange", -1.2, false)
+		_add_sign(c + 4, "barrier_orange", 1.2, true)
 
 
 func add_checkpoint(index: int) -> void:

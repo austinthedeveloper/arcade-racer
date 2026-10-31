@@ -3,7 +3,7 @@ extends Node
 ## race it starts.
 ## Race dev flags (--autodrive, --stage=N, --race) skip the menus and go straight to a race.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -19,9 +19,10 @@ var calibration: CalibrationWizard
 var debug_overlay: InputDebugOverlay
 var _layer: CanvasLayer
 var _menu_shot := ""
-## Where the options screen goes back to. OptionsScreen always asks for the title
-## (show_title); opened from somewhere else, this sends it back there instead.
+## Where the options screen goes back to (close_options): the title unless whoever opened
+## it says otherwise.
 var _options_back := Callable()
+var _options_back_name := "the title screen"
 
 
 func _ready() -> void:
@@ -76,12 +77,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## The title, with START (0) or OPTIONS (1) picked.
 func show_title(item := 0) -> void:
-	if screen == Screen.OPTIONS and _options_back.is_valid():
-		var back := _options_back
-		_options_back = Callable()
-		back.call()
-		return
-	_options_back = Callable()
 	var t := TitleScreen.new()
 	t.index = item
 	_set_menu(t, Screen.TITLE)
@@ -94,14 +89,46 @@ func show_mode_select(item := -1) -> void:
 	_set_menu(m, Screen.MODES)
 
 
-func show_options() -> void:
-	_set_menu(OptionsScreen.new(), Screen.OPTIONS)
+## The options, from the title unless `back` (with its name for the BACK row's help) says
+## where they go back to; on `page` (an OptionsScreen.Page) when given, with the cursor on
+## `row` (an OptionsScreen.Row) when given.
+func show_options(back := Callable(), back_name := "the title screen", page := -1, row := -1) -> void:
+	var o := OptionsScreen.new()
+	o.back_name = back_name
+	if page >= 0:
+		o.page = page
+		o.index = 0  # on the page bar, so the page shows which it is
+	if row >= 0:
+		o.go_to(row)
+	_options_back = back
+	_options_back_name = back_name
+	_set_menu(o, Screen.OPTIONS)
+
+
+## Controls > REMAP BUTTONS.
+func show_remap() -> void:
+	_set_menu(RemapScreen.new(), Screen.REMAP)
+
+
+## Back from remapping: the options again, on REMAP BUTTONS, still going back where they did.
+func close_remap() -> void:
+	show_options(_options_back, _options_back_name, OptionsScreen.Page.CONTROLS, OptionsScreen.Row.REMAP)
+	menu.in_race = race != null
 
 
 ## Options opened from mode select come back to it.
 func show_options_from_modes() -> void:
-	show_options()
-	_options_back = show_mode_select.bind(ModeSelect.Item.OPTIONS)
+	show_options(show_mode_select.bind(ModeSelect.Item.OPTIONS), "mode select")
+
+
+## Leaves the options for wherever they were opened from.
+func close_options() -> void:
+	var back := _options_back
+	_options_back = Callable()
+	if back.is_valid():
+		back.call()
+	else:
+		show_title(1)
 
 
 ## A playable mode picked on mode select.
@@ -152,8 +179,8 @@ func _on_race_over() -> void:
 
 ## OPTIONS on the pause menu: the options over the paused race, then back to its menu.
 func _on_race_options() -> void:
-	show_options()
-	_options_back = _close_race_options
+	show_options(_close_race_options, "the race")
+	menu.in_race = true
 
 
 func _close_race_options() -> void:
@@ -191,8 +218,12 @@ func _open(which: String) -> void:
 			show_car_select()
 		"options":
 			show_options()
+		"remap":
+			show_remap()
 		"modes":
 			show_mode_select()
+		_ when which.begins_with("options:"):
+			show_options(Callable(), "the title screen", OptionsScreen.page_named(which.get_slice(":", 1)))
 		_:
 			show_title()
 
@@ -202,6 +233,22 @@ func _save_menu_shot() -> void:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
+	if OS.get_cmdline_user_args().has("--shot-as-window"):
+		img = _as_window(img)
 	DirAccess.make_dir_recursive_absolute(_menu_shot.get_base_dir())
 	img.save_png(_menu_shot)
 	get_tree().quit()
+
+
+## The 640x360 shot laid out as the window shows it (`--shot-as-window`): scaled and
+## bordered by the window's own size and stretch, for checking the display options.
+func _as_window(view: Image) -> Image:
+	var win := get_window()
+	var integer := win.content_scale_stretch == Window.CONTENT_SCALE_STRETCH_INTEGER
+	var r := Settings.view_rect(win.size, view.get_size(), integer)
+	print("window %s, %s stretch, picture at %s" % [win.size, "integer" if integer else "fractional", r])
+	var out := Image.create(win.size.x, win.size.y, false, view.get_format())
+	out.fill(Color.BLACK)
+	view.resize(r.size.x, r.size.y, Image.INTERPOLATE_NEAREST)
+	out.blit_rect(view, Rect2i(Vector2i.ZERO, r.size), r.position)
+	return out

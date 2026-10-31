@@ -2,8 +2,9 @@ class_name Tour
 extends RefCounted
 ## Grand Tour rules: the same seven drivers stage after stage, points by place (Scoring) added
 ## up into standings, the top three going through, and one continue for a stage that went
-## wrong (time up, or finishing outside the top three). Finishing the last stage completes
-## the tour and unlocks the Zenith.
+## wrong (time up, or finishing outside the top three). Restarting a stage partway through
+## spends the continue too. Finishing the last stage completes the tour; a tour started from
+## the first stage unlocks the Zenith and banks its points.
 
 const ADVANCE := 3  # the top this many go on to the next stage
 const CONTINUES := 1
@@ -16,6 +17,13 @@ var continues := CONTINUES
 var stages_won := 0  # stages finished in the top three
 var complete := false
 var carried := 0.0  # seconds of clock carried into the next stage (Settings.carry_time)
+var start_stage := 0  # where the tour was started (stage select lets it start anywhere)
+
+
+## Whether this tour runs the whole way, from the first stage: only that one unlocks the
+## Zenith and banks its points.
+func full() -> bool:
+	return start_stage == 0
 
 
 static func advances(place: int) -> bool:
