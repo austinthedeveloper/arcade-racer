@@ -99,7 +99,8 @@ func test_tall_cars_are_drawn_smaller_not_taller() -> void:
 
 func test_player_cars_are_solid() -> void:
 	# Regression: the magenta key ate pink and purple paint (Cyclone, Zenith), so the road
-	# showed through the car.
+	# showed through the car. The Skipper is an open tube-frame buggy: its gaps are real.
+	const OPEN_FRAME := {"skipper": 0.9}
 	for i in Cars.count():
 		var id: String = Cars.get_car(i)["strip"]
 		CarSprites.use_car(id)
@@ -108,13 +109,37 @@ func test_player_cars_are_solid() -> void:
 		var img: Image = strip["tex"].get_image()
 		var frame := img.get_region(Rect2i(Vector2i(int(cell.x) * (CarSprites.PLAYER_FRAMES / 2), 0), Vector2i(cell)))
 		var body := frame.get_used_rect()
-		# The middle of the body, below the roof line: rear deck, lights, bumper
+		# The middle of the body, below the roof line: rear deck, lights, bumper. It stops above
+		# the axle, which a lifted truck (the Mesa) really does show the road under.
 		var core := Rect2i(body.position + Vector2i(body.size.x * 3 / 10, body.size.y * 4 / 10),
-			Vector2i(body.size.x * 4 / 10, body.size.y * 4 / 10))
+			Vector2i(body.size.x * 4 / 10, body.size.y * 3 / 10))
 		var solid := 0
 		for y in range(core.position.y, core.end.y):
 			for x in range(core.position.x, core.end.x):
 				solid += int(frame.get_pixel(x, y).a > 0.5)
 		var frac := solid / float(core.size.x * core.size.y)
-		check(frac > 0.98, "%s rear is solid (%.0f%%)" % [id, frac * 100.0])
+		check(frac > OPEN_FRAME.get(id, 0.98), "%s rear is solid (%.0f%%)" % [id, frac * 100.0])
+	CarSprites.use_car("vega")
+
+
+func test_player_cars_show_no_key_magenta() -> void:
+	# Regression: small background gaps (under the Mesa's axle and light bar) were kept as
+	# paint, so the sheet's magenta showed under the truck. The Zenith's paint really is purple.
+	var key := Color8(248, 5, 250)
+	for i in Cars.count():
+		var id: String = Cars.get_car(i)["strip"]
+		if id == "zenith":
+			continue
+		CarSprites.use_car(id)
+		var strip: Dictionary = CarSprites.player_strips[0]
+		var cell: Vector2 = strip["cell"]
+		var img: Image = strip["tex"].get_image()
+		var x0 := int(cell.x) * (CarSprites.PLAYER_FRAMES / 2)
+		var magenta := 0
+		for y in int(cell.y):
+			for x in range(x0, x0 + int(cell.x)):
+				var c := img.get_pixel(x, y)
+				var d := absf(c.r - key.r) + absf(c.g - key.g) + absf(c.b - key.b)
+				magenta += int(c.a > 0.5 and d < 60.0 / 255.0)
+		check(magenta <= 20, "%s straight frame has %d key-magenta pixels" % [id, magenta])
 	CarSprites.use_car("vega")
