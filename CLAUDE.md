@@ -12,6 +12,7 @@ godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screen
 godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, modes, options, stages, cars, pause, results, demo; options:audio etc. for an options page; --car=car_mesa opens car select on it)
 godot --path . --resolution 1600x900 -- --settings-file=/tmp/opts.cfg --profiles-file=/tmp/prof.cfg --screen=options:display --shot-as-window --menu-shot=/tmp/d.png   # other options and binding files; the shot laid out as the window shows it (also --screen=remap)
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
+godot --headless --path . -s res://tools/track_preview.gd -- --out=/tmp/plots   # plot every stage top-down and side-on to PNG (--stage=N for one)
 tools/shots.sh                                      # screenshot regression vs tests/shots/ (needs a display, PIL; SHOTS_PYTHON=...)
 tools/shots.sh --update                             # rewrite tests/shots/ after a deliberate visual change
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
