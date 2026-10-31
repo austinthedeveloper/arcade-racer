@@ -37,15 +37,17 @@ func _draw() -> void:
 
 	# Nitro, top right
 	_text(Vector2(w - 92, 18), "NITRO", 10, Color("#ffd23a"))
-	for i in Cfg.NITRO_CHARGES:
-		var cx := w - 88 + i * 18
+	var slots := maxi(p.nitro_max, p.nitro_charges)
+	var gap := minf(18.0, 72.0 / slots)
+	for i in slots:
+		var cx := w - 88 + i * gap
 		var lit := i < p.nitro_charges
 		var col := Color("#ff7a1a") if lit else Color(1, 1, 1, 0.2)
 		draw_colored_polygon(PackedVector2Array([Vector2(cx, 38), Vector2(cx + 6, 24), Vector2(cx + 12, 38)]), col)
 		if lit:
 			draw_colored_polygon(PackedVector2Array([Vector2(cx + 3, 38), Vector2(cx + 6, 30), Vector2(cx + 9, 38)]), Color("#ffe36a"))
 	if p.nitro_time > 0.0:
-		draw_rect(Rect2(w - 90, 42, 76 * p.nitro_time / Cfg.NITRO_DURATION, 3), Color("#7ad8ff"))
+		draw_rect(Rect2(w - 90, 42, 76 * p.nitro_time / p.nitro_duration, 3), Color("#7ad8ff"))
 
 	# Speedometer, bottom right
 	var center := Vector2(w - 58, Cfg.SCREEN_H - 20)

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Build in-game car sprites from the concept sheets.
 
-- Player car: the seven Vega steering frames, all at one scale, on equal cells in one strip.
+- Player cars: the seven steering frames, all at one scale, on equal cells in one strip.
   The nose-down (downhill) and nose-up (uphill) sheets, when they exist, become strips laid
   out the same way. Those sheets may hold 7, 3 (left, straight, right) or 1 (straight) frames;
-  fewer frames are repeated across the seven steering cells.
+  fewer frames are repeated across the seven steering cells. Only the Vega has pitched
+  sheets so far; the rest of the garage (GARAGE) gets a level strip each.
 - Traffic: rear views from the traffic sheets, one keyed sprite each.
 
 These stand in until the cars get a proper sprite pipeline.
@@ -65,6 +66,21 @@ PLAYER_SHEETS = [
     # car is twice as tall as the level one; it is squashed so the switch doesn't pop.
     ("car_vega_steer_up_sheet_A_v1.png", "vega_steer_up.png", False, 1.35),
 ]
+# The rest of the garage: level strips only; the game fakes their pitch (CarSprites.pitch_warp).
+# (car, steering sheet) -> assets/sprites/cars/<car>_steer.png
+GARAGE = [
+    ("bruiser", "car_bruiser_steer_sheet_A_v2.png"),
+    ("kestrel", "car_kestrel_steer_sheet_A_v2.png"),
+    ("sol", "car_sol_steer_sheet_A_v2.png"),
+    ("mesa", "car_mesa_steer_sheet_A_v2.png"),
+    ("phantom", "car_phantom_steer_sheet_A_v2.png"),
+    ("hauler", "car_hauler_steer_sheet_A_v1.png"),
+    ("zenith", "car_zenith_steer_sheet_A_v1.png"),
+    ("tempest", "car_tempest_steer_sheet_A_v1.png"),
+    ("skipper", "car_skipper_steer_sheet_A_v1.png"),
+    ("halo", "car_halo_steer_sheet_A_v1.png"),
+    ("cyclone", "car_cyclone_steer_sheet_A_v2.png"),
+]
 # Which sheet frame fills each of the seven steering cells, by frame count
 STEER_CELLS = {7: [0, 1, 2, 3, 4, 5, 6], 3: [0, 0, 1, 1, 1, 2, 2], 1: [0] * 7}
 
@@ -120,6 +136,8 @@ def main():
         if required or os.path.exists(path):
             h = make_player(path, os.path.join(sprites, "cars", strip), level_h, max_ratio)
             level_h = level_h or h
+    for car, sheet in GARAGE:
+        make_player(os.path.join(concept_dir, "cars", sheet), os.path.join(sprites, "cars", car + "_steer.png"))
     make_traffic(concept_dir, os.path.join(sprites, "traffic"))
 
 

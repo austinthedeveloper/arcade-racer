@@ -83,3 +83,15 @@ func test_hill_strips_are_in_and_not_much_taller_than_level() -> void:
 		var h: float = CarSprites.player_strips[row]["cell"].y
 		# Taller pops when the pitch switches strips; the tool squashes them (make_car_sprites.py)
 		check(h <= level * 1.4, "strip %d is %.0f px, level %.0f px" % [row, h, level])
+
+
+func test_tall_cars_are_drawn_smaller_not_taller() -> void:
+	CarSprites.use_car("vega")
+	var vega: Dictionary = CarSprites.player_strips[0]
+	near(CarSprites.draw_scale(100.0, vega), 100.0 / vega["body_w"], 0.0001, "the Vega fills the width")
+	for id in ["cyclone", "skipper", "mesa", "hauler"]:
+		CarSprites.use_car(id)
+		var strip: Dictionary = CarSprites.player_strips[0]
+		var h: float = strip["cell"].y * CarSprites.draw_scale(100.0, strip)
+		check(h <= 100.0 * CarSprites.MAX_HEIGHT + 0.01, "%s at most %.2f x its width tall (%.1f)" % [id, CarSprites.MAX_HEIGHT, h])
+	CarSprites.use_car("vega")

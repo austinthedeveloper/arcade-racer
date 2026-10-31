@@ -4,8 +4,8 @@
 - The SUNDOWN RUN logo (UI-01), its black backdrop keyed out.
 - A 640x360 title backdrop from the Palm Coast background composite.
 - One postcard per stage (16:9) from each stage's background composite.
-- The Vega GT showroom picture, cropped from its v2 hero art (the round 2 review approved
-  that design; the screen mockups' cars are layout reference only).
+- A showroom picture per car, cropped from its approved hero art (the screen mockups' cars
+  are layout reference only).
 
 Usage:
     python3 tools/make_ui_sprites.py <concept_dir> <project_dir>
@@ -21,8 +21,24 @@ STAGES = ["palm-coast", "redrock", "neon", "timberline", "bayou", "harvest", "th
 COMPOSITE = {"skyline": "A_v2"}
 POSTCARD = (224, 126)
 LOGO_WIDTH = 360
-VEGA_CROP = (180, 470, 1320, 1000)  # the car and a little road, in the hero art
-VEGA_SIZE = (304, 141)
+CAR_SIZE = (304, 141)
+# Showroom pictures: (car, hero art, crop). Most heroes share the Vega's framing; the Hauler
+# and Zenith fill more of theirs, so they are cropped wider.
+CAR_CROP = (100, 400, 1348, 979)  # the car and a little road
+CARS = [
+    ("vega", "car_vega_hero_A_v2.png", CAR_CROP),
+    ("bruiser", "car_bruiser_hero_A_v3.png", CAR_CROP),
+    ("kestrel", "car_kestrel_hero_A_v2.png", CAR_CROP),
+    ("sol", "car_sol_hero_A_v2.png", CAR_CROP),
+    ("mesa", "car_mesa_hero_A_v2.png", CAR_CROP),
+    ("phantom", "car_phantom_hero_A_v2.png", CAR_CROP),
+    ("hauler", "car_hauler_hero_A_v1.png", (0, 250, 1448, 922)),
+    ("zenith", "car_zenith_hero_A_v1.png", (0, 270, 1448, 942)),
+    ("tempest", "car_tempest_hero_A_v1.png", CAR_CROP),
+    ("skipper", "car_skipper_hero_A_v1.png", CAR_CROP),
+    ("halo", "car_halo_hero_A_v1.png", CAR_CROP),
+    ("cyclone", "car_cyclone_hero_A_v2.png", CAR_CROP),
+]
 
 
 def quantize(img, colors=128):
@@ -78,10 +94,11 @@ def main():
         card.save(os.path.join(out, name))
         print(name, card.size)
 
-    hero = Image.open(os.path.join(concept, "cars", "car_vega_hero_A_v2.png")).crop(VEGA_CROP)
-    vega = quantize(hero.resize(VEGA_SIZE, Image.LANCZOS))
-    vega.save(os.path.join(out, "car_vega.png"))
-    print("car_vega", vega.size)
+    for car, hero_file, crop in CARS:
+        hero = Image.open(os.path.join(concept, "cars", hero_file)).crop(crop)
+        pic = quantize(hero.resize(CAR_SIZE, Image.LANCZOS))
+        pic.save(os.path.join(out, "car_%s.png" % car))
+        print("car_" + car, pic.size)
 
 
 if __name__ == "__main__":

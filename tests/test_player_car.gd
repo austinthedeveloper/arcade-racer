@@ -240,3 +240,75 @@ func test_pitch_follows_the_road() -> void:
 	_drive(p, _ramp_track(-0.4), 2.0, input(0.3))
 	check(p.pitch > 0.5, "nose-down descending (%.2f)" % p.pitch)
 	eq(p.airborne, false, "a steady descent keeps the wheels down")
+
+
+func test_every_car_has_its_sprites_and_picture() -> void:
+	eq(Cars.count(), 12, "the garage")
+	for i in Cars.count():
+		var car := Cars.get_car(i)
+		check(ResourceLoader.exists(Cars.picture(car)), car["name"] + " showroom picture")
+		CarSprites.use_car(car["strip"])
+		check(CarSprites.player_strips.has(0), car["name"] + " steering strip")
+		eq(CarSprites.player_car, car["strip"], car["name"] + " is the player's car")
+	CarSprites.use_car("vega")
+	eq(Cars.find("car_nope")["id"], "car_vega", "unknown ids fall back to the Vega")
+
+
+func test_vega_drives_on_the_base_tuning() -> void:
+	var t := Cars.tuning(Cars.find("car_vega"))
+	for k in ["top", "accel", "steer", "pull", "offroad", "nitro_time"]:
+		eq(t[k], 1.0, "Vega " + k)
+	eq(t["nitros"], Cfg.NITRO_CHARGES, "Vega nitros")
+
+
+func test_car_stats_change_how_it_drives() -> void:
+	var zenith := Cars.tuning(Cars.find("car_zenith"))
+	var skipper := Cars.tuning(Cars.find("car_skipper"))
+	var kestrel := Cars.tuning(Cars.find("car_kestrel"))
+	var bruiser := Cars.tuning(Cars.find("car_bruiser"))
+	check(skipper["top"] < zenith["top"], "the buggy tops out lower")
+	check(skipper["accel"] > Cars.tuning(Cars.find("car_vega"))["accel"], "but it launches harder")
+	check(kestrel["steer"] > bruiser["steer"] and kestrel["pull"] < bruiser["pull"], "the rally hatch out-turns the muscle car")
+	eq(Cars.tuning(Cars.find("car_mesa"))["offroad"], 0.0, "Mesa ignores the dirt")
+	eq(Cars.tuning(Cars.find("car_halo"))["nitros"], 4, "Halo has four nitros")
+
+
+func _top_speed_on_a_straight(car_id: String) -> float:
+	var t := Track.new()
+	for i in 3000:
+		t.add_segment(0.0, 0.0)
+	t.finish_building(2990)
+	var p := PlayerCar.new()
+	p.setup(Cars.find(car_id))
+	p.reset()
+	var inp := DriveInput.new()
+	inp.throttle = 1.0
+	_drive(p, t, 15.0, inp)
+	return p.speed
+
+
+func test_faster_cars_go_faster() -> void:
+	var vega := _top_speed_on_a_straight("car_vega")
+	var skipper := _top_speed_on_a_straight("car_skipper")
+	check(vega > Cfg.MAX_SPEED * 0.97, "Vega reaches top speed (%.0f)" % vega)
+	check(skipper < vega * 0.9, "Dune Skipper tops out lower (%.0f)" % skipper)
+
+
+func test_mesa_keeps_its_speed_off_road() -> void:
+	var t := Track.new()
+	for i in 500:
+		t.add_segment(0.0, 0.0)
+	t.finish_building(490)
+	for id in ["car_vega", "car_mesa"]:
+		var p := PlayerCar.new()
+		p.setup(Cars.find(id))
+		p.reset()
+		p.speed = Cfg.MAX_SPEED * 0.8
+		p.x = 1.5
+		var inp := DriveInput.new()
+		inp.throttle = 1.0
+		_drive(p, t, 1.0, inp)
+		if id == "car_mesa":
+			check(p.speed > Cfg.MAX_SPEED * 0.75, "Mesa keeps its speed on the dirt (%.0f)" % p.speed)
+		else:
+			check(p.speed < Cfg.MAX_SPEED * 0.5, "Vega slows on the dirt (%.0f)" % p.speed)
