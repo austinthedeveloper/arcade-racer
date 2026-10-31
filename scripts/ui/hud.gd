@@ -96,8 +96,15 @@ func _draw() -> void:
 		var b: Dictionary = race.score.feed[i]
 		var a := clampf((Scoring.FEED_TIME - b["age"]) / 0.4, 0.0, 1.0)
 		_text_centered(Vector2(w * 0.78, 110 + i * 16), "%s +%d" % [b["name"], b["points"]], 12, Color("#5dff8a", a))
-	if race.state == race.State.FINISHED:
-		_score_tally(Vector2(w / 2.0, 182))
+	var ended: bool = race.state == race.State.FINISHED or race.state == race.State.TIME_UP
+	if ended and race.tour and (race.after == race.After.TOUR_DONE or race.after == race.After.TOUR_OVER):
+		_tour_standings(Vector2(w / 2.0, 182), "FINAL STANDINGS" if race.after == race.After.TOUR_DONE else "TOUR OVER")
+	elif race.state == race.State.FINISHED:
+		var end_y := _score_tally(Vector2(w / 2.0, 182))
+		if race.tour and race.tour_state.points.has(Tour.YOU):
+			var tr: Tour = race.tour_state
+			_text_centered(Vector2(w / 2.0, end_y + 14), "TOUR   %s   %d PTS" % [Rivals.ordinal(tr.standing_of(Tour.YOU)),
+				tr.points[Tour.YOU]], 11, Color("#ffd23a"))
 
 	# Banners
 	if race.counting_down():
@@ -113,7 +120,22 @@ static func progress_x(bar: Rect2, distance: float, finish_distance: float) -> f
 	return bar.position.x + bar.size.x * clampf(distance / finish_distance, 0.0, 1.0)
 
 
-func _score_tally(top: Vector2) -> void:
+## The tour's standings, most points first, the player picked out.
+func _tour_standings(top: Vector2, title: String) -> void:
+	var rows: Array[Dictionary] = race.tour_state.standings()
+	var panel := Rect2(top.x - 120, top.y - 12, 240, 30 + 12 * rows.size())
+	draw_rect(panel, Color(0, 0, 0, 0.6))
+	_text_centered(Vector2(top.x, top.y + 1), title, 11, Color("#ffd23a"))
+	for i in rows.size():
+		var r: Dictionary = rows[i]
+		var y := top.y + 16 + i * 12
+		var col := Color("#5dff8a") if r["name"] == Tour.YOU else Color.WHITE
+		_text(Vector2(panel.position.x + 10, y), "%d  %s" % [i + 1, r["name"]], 10, col)
+		_text(Vector2(panel.end.x - 40, y), str(r["points"]), 10, col)
+
+
+## Returns the y under the last row.
+func _score_tally(top: Vector2) -> float:
 	var rows: Array[Dictionary] = race.score.summary()
 	var panel := Rect2(top.x - 120, top.y - 12, 240, 16 + 13 * (rows.size() + 1))
 	draw_rect(panel, Color(0, 0, 0, 0.55))
@@ -126,6 +148,7 @@ func _score_tally(top: Vector2) -> void:
 	var ty := top.y + rows.size() * 13 + 2
 	_text(Vector2(panel.position.x + 10, ty), "POINTS", 11, Color("#ffd23a"))
 	_text(Vector2(panel.end.x - 40, ty), str(race.score.total()), 11, Color("#ffd23a"))
+	return panel.end.y
 
 
 func _text(pos: Vector2, s: String, size: int, col: Color) -> void:

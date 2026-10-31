@@ -23,6 +23,10 @@ const SHAKE_SETTLE := 12.0
 var track: Track
 var stage_index := 0  # into Stages
 var tour := true  # Grand Tour: a finish goes on to the next stage. false: a Single Race
+## What Enter does after a finish or TIME UP: on, another go, or back to the menus.
+enum After { NEXT_STAGE, RETRY, TOUR_OVER, TOUR_DONE, MENU }
+var tour_state: Tour  # the Grand Tour's standings and continue, kept stage to stage
+var after := After.RETRY
 var car_id := "car_vega"  # into Cars
 var player: PlayerCar
 var power_ups := PowerUps.new()
@@ -120,12 +124,17 @@ func start_race() -> void:
 	ram_flash = 0.0
 	traffic = Traffic.new()
 	traffic.spawn(track, 0 if _no_traffic else Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
+	if tour and tour_state == null:
+		tour_state = Tour.new()
 	rivals = Rivals.new()
 	rivals.spawn(track, player, car_id, 0 if _no_rivals else Rivals.COUNT, Rivals.SEED + stage_index,
-		Difficulty.of(Settings.difficulty))
+		Difficulty.of(Settings.difficulty), tour_state.drivers if tour else [])
+	if tour and tour_state.drivers.is_empty():
+		tour_state.drivers = rivals.driver_names()
 	state = State.COUNTDOWN
 	countdown = 3.0
-	time_left = Settings.race_time(START_TIME)
+	time_left = Settings.race_time(START_TIME) + (tour_state.carried if tour else 0.0)
+	after = After.RETRY
 	checkpoint_bonus = Settings.race_time(CHECKPOINT_BONUS)
 	race_time = 0.0
 	player_finish = -1.0
@@ -157,6 +166,29 @@ func _exit_tree() -> void:
 func continue_tour() -> void:
 	stage_index = maxi(0, Stages.next(stage_index))
 	start_race()
+
+
+## Enter (or R) after a finish or TIME UP.
+func after_race() -> void:
+	match after:
+		After.NEXT_STAGE:
+			continue_tour()
+		After.RETRY:
+			if tour:
+				tour_state.use_continue()
+			start_race()
+		After.TOUR_OVER, After.TOUR_DONE, After.MENU:
+			race_over.emit()
+
+
+## What a stage that went wrong (TIME UP, or outside the top three) leads to in a tour, and
+## the prompt for it.
+func _setback_prompt() -> String:
+	if tour_state.continues > 0:
+		after = After.RETRY
+		return "Enter: use your continue"
+	after = After.TOUR_OVER
+	return "Tour over.   Enter: menu"
 
 
 func pause() -> void:
@@ -212,14 +244,12 @@ func _physics_process(dt: float) -> void:
 			pause_action(pause_menu.choose(InputRouter.menu, inp.pause_pressed))
 		_redraw()
 		return
-	if inp.restart_pressed or (inp.confirm_pressed and state == State.TIME_UP):
-		start_race()
+	var over := state == State.TIME_UP or state == State.FINISHED
+	if over and (inp.confirm_pressed or (inp.restart_pressed and tour)):
+		after_race()
 		return
-	if inp.confirm_pressed and state == State.FINISHED:
-		if tour:
-			continue_tour()
-		else:
-			race_over.emit()
+	if inp.restart_pressed:
+		start_race()
 		return
 	if inp.pause_pressed:
 		pause()
@@ -243,7 +273,7 @@ func _physics_process(dt: float) -> void:
 			if time_left <= 0.0:
 				time_left = 0.0
 				state = State.TIME_UP
-				_banner("TIME UP", "Press R or Enter to try again", 999.0)
+				_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", 999.0)
 
 	InputRouter.speed_factor = player.speed_percent()
 	var seg_before := track.find_segment(player.position + Cfg.PLAYER_Z)
@@ -339,12 +369,37 @@ func _check_progress() -> void:
 		record_finish()
 		var mins := int(race_time) / 60
 		var secs := fmod(race_time, 60.0)
-		var next := Stages.next(stage_index)
-		var prompt := "Enter: on to %s" % Stages.stage_name(next) if next >= 0 else "Tour complete!   Enter: race again"
-		if not tour:
-			prompt = "Enter: menu   R: race again"
+		var prompt := "Enter: menu   R: race again"
+		after = After.MENU
+		if tour:
+			prompt = _tour_finish()
 		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
 		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], 999.0)
+
+
+## A tour stage finished: points, then on, another go, or the end of the tour. Returns the
+## banner's prompt.
+func _tour_finish() -> String:
+	var with_rivals := not rivals.cars.is_empty()
+	if with_rivals and not Tour.advances(place):
+		return "Top %d go through.   %s" % [Tour.ADVANCE, _setback_prompt()]
+	var order: Array = []
+	for car: PlayerCar in rivals.standings(player, player_finish):
+		order.append(Tour.YOU if car == player else (car as RivalCar).profile.driver)
+	tour_state.award(order, score.total() - (Scoring.place_points(place) if with_rivals else 0))
+	tour_state.stages_won += 1
+	var next := Stages.next(stage_index)
+	if next >= 0:
+		tour_state.carried = Tour.carry(time_left, Settings.carry_time)
+		after = After.NEXT_STAGE
+		return "Enter: on to %s" % Stages.stage_name(next)
+	tour_state.complete = true
+	after = After.TOUR_DONE
+	if not _autodrive and _start_segment == 0:
+		SaveData.unlock(Tour.FINISH_UNLOCK)
+		SaveData.total_points += int(tour_state.points.get(Tour.YOU, 0))
+		SaveData.save()
+	return "Tour complete!   Enter: menu"
 
 
 ## Saves the finish (SaveData): best time for this stage and car, and the tour's progress.
@@ -353,7 +408,7 @@ func _check_progress() -> void:
 func record_finish() -> bool:
 	if _autodrive or _start_segment != 0:
 		return false
-	return SaveData.record_finish(stage_index, car_id, race_time)
+	return SaveData.record_finish(stage_index, car_id, race_time, place if not rivals.cars.is_empty() else 0)
 
 
 func _banner(text: String, sub: String, seconds: float) -> void:

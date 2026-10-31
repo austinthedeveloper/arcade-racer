@@ -207,86 +207,104 @@ func _tick() -> void:
 			_send("confirm", false)
 			_check(_race.track.name == "Redrock Canyon" and _race.state == _race.State.COUNTDOWN,
 				"Enter after the finish goes on to Redrock Canyon")
-			_send("pause", true)
-			_next(2)
+			_check(_race.tour_state.points.get("YOU", 0) >= 20, "the tour scored the first stage")
+			_next(200)
 		13:
-			_send("pause", false)
-			_check(_race.paused, "paused again")
-			_next(2)  # (Esc counts as menu back too: let it go first)
+			# The second stage of the tour: to the line again
+			_race.next_checkpoint = _race.checkpoint_distances.size()
+			_race.player.distance = _race.finish_distance + 1.0
+			_mark = _race.tour_state.points.get("YOU", 0)
+			_next(2)
 		14:
-			_send("back", true)
+			_check(_race.state == _race.State.FINISHED and _race.after == _race.After.NEXT_STAGE,
+				"the second stage finishes on the podium: " + _race.banner_sub)
+			_check(_race.tour_state.points.get("YOU", 0) >= _mark + 20, "and its points add to the standings")
+			_check(_race.tour_state.stages_won == 2, "two stages of the tour")
+			_send("restart", true)
 			_next(2)
 		15:
-			_send("back", false)
-			_check(not _race.paused, "Backspace on the pause menu resumes")
+			_send("restart", false)
+			_check(_race.stage_index == 2, "R after a podium goes on too")
 			_send("pause", true)
 			_next(2)
 		16:
 			_send("pause", false)
+			_check(_race.paused, "paused again")
+			_next(2)  # (Esc counts as menu back too: let it go first)
+		17:
+			_send("back", true)
+			_next(2)
+		18:
+			_send("back", false)
+			_check(not _race.paused, "Backspace on the pause menu resumes")
+			_send("pause", true)
+			_next(2)
+		19:
+			_send("pause", false)
 			_send("brake", true)
 			_next(2)
-		17:
+		20:
 			_send("brake", false)
 			_check(_race.pause_menu.index == 1, "Down picks RESTART")
 			_next(2)
-		18:
+		21:
 			_send("brake", true)
 			_next(2)
-		19:
+		22:
 			_send("brake", false)
 			_check(_race.pause_menu.index == 2, "Down again picks OPTIONS")
 			_send("confirm", true)
 			_next(2)
-		20:
+		23:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.OPTIONS and _race.paused and not _race.pause_menu.visible,
 				"OPTIONS on the pause menu opens the options over the paused race")
 			_send("back", true)
 			_next(2)
-		21:
+		24:
 			_send("back", false)
 			_check(_game.screen == _game.Screen.RACE and _game.menu == null and _race.paused
 				and _race.pause_menu.visible and _race.pause_menu.index == 2,
 				"back from the options: the paused race, its menu on OPTIONS")
 			_send("brake", true)
 			_next(2)
-		22:
+		25:
 			_send("brake", false)
 			_check(_race.pause_menu.index == 3, "Down picks QUIT TO TITLE")
 			_send("confirm", true)
 			_next(2)
-		23:
+		26:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.TITLE and _game.race == null, "QUIT TO TITLE on the pause menu quits to the title")
 			_check(not is_instance_valid(_race) or _race.is_queued_for_deletion(), "the race is gone")
 			_next(2)
-		24:
+		27:
 			_send("confirm", true)
 			_next(2)
-		25:
+		28:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.MODES, "mode select")
 			_next(2)
-		26:
+		29:
 			_send("confirm", true)
 			_next(2)
-		27:
+		30:
 			_send("confirm", false)
-			_check(_game.screen == _game.Screen.STAGES and _game.menu.index == 1,
+			_check(_game.screen == _game.Screen.STAGES and _game.menu.index == 2,
 				"stage select opens on the stage the tour reached")
 			_settings.auto_gas = true  # (toggled through the options menu above)
 			_next(2)
-		28:
+		31:
 			_send("confirm", true)
 			_next(2)
-		29:
+		32:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.CARS, "car select")
 			_next(2)
-		30:
+		33:
 			_send("confirm", true)
 			_next(2)
-		31:
+		34:
 			_send("confirm", false)
 			_race = _game.race
 			_check(_race != null and _race.state == _race.State.COUNTDOWN, "a new race with auto gas on")
@@ -294,58 +312,58 @@ func _tick() -> void:
 				quit(1)
 				return
 			_next(260)  # the countdown, then over a second of driving
-		32:
+		35:
 			_check(_race.player.speed > Cfg.MAX_SPEED * 0.2, "auto gas: the car drives off with no key held")
 			_mark = _race.player.speed
 			_send("brake", true)
 			_next(30)
-		33:
+		36:
 			_send("brake", false)
 			_check(_race.player.speed < _mark, "auto gas: brake still slows the car")
 			_settings.auto_gas = false
 			# Single Race: quit, then title, mode select, stage, car, race once
 			_send("pause", true)
 			_next(2)
-		34:
+		37:
 			_send("pause", false)
 			_send("accelerate", true)
 			_next(2)
-		35:
+		38:
 			_send("accelerate", false)
 			_check(_race.pause_menu.index == 3, "Up from RESUME wraps to QUIT TO TITLE")
 			_send("confirm", true)
 			_next(2)
-		36:
+		39:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.TITLE, "quit to the title")
 			_next(2)
-		37:
+		40:
 			_send("confirm", true)
 			_next(2)
-		38:
+		41:
 			_send("confirm", false)
 			_send("steer_right", true)
 			_next(2)
-		39:
+		42:
 			_send("steer_right", false)
 			_check(_game.screen == _game.Screen.MODES and _game.menu.index == 1, "mode select, on SINGLE RACE")
 			_send("confirm", true)
 			_next(2)
-		40:
+		43:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES, "SINGLE RACE opens stage select")
 			_next(2)
-		41:
+		44:
 			_send("confirm", true)
 			_next(2)
-		42:
+		45:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.CARS, "then car select")
 			_next(2)
-		43:
+		46:
 			_send("confirm", true)
 			_next(2)
-		44:
+		47:
 			_send("confirm", false)
 			_race = _game.race
 			_check(_race != null and not _race.tour, "a Single Race starts")
@@ -354,17 +372,17 @@ func _tick() -> void:
 				return
 			_send("accelerate", true)
 			_next(200)
-		45:
+		48:
 			_check(_race.state == _race.State.RACING, "racing")
 			_race.player.distance = _race.finish_distance + 1.0
 			_next(2)
-		46:
+		49:
 			_send("accelerate", false)
 			_check(_race.state == _race.State.FINISHED and "menu" in _race.banner_sub,
 				"the Single Race finishes, and offers the menu: " + _race.banner_sub)
 			_send("confirm", true)
 			_next(2)
-		47:
+		50:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES and _game.race == null, "Enter after the finish goes back to stage select")
 			_check(not is_instance_valid(_race) or _race.is_queued_for_deletion(), "the race is gone")

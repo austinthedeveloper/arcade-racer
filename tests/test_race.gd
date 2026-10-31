@@ -111,14 +111,14 @@ func test_finishing_palm_coast_continues_to_redrock() -> void:
 	eq(r.background.theme, r.track.theme, "the background shows Redrock")
 
 
-func test_finishing_the_last_stage_starts_the_tour_over() -> void:
+func test_finishing_the_last_stage_completes_the_tour() -> void:
 	var r := race(false, false, Stages.count() - 1)
 	_finish(r)
 	check("Tour complete" in r.banner_sub, "tour complete: " + r.banner_sub)
+	var over := [false]
+	r.race_over.connect(func(): over[0] = true)
 	_confirm(r)
-	eq(r.stage_index, 0, "back to stage 1")
-	eq(r.track.name, "Palm Coast Boulevard", "Palm Coast again")
-	eq(r.state, r.State.COUNTDOWN, "new race")
+	check(over[0], "Enter goes back to the menus")
 
 
 func test_restart_and_retry_stay_on_the_stage() -> void:
