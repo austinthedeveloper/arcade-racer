@@ -30,7 +30,7 @@ func test_off_by_default_and_saved() -> void:
 	eq([Settings.steer_assist, Settings.brake_assist], [false, false], "both off by default")
 	var o := OptionsScreen.new()
 	o.go_to(OptionsScreen.Row.STEER_ASSIST)
-	eq(o.page, OptionsScreen.Page.GAME, "on the Game page, with auto gas")
+	eq(o.page, OptionsScreen.Page.ACCESSIBILITY, "on the Accessibility page (the Game page is full)")
 	o.change(OptionsScreen.Row.STEER_ASSIST, 1, true)
 	o.change(OptionsScreen.Row.BRAKE_ASSIST, 1, true)
 	eq([OptionsScreen.value_text(OptionsScreen.Row.STEER_ASSIST), OptionsScreen.value_text(OptionsScreen.Row.BRAKE_ASSIST)],

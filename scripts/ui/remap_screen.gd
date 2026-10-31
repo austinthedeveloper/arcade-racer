@@ -156,7 +156,7 @@ func handle(m: MenuInput) -> void:
 
 
 func _leave() -> void:
-	game.show_options(OptionsScreen.Page.CONTROLS, OptionsScreen.Row.REMAP)
+	game.close_remap()
 
 
 static func remap_hints() -> String:

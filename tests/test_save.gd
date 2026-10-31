@@ -21,6 +21,32 @@ func test_missing_file_is_a_fresh_save() -> void:
 	eq(SaveData.best(0, "car_vega"), {}, "no best time")
 
 
+func test_an_unreadable_save_is_kept_aside() -> void:
+	# Review on #110: a broken file was read as no file, then overwritten by the next save.
+	_clean()
+	var f := FileAccess.open(SaveData.path, FileAccess.WRITE)
+	f.store_string("[tour]\nfurthest_stage = 5\n[best\n\"garbage")
+	f.close()
+	SaveData.load_save()
+	eq(SaveData.furthest_stage, 0, "a fresh save")
+	check(not FileAccess.file_exists(SaveData.path), "the broken file moved off the save path")
+	check(FileAccess.file_exists(SaveData.path + ".bad"), "kept as .bad")
+	check(FileAccess.get_file_as_string(SaveData.path + ".bad").contains("garbage"), "as it was")
+	SaveData.record_finish(0, "car_vega", 80.0)
+	check(FileAccess.get_file_as_string(SaveData.path + ".bad").contains("garbage"), "and not overwritten")
+	_clean()
+
+
+func test_saving_leaves_no_side_file() -> void:
+	_clean()
+	SaveData.record_finish(0, "car_vega", 80.0)
+	check(FileAccess.file_exists(SaveData.path), "saved")
+	check(not FileAccess.file_exists(SaveData.path + ".tmp"), "the side file renamed over it")
+	SaveData.record_finish(0, "car_vega", 70.0)
+	SaveData.load_save()
+	eq(SaveData.best(0, "car_vega")["time"], 70.0, "a second save replaces the first")
+
+
 func test_round_trip() -> void:
 	_clean()
 	SaveData.furthest_stage = 3

@@ -3,6 +3,10 @@ extends Node2D
 ## The game (game.gd) starts it from the menus; quit_requested asks to go back to them.
 
 signal quit_requested
+## A Single Race is over and the player confirmed the finish: back to the menus.
+signal race_over
+## OPTIONS on the pause menu: the game shows the options, then calls options_closed.
+signal options_requested
 
 enum State { COUNTDOWN, RACING, FINISHED, TIME_UP }
 
@@ -13,6 +17,11 @@ const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
 
 var track: Track
 var stage_index := 0  # into Stages
+var tour := true  # Grand Tour: a finish goes on to the next stage. false: a Single Race
+## What Enter does after a finish or TIME UP: on, another go, or back to the menus.
+enum After { NEXT_STAGE, RETRY, TOUR_OVER, TOUR_DONE, MENU }
+var tour_state: Tour  # the Grand Tour's standings and continue, kept stage to stage
+var after := After.RETRY
 var car_id := "car_vega"  # into Cars
 var player: PlayerCar
 var power_ups := PowerUps.new()
@@ -22,10 +31,15 @@ var pickup_age := 99.0  # seconds since it was taken
 var picked_up := false  # true for the tick a pickup is taken
 var ram_flash := 0.0  # seconds left on the ram plate's impact flash
 var traffic: Traffic
+var rivals := Rivals.new()
 var state := State.COUNTDOWN
 var countdown := 3.0
 var time_left := START_TIME
 var race_time := 0.0
+var launch: Launch.Grade = Launch.Grade.PENDING  # how the player's start went
+var score := Scoring.new()
+var place := 1  # the player's place in the field (Rivals.standings)
+var player_finish := -1.0  # race time the player finished in, -1 still racing
 var finish_distance := 1.0
 var checkpoint_bonus := CHECKPOINT_BONUS  # after the timer option
 var checkpoint_distances: Array[float] = []
@@ -34,6 +48,7 @@ var banner := ""
 var banner_sub := ""
 var banner_time := 0.0
 var paused := false
+var pause_menu: PauseMenu
 
 var background: Background
 var road: RoadRenderer
@@ -50,9 +65,11 @@ var _was_airborne := false
 var _autodrive := false
 var _log_banners := false
 var _no_traffic := false
+var _no_rivals := false
 var _start_segment := 0  # --at-segment=N: start the race this far in (screenshots)
 var _screenshot_frames: Array[int] = []
 var _screenshot_dir := ""
+var _gas_since := NAN  # when the gas went down, in seconds from GO (Launch.grade)
 var _frame := 0  # physics ticks since this race (re)started
 ## The dev flags are for the race the game starts with; later races come from the menus.
 static var _dev_args_read := false
@@ -69,6 +86,8 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.race = self
 	layer.add_child(hud)
+	pause_menu = PauseMenu.new()
+	layer.add_child(pause_menu)
 	if debug_overlay == null:
 		debug_overlay = InputDebugOverlay.new()
 		layer.add_child(debug_overlay)
@@ -105,14 +124,28 @@ func start_race() -> void:
 	_was_airborne = false
 	traffic = Traffic.new()
 	traffic.spawn(track, 0 if _no_traffic else Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
+	if tour and tour_state == null:
+		tour_state = Tour.new()
+		tour_state.start_stage = stage_index
+	rivals = Rivals.new()
+	rivals.spawn(track, player, car_id, 0 if _no_rivals else Rivals.COUNT, Rivals.SEED + stage_index,
+		Difficulty.of(Settings.difficulty), tour_state.drivers if tour else [])
+	if tour and tour_state.drivers.is_empty():
+		tour_state.drivers = rivals.driver_names()
 	state = State.COUNTDOWN
 	countdown = 3.0
-	time_left = Settings.race_time(START_TIME)
+	time_left = Settings.race_time(START_TIME) + (tour_state.carried if tour else 0.0)
+	after = After.RETRY
 	checkpoint_bonus = Settings.race_time(CHECKPOINT_BONUS)
 	race_time = 0.0
+	player_finish = -1.0
+	score = Scoring.new()
+	launch = Launch.Grade.PENDING
+	_gas_since = NAN
+	place = rivals.place(player, player_finish)
 	next_checkpoint = 0
 	banner = ""
-	paused = false
+	resume()
 	finish_distance = track.finish_index * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z
 	checkpoint_distances.clear()
 	for c in track.checkpoints:
@@ -122,6 +155,7 @@ func start_race() -> void:
 	road.track = track
 	road.player = player
 	road.player_strips = CarSprites.strips(car["strip"])
+	road.rivals = rivals.cars
 
 
 ## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
@@ -133,6 +167,77 @@ func _exit_tree() -> void:
 func continue_tour() -> void:
 	stage_index = maxi(0, Stages.next(stage_index))
 	start_race()
+
+
+## R, or RESTART on the pause menu. In a tour, a stage that is over goes the way Enter
+## would (after_race), and one still running costs the continue; with none left it can't be
+## restarted. Returns false when it wasn't.
+func restart() -> bool:
+	if not tour:
+		start_race()
+		return true
+	if state == State.TIME_UP or state == State.FINISHED:
+		after_race()
+		return true
+	if not tour_state.use_continue():
+		resume()
+		_banner("NO CONTINUE LEFT", "", 1.5)
+		return false
+	start_race()
+	return true
+
+
+## Enter (or R) after a finish or TIME UP.
+func after_race() -> void:
+	match after:
+		After.NEXT_STAGE:
+			continue_tour()
+		After.RETRY:
+			if tour:
+				tour_state.use_continue()
+			start_race()
+		After.TOUR_OVER, After.TOUR_DONE, After.MENU:
+			race_over.emit()
+
+
+## What a stage that went wrong (TIME UP, or outside the top three) leads to in a tour, and
+## the prompt for it.
+func _setback_prompt() -> String:
+	if tour_state.continues > 0:
+		after = After.RETRY
+		return "Enter: use your continue"
+	after = After.TOUR_OVER
+	return "Tour over.   Enter: menu"
+
+
+func pause() -> void:
+	paused = true
+	pause_menu.has_options = not options_requested.get_connections().is_empty()
+	pause_menu.open()
+
+
+func resume() -> void:
+	paused = false
+	pause_menu.close()
+
+
+## Back from the options the pause menu opened: the menu again, still paused.
+func options_closed() -> void:
+	pause_menu.reopen()
+
+
+## Carries out what the pause menu picked (PauseMenu.Action).
+func pause_action(action: int) -> void:
+	match action:
+		PauseMenu.Action.RESUME:
+			resume()
+		PauseMenu.Action.RESTART:
+			restart()
+		PauseMenu.Action.OPTIONS:
+			pause_menu.close()
+			options_requested.emit()
+		PauseMenu.Action.QUIT:
+			quit_requested.emit()
 
 
 func counting_down() -> bool:
@@ -155,45 +260,58 @@ func _physics_process(dt: float) -> void:
 	if calibration.visible:
 		_redraw()
 		return
-	if inp.restart_pressed or (inp.confirm_pressed and state == State.TIME_UP):
-		start_race()
+	if paused:
+		if pause_menu.visible:  # (hidden while the options are up)
+			pause_action(pause_menu.choose(InputRouter.menu, inp.pause_pressed))
+		_redraw()
 		return
-	if inp.confirm_pressed and state == State.FINISHED:
-		continue_tour()
+	var over := state == State.TIME_UP or state == State.FINISHED
+	if over and inp.confirm_pressed:
+		after_race()
+		return
+	if inp.restart_pressed:
+		restart()
 		return
 	if inp.pause_pressed:
-		paused = not paused
-	elif paused and InputRouter.menu.back_pressed:
-		quit_requested.emit()
-		return
-	if paused:
+		pause()
 		_redraw()
 		return
 
 	banner_time = maxf(0.0, banner_time - dt)
+	_watch_launch(inp)
 	match state:
 		State.COUNTDOWN:
 			countdown -= dt
+			if countdown <= Launch.ROLL_TIME:
+				for car: PlayerCar in rivals.everyone(player):
+					car.speed = Launch.ROLL_SPEED
 			if countdown <= 0.0:
 				state = State.RACING
 				_banner("GO!", "", 1.0)
+				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
 			time_left -= dt
 			if time_left <= 0.0:
 				time_left = 0.0
 				state = State.TIME_UP
-				_banner("TIME UP", "Press R or Enter to try again", 999.0)
+				_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", 999.0)
 
 	InputRouter.speed_factor = player.speed_percent()
 	var seg_before := track.find_segment(player.position + Cfg.PLAYER_Z)
+	Draft.update(player, dt, state == State.RACING and Draft.in_wake(player, track, rivals.everyone(player)))
 	player.update(dt, inp, track, state == State.RACING)
 	traffic.update(dt, track)
+	rivals.update(dt, track, player, state != State.COUNTDOWN, finish_distance)
 	player.collide(track)
+	Rivals.resolve_contacts(rivals.everyone(player), track)
+	place = rivals.place(player, player_finish)
 	picked_up = false
 	pickup_age += dt
 	ram_flash = 0.3 if player.rammed else maxf(0.0, ram_flash - dt)
+	score.age_feed(dt)
 	if state == State.RACING:
+		score.watch(dt, player, track)
 		_check_pickups()
 		_check_progress()
 
@@ -208,6 +326,7 @@ func _physics_process(dt: float) -> void:
 	var stretch_to := Cfg.NITRO_FOV_STRETCH if player.nitro_time > 0.0 else 0.0
 	_fov_stretch = move_toward(_fov_stretch, stretch_to, dt * Cfg.NITRO_FOV_RATE)
 	road.camera_depth = camera_depth(_fov_stretch)
+	road.flash = Settings.flash_amount(1.0)
 	road.time += dt
 	road.camera_z = player.position
 	_redraw()
@@ -236,6 +355,27 @@ static func camera_depth(stretch: float) -> float:
 	return Cfg.CAMERA_DEPTH * (1.0 - Settings.shake_amount(stretch))
 
 
+## Grades the start once it's known: the gas down in the window around GO, or too early.
+func _watch_launch(inp: DriveInput) -> void:
+	if launch != Launch.Grade.PENDING:
+		return
+	var now := -countdown if state == State.COUNTDOWN else race_time
+	if inp.throttle >= Launch.GAS_DOWN:
+		if is_nan(_gas_since):
+			_gas_since = now
+	else:
+		_gas_since = NAN
+	if state == State.COUNTDOWN:
+		return
+	# Auto gas holds the gas for the player all through the countdown: a plain start, no bog
+	launch = Launch.Grade.NONE if Settings.auto_gas and not _autodrive else Launch.grade(_gas_since, now)
+	Launch.apply(player, launch)
+	if launch == Launch.Grade.LAUNCH:
+		_banner("LAUNCH!", "", 1.0)
+	elif launch == Launch.Grade.BOG:
+		_banner("GO!", "Too early!", 1.0)
+
+
 func _check_pickups() -> void:
 	var p := power_ups.take(player.passed_segments(track), player.x)
 	if p == null:
@@ -262,25 +402,62 @@ func _check_pickups() -> void:
 func _check_progress() -> void:
 	if next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
+		score.checkpoint()
 		time_left += checkpoint_bonus
 		_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0)
 	if player.distance >= finish_distance:
 		state = State.FINISHED
+		player_finish = race_time
+		place = rivals.place(player, player_finish)
+		score.finish(place, not rivals.cars.is_empty())
 		record_finish()
 		var mins := int(race_time) / 60
 		var secs := fmod(race_time, 60.0)
-		var next := Stages.next(stage_index)
-		var prompt := "Enter: on to %s" % Stages.stage_name(next) if next >= 0 else "Tour complete!   Enter: race again"
-		_banner("FINISH!", "Time %d:%05.2f   %s" % [mins, secs, prompt], 999.0)
+		var prompt := "Enter: menu   R: race again"
+		after = After.MENU
+		if tour:
+			prompt = _tour_finish()
+		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
+		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], 999.0)
 
 
-## Saves the finish (SaveData): best time for this stage and car, and the tour's progress.
+## A tour stage finished: points, then on, another go, or the end of the tour. Returns the
+## banner's prompt.
+func _tour_finish() -> String:
+	var with_rivals := not rivals.cars.is_empty()
+	if with_rivals and not Tour.advances(place):
+		return "Top %d go through.   %s" % [Tour.ADVANCE, _setback_prompt()]
+	var order: Array = []
+	for car: PlayerCar in rivals.standings(player, player_finish):
+		order.append(Tour.YOU if car == player else (car as RivalCar).profile.driver)
+	tour_state.award(order, score.total() - (Scoring.place_points(place) if with_rivals else 0))
+	tour_state.stages_won += 1
+	var next := Stages.next(stage_index)
+	if next >= 0:
+		tour_state.carried = Tour.carry(time_left, Settings.carry_time)
+		after = After.NEXT_STAGE
+		return "Enter: on to %s" % Stages.stage_name(next)
+	tour_state.complete = true
+	after = After.TOUR_DONE
+	if not tour_state.full():
+		return "Tour complete! Start from stage 1 for the Zenith.   Enter: menu"
+	if not _autodrive and _start_segment == 0:
+		SaveData.unlock(Tour.FINISH_UNLOCK)
+		SaveData.total_points += int(tour_state.points.get(Tour.YOU, 0))
+		SaveData.save()
+	return "Tour complete!   Enter: menu"
+
+
+## Saves the finish (SaveData): best time for this stage and car, and the tour's progress
+## when the tour goes on from it.
 ## Autodriven runs and partway starts (dev flags) aren't the player's, so they aren't saved.
 ## Returns true for a new best time.
 func record_finish() -> bool:
 	if _autodrive or _start_segment != 0:
 		return false
-	return SaveData.record_finish(stage_index, car_id, race_time)
+	var placed := not rivals.cars.is_empty()
+	var goes_on := tour and (not placed or Tour.advances(place))
+	return SaveData.record_finish(stage_index, car_id, race_time, place if placed else 0, goes_on)
 
 
 func _banner(text: String, sub: String, seconds: float) -> void:
@@ -312,6 +489,8 @@ func _parse_dev_args() -> void:
 			_start_segment = int(arg.get_slice("=", 1))
 		elif arg == "--no-traffic":
 			_no_traffic = true
+		elif arg == "--no-rivals":
+			_no_rivals = true
 		elif arg.begins_with("--screenshots="):
 			for f in arg.get_slice("=", 1).split(","):
 				_screenshot_frames.append(int(f))
@@ -322,15 +501,17 @@ func _parse_dev_args() -> void:
 func _autodrive_input() -> DriveInput:
 	var inp := DriveInput.new()
 	var seg := track.find_segment(player.position + Cfg.PLAYER_Z + 3000.0)
-	inp.throttle = 1.0
+	inp.throttle = 0.0 if state == State.COUNTDOWN and countdown > 0.1 else 1.0
 	inp.steer = clampf((seg.curve * 0.25) + (_autodrive_lane() - player.x) * 1.5, -1.0, 1.0)
 	inp.nitro_pressed = _frame % 600 == 300
 	return inp
 
 
-## The lane with the most open road ahead, keeping the current one on a tie.
+## The lane with the most open road ahead, keeping the current one on a tie. Anything slower
+## than cruising speed blocks a lane, so a slowed car doesn't sit behind a tractor.
 func _autodrive_lane() -> float:
 	const LOOKAHEAD := 40  # segments
+	var want := maxf(player.speed, Cfg.MAX_SPEED * 0.8)
 	var here := track.find_segment(player.position + Cfg.PLAYER_Z).index
 	var best: float = Traffic.LANE_OFFSETS[0]
 	var best_gap := -1
@@ -338,11 +519,15 @@ func _autodrive_lane() -> float:
 	lanes.sort_custom(func(a: float, b: float) -> bool: return absf(a - player.x) < absf(b - player.x))
 	for lane: float in lanes:
 		var gap := LOOKAHEAD
-		for n in LOOKAHEAD:
+		for r in rivals.cars:
+			var ahead := wrapf(r.position - player.position, -track.length * 0.5, track.length * 0.5)
+			if ahead > 0.0 and absf(r.x - lane) < 0.3 and r.speed < want:
+				gap = mini(gap, int(ahead / Cfg.SEGMENT_LENGTH))
+		for n in gap:
 			var ahead := track.segments[(here + n) % track.segments.size()]
 			var blocked := false
 			for car in ahead.cars:
-				if absf(car.offset - lane) < 0.3 and car.speed < player.speed:
+				if absf(car.offset - lane) < 0.3 and car.speed < want:
 					blocked = true
 			if blocked:
 				gap = n

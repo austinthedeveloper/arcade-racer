@@ -176,4 +176,13 @@ func test_remap_screen_from_the_options_and_back() -> void:
 	eq([g.menu.page, g.menu.row()], [OptionsScreen.Page.CONTROLS, OptionsScreen.Row.REMAP], "on the remap row")
 	g._open("remap")
 	eq(g.screen, g.Screen.REMAP, "--screen=remap")
+	# From mode select's options, the options still go back to mode select afterwards
+	g.show_options_from_modes()
+	g.menu.go_to(OptionsScreen.Row.REMAP)
+	g.menu.handle(confirm)
+	g.menu.handle(back)
+	eq(g.screen, g.Screen.OPTIONS, "back to the options")
+	eq(g.menu.back_name, "mode select", "which still lead back to mode select")
+	g.menu.handle(back)
+	eq(g.screen, g.Screen.MODES, "and do")
 	_clean()
