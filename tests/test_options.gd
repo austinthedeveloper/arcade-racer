@@ -112,7 +112,7 @@ func test_one_input_overlay_across_the_menus_and_the_race() -> void:
 func test_auto_gas_drives_the_race_and_brake_still_works() -> void:
 	_clean()
 	Settings.auto_gas = true
-	var r := race(false, false)
+	var r := race(false, false, 0, false)  # an empty road: the field would box the car in
 	drive(r, 260, input())
 	eq(r.state, r.State.RACING, "racing")
 	check(r.player.speed > Cfg.MAX_SPEED * 0.3, "car accelerates with no gas pressed")
