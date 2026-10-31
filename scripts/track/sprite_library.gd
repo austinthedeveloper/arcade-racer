@@ -7,11 +7,6 @@ const SPRITES := "res://assets/sprites/"
 const MANIFEST := SPRITES + "manifest.json"
 ## World width of a span's opening: the road plus its rumble strips and a little margin.
 const SPAN_OPENING := Cfg.ROAD_WIDTH * 2.7
-## Roadside sprites that load but no stage places yet; test_track keeps this list honest.
-const UNPLACED := ["turn_left", "turn_right", "chevron_a", "chevron_b", "chevron_c", "bump_sign",
-	"tire_stack", "barrels_yellow", "cone_orange", "barricade", "barrier_orange", "inflatable_arch",
-	"sign_green", "sign_brown", "delineator", "rail_wood_a", "rail_wood_b", "rail_wood_short",
-	"rail_end", "rail_wood_long", "rail_concrete", "rail_concrete_end"]
 const MIN_OPENING := 0.2  # narrowest opening, as a fraction of a span's width, that is one
 
 static var defs: Dictionary = {}
