@@ -296,12 +296,22 @@ func _check_progress() -> void:
 		player_finish = race_time
 		place = rivals.place(player, player_finish)
 		score.finish(place, not rivals.cars.is_empty())
+		record_finish()
 		var mins := int(race_time) / 60
 		var secs := fmod(race_time, 60.0)
 		var next := Stages.next(stage_index)
 		var prompt := "Enter: on to %s" % Stages.stage_name(next) if next >= 0 else "Tour complete!   Enter: race again"
 		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
 		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], 999.0)
+
+
+## Saves the finish (SaveData): best time for this stage and car, and the tour's progress.
+## Autodriven runs and partway starts (dev flags) aren't the player's, so they aren't saved.
+## Returns true for a new best time.
+func record_finish() -> bool:
+	if _autodrive or _start_segment != 0:
+		return false
+	return SaveData.record_finish(stage_index, car_id, race_time)
 
 
 func _banner(text: String, sub: String, seconds: float) -> void:
