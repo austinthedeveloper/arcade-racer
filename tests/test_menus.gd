@@ -159,6 +159,8 @@ func test_mode_select_leads_on_and_back() -> void:
 	g.menu.handle(menu_input(false, false, -1))
 	g.menu.handle(menu_input(true))
 	eq(g.screen, g.Screen.OPTIONS, "OPTIONS opens the options")
+	g.menu.index = OptionsScreen.Row.BACK
+	eq(g.menu.help_text(), "Back to mode select.", "BACK says where it goes")
 	g.menu.handle(menu_input(false, true))
 	eq(g.screen, g.Screen.MODES, "back from them returns to mode select")
 	eq(g.menu.index, ModeSelect.Item.OPTIONS, "on OPTIONS")
@@ -172,6 +174,8 @@ func test_mode_select_leads_on_and_back() -> void:
 	g.menu.handle(menu_input(false, false, 1))
 	g.menu.handle(menu_input(true))
 	eq(g.screen, g.Screen.OPTIONS, "OPTIONS on the title still opens the options")
+	g.menu.index = OptionsScreen.Row.BACK
+	eq(g.menu.help_text(), "Back to the title screen.", "BACK says the title")
 	g.menu.handle(menu_input(false, true))
 	eq(g.screen, g.Screen.TITLE, "and those go back to the title")
 
