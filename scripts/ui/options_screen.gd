@@ -4,12 +4,13 @@ extends MenuScreen
 ## Keyboard and gamepad: up/down picks a row, left/right changes it, confirm toggles or
 ## runs it. A wheel has no up/down, so steering picks the row and gas changes it.
 
-enum Row { AUTO_GAS, TRAFFIC, TIMER, POWER_UPS, MUSIC, SFX, CALIBRATE, BACK }
+enum Row { AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, POWER_UPS, MUSIC, SFX, CALIBRATE, BACK }
 
-const LABELS := ["AUTO GAS", "TRAFFIC", "TIMER", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL", "BACK"]
+const LABELS := ["AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL", "BACK"]
 const HELP := [
 	"The car keeps the gas down, so you only steer. The brake still works.",
 	"How many cars share the road.",
+	"How fast the rivals are and how long they wait. Sets the timer to match.",
 	"Time to reach each checkpoint. Relaxed gives more, Tight less.",
 	"Nitro cans, clocks, ram plates and ghosts to grab on the road.",
 	"Music loudness.",
@@ -38,6 +39,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.auto_gas = not s.auto_gas
 		Row.TRAFFIC:
 			s.traffic = _step(s.traffic, dir, s.Traffic.size(), wrap)
+		Row.DIFFICULTY:
+			s.set_difficulty(_step(s.difficulty, dir, Difficulty.Level.size(), wrap))
 		Row.TIMER:
 			s.timer = _step(s.timer, dir, s.Clock.size(), wrap)
 		Row.POWER_UPS:
@@ -60,6 +63,8 @@ static func value_text(row: int) -> String:
 			return "ON" if s.auto_gas else "OFF"
 		Row.TRAFFIC:
 			return s.TRAFFIC_NAMES[s.traffic]
+		Row.DIFFICULTY:
+			return Difficulty.NAMES[s.difficulty]
 		Row.TIMER:
 			return s.TIMER_NAMES[s.timer]
 		Row.POWER_UPS:
