@@ -23,6 +23,7 @@ const CUES := {
 	"tick": ["sfx", false, -14.0],
 	"checkpoint": ["sfx", false, -8.0],
 	"finish": ["sfx", false, -8.0],
+	"crowd": ["sfx", false, -2.0],  # the finish-line roar: the loudest cue on purpose
 	"time_up": ["sfx", false, -8.0],
 	"music_race": ["music", true, -12.0],
 }

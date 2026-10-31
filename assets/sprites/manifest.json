@@ -225,7 +225,8 @@
     "delineator": {"file": "roadside/shared/delineator.png", "world_h": 1100, "collide": 0.5}
   },
   "spans": {
-    "neon_tunnel": {"file": "spans/neon_tunnel.png", "fill": "#140b26", "ceiling": false, "banner": null},
+    "neon_tunnel": {"file": "spans/neon_tunnel.png", "fill": "#140b26", "ceiling": false, "banner": null, "solid": [0.3181818181818182, 0.6818181818181818]},
+    "neon_tunnel_exit": {"file": "spans/neon_tunnel_exit.png", "fill": "#140b26", "ceiling": false, "banner": null},
     "neon_tunnel_ring": {"file": "spans/neon_tunnel_ring.png", "fill": "#140b26", "ceiling": true, "banner": null},
     "neon_gantry": {"file": "spans/neon_gantry.png", "fill": null, "ceiling": false, "banner": null},
     "covered_bridge": {"file": "spans/covered_bridge.png", "fill": null, "ceiling": false, "banner": null},

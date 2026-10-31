@@ -73,20 +73,24 @@ All movement happens in "track space": distance along the road (`z`) and lateral
 
 ## 7. Cars
 
-Eight original cars at launch, all fictional. No real makes, badges, or logos. Each has 4 to 6 paint colors.
+Twelve original cars, all fictional, as built in `scripts/car/cars.gd`. No real makes, badges, or logos. Each was planned with 4 to 6 paint colors; paint is not built yet.
 
-| ID | Name (placeholder) | Archetype | Accel | Top speed | Handling | Unlock |
+| ID | Name | Archetype (as built) | Accel | Top speed | Handling | Character |
 |---|---|---|---|---|---|---|
-| `car_vega` | Vega GT | Low wedge supercar | 4 | 5 | 3 | Start |
-| `car_bruiser` | Bruiser 440 | American muscle coupe | 5 | 4 | 2 | Start |
-| `car_kestrel` | Kestrel R | Rally-bred hatch | 4 | 3 | 5 | Start |
-| `car_sol` | Solano Spyder | Open-top roadster | 3 | 4 | 4 | Start |
-| `car_mesa` | Mesa Rumbler | Lifted 4x4 pickup | 3 | 3 | 3 (no off-road penalty) | Stage 3 |
-| `car_phantom` | Phantom Interceptor | Police-style pursuit sedan (fictional livery) | 4 | 5 | 3 | Stage 5 |
-| `car_hauler` | Hauler | Delivery van (joke car, surprisingly fast) | 3 | 4 | 2 | Secret |
-| `car_zenith` | Zenith X | Concept hypercar | 5 | 5 | 4 | Finish Grand Tour |
+| `car_vega` | Vega GT | Low wedge supercar | 4 | 5 | 3 | The baseline: it drives on the base values |
+| `car_bruiser` | Bruiser 440 | Muscle coupe | 5 | 4 | 2 | Top acceleration, weakest handling |
+| `car_kestrel` | Kestrel R | Rally-bred hatch | 4 | 3 | 5 | Top handling, middling top speed |
+| `car_sol` | Solano Spyder | Open-top roadster | 3 | 4 | 4 | Mid acceleration, good handling |
+| `car_mesa` | Mesa Rumbler | Lifted 4x4 | 3 | 3 | 3 | No off-road slowdown |
+| `car_phantom` | Phantom | Pursuit sedan | 4 | 5 | 3 | Same stats as the Vega |
+| `car_tempest` | Tempest LM | Endurance prototype | 3 | 5 | 4 | Top speed and good handling, mid acceleration |
+| `car_skipper` | Dune Skipper | Sand-rail buggy | 5 | 2 | 4 | Half the off-road slowdown, lowest top speed (2) |
+| `car_halo` | Halo EV | Electric | 5 | 4 | 3 | Four nitros, each 0.75 as long as the usual |
+| `car_cyclone` | Cyclone | Reverse trike | 4 | 3 | 5 | Top handling, like the Kestrel |
+| `car_hauler` | Hauler | Delivery van (surprisingly fast) | 3 | 4 | 2 | Joke car with weak handling |
+| `car_zenith` | Zenith X | Concept hypercar | 5 | 5 | 4 | Top acceleration and top speed |
 
-Stats are 1 to 5 for the select screen. Real tuning lives in data files.
+Stats are 1 to 5 for the select screen. `Cars.tuning` turns them into driving multipliers relative to the Vega (top speed, acceleration, steering, curve pull; see docs/02 section 10). The optional `offroad`, `nitros` and `nitro_time` keys in `cars.gd` set the Mesa, Skipper and Halo traits. Unlocks were planned but are not built: all twelve cars are open on the car select screen.
 
 ## 8. Stages (Grand Tour, fictional country)
 
@@ -103,7 +107,7 @@ A coast-to-coast run across an invented country. Each stage is point-to-point an
 | 7 | **Thunderhead Highway** | Storm plains | Rain, lightning flashes, dramatic sky, slippery road. |
 | 8 | **Skyline Finale** | Big metro harbor, dusk | Suspension bridge, skyscrapers, finish under fireworks. |
 
-**MVP:** Stage 1 only, fully dressed. Stage 2 next, to prove biome swapping. (Prototype, 2026-10-30: stages 1 to 7 are drivable back to back with art cut from the concept sheets. Skyline Finale waits for a background reroll with fictional landmarks (prompt BG-SKYLINE-01R). The Neon Strip tunnel and the Timberline covered bridge need a drive-through sprite type and are not in yet.)
+**MVP:** Stage 1 only, fully dressed. Stage 2 next, to prove biome swapping. (As built: all eight stages are drivable back to back, including Skyline Finale. The Neon Strip tunnel and the Timberline covered bridge are drive-through sprites. Rain, lightning and a slippery road in Thunderhead Highway are not in yet.)
 
 ### Road features (shared across stages)
 

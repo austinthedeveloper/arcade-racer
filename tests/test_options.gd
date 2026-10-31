@@ -112,7 +112,7 @@ func test_one_input_overlay_across_the_menus_and_the_race() -> void:
 func test_auto_gas_drives_the_race_and_brake_still_works() -> void:
 	_clean()
 	Settings.auto_gas = true
-	var r := race(false, false)
+	var r := race(false, false, 0, false)  # an empty road: the field would box the car in
 	drive(r, 260, input())
 	eq(r.state, r.State.RACING, "racing")
 	check(r.player.speed > Cfg.MAX_SPEED * 0.3, "car accelerates with no gas pressed")
@@ -129,16 +129,16 @@ func test_traffic_and_timer_options_reach_the_race() -> void:
 	Settings.timer = Settings.Clock.RELAXED
 	var r := race(false, true)
 	eq(r.traffic.cars.size(), roundi(r.TRAFFIC_COUNT * 0.5), "light traffic")
-	check(r.time_left > r.START_TIME, "relaxed: more time (%.0f)" % r.time_left)
-	check(r.checkpoint_bonus > r.CHECKPOINT_BONUS, "and bigger bonuses")
+	check(r.time_left > r.clock[0], "relaxed: more time (%.0f)" % r.time_left)
+	check(r.checkpoint_bonus > r.clock[1], "and bigger bonuses")
 	Settings.traffic = Settings.Traffic.HEAVY
 	Settings.timer = Settings.Clock.TIGHT
 	r.start_race()
 	check(r.traffic.cars.size() > r.TRAFFIC_COUNT, "heavy traffic")
-	check(r.time_left < r.START_TIME, "tight: less time")
+	check(r.time_left < r.clock[0], "tight: less time")
 	_clean()
 	r.start_race()
-	eq([r.traffic.cars.size(), r.time_left, r.checkpoint_bonus], [r.TRAFFIC_COUNT, r.START_TIME, r.CHECKPOINT_BONUS],
+	eq([r.traffic.cars.size(), r.time_left, r.checkpoint_bonus], [r.TRAFFIC_COUNT, r.clock[0], r.clock[1]],
 		"defaults keep the tuned race (golden traces)")
 
 
@@ -181,7 +181,7 @@ func test_options_rows_change_with_keys_and_pad() -> void:
 	var m := MenuInput.new()
 	m.down_pressed = true
 	o.handle(m)
-	eq(o.index, OptionsScreen.Row.TRAFFIC, "down: next row")
+	eq(o.row(), OptionsScreen.Row.TRAFFIC, "down: next row")
 	m = MenuInput.new()
 	m.right_pressed = true
 	o.handle(m)
@@ -196,7 +196,9 @@ func test_options_rows_change_with_keys_and_pad() -> void:
 	m.up_pressed = true
 	o.handle(m)
 	o.handle(m)
-	eq(o.index, OptionsScreen.Row.BACK, "up from the top wraps to BACK")
+	eq(o.row(), OptionsScreen.Row.PAGE, "up from the first option: the page bar")
+	o.handle(m)
+	eq(o.row(), OptionsScreen.Row.BACK, "up from the page bar wraps to BACK")
 	var cfg := ConfigFile.new()
 	eq(cfg.load(Settings.path), OK, "saved on change")
 	eq(cfg.get_value("play", "traffic"), Settings.Traffic.LIGHT, "saved value")
@@ -217,11 +219,18 @@ func test_options_on_a_wheel_steer_and_gas() -> void:
 	var steer := MenuInput.new()
 	steer.right_pressed = true
 	o.handle(steer)
-	eq(o.index, OptionsScreen.Row.TRAFFIC, "steering right goes down a row")
+	eq(o.row(), OptionsScreen.Row.TRAFFIC, "steering right goes down a row")
 	eq(Settings.traffic, Settings.Traffic.NORMAL, "and doesn't change the value")
-	for i in OptionsScreen.Row.CALIBRATE - OptionsScreen.Row.TRAFFIC:
-		o.handle(steer)
-	eq(o.index, OptionsScreen.Row.CALIBRATE, "on calibrate")
+	var left := MenuInput.new()
+	left.left_pressed = true
+	o.handle(left)
+	o.handle(left)
+	eq(o.row(), OptionsScreen.Row.PAGE, "steering left up to the page bar")
+	for i in OptionsScreen.Page.CONTROLS:
+		o.handle(gas)
+	eq(o.page, OptionsScreen.Page.CONTROLS, "gas on the page bar flips pages")
+	o.handle(steer)
+	eq(o.row(), OptionsScreen.Row.CALIBRATE, "on calibrate")
 	o.handle(gas)
 	check(g.calibration.visible, "gas opens the wheel calibration")
 	g.calibration.visible = false
@@ -246,7 +255,7 @@ func test_title_reaches_options_and_back() -> void:
 	m.confirm_pressed = true
 	g.menu.handle(m)
 	eq(g.screen, g.Screen.OPTIONS, "confirm: options")
-	g.menu.index = OptionsScreen.Row.BACK
+	g.menu.go_to(OptionsScreen.Row.BACK)
 	g.menu.handle(m)
 	eq(g.screen, g.Screen.TITLE, "BACK row: title")
 	m = MenuInput.new()
@@ -255,7 +264,7 @@ func test_title_reaches_options_and_back() -> void:
 	m = MenuInput.new()
 	m.confirm_pressed = true
 	g.menu.handle(m)
-	eq(g.screen, g.Screen.STAGES, "START: stage select")
+	eq(g.screen, g.Screen.MODES, "START: mode select")
 	eq(OptionsScreen.LABELS.size(), OptionsScreen.Row.size(), "a label per row")
 	eq(OptionsScreen.HELP.size(), OptionsScreen.Row.size(), "help per row")
 	_clean()
@@ -271,3 +280,306 @@ func test_power_ups_option_saves() -> void:
 	o.change(OptionsScreen.Row.POWER_UPS, 1, true)
 	check(Settings.power_ups, "back on")
 	o.free()
+
+
+func test_difficulty_saves_and_sets_the_timer() -> void:
+	_clean()
+	var o := OptionsScreen.new()
+	eq(OptionsScreen.value_text(OptionsScreen.Row.DIFFICULTY), "NORMAL", "normal by default")
+	o.change(OptionsScreen.Row.DIFFICULTY, 1, false)
+	eq(Settings.difficulty, Difficulty.Level.HARD, "harder")
+	eq(Settings.timer, Settings.Clock.TIGHT, "hard puts the timer on tight")
+	o.change(OptionsScreen.Row.TIMER, -1, false)
+	eq(Settings.timer, Settings.Clock.ARCADE, "the timer can still be changed")
+	Settings.load_settings()
+	eq(Settings.difficulty, Difficulty.Level.HARD, "saved")
+	eq(Settings.timer, Settings.Clock.ARCADE, "and the timer kept")
+	o.change(OptionsScreen.Row.DIFFICULTY, -1, false)
+	o.change(OptionsScreen.Row.DIFFICULTY, -1, false)
+	eq(Settings.timer, Settings.Clock.RELAXED, "easy relaxes it")
+	o.free()
+	_clean()
+
+
+func test_difficulty_reaches_the_race() -> void:
+	_clean()
+	Settings.difficulty = Difficulty.Level.EASY
+	var easy := race(false, false)
+	Settings.difficulty = Difficulty.Level.HARD
+	var hard := race(false, false)
+	check(easy.rivals.cars[0].base_top < hard.rivals.cars[0].base_top, "slower rivals on easy")
+	_clean()
+
+
+## The scratch options, save and wheel profiles, each with something non-default in it.
+func _fill_all_three() -> void:
+	_clean_all()
+	Settings.traffic = Settings.Traffic.HEAVY
+	Settings.music_volume = 4
+	Settings.save()
+	SaveData.record_finish(0, "car_vega", 70.0)
+	var cfg := ConfigFile.new()
+	cfg.set_value("test-wheel-guid", "steer_deadzone", 0.2)
+	cfg.save(TestSuite.SCRATCH_PROFILES)
+	InputRouter.load_profiles()
+
+
+func _clean_all() -> void:
+	_clean()
+	TestSuite.use_scratch_save(SaveData)
+	TestSuite.use_scratch_profiles(InputRouter)
+
+
+static func _file(path: String) -> String:
+	return FileAccess.get_file_as_string(path)
+
+
+func test_reset_options_leaves_save_and_profiles() -> void:
+	_fill_all_three()
+	var save_before := _file(TestSuite.SCRATCH_SAVE)
+	var profiles_before := _file(TestSuite.SCRATCH_PROFILES)
+	check(profiles_before != "" and save_before != "", "files written")
+	var keep := _as_device(DriveInput.Kind.KEYBOARD)
+	var g := _game()
+	g.show_options()
+	var o: OptionsScreen = g.menu
+	o.go_to(OptionsScreen.Row.RESET_OPTIONS)
+	var m := MenuInput.new()
+	m.confirm_pressed = true
+	o.handle(m)
+	eq([Settings.traffic, Settings.music_volume], [Settings.Traffic.NORMAL, 10], "options back to defaults")
+	Settings.load_settings()
+	eq([Settings.traffic, Settings.music_volume], [Settings.Traffic.NORMAL, 10], "and saved")
+	eq(o.row_text(OptionsScreen.Row.RESET_OPTIONS), "DONE", "shows it ran")
+	eq(_file(TestSuite.SCRATCH_SAVE), save_before, "save file untouched")
+	eq(SaveData.best(0, "car_vega")["time"], 70.0, "best time kept")
+	eq(_file(TestSuite.SCRATCH_PROFILES), profiles_before, "profiles file untouched")
+	o.move(1)
+	eq(o.row_text(OptionsScreen.Row.RESET_OPTIONS), "", "DONE goes when the cursor moves")
+	InputRouter.state = keep
+	_clean_all()
+
+
+func test_reset_save_asks_then_leaves_options_and_profiles() -> void:
+	_fill_all_three()
+	var settings_before := _file(TestSuite.SCRATCH_SETTINGS)
+	var profiles_before := _file(TestSuite.SCRATCH_PROFILES)
+	var keep := _as_device(DriveInput.Kind.KEYBOARD)
+	var g := _game()
+	g.show_options()
+	var o: OptionsScreen = g.menu
+	o.go_to(OptionsScreen.Row.RESET_SAVE)
+	var confirm := MenuInput.new()
+	confirm.confirm_pressed = true
+	o.handle(confirm)
+	check(o.confirming, "the first select asks")
+	eq(o.row_text(OptionsScreen.Row.RESET_SAVE), "SURE?", "shown on the row")
+	eq(SaveData.best(0, "car_vega")["time"], 70.0, "nothing erased yet")
+	var back := MenuInput.new()
+	back.back_pressed = true
+	o.handle(back)
+	check(not o.confirming, "back cancels")
+	eq(g.screen, g.Screen.OPTIONS, "and stays on the options")
+	o.handle(confirm)
+	var right := MenuInput.new()
+	right.right_pressed = true
+	o.handle(right)
+	check(not o.confirming, "left/right cancels")
+	eq(SaveData.best(0, "car_vega")["time"], 70.0, "still nothing erased")
+	o.handle(confirm)
+	o.handle(confirm)
+	check(not o.confirming, "the second select erases")
+	eq([SaveData.bests.size(), SaveData.furthest_stage], [0, 0], "save reset")
+	SaveData.load_save()
+	eq([SaveData.bests.size(), SaveData.furthest_stage], [0, 0], "and written")
+	eq(o.row_text(OptionsScreen.Row.RESET_SAVE), "DONE", "shows it ran")
+	eq(_file(TestSuite.SCRATCH_SETTINGS), settings_before, "options file untouched")
+	eq([Settings.traffic, Settings.music_volume], [Settings.Traffic.HEAVY, 4], "options kept")
+	eq(_file(TestSuite.SCRATCH_PROFILES), profiles_before, "profiles file untouched")
+	InputRouter.state = keep
+	_clean_all()
+
+
+func test_reset_save_on_a_wheel_cancels_on_steer() -> void:
+	_fill_all_three()
+	var keep := _as_device(DriveInput.Kind.WHEEL)
+	var g := _game()
+	g.show_options()
+	var o: OptionsScreen = g.menu
+	o.go_to(OptionsScreen.Row.RESET_SAVE)
+	var gas := MenuInput.new()
+	gas.confirm_pressed = true
+	o.handle(gas)
+	check(o.confirming, "gas asks")
+	var steer := MenuInput.new()
+	steer.right_pressed = true
+	o.handle(steer)
+	check(not o.confirming, "steering away cancels")
+	eq(o.row(), OptionsScreen.Row.BACK, "and moves on")
+	eq(SaveData.bests.size(), 1, "nothing erased")
+	o.go_to(OptionsScreen.Row.RESET_SAVE)
+	o.handle(gas)
+	o.handle(gas)
+	eq(SaveData.bests.size(), 0, "gas twice erases")
+	InputRouter.state = keep
+	_clean_all()
+
+
+func test_option_pages() -> void:
+	_clean()
+	var keep := _as_device(DriveInput.Kind.KEYBOARD)
+	var g := _game()
+	g.show_options()
+	var o: OptionsScreen = g.menu
+	eq([o.page, o.row()], [OptionsScreen.Page.GAME, OptionsScreen.Row.AUTO_GAS], "opens on Game, first option")
+	var up := MenuInput.new()
+	up.up_pressed = true
+	o.handle(up)
+	var right := MenuInput.new()
+	right.right_pressed = true
+	var left := MenuInput.new()
+	left.left_pressed = true
+	o.handle(right)
+	eq(o.page, OptionsScreen.Page.DISPLAY, "right on the page bar: next page")
+	eq(o.row(), OptionsScreen.Row.PAGE, "still on the page bar")
+	eq(Settings.auto_gas, false, "no option changed")
+	o.handle(right)
+	eq(o.rows(), [OptionsScreen.Row.PAGE, OptionsScreen.Row.MUSIC, OptionsScreen.Row.SFX, OptionsScreen.Row.BACK], "Audio rows")
+	var down := MenuInput.new()
+	down.down_pressed = true
+	o.handle(down)
+	o.handle(left)
+	eq(Settings.music_volume, 9, "left on a volume row turns it down")
+	o.handle(up)
+	o.handle(left)
+	o.handle(left)
+	o.handle(left)
+	eq(o.page, OptionsScreen.Page.ACCESSIBILITY, "left from Game wraps to the last page")
+	o.handle(right)
+	eq(o.page, OptionsScreen.Page.GAME, "and right wraps back")
+	var confirm := MenuInput.new()
+	confirm.confirm_pressed = true
+	o.handle(confirm)
+	eq(o.page, OptionsScreen.Page.DISPLAY, "confirm on the page bar: next page")
+	eq(o.rows(), [OptionsScreen.Row.PAGE, OptionsScreen.Row.FULLSCREEN, OptionsScreen.Row.INTEGER_SCALE,
+		OptionsScreen.Row.VSYNC, OptionsScreen.Row.SCANLINES, OptionsScreen.Row.UNITS, OptionsScreen.Row.BACK], "Display rows")
+	o.handle(up)
+	o.handle(confirm)
+	eq(g.screen, g.Screen.TITLE, "BACK from any page")
+	InputRouter.state = keep
+	_clean()
+
+
+func test_every_row_is_on_one_page() -> void:
+	var seen := {}
+	for p in OptionsScreen.Page.size():
+		for r in OptionsScreen.PAGE_ROWS[p]:
+			check(not seen.has(r), "%s on one page" % OptionsScreen.LABELS[r])
+			seen[r] = p
+	for r in OptionsScreen.Row.size():
+		if r != OptionsScreen.Row.PAGE and r != OptionsScreen.Row.BACK:
+			check(seen.has(r), "%s has a page" % OptionsScreen.LABELS[r])
+	eq(OptionsScreen.PAGE_NAMES.size(), OptionsScreen.Page.size(), "a name per page")
+	eq(OptionsScreen.PAGE_EMPTY.size(), OptionsScreen.Page.size(), "an empty note per page")
+	for p in OptionsScreen.Page.size():
+		check(OptionsScreen.PAGE_ROWS[p].size() + 2 <= OptionsScreen.SLOTS, "%s fits the panel" % OptionsScreen.PAGE_NAMES[p])
+		eq(OptionsScreen.page_named(OptionsScreen.PAGE_NAMES[p].to_lower()), p, "page_named")
+	eq(OptionsScreen.page_named("nope"), -1, "unknown page")
+	var o := OptionsScreen.new()
+	o.go_to(OptionsScreen.Row.SFX)
+	eq([o.page, o.row()], [OptionsScreen.Page.AUDIO, OptionsScreen.Row.SFX], "go_to finds the page")
+	o.free()
+
+
+func test_screen_flag_opens_a_page() -> void:
+	var g := _game()
+	g._open("options:controls")
+	var o: OptionsScreen = g.menu
+	eq([g.screen, o.page, o.row()], [g.Screen.OPTIONS, OptionsScreen.Page.CONTROLS, OptionsScreen.Row.PAGE], "options:controls")
+
+
+func test_speed_units() -> void:
+	_clean()
+	eq(Settings.units, Settings.Units.MPH, "MPH by default")
+	eq(Settings.speed_in(Cfg.MAX_SPEED, Settings.Units.MPH), roundi(Cfg.DISPLAY_TOP_SPEED), "top speed in mph")
+	eq(Settings.speed_in(Cfg.MAX_SPEED, Settings.Units.KPH), roundi(Cfg.DISPLAY_TOP_SPEED * 1.609344), "in kph (319)")
+	eq(Settings.speed_in(Cfg.MAX_SPEED * 0.5, Settings.Units.MPH), 99, "half")
+	eq(Settings.speed_in(0.0, Settings.Units.KPH), 0, "standing")
+	eq(Settings.speedometer(Cfg.MAX_SPEED), [198, "MPH"], "speedometer in MPH")
+	var o := OptionsScreen.new()
+	o.go_to(OptionsScreen.Row.UNITS)
+	eq(o.page, OptionsScreen.Page.DISPLAY, "on the Display page")
+	o.change(OptionsScreen.Row.UNITS, 1, false)
+	eq(OptionsScreen.value_text(OptionsScreen.Row.UNITS), "KPH", "shown")
+	Settings.load_settings()
+	eq(Settings.speedometer(Cfg.MAX_SPEED), [319, "KPH"], "saved, and the speedometer says KPH")
+	o.change(OptionsScreen.Row.UNITS, 1, true)
+	eq(Settings.units, Settings.Units.MPH, "confirm cycles back")
+	o.free()
+	_clean()
+
+
+func test_display_options_round_trip() -> void:
+	_clean()
+	eq([Settings.fullscreen, Settings.integer_scale, Settings.vsync, Settings.scanlines], [false, false, true, false],
+		"defaults: windowed, fractional, V-Sync on, no scanlines")
+	var o := OptionsScreen.new()
+	o.go_to(OptionsScreen.Row.FULLSCREEN)
+	eq(o.page, OptionsScreen.Page.DISPLAY, "on the Display page")
+	eq(OptionsScreen.value_text(OptionsScreen.Row.FULLSCREEN), "WINDOWED", "shown windowed")
+	for r in [OptionsScreen.Row.FULLSCREEN, OptionsScreen.Row.INTEGER_SCALE, OptionsScreen.Row.VSYNC, OptionsScreen.Row.SCANLINES]:
+		check(o.change(r, 1, true), "%s changes" % OptionsScreen.LABELS[r])
+	eq([OptionsScreen.value_text(OptionsScreen.Row.FULLSCREEN), OptionsScreen.value_text(OptionsScreen.Row.INTEGER_SCALE),
+		OptionsScreen.value_text(OptionsScreen.Row.VSYNC), OptionsScreen.value_text(OptionsScreen.Row.SCANLINES)],
+		["FULLSCREEN", "ON", "OFF", "ON"], "shown")
+	Settings.reset()
+	eq(Settings.fullscreen, false, "reset")
+	Settings.load_settings()
+	eq([Settings.fullscreen, Settings.integer_scale, Settings.vsync, Settings.scanlines], [true, true, false, true],
+		"saved and loaded back")
+	o.free()
+	_clean()
+
+
+func test_display_plan_follows_the_options() -> void:
+	_clean()
+	var plan: Dictionary = Settings.display_plan()
+	eq([plan["window_mode"], plan["stretch"], plan["vsync"], plan["scanlines"]],
+		[DisplayServer.WINDOW_MODE_WINDOWED, Window.CONTENT_SCALE_STRETCH_FRACTIONAL, DisplayServer.VSYNC_ENABLED, false],
+		"defaults")
+	Settings.fullscreen = true
+	Settings.integer_scale = true
+	Settings.vsync = false
+	plan = Settings.display_plan()
+	eq([plan["window_mode"], plan["stretch"], plan["vsync"]],
+		[DisplayServer.WINDOW_MODE_FULLSCREEN, Window.CONTENT_SCALE_STRETCH_INTEGER, DisplayServer.VSYNC_DISABLED], "all on")
+	_clean()
+
+
+func test_applying_display_headless_leaves_the_window_alone() -> void:
+	_clean()
+	check(Settings.headless(), "the tests run headless")
+	var mode := DisplayServer.window_get_mode()
+	var stretch: int = runner.root.content_scale_stretch
+	Settings.fullscreen = true
+	Settings.integer_scale = true
+	Settings.vsync = false
+	Settings.scanlines = true
+	Settings.save()
+	eq(DisplayServer.window_get_mode(), mode, "window mode untouched")
+	eq(runner.root.content_scale_stretch, stretch, "stretch untouched")
+	if check(Settings.scanline_layer != null, "the scanline overlay is made"):
+		check(Settings.scanline_layer.visible, "and shows")
+		eq(Settings.scanline_layer.layer, Settings.SCANLINE_LAYER, "on top")
+	_clean()
+	check(Settings.scanline_layer == null or not Settings.scanline_layer.visible, "defaults hide it")
+
+
+func test_view_rect_integer_and_fractional() -> void:
+	var view := Vector2i(640, 360)
+	eq(Settings.view_rect(Vector2i(1920, 1080), view, true), Rect2i(0, 0, 1920, 1080), "1080p: 3x either way")
+	eq(Settings.view_rect(Vector2i(1920, 1080), view, false), Rect2i(0, 0, 1920, 1080), "fractional too")
+	eq(Settings.view_rect(Vector2i(1600, 900), view, true), Rect2i(160, 90, 1280, 720), "900p: 2x with a border")
+	eq(Settings.view_rect(Vector2i(1600, 900), view, false), Rect2i(0, 0, 1600, 900), "fractional fills it")
+	eq(Settings.view_rect(Vector2i(1920, 929), view, true), Rect2i(320, 104, 1280, 720), "a short window: 2x")
+	eq(Settings.view_rect(Vector2i(320, 180), view, true), Rect2i(-160, -90, 640, 360), "never under 1x")

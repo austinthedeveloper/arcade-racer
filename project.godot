@@ -21,6 +21,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 InputRouter="*res://scripts/input/input_router.gd"
 Audio="*res://scripts/audio/audio.gd"
 Settings="*res://scripts/core/settings.gd"
+SaveData="*res://scripts/core/save_data.gd"
 
 [display]
 

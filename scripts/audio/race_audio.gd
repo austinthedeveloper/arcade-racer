@@ -81,6 +81,7 @@ func _events() -> void:
 			race.State.FINISHED:
 				Audio.stop_music()
 				Audio.play("finish")
+				Audio.play("crowd")
 			race.State.TIME_UP:
 				Audio.stop_music()
 				Audio.play("time_up")

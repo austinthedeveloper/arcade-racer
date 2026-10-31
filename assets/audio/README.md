@@ -38,6 +38,7 @@ seamless; the engine loops are pitch-shifted, so a steady single-note recording 
 | `tick` | sfx | no | Each second under 10 s left on the clock |
 | `checkpoint` | sfx | no | Passing a checkpoint |
 | `finish` | sfx | no | Crossing the finish line |
+| `crowd` | sfx | no | The crowd roaring and clapping at the finish line, with `finish`; mixed loud |
 | `time_up` | sfx | no | The clock runs out |
 | `music_race` | music | yes | From the countdown until the finish or time up |
 

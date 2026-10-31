@@ -20,7 +20,7 @@ def build():
     # Imported here: the tools import this module too
     from make_car_sprites import TRAFFIC
     from make_drawn_props import DRAWN
-    from make_span_sprites import SPANS
+    from make_span_sprites import SPANS, solid_part
     from make_stage_sprites import STAGES
 
     roadside = {}
@@ -37,6 +37,8 @@ def build():
     for name, (_, look) in SPANS.items():
         spans[name] = {"file": "spans/%s.png" % name, "fill": look.get("fill"),
                        "ceiling": look.get("ceiling", False), "banner": look.get("banner")}
+        if solid_part(look) is not None:
+            spans[name]["solid"] = solid_part(look)
     traffic = {}
     for _, _, world_per_px, names in TRAFFIC:
         for name in names:

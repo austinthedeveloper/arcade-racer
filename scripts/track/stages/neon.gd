@@ -11,12 +11,15 @@ static func theme() -> Dictionary:
 		"below_horizon": Color("#1a1030"),
 		"grass": [Color("#3a2a5c"), Color("#34264f")],  # sidewalk paving
 		"sand": [Color("#4b3a6e"), Color("#45346a")],  # plaza tiles
+		"kickup": ["smoke", "smoke"],  # FxLayer: what the wheels throw up off the grass, off the sand
 		"rumble": [Color("#ff3fb4"), Color("#2fe0ff")],
 		"road": [Color("#2a2540"), Color("#262138")],  # wet asphalt
 		"lane": Color("#f0e6ff"),
+		"clock": [42, 45, 27, 26],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/neon_far.png",
 		"specials": ["taxi", "limo_white", "tuk_tuk"],
 		"traffic": 95,
+		"tunnel_lights": [Color("#ff3fb4"), Color("#2fe0ff")],  # neon tubes down the tunnel walls
 	}
 
 
@@ -63,9 +66,11 @@ static func build() -> Track:
 	t.finish_stage(final_straight)
 
 	_decorate(t, strip_start, strip_end, plaza_at)
-	t.add_tunnel(t.free_spot(strip_start + 120, 50), 45, "neon_tunnel", "neon_tunnel_ring")
+	t.add_tunnel(t.free_spot(strip_start + 120, 50), 45, "neon_tunnel", "neon_tunnel_ring", 3, "neon_tunnel_exit")
 	t.add_spans_at("neon_gantry", [0.08, 0.4, 0.68, 0.85])
 	t.scatter(["casino_entrance", "slot_machine", "cowboy_boot", "fountain_show", "palm_lights", "searchlight"], 200, 450, 1.7)
+	t.add_road_signs()
+	t.add_race_furniture()
 	t.add_finish_crowd()
 	return t
 
