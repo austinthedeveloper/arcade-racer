@@ -82,12 +82,14 @@ static func mystery(r: float, time_left: float) -> int:
 	return pick(w, r)
 
 
-## The pickup the car at (z, x) drives over this tick, or null. Marks it taken.
-func take(track: Track, z: float, x: float) -> Pickup:
-	for p in track.find_segment(z).pickups:
-		if not p.taken and absf(x - p.offset) < REACH:
-			p.taken = true
-			return p
+## The pickup a car at `x` drives over in `segments` (the ones it entered this tick), or
+## null. Marks it taken.
+func take(segments: Array[Segment], x: float) -> Pickup:
+	for seg in segments:
+		for p in seg.pickups:
+			if not p.taken and absf(x - p.offset) < REACH:
+				p.taken = true
+				return p
 	return null
 
 

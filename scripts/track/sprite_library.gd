@@ -6,6 +6,12 @@ const ROADSIDE := "res://assets/sprites/roadside/"
 const SPANS := "res://assets/sprites/spans/"
 ## World width of a span's opening: the road plus its rumble strips and a little margin.
 const SPAN_OPENING := Cfg.ROAD_WIDTH * 2.7
+## Roadside sprites that load but no stage places yet; test_track keeps this list honest.
+const UNPLACED := ["turn_left", "turn_right", "chevron_a", "chevron_b", "chevron_c", "bump_sign",
+	"tire_stack", "barrels_yellow", "cone_orange", "barricade", "barrier_orange", "inflatable_arch",
+	"sign_green", "sign_brown", "delineator", "rail_wood_a", "rail_wood_b", "rail_wood_short",
+	"rail_end", "rail_wood_long", "rail_concrete", "rail_concrete_end"]
+const MIN_OPENING := 0.2  # narrowest opening, as a fraction of a span's width, that is one
 
 static var defs: Dictionary = {}
 ## Road-spanning sprites (tunnels, bridges, gates): the road runs through their opening.
@@ -128,8 +134,6 @@ static func load_all() -> void:
 	_add("mailboxes", "mailboxes.png", 1300.0, 0.9)
 
 	_dir = ROADSIDE + "harvest/"
-
-	_dir = ROADSIDE + "harvest/"
 	_add("barn", "barn.png", 6500.0, 1.0)
 	_add("silos", "silos.png", 7500.0, 1.0)
 	_add("water_tower", "water_tower.png", 8000.0, 0.4)
@@ -202,18 +206,19 @@ static func load_all() -> void:
 	_dir = ROADSIDE + "shared/"
 	_add("guardrail_steel", "guardrail_steel.png", 650.0, 1.0)
 	_add("barrier_red", "barrier_red.png", 900.0, 1.0)
+	_add("crowd", "crowd.png", 1800.0, 1.0)
+	_add("grandstand", "grandstand.png", 4200.0, 1.0)
+	_add("flagman", "flagman.png", 1900.0, 0.4)
+	_add("camera_tower", "camera_tower.png", 4500.0, 0.6)
+	# Built and ready, but no stage places these yet (UNPLACED)
+	for id in ["turn_left", "turn_right", "chevron_a", "chevron_b", "chevron_c", "bump_sign"]:
+		_add(id, id + ".png", 2100.0, 0.4)
 	_add("tire_stack", "tire_stack.png", 1000.0, 1.0)
 	_add("barrels_yellow", "barrels_yellow.png", 900.0, 1.0)
 	_add("cone_orange", "cone_orange.png", 650.0, 0.0)
 	_add("barricade", "barricade.png", 1000.0, 0.9)
 	_add("barrier_orange", "barrier_orange.png", 900.0, 1.0)
-	_add("crowd", "crowd.png", 1800.0, 1.0)
-	_add("grandstand", "grandstand.png", 4200.0, 1.0)
-	_add("flagman", "flagman.png", 1900.0, 0.4)
-	_add("camera_tower", "camera_tower.png", 4500.0, 0.6)
 	_add("inflatable_arch", "inflatable_arch.png", 3800.0, 0.3)
-	for id in ["turn_left", "turn_right", "chevron_a", "chevron_b", "chevron_c", "bump_sign"]:
-		_add(id, id + ".png", 2100.0, 0.4)
 	_add("sign_green", "sign_green.png", 3200.0, 0.8)
 	_add("sign_brown", "sign_brown.png", 3200.0, 0.8)
 	_add("delineator", "delineator.png", 1100.0, 0.5)
@@ -243,6 +248,9 @@ static func _add_span(id: String, fill := Color.TRANSPARENT, ceiling := false, b
 		push_warning("Missing span sprite: " + id)
 		return
 	var opening := find_opening(tex.get_image())
+	if opening.y - opening.x < MIN_OPENING:
+		push_warning("Span sprite %s has no opening at the bottom" % id)
+		return
 	var world_w := SPAN_OPENING / (opening.y - opening.x)
 	spans[id] = {
 		"tex": tex,
@@ -256,11 +264,13 @@ static func _add_span(id: String, fill := Color.TRANSPARENT, ceiling := false, b
 
 
 ## The gap the road runs through: the transparent run through the middle of a row near the
-## bottom, as (left, right) fractions of the image width.
+## bottom, as (left, right) fractions of the image width. (0.5, 0.5) if the middle is solid.
 static func find_opening(img: Image) -> Vector2:
 	var w := img.get_width()
 	var y := int(img.get_height() * 0.9)
 	var mid := w / 2
+	if img.get_pixel(mid, y).a >= 0.5:
+		return Vector2(0.5, 0.5)
 	var left := mid
 	var right := mid
 	while left > 0 and img.get_pixel(left - 1, y).a < 0.5:

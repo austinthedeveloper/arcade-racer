@@ -32,6 +32,21 @@ func find_segment(z: float) -> Segment:
 	return segments[posmod(floori(z / Cfg.SEGMENT_LENGTH), segments.size())]
 
 
+## The segments a point moving forward from `from_z` to `to_z` (both wrapped, less than a lap
+## apart) enters, in order; just the one under it if it stays in its segment. At nitro speed a
+## car covers more than a segment a tick, so pickups and collisions check all of these.
+func segments_entered(from_z: float, to_z: float) -> Array[Segment]:
+	var n := segments.size()
+	var first := floori(from_z / Cfg.SEGMENT_LENGTH)
+	var steps := posmod(floori(to_z / Cfg.SEGMENT_LENGTH) - first, n)
+	var out: Array[Segment] = []
+	for k in range(1, steps + 1):
+		out.append(segments[posmod(first + k, n)])
+	if out.is_empty():
+		out.append(find_segment(to_z))
+	return out
+
+
 func height_at(z: float) -> float:
 	var seg := find_segment(z)
 	var t := fposmod(z, Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH

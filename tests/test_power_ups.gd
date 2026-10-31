@@ -56,10 +56,30 @@ func test_driving_over_a_pickup_takes_it_once() -> void:
 	p.offset = 0.25
 	pu.pickups.append(p)
 	t.segments[50].pickups.append(p)
-	var z := 50 * Cfg.SEGMENT_LENGTH + 10.0
-	check(pu.take(t, z, -0.75) == null, "another lane misses it")
-	check(pu.take(t, z, 0.3) == p, "driving over it takes it")
-	check(pu.take(t, z, 0.3) == null, "only once")
+	var here: Array[Segment] = [t.segments[50]]
+	check(pu.take(here, -0.75) == null, "another lane misses it")
+	check(pu.take(here, 0.3) == p, "driving over it takes it")
+	check(pu.take(here, 0.3) == null, "only once")
+
+
+func test_nitro_speed_takes_a_pickup_in_a_skipped_segment() -> void:
+	# Regression: at nitro speed the car covers more than a segment a tick, and only the one it
+	# landed in was checked, so a pickup in the segment it skipped over was missed.
+	var t := _flat(200)
+	var pu := PowerUps.new()
+	var p := PowerUps.Pickup.new()
+	p.segment = 51
+	p.offset = 0.25
+	t.segments[51].pickups.append(p)
+	var car := PlayerCar.new()
+	car.reset(50 * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z + 190.0)
+	car.speed = Cfg.MAX_SPEED * Cfg.NITRO_SPEED_MULT
+	car.nitro_time = 1.0
+	car.x = 0.25
+	car.update(DT, DriveInput.new(), t, true)
+	var segs := car.passed_segments(t)
+	eq(segs.size(), 2, "one tick at nitro speed enters two segments")
+	check(pu.take(segs, car.x) == p, "the pickup in the first one is taken")
 
 
 func test_ghost_drives_through_traffic() -> void:

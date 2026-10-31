@@ -92,6 +92,8 @@ func start_race() -> void:
 	race = RACE_SCENE.instantiate()
 	race.stage_index = stage_index
 	race.car_id = Cars.get_car(car_index)["id"]
+	race.debug_overlay = debug_overlay
+	race.calibration = calibration
 	race.quit_requested.connect(_on_race_quit)
 	add_child(race)
 

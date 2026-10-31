@@ -39,6 +39,8 @@ var paused := false
 var background: Background
 var road: RoadRenderer
 var hud: Hud
+## The F1 input overlay and F2 calibration wizard. The game passes in its own, so there is one
+## pair across the menus and the race; a race run on its own (tests, race.tscn) makes a pair.
 var debug_overlay: InputDebugOverlay
 var calibration: CalibrationWizard
 var audio: RaceAudio
@@ -64,10 +66,12 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.race = self
 	layer.add_child(hud)
-	debug_overlay = InputDebugOverlay.new()
-	layer.add_child(debug_overlay)
-	calibration = CalibrationWizard.new()
-	layer.add_child(calibration)
+	if debug_overlay == null:
+		debug_overlay = InputDebugOverlay.new()
+		layer.add_child(debug_overlay)
+	if calibration == null:
+		calibration = CalibrationWizard.new()
+		layer.add_child(calibration)
 	audio = RaceAudio.new(self)
 	add_child(audio)
 	InputRouter.devices_changed.connect(_update_wheel_hint)
@@ -198,7 +202,7 @@ func _physics_process(dt: float) -> void:
 
 
 func _check_pickups() -> void:
-	var p := power_ups.take(track, player.position + Cfg.PLAYER_Z, player.x)
+	var p := power_ups.take(player.passed_segments(track), player.x)
 	if p == null:
 		return
 	picked_up = true

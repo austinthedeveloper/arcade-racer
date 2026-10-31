@@ -172,6 +172,58 @@ func test_slow_hit_on_traffic_bumps() -> void:
 	check(p.position + Cfg.PLAYER_Z < c.z, "pushed back behind it")
 
 
+func test_a_bump_moves_distance_with_position() -> void:
+	# Regression: the bump moved `position` but not `distance`, so checkpoints and the finish
+	# (which read `distance`) drifted from where their gates are drawn.
+	var t := flat_track()
+	var p := _car(Cfg.MAX_SPEED * 0.6)
+	p.reset(2000.0)
+	p.speed = Cfg.MAX_SPEED * 0.6
+	p.distance = 2000.0
+	_traffic_car(t, p, 0.0, Cfg.MAX_SPEED * 0.3)
+	p.collide(t)
+	check(p.bumped, "bumped")
+	near(p.distance, p.position, 0.001, "distance moved back with the car")
+
+
+func test_a_bump_across_the_start_line_keeps_distance_continuous() -> void:
+	var t := flat_track()
+	var p := _car()
+	p.position = 10.0
+	p.distance = 5000.0
+	p.move_to(-40.0, t)
+	near(p.position, t.length - 40.0, 0.001, "wrapped to the end of the lap")
+	near(p.distance, 4950.0, 0.001, "50 back, not a lap forward")
+
+
+func test_traffic_in_a_skipped_segment_is_hit() -> void:
+	# Regression: at nitro speed the car skipped whole segments and drove through the traffic
+	# in them.
+	var t := flat_track()
+	var p := _car()
+	p.reset(50 * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z + 190.0)
+	p.speed = Cfg.MAX_SPEED * Cfg.NITRO_SPEED_MULT
+	p.nitro_time = 1.0
+	var c := Traffic.TrafficCar.new()
+	c.z = 51 * Cfg.SEGMENT_LENGTH + 100.0
+	c.speed = Cfg.MAX_SPEED * 0.3
+	c.segment = t.find_segment(c.z)
+	c.segment.cars.append(c)
+	p.update(DT, input(0.0), t, true)
+	check(t.find_segment(p.position + Cfg.PLAYER_Z).index == 52, "the tick ends a segment past the car")
+	p.collide(t)
+	check(p.crashed, "crashed into it anyway")
+
+
+func test_a_teleport_only_checks_where_the_car_lands() -> void:
+	var t := flat_track()
+	var p := _car()
+	p.position = 4000.0
+	var segs := p.passed_segments(t)
+	eq(segs.size(), 1, "one segment")
+	eq(segs[0].index, t.find_segment(4000.0 + Cfg.PLAYER_Z).index, "the one under the car")
+
+
 func test_traffic_in_another_lane_is_missed() -> void:
 	var t := flat_track()
 	var p := _car(Cfg.MAX_SPEED)

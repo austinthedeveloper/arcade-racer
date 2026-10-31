@@ -72,6 +72,43 @@ func test_auto_gas_holds_the_throttle_until_braking() -> void:
 	_clean()
 
 
+func test_auto_gas_copies_every_input_field() -> void:
+	# Regression: auto gas copied a hand-written list of fields, so a new one would be dropped.
+	_clean()
+	Settings.auto_gas = true
+	var inp := DriveInput.new()
+	for prop in inp.get_property_list():
+		if not prop["usage"] & PROPERTY_USAGE_SCRIPT_VARIABLE:
+			continue
+		match typeof(inp.get(prop["name"])):
+			TYPE_BOOL:
+				inp.set(prop["name"], true)
+			TYPE_FLOAT:
+				inp.set(prop["name"], 0.01)  # under the brake threshold, so gas stays on
+			TYPE_INT:
+				inp.set(prop["name"], 2)
+			TYPE_STRING:
+				inp.set(prop["name"], "Test wheel")
+	var out := Settings.drive_input(inp)
+	for prop in inp.get_property_list():
+		if prop["usage"] & PROPERTY_USAGE_SCRIPT_VARIABLE and prop["name"] != "throttle":
+			eq(out.get(prop["name"]), inp.get(prop["name"]), "%s copied" % prop["name"])
+	eq(out.throttle, 1.0, "gas held")
+	_clean()
+
+
+func test_one_input_overlay_across_the_menus_and_the_race() -> void:
+	# Regression: an F1 overlay opened in the menus stayed up through the race, which had a
+	# second overlay of its own that F1 toggled instead.
+	var g := _game()
+	g.debug_overlay.visible = true
+	g.start_race()
+	TestSuite.ready_all(g.race)
+	check(g.race.debug_overlay == g.debug_overlay, "the race uses the game's overlay")
+	check(g.race.calibration == g.calibration, "and its calibration wizard")
+	eq(g.race.find_children("*", "InputDebugOverlay", true, false).size(), 0, "the race makes no second one")
+
+
 func test_auto_gas_drives_the_race_and_brake_still_works() -> void:
 	_clean()
 	Settings.auto_gas = true
