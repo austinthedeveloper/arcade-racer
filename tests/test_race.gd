@@ -125,6 +125,7 @@ func test_finishing_the_last_stage_completes_the_tour() -> void:
 
 func test_restart_and_retry_stay_on_the_stage() -> void:
 	var r := race(false, false, 1)
+	r.tour = false  # in a tour, restarts spend the continue (test_tour)
 	drive(r, 400, input(1.0))
 	var rs := input()
 	rs.restart_pressed = true

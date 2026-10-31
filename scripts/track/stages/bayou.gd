@@ -51,12 +51,16 @@ static func build() -> Track:
 	t.curve(Track.LENGTH_MEDIUM, Track.CURVE_MEDIUM, -Track.HILL_LOW * 0.5)
 	t.jump(Track.HILL_LOW * 0.5)
 
+	var island := Vector2i(causeways[0].y, t.segments.size())
+
 	# Second causeway, with a hump over the channel
 	start = t.segments.size()
 	t.set_ground(Track.GROUND_SAND, Track.GROUND_SAND)
 	t.straight(Track.LENGTH_MEDIUM)
+	var channel := Vector2i(t.segments.size(), 0)
 	t.hill(Track.LENGTH_SHORT, Track.HILL_LOW)
 	t.hill(Track.LENGTH_SHORT, -Track.HILL_LOW)
+	channel.y = t.segments.size()
 	t.curve(Track.LENGTH_LONG, -Track.CURVE_EASY)
 	t.straight(Track.LENGTH_MEDIUM)
 	causeways.append(Vector2i(start, t.segments.size()))
@@ -74,6 +78,7 @@ static func build() -> Track:
 	t.finish_stage(final_straight)
 
 	_decorate(t, causeways)
+	_rails(t, island, channel)
 	# An old steel truss bridge partway along the first causeway
 	var truss := t.free_spot(causeways[0].x + 60, 30)
 	for k in 5:
@@ -82,8 +87,31 @@ static func build() -> Track:
 	t.add_sprite(landing_at + 12, "stilt_shack", -1.8)
 	t.add_sprite(landing_at + 30, "boat_dock", -1.4)
 	t.scatter(["crab_shack", "gator", "crawfish_sign", "live_oak", "mailboxes", "riverboat"], 150, 450, 1.8)
+	# Brown scenic-route signs on the right
+	t.scatter(["sign_brown", "sign_brown", "sign_brown", "sign_brown", "sign_brown"], 120, 800, 1.5, 1)
+	t.add_road_signs()
+	t.add_race_furniture()
 	t.add_finish_crowd()
 	return t
+
+
+## Old wooden fence rails along the cypress island, a concrete parapet over the channel hump.
+## The fence stands back from the verge, behind the reeds.
+static func _rails(t: Track, island: Vector2i, channel: Vector2i) -> void:
+	var wood := ["rail_wood_a", "rail_wood_long", "rail_wood_b", "rail_wood_short"]
+	_rail_run(t, island.x + 10, island.y - 10, wood, "rail_end", 1.4)
+	_rail_run(t, channel.x, channel.y, ["rail_concrete"], "rail_concrete_end", 1.1)
+
+
+## Rail panels both sides every 10 segments from `first` to `last`, an end piece at each end.
+static func _rail_run(t: Track, first: int, last: int, panels: Array, end: String, offset: float) -> void:
+	var k := 0
+	for i in range(first, last, 10):
+		var id: String = end if i == first or i + 10 >= last else panels[k % panels.size()]
+		if t.open_roadside(i):
+			t.add_sprite(i, id, -offset)
+			t.add_sprite(i, id, offset, true)
+		k += 1
 
 
 static func _on_causeway(i: int, causeways: Array[Vector2i]) -> bool:

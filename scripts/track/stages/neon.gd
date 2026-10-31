@@ -67,6 +67,8 @@ static func build() -> Track:
 	t.add_tunnel(t.free_spot(strip_start + 120, 50), 45, "neon_tunnel", "neon_tunnel_ring")
 	t.add_spans_at("neon_gantry", [0.08, 0.4, 0.68, 0.85])
 	t.scatter(["casino_entrance", "slot_machine", "cowboy_boot", "fountain_show", "palm_lights", "searchlight"], 200, 450, 1.7)
+	t.add_road_signs()
+	t.add_race_furniture()
 	t.add_finish_crowd()
 	return t
 

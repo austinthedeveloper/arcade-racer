@@ -65,6 +65,8 @@ static func build() -> Track:
 	_decorate(t, town_start, town_end)
 	t.add_spans_at("palm_arch", [0.03, 0.55])
 	t.scatter(["lighthouse", "pier", "ice_cream_stand", "surfboards", "bikes", "gull_post"], 200, 350, 2.2, -1)
+	t.add_road_signs()
+	t.add_race_furniture()
 	t.add_finish_crowd()
 	return t
 

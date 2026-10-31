@@ -104,6 +104,7 @@ func test_time_up_spends_the_continue() -> void:
 func test_the_last_stage_completes_the_tour_and_unlocks_the_zenith() -> void:
 	TestSuite.use_scratch_save(runner.root.get_node("SaveData"))
 	var r := race(false, false, Stages.count() - 1)
+	r.tour_state.start_stage = 0  # as if it had run from Palm Coast
 	_finish(r, 0)
 	eq(r.after, r.After.TOUR_DONE, "tour complete")
 	check(r.tour_state.complete, "complete")
@@ -133,3 +134,67 @@ func test_a_single_race_has_no_tour() -> void:
 	_nodes.append(r)
 	_finish(r, 5)
 	eq(r.after, r.After.MENU, "back to the menu whatever the place")
+
+
+# Review on #119 from here: restarts that dodged the continue, a tour that carried on after
+# it ended, and a one-stage tour unlocking the Zenith.
+func _restart_key(r: Node) -> void:
+	var rs := input()
+	rs.restart_pressed = true
+	drive(r, 1, rs)
+
+
+func test_restarting_a_stage_spends_the_continue() -> void:
+	var r := race(false, false, 0)
+	drive(r, 200)
+	_restart_key(r)
+	eq([r.tour_state.continues, r.state], [0, r.State.COUNTDOWN], "R mid-race: the continue spent, the stage again")
+	drive(r, 200)
+	var t: float = r.race_time
+	_restart_key(r)
+	eq(r.state, r.State.RACING, "no continue left: R does nothing")
+	check(r.race_time >= t, "the race goes on")
+	r.pause()
+	r.pause_action(PauseMenu.Action.RESTART)
+	eq(r.state, r.State.RACING, "nor does RESTART on the pause menu")
+	check(not r.paused, "which goes back to the race")
+
+
+func test_pause_restart_after_the_tour_is_over_ends_it() -> void:
+	var r := race(false, false, 0)
+	r.tour_state.continues = 0
+	_finish(r, 4)
+	eq(r.after, r.After.TOUR_OVER, "tour over")
+	var over := [false]
+	r.race_over.connect(func(): over[0] = true)
+	r.pause()
+	r.pause_action(PauseMenu.Action.RESTART)
+	check(over[0], "RESTART goes to the menus, not round again")
+
+
+func test_a_tour_from_the_last_stage_unlocks_nothing() -> void:
+	var save: Node = runner.root.get_node("SaveData")
+	TestSuite.use_scratch_save(save)
+	var r := race(false, false, Stages.count() - 1)
+	eq(r.tour_state.start_stage, Stages.count() - 1, "started on the last stage")
+	_finish(r, 0)
+	eq(r.after, r.After.TOUR_DONE, "it still completes")
+	check(not save.is_unlocked(Tour.FINISH_UNLOCK), "no Zenith")
+	eq(save.total_points, 0, "no points banked")
+	TestSuite.use_scratch_save(save)
+
+
+func test_only_a_tour_going_on_moves_the_save_on() -> void:
+	var save: Node = runner.root.get_node("SaveData")
+	TestSuite.use_scratch_save(save)
+	var r := race(false, false, 0)
+	r._autodrive = false
+	_finish(r, 4)
+	eq(save.furthest_stage, 0, "5th: the tour didn't reach stage 2")
+	check(not save.best(0, r.car_id).is_empty(), "the time is still saved")
+	r = race(false, false, 0)
+	r._autodrive = false
+	_finish(r, 1)
+	eq(save.furthest_stage, 1, "2nd: on to stage 2")
+	TestSuite.use_scratch_save(save)
+

@@ -151,3 +151,18 @@ func test_every_manifest_sprite_loads() -> void:
 	eq(CarSprites.traffic.size(), m["traffic"].size(), "every traffic vehicle")
 	for id: String in Traffic.CARS + Traffic.BIG + Traffic.SPECIALS:
 		check(CarSprites.traffic.has(id), "traffic %s is in the manifest" % id)
+
+
+func test_cars_behind_the_player_are_drawn_over_it() -> void:
+	# Review on #103: a rival just behind the player (between it and the camera) was drawn
+	# under the player's car.
+	check(RoadRenderer.behind(1000.0, 1200.0, 50000.0), "200 back is behind")
+	check(not RoadRenderer.behind(1300.0, 1200.0, 50000.0), "100 ahead is not")
+	check(RoadRenderer.behind(49900.0, 100.0, 50000.0), "behind across the wrap")
+	var drawn: Array[Segment] = []
+	for i in 5:
+		var seg := Segment.new()
+		seg.index = 40 + i
+		drawn.append(seg)
+	eq(RoadRenderer.player_slot(drawn, 42), 2, "the player's segment in the near-to-far list")
+	eq(RoadRenderer.player_slot(drawn, 7), -1, "not drawn: the player goes last")

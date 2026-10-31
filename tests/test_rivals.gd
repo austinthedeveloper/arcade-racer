@@ -135,6 +135,7 @@ func test_rivals_avoid_heavy_traffic() -> void:
 		f.update(DT, t, p, true, 1e12)
 		for r in f.cars:
 			crashes += int(r.crashed)
+	# Was 3 before the erratic drivers (RC-4), who swerve into traffic now and then. Keep it here.
 	check(crashes <= 8, "rarely crash in double traffic (%d crashes in 40 s, 7 cars)" % crashes)
 
 
@@ -189,6 +190,22 @@ func test_racers_side_by_side_are_pushed_apart() -> void:
 	near(a.position, 2000.0, 0.001, "no one moved along the road")
 
 
+func test_a_ghosted_car_drives_through_racers() -> void:
+	var t := flat_track()
+	var front := RivalCar.new()
+	front.reset(2000.0)
+	front.speed = 5000.0
+	var back := PlayerCar.new()
+	back.reset(1500.0)
+	back.speed = 9000.0
+	back.position = 1900.0
+	back.ghost_time = 2.0
+	Rivals.resolve_contacts([back, front], t)
+	check(not back.bumped and not front.bumped, "no contact")
+	eq(back.position, 1900.0, "not dropped behind")
+	eq(back.speed, 9000.0, "speed kept")
+
+
 func test_the_race_runs_its_rivals() -> void:
 	var r := race(true, false, 0)
 	eq(r.rivals.cars.size(), Rivals.COUNT, "a full field")
@@ -216,6 +233,16 @@ func test_standings_sort_by_distance_then_finishers_first() -> void:
 	eq(f.standings(p, -1.0)[0], f.cars[1], "a finisher leads whoever is still racing")
 	eq(f.place(p, 79.0), 1, "finished before the other finisher")
 	eq(f.place(p, 81.0), 2, "finished after it")
+
+
+func test_the_player_and_rivals_share_a_clock() -> void:
+	# Review on #104: race_time skipped the GO tick that Rivals.clock counted, so a
+	# same-tick photo finish always went to the player.
+	var r := race(true, false, 0)
+	run_until(r, func(): return r.state == r.State.RACING)
+	near(r.race_time, r.rivals.clock, 0.0001, "on the GO tick")
+	run_until(r, func(): return r.race_time > 3.0)
+	near(r.race_time, r.rivals.clock, 0.0001, "three seconds in")
 
 
 func test_ordinals() -> void:
@@ -353,12 +380,14 @@ func test_difficulty_levels() -> void:
 	check(easy.band_ease > hard.band_ease, "easy rivals wait for you more")
 	check(easy.band_boost < hard.band_boost, "hard rivals catch up more")
 	eq([easy.timer, normal.timer, hard.timer], [0, 1, 2], "relaxed, arcade and tight clocks")
+	var top_pace: float = RivalProfile.roster().map(func(p: RivalProfile) -> float: return p.pace).max()
 	for d in [easy, normal, hard]:
 		check(d.band_ease <= Rivals.BAND_MAX and d.band_boost <= Rivals.BAND_MAX, "within the band's cap")
 		for gap in [-1e6, 1e6]:
 			var b := Rivals.band(gap, d.band_ease, d.band_boost)
 			check(absf(b - 1.0) <= Rivals.BAND_MAX, "band capped (%.3f)" % b)
-		check(Rivals.COUNT > 0 and d.rival_pace * 0.97 <= 1.0, "even a hard rival tops out at its car's speed")
+		# Base pace only: the rubber band (capped above) can add a little on top of this.
+		check(d.rival_pace * top_pace <= 1.0, "even a hard rival's base pace tops out at its car's speed")
 
 
 func test_difficulty_reaches_the_field() -> void:
@@ -372,3 +401,24 @@ func test_difficulty_reaches_the_field() -> void:
 		check(easy.cars[i].base_top < hard.cars[i].base_top, "slower on easy")
 	eq(easy.band_ease, Difficulty.of(Difficulty.Level.EASY).band_ease, "easy band")
 	eq(hard.band_boost, Difficulty.of(Difficulty.Level.HARD).band_boost, "hard band")
+
+
+func test_a_bump_does_not_restart_the_block() -> void:
+	# Review on #116: the contact a block causes slows the chaser below the blocker, which
+	# used to zero the block clock, so the block started over once the chaser sped up.
+	var t := flat_track()
+	var me := RivalCar.new(Cars.find("car_bruiser"), AIDriver.new(1, 0.0, RivalProfile.Style.AGGRESSIVE))
+	me.reset(4000.0)
+	me.speed = Cfg.MAX_SPEED * 0.7
+	var chaser := _player()
+	chaser.reset(4000.0 - 800.0)
+	chaser.x = 0.75
+	var blocked := 0
+	for i in roundi((AIDriver.BLOCK_TIME + 2.0) / DT):
+		var t_s := i * DT
+		# faster for 1 s, bumped under the blocker's speed for 0.3 s, then faster again
+		chaser.speed = Cfg.MAX_SPEED * (0.6 if t_s >= 1.0 and t_s < 1.3 else 1.0)
+		me.driver.drive(me, t, [me, chaser], DT)
+		blocked += int(me.driver.target == 0.75)
+	check(blocked <= roundi(AIDriver.BLOCK_TIME / DT) + 10, "about BLOCK_TIME of blocking in all (%d ticks)" % blocked)
+	near(me.driver.target, 0.0, 0.001, "then lets it by")
