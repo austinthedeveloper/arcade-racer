@@ -157,6 +157,7 @@ func start_race() -> void:
 	race.car_id = Cars.get_car(car_index)["id"]
 	race.tour = mode_index == ModeSelect.Item.GRAND_TOUR
 	race.time_attack = mode_index == ModeSelect.Item.TIME_ATTACK
+	race.free_drive = mode_index == ModeSelect.Item.FREE_DRIVE
 	race.debug_overlay = debug_overlay
 	race.calibration = calibration
 	race.quit_requested.connect(_on_race_quit)

@@ -25,7 +25,7 @@ func move(dir: int) -> int:
 
 
 func handle(m: MenuInput) -> void:
-	if time_attack() and m.step_y() != 0:
+	if solo() and m.step_y() != 0:
 		Settings.attack_traffic = not Settings.attack_traffic
 		Settings.save()
 		Audio.play("tick")
@@ -84,11 +84,19 @@ func time_attack() -> bool:
 	return game != null and game.mode_index == ModeSelect.Item.TIME_ATTACK
 
 
+## Time Attack and Free Drive pick traffic on or off here (Settings.attack_traffic).
+func solo() -> bool:
+	return game != null and (game.mode_index == ModeSelect.Item.TIME_ATTACK or game.mode_index == ModeSelect.Item.FREE_DRIVE)
+
+
 func _tour_line() -> String:
 	if game != null and game.mode_index == ModeSelect.Item.SINGLE_RACE:
 		return "Single Race: one run on this stage"
+	var traffic := "Traffic %s  (Up / Down)" % ("ON" if Settings.attack_traffic else "OFF")
 	if time_attack():
-		return "Time Attack: you and your best run.   Traffic %s  (Up / Down)" % ("ON" if Settings.attack_traffic else "OFF")
+		return "Time Attack: you and your best run.   " + traffic
+	if solo():
+		return "Free Drive: no clock, no finish.   " + traffic
 	var last := Stages.count() - 1
 	if index == last:
 		return "The final stage"

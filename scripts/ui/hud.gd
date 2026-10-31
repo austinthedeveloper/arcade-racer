@@ -18,7 +18,10 @@ func _draw() -> void:
 
 	# Time, top left: the clock, or in Time Attack the run's time and the best
 	_text(Vector2(12, 18), "TIME", 10, Color("#ffd23a"))
-	if race.time_attack:
+	if race.free_drive:
+		_text(Vector2(12, 42), clock_text(race.race_time), 22, Color.WHITE)
+		_text(Vector2(12, 58), "FREE DRIVE", 10, Color(1, 1, 1, 0.8))
+	elif race.time_attack:
 		_text(Vector2(12, 42), clock_text(race.race_time), 22, Color.WHITE)
 		var best: Ghost = race.ghost
 		_text(Vector2(12, 58), "BEST " + (clock_text(best.time) if best != null else "--:--.--"), 10, Color(1, 1, 1, 0.8))
@@ -41,6 +44,8 @@ func _draw() -> void:
 	var bar := Rect2(w / 2.0 - 110, 12, 220, 8)
 	draw_rect(bar.grow(2), Color(0, 0, 0, 0.55))
 	var progress := clampf(p.distance / race.finish_distance, 0.0, 1.0)
+	if race.free_drive:  # the road loops: the bar starts over each time round
+		progress = fposmod(p.distance, race.track.length) / race.finish_distance
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * progress, bar.size.y)), Color("#3ad0ff"))
 	for d in race.checkpoint_distances:
 		var cx: float = bar.position.x + bar.size.x * clampf(d / race.finish_distance, 0.0, 1.0)
@@ -52,7 +57,7 @@ func _draw() -> void:
 	if race.ghost != null:
 		var gx := progress_x(bar, race.ghost_now.x, race.finish_distance)
 		draw_rect(Rect2(gx - 2, bar.position.y + 2, 4, 4), Color("#9ad8ff"))
-	var you := progress_x(bar, p.distance, race.finish_distance)
+	var you := bar.position.x + bar.size.x * minf(progress, 1.0)
 	draw_rect(Rect2(you - 2, bar.position.y + 1, 4, 6), Color.WHITE)
 	_text(Vector2(bar.position.x, bar.end.y + 14), ("STAGE %d  " % (race.stage_index + 1)) + race.track.name.to_upper(), 9, Color(1, 1, 1, 0.85))
 
