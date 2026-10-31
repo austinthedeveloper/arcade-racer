@@ -27,6 +27,7 @@ var pickup_age := 99.0  # seconds since it was taken
 var picked_up := false  # true for the tick a pickup is taken
 var ram_flash := 0.0  # seconds left on the ram plate's impact flash
 var traffic: Traffic
+var rivals := Rivals.new()
 var state := State.COUNTDOWN
 var countdown := 3.0
 var time_left := START_TIME
@@ -53,6 +54,7 @@ var _shake := 0.0
 var _autodrive := false
 var _log_banners := false
 var _no_traffic := false
+var _no_rivals := false
 var _start_segment := 0  # --at-segment=N: start the race this far in (screenshots)
 var _screenshot_frames: Array[int] = []
 var _screenshot_dir := ""
@@ -105,6 +107,8 @@ func start_race() -> void:
 	ram_flash = 0.0
 	traffic = Traffic.new()
 	traffic.spawn(track, 0 if _no_traffic else Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
+	rivals = Rivals.new()
+	rivals.spawn(track, player, car_id, 0 if _no_rivals else Rivals.COUNT, Rivals.SEED + stage_index)
 	state = State.COUNTDOWN
 	countdown = 3.0
 	time_left = Settings.race_time(START_TIME)
@@ -122,6 +126,7 @@ func start_race() -> void:
 	road.track = track
 	road.player = player
 	road.player_strips = CarSprites.strips(car["strip"])
+	road.rivals = rivals.cars
 
 
 ## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
@@ -187,7 +192,9 @@ func _physics_process(dt: float) -> void:
 	var seg_before := track.find_segment(player.position + Cfg.PLAYER_Z)
 	player.update(dt, inp, track, state == State.RACING)
 	traffic.update(dt, track)
+	rivals.update(dt, track, player, state != State.COUNTDOWN, finish_distance)
 	player.collide(track)
+	Rivals.resolve_contacts(rivals.everyone(player), track)
 	picked_up = false
 	pickup_age += dt
 	ram_flash = 0.3 if player.rammed else maxf(0.0, ram_flash - dt)
@@ -280,6 +287,8 @@ func _parse_dev_args() -> void:
 			_start_segment = int(arg.get_slice("=", 1))
 		elif arg == "--no-traffic":
 			_no_traffic = true
+		elif arg == "--no-rivals":
+			_no_rivals = true
 		elif arg.begins_with("--screenshots="):
 			for f in arg.get_slice("=", 1).split(","):
 				_screenshot_frames.append(int(f))
@@ -296,9 +305,11 @@ func _autodrive_input() -> DriveInput:
 	return inp
 
 
-## The lane with the most open road ahead, keeping the current one on a tie.
+## The lane with the most open road ahead, keeping the current one on a tie. Anything slower
+## than cruising speed blocks a lane, so a slowed car doesn't sit behind a tractor.
 func _autodrive_lane() -> float:
 	const LOOKAHEAD := 40  # segments
+	var want := maxf(player.speed, Cfg.MAX_SPEED * 0.8)
 	var here := track.find_segment(player.position + Cfg.PLAYER_Z).index
 	var best: float = Traffic.LANE_OFFSETS[0]
 	var best_gap := -1
@@ -306,11 +317,15 @@ func _autodrive_lane() -> float:
 	lanes.sort_custom(func(a: float, b: float) -> bool: return absf(a - player.x) < absf(b - player.x))
 	for lane: float in lanes:
 		var gap := LOOKAHEAD
-		for n in LOOKAHEAD:
+		for r in rivals.cars:
+			var ahead := wrapf(r.position - player.position, -track.length * 0.5, track.length * 0.5)
+			if ahead > 0.0 and absf(r.x - lane) < 0.3 and r.speed < want:
+				gap = mini(gap, int(ahead / Cfg.SEGMENT_LENGTH))
+		for n in gap:
 			var ahead := track.segments[(here + n) % track.segments.size()]
 			var blocked := false
 			for car in ahead.cars:
-				if absf(car.offset - lane) < 0.3 and car.speed < player.speed:
+				if absf(car.offset - lane) < 0.3 and car.speed < want:
 					blocked = true
 			if blocked:
 				gap = n
