@@ -3,8 +3,13 @@ extends RefCounted
 ## Roadside sprite definitions: texture, world size and collision width.
 
 const ROADSIDE := "res://assets/sprites/roadside/"
+const SPANS := "res://assets/sprites/spans/"
+## World width of a span's opening: the road plus its rumble strips and a little margin.
+const SPAN_OPENING := Cfg.ROAD_WIDTH * 2.7
 
 static var defs: Dictionary = {}
+## Road-spanning sprites (tunnels, bridges, gates): the road runs through their opening.
+static var spans: Dictionary = {}
 static var _dir := ""
 
 
@@ -127,6 +132,67 @@ static func load_all() -> void:
 	_add("puddle_a", "puddle_a.png", 500.0, 0.0)
 	_add("puddle_b", "puddle_b.png", 500.0, 0.0)
 	_add("wrecked_sign", "wrecked_sign.png", 3200.0, 0.8)
+
+
+	# id, texture, color that fills beside it (and above it for a tunnel ring), banner text box
+	_add_span("neon_tunnel", Color("#140b26"), false)
+	_add_span("neon_tunnel_ring", Color("#140b26"), true)
+	_add_span("neon_gantry")
+	_add_span("covered_bridge")
+	_add_span("covered_bridge_truss", Color("#2a1a10"), true)
+	_add_span("redrock_arch")
+	_add_span("bayou_truss")
+	_add_span("harvest_trestle")
+	_add_span("thunder_overpass")
+	_add_span("skyline_pylon")
+	_add_span("palm_arch")
+	_add_span("checkpoint_gate", Color.TRANSPARENT, false, Rect2(0.2, 0.09, 0.6, 0.2))
+	_add_span("start_gantry", Color.TRANSPARENT, false, Rect2(0.27, 0.33, 0.46, 0.13))
+	_add_span("finish_gantry")
+
+
+## Adds a road-spanning sprite. Its world size comes from its opening, which must fit the road.
+static func _add_span(id: String, fill := Color.TRANSPARENT, ceiling := false, banner := Rect2()) -> void:
+	var tex: Texture2D = load(SPANS + id + ".png")
+	if tex == null:
+		push_warning("Missing span sprite: " + id)
+		return
+	var opening := find_opening(tex.get_image())
+	var world_w := SPAN_OPENING / (opening.y - opening.x)
+	spans[id] = {
+		"tex": tex,
+		"world_w": world_w,
+		"world_h": world_w * tex.get_height() / float(tex.get_width()),
+		"opening": opening,  # left and right edge, as fractions of the width
+		"fill": fill,
+		"ceiling": ceiling,
+		"banner": banner,  # where gate text goes, as fractions of the sprite
+	}
+
+
+## The gap the road runs through: the transparent run through the middle of a row near the
+## bottom, as (left, right) fractions of the image width.
+static func find_opening(img: Image) -> Vector2:
+	var w := img.get_width()
+	var y := int(img.get_height() * 0.9)
+	var mid := w / 2
+	var left := mid
+	var right := mid
+	while left > 0 and img.get_pixel(left - 1, y).a < 0.5:
+		left -= 1
+	while right < w - 1 and img.get_pixel(right + 1, y).a < 0.5:
+		right += 1
+	return Vector2(float(left) / w, float(right + 1) / w)
+
+
+## A span's (left, right) edges in road half-widths from the road center: its opening and
+## its outer edges. Between them is the solid structure the car can hit.
+static func span_edges(id: String) -> Dictionary:
+	var def: Dictionary = spans[id]
+	var w: float = def["world_w"] / Cfg.ROAD_WIDTH
+	var o: Vector2 = def["opening"]
+	var center := (o.x + o.y) / 2.0
+	return {"inner": Vector2(o.x - center, o.y - center) * w, "outer": Vector2(-center, 1.0 - center) * w}
 
 
 static func _add(id: String, file: String, world_h: float, collide: float) -> void:

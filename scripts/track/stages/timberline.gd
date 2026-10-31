@@ -74,6 +74,7 @@ static func build() -> Track:
 	t.finish_building(final_straight + 60)
 
 	_decorate(t, snow_start, snow_end)
+	t.add_tunnel(t.free_spot(snow_start - 120, 35), 30, "covered_bridge", "covered_bridge_truss", 2)
 	t.add_sprite(cabins_at, "cabin", 1.5)
 	t.add_sprite(cabins_at + 25, "cabin", -1.6, true)
 	t.add_sprite(lookout_at, "lookout_tower", 1.8)

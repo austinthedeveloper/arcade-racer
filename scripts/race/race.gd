@@ -41,6 +41,7 @@ var _shake := 0.0
 var _autodrive := false
 var _log_banners := false
 var _no_traffic := false
+var _start_segment := 0  # --at-segment=N: start the race this far in (screenshots)
 var _screenshot_frames: Array[int] = []
 var _screenshot_dir := ""
 var _frame := 0
@@ -71,8 +72,8 @@ func _ready() -> void:
 func start_race() -> void:
 	track = Stages.build(stage_index)
 	player = PlayerCar.new()
-	player.reset()
-	player.road_y = track.height_at(Cfg.PLAYER_Z)
+	player.reset(_start_segment * Cfg.SEGMENT_LENGTH)
+	player.road_y = track.height_at(player.position + Cfg.PLAYER_Z)
 	traffic = Traffic.new()
 	traffic.spawn(track, 0 if _no_traffic else Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
 	state = State.COUNTDOWN
@@ -219,6 +220,8 @@ func _parse_dev_args() -> void:
 			_log_banners = true
 		elif arg.begins_with("--stage="):
 			stage_index = clampi(int(arg.get_slice("=", 1)) - 1, 0, Stages.count() - 1)
+		elif arg.begins_with("--at-segment="):
+			_start_segment = int(arg.get_slice("=", 1))
 		elif arg == "--no-traffic":
 			_no_traffic = true
 		elif arg.begins_with("--screenshots="):

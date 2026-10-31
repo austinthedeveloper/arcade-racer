@@ -66,6 +66,7 @@ static func build() -> Track:
 	t.finish_building(final_straight + 60)
 
 	_decorate(t, fields_start, fields_end)
+	t.add_spans_at("harvest_trestle", [0.35, 0.7])
 	# The farm stop: barn and silos on the right, water tower across the road
 	t.add_sprite(farm_at, "barn", 1.7)
 	t.add_sprite(farm_at + 14, "silos", 1.6)

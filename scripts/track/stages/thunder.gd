@@ -63,6 +63,7 @@ static func build() -> Track:
 	t.finish_building(final_straight + 60)
 
 	_decorate(t, works_start, works_end)
+	t.add_spans_at("thunder_overpass", [0.15, 0.45, 0.6, 0.88])
 	t.add_sprite(stop_at, "truck_stop", 1.6)
 	t.add_sprite(stop_at + 20, "motel", -1.7)
 	return t

@@ -66,6 +66,8 @@ static func build() -> Track:
 	t.finish_building(final_straight + 60)
 
 	_decorate(t, strip_start, strip_end, plaza_at)
+	t.add_tunnel(t.free_spot(strip_start + 120, 50), 45, "neon_tunnel", "neon_tunnel_ring")
+	t.add_spans_at("neon_gantry", [0.08, 0.4, 0.68, 0.85])
 	return t
 
 

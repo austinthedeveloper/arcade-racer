@@ -69,6 +69,7 @@ static func build() -> Track:
 	t.finish_building(final_straight + 60)
 
 	_decorate(t, canyon_start, canyon_end, diner_at)
+	t.add_spans_at("redrock_arch", [0.3, 0.42, 0.62])
 	return t
 
 

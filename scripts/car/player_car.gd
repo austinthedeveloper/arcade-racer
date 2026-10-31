@@ -152,6 +152,9 @@ func collide(track: Track) -> void:
 		return
 	var seg := track.find_segment(position + Cfg.PLAYER_Z)
 	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
+	if offroad and hits_span(seg, x, half_car):
+		crash()
+		return
 	if offroad:
 		for sp in seg.sprites:
 			var def: Dictionary = SpriteLibrary.defs.get(sp["id"], {})
@@ -175,6 +178,24 @@ func collide(track: Track) -> void:
 				bumped = true
 				position = fposmod(car.z - Cfg.PLAYER_Z - 50.0, track.length)
 			return
+
+
+## Whether a car at `car_x` (half-width `half_car`, both in road half-widths) hits the
+## legs or walls of a span or race gate in `seg`.
+static func hits_span(seg: Segment, car_x: float, half_car: float) -> bool:
+	var ids: Array[String] = seg.spans.duplicate()
+	var gate := RoadRenderer.gate_for(seg.flags)
+	if gate != "":
+		ids.append(gate)
+	for id in ids:
+		if not SpriteLibrary.spans.has(id):
+			continue
+		var e := SpriteLibrary.span_edges(id)
+		var inner: Vector2 = e["inner"]
+		var outer: Vector2 = e["outer"]
+		if (car_x - half_car < inner.x and car_x + half_car > outer.x) or (car_x + half_car > inner.y and car_x - half_car < outer.y):
+			return true
+	return false
 
 
 func crash() -> void:

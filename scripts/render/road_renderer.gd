@@ -78,6 +78,8 @@ func _project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float) -> 
 func _draw_segment(seg: Segment, theme: Dictionary) -> void:
 	var b := seg.band
 	var fog := seg.fog
+	if seg.covered:
+		theme = _covered_theme(theme)
 	var x1 := seg.s1.x
 	var y1 := seg.s1.y
 	var w1 := seg.sw1
@@ -122,9 +124,6 @@ func _draw_segment(seg: Segment, theme: Dictionary) -> void:
 
 func _draw_objects(seg: Segment) -> void:
 	var tint := Color.WHITE.lerp(_fog_color, seg.fog)
-	if seg.flags != 0:
-		_draw_gantry(seg, tint)
-
 	for sp in seg.sprites:
 		var def: Dictionary = SpriteLibrary.defs.get(sp["id"], {})
 		if def.is_empty():
@@ -149,6 +148,67 @@ func _draw_objects(seg: Segment) -> void:
 			continue
 		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog)
 
+	# Spans sit at the segment's near end, in front of its sprites and cars
+	for id in seg.spans:
+		_draw_span(seg, id, "", tint)
+	var gate := gate_for(seg.flags)
+	if gate != "":
+		_draw_span(seg, gate, gate_label(seg.flags), tint)
+
+
+## The race gate drawn for a segment's flags, or "" for none.
+static func gate_for(flags: int) -> String:
+	if flags & Segment.FLAG_FINISH:
+		return "finish_gantry"
+	if flags & Segment.FLAG_CHECKPOINT:
+		return "checkpoint_gate"
+	if flags & Segment.FLAG_START:
+		return "start_gantry"
+	return ""
+
+
+static func gate_label(flags: int) -> String:
+	if flags & Segment.FLAG_CHECKPOINT:
+		return "CHECKPOINT"
+	if flags & Segment.FLAG_START and not flags & Segment.FLAG_FINISH:
+		return "START"
+	return ""
+
+
+## Screen rect of a span whose opening is centered on the road at (road_x, base_y), the
+## road `road_w` half-width on screen there.
+static func span_rect(def: Dictionary, road_x: float, base_y: float, road_w: float) -> Rect2:
+	var w: float = def["world_w"] / Cfg.ROAD_WIDTH * road_w
+	var h: float = w * def["world_h"] / def["world_w"]
+	var o: Vector2 = def["opening"]
+	return Rect2(road_x - w * (o.x + o.y) / 2.0, base_y - h, w, h)
+
+
+func _draw_span(seg: Segment, id: String, label: String, tint: Color) -> void:
+	var def: Dictionary = SpriteLibrary.spans.get(id, {})
+	if def.is_empty():
+		return
+	var rect := span_rect(def, seg.s1.x, seg.s1.y, seg.sw1)
+	if rect.size.y < 1.0 or rect.position.y >= seg.clip or rect.end.x < 0.0 or rect.position.x > Cfg.SCREEN_W:
+		return
+	var fill: Color = def["fill"]
+	if fill.a > 0.0:
+		var col := fill.lerp(_fog_color, seg.fog)
+		var top := 0.0 if def["ceiling"] else rect.position.y
+		draw_rect(Rect2(-8.0, top, rect.position.x + 9.0, rect.end.y - top), col)
+		draw_rect(Rect2(rect.end.x - 1.0, top, Cfg.SCREEN_W - rect.end.x + 9.0, rect.end.y - top), col)
+		if def["ceiling"]:
+			draw_rect(Rect2(rect.position.x, top, rect.size.x, rect.position.y - top + 1.0), col)
+	draw_texture_rect(def["tex"], rect, false, tint)
+	var banner: Rect2 = def["banner"]
+	if label == "" or banner.size.x <= 0.0:
+		return
+	var box := Rect2(rect.position + banner.position * rect.size, banner.size * rect.size)
+	var font_size := mini(int(box.size.y * 0.7), 96)
+	if font_size >= 6:
+		draw_string(_font, Vector2(box.position.x, box.position.y + box.size.y * 0.78), label,
+			HORIZONTAL_ALIGNMENT_CENTER, box.size.x, font_size, Color("#c8102e") * tint)
+
 
 ## Screen rect for a roadside sprite whose road-side edge is at sx: left-side sprites end at
 ## sx, right-side ones start there. A flipped sprite gets a negative width, which mirrors the
@@ -156,43 +216,6 @@ func _draw_objects(seg: Segment) -> void:
 static func sprite_rect(sx: float, base_y: float, w: float, h: float, offset: float, flip: bool) -> Rect2:
 	var x0 := sx - w if offset < 0.0 else sx
 	return Rect2(x0, base_y - h, -w if flip else w, h)
-
-
-func _draw_gantry(seg: Segment, tint: Color) -> void:
-	var s := seg.scale1
-	var x := seg.s1.x
-	var y := seg.s1.y
-	var half := seg.sw1 * 1.25
-	var post_w := maxf(1.0, 150.0 * s * Cfg.PROJ)
-	var height := 3200.0 * s * Cfg.PROJ
-	var banner_h := height * 0.2
-	if y - height >= seg.clip or height < 2.0:
-		return
-	var post := Color("#d9dbe6") * tint
-	draw_rect(Rect2(x - half - post_w, y - height, post_w, height), post)
-	draw_rect(Rect2(x + half, y - height, post_w, height), post)
-	var banner := Rect2(x - half - post_w, y - height, (half + post_w) * 2.0, banner_h)
-	var text := ""
-	var text_col := Color.WHITE
-	if seg.flags & Segment.FLAG_FINISH:
-		var cols := 24
-		var cell := banner.size.x / cols
-		for row in 2:
-			for c in cols:
-				var col := Color.WHITE if (c + row) % 2 == 0 else Color("#151515")
-				draw_rect(Rect2(banner.position.x + c * cell, banner.position.y + row * banner_h / 2.0, cell + 0.5, banner_h / 2.0), col * tint)
-	elif seg.flags & Segment.FLAG_CHECKPOINT:
-		draw_rect(banner, Color("#ffd23a") * tint)
-		draw_rect(banner.grow(-banner_h * 0.08), Color("#1f4fbf") * tint)
-		text = "CHECKPOINT"
-		text_col = Color("#ffd23a") * tint
-	else:
-		draw_rect(banner, Color("#1e9e5a") * tint)
-		text = "START"
-	var font_size := int(banner_h * 0.6)
-	if text != "" and font_size >= 6:
-		draw_string(_font, Vector2(banner.position.x, banner.position.y + banner_h * 0.75), text,
-			HORIZONTAL_ALIGNMENT_CENTER, banner.size.x, mini(font_size, 96), text_col)
 
 
 func _draw_player() -> void:
@@ -210,6 +233,17 @@ func _draw_player() -> void:
 		y += roundf(randf_range(-1.0, 1.0) * (1.5 if p.offroad else 0.4) * p.speed / Cfg.MAX_SPEED)
 	CarSprites.draw_player(self, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking, p.nitro_time > 0.0,
 		time, roundf(lift), p.pitch)
+
+
+## A stage's road colors, darkened for inside a tunnel or covered bridge.
+func _covered_theme(theme: Dictionary) -> Dictionary:
+	if not theme.has("_covered"):
+		var dark := {}
+		for key in ["grass", "sand", "rumble", "road"]:
+			dark[key] = [theme[key][0].darkened(0.45), theme[key][1].darkened(0.5)]
+		dark["lane"] = theme["lane"].darkened(0.3)
+		theme["_covered"] = dark
+	return theme["_covered"]
 
 
 func _ground(theme: Dictionary, kind: int, b: int, fog: float) -> Color:

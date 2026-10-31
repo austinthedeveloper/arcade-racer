@@ -126,6 +126,47 @@ func add_sprite(index: int, id: String, offset: float, flip: bool = false) -> vo
 	segments[index].sprites.append({"id": id, "offset": offset, "flip": flip})
 
 
+## A road-spanning sprite (SpriteLibrary.spans) across the road at the start of segment `index`.
+func add_span(index: int, id: String) -> void:
+	if index >= 0 and index < segments.size():
+		segments[index].spans.append(id)
+
+
+## A tunnel or covered bridge from segment `start` for `length` segments: the entrance, then
+## an interior frame every `every` segments, with the roadside cleared and the road darkened.
+func add_tunnel(start: int, length: int, entrance: String, ring: String, every := 3) -> void:
+	add_span(start, entrance)
+	for i in range(start + 1, mini(start + length, segments.size())):
+		segments[i].covered = true
+		segments[i].sprites.clear()
+		if (i - start) % every == 0:
+			add_span(i, ring)
+	add_span(mini(start + length, segments.size() - 1), entrance)
+
+
+## The first segment at or after `index` with no race gate or span within `margin` segments.
+func free_spot(index: int, margin := 8) -> int:
+	var i := index
+	while i < segments.size() - margin:
+		var clear := true
+		for j in range(maxi(0, i - margin), i + margin + 1):
+			if segments[j].flags != 0 or not segments[j].spans.is_empty():
+				clear = false
+				break
+		if clear:
+			return i
+		i += 1
+	return -1
+
+
+## Spans `id` across the road near each fraction of the stage's length.
+func add_spans_at(id: String, fractions: Array) -> void:
+	for f: float in fractions:
+		var i := free_spot(int(segments.size() * f))
+		if i >= 0:
+			add_span(i, id)
+
+
 func add_checkpoint(index: int) -> void:
 	segments[index].flags |= Segment.FLAG_CHECKPOINT
 	checkpoints.append(index)

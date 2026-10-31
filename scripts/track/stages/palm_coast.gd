@@ -65,6 +65,7 @@ static func build() -> Track:
 	t.finish_building(final_straight + 60)
 
 	_decorate(t, town_start, town_end)
+	t.add_spans_at("palm_arch", [0.03, 0.55])
 	return t
 
 
