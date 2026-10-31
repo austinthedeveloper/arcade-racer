@@ -2,13 +2,17 @@
 
 Updated: 2026-10-30 (America/Chicago). Generation began 2026-10-29.
 
-**Saved: 215 images — 140 from the earlier passes plus 75/75 round-four images.** Generation completion is separate from user approval and production readiness.
+**Saved: 224 images — 215 from earlier passes plus 9/9 round-five revisions.** Generation completion is separate from user approval and production readiness.
 
 **Main direction:** STYLE-A, high-color pixel art (confirmed by the user). STYLE-B and STYLE-C are comparison variants for KA-01 and KA-02 only.
 
 **Generator:** built-in image_gen. Source prompts are preserved. Final prompts substitute the exact chosen style block and add aspect ratio, stage context, and layout constraints. Targeted correction prompts are recorded where used. Selected final prompts and results: [generation-prompts.json](generation-prompts.json).
 
 **Usage:** concept/reference images. Sprite sheets still need production cleanup, frame registration, keying/alpha conversion, and animation checks. Background layers need seam testing before use. Wide layers are generally about 3:1, the width returned by the generator; actual dimensions are recorded below.
+
+## Round 5 review revisions
+
+**9/9 images saved.** [Round-five log and review decisions](generation-round5.md) · [Exact prompts and provenance](generation-round5.json). This pass covers the rounded three-wheel Cyclone and three dependent sheets, H-shaped Skyline portal, red combine and user-requested rainbow-hubcap concept set. Accepted round-four designs and model-building notes are recorded in the new log.
 
 ## Round 4 generation — 2026-10-30
 
