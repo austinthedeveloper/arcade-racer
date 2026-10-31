@@ -26,26 +26,32 @@ var _options_back := Callable()
 
 func _ready() -> void:
 	_layer = CanvasLayer.new()
+	_layer.layer = 2  # over the race, for options from its pause menu
 	add_child(_layer)
 	debug_overlay = InputDebugOverlay.new()
 	calibration = CalibrationWizard.new()
 	var top := CanvasLayer.new()
-	top.layer = 2
+	top.layer = 3
 	add_child(top)
 	top.add_child(debug_overlay)
 	top.add_child(calibration)
 	var quick := false
+	var pause_shot := false
 	for arg in OS.get_cmdline_user_args():
 		for flag: String in RACE_FLAGS:
 			quick = quick or arg.begins_with(flag)
-		if arg.begins_with("--screen="):
+		if arg == "--screen=pause":
+			pause_shot = true
+		elif arg.begins_with("--screen="):
 			_open(arg.get_slice("=", 1))
 		elif arg.begins_with("--menu-shot="):
 			_menu_shot = arg.get_slice("=", 1)
-	if quick:
+	if quick or pause_shot:
 		start_race()
 	elif menu == null:
 		show_title()
+	if pause_shot:
+		race.pause()
 	if _menu_shot != "":
 		_save_menu_shot()
 
@@ -57,7 +63,7 @@ func _physics_process(_dt: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if screen == Screen.RACE:
+	if race != null:  # the race has its own F1 / F2
 		return
 	if event.is_action_pressed("debug_input"):
 		debug_overlay.visible = not debug_overlay.visible
@@ -124,6 +130,7 @@ func start_race() -> void:
 	race.calibration = calibration
 	race.quit_requested.connect(_on_race_quit)
 	race.race_over.connect(_on_race_over)
+	race.options_requested.connect(_on_race_options)
 	add_child(race)
 
 
@@ -136,6 +143,17 @@ func _on_race_quit() -> void:
 func _on_race_over() -> void:
 	_drop_race()
 	show_stage_select()
+
+
+## OPTIONS on the pause menu: the options over the paused race, then back to its menu.
+func _on_race_options() -> void:
+	show_options()
+	_options_back = _close_race_options
+
+
+func _close_race_options() -> void:
+	_set_menu(null, Screen.RACE)
+	race.options_closed()
 
 
 func _drop_race() -> void:
@@ -157,6 +175,7 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 
 
 # --- Dev helpers: `godot -- --screen=stages --menu-shot=/tmp/stages.png` -------------
+# (--screen=pause starts a race and pauses it; add --at-segment=N to pause further in.)
 
 func _open(which: String) -> void:
 	match which:

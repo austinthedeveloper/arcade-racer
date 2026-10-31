@@ -77,11 +77,6 @@ func _draw() -> void:
 		_text_centered(Vector2(w / 2.0, 130), race.banner, 44, Color("#ffd23a"))
 		if race.banner_sub != "":
 			_text_centered(Vector2(w / 2.0, 156), race.banner_sub, 14, Color.WHITE)
-	if race.paused:
-		draw_rect(Rect2(0, 0, w, Cfg.SCREEN_H), Color(0, 0, 0, 0.5))
-		_text_centered(Vector2(w / 2.0, 150), "PAUSED", 40, Color.WHITE)
-		_text_centered(Vector2(w / 2.0, 176), "Esc / Start to resume    R / Back to restart", 12, Color(1, 1, 1, 0.8))
-		_text_centered(Vector2(w / 2.0, 194), "Backspace / B / brake to quit to the title screen", 12, Color(1, 1, 1, 0.8))
 
 
 func _text(pos: Vector2, s: String, size: int, col: Color) -> void:

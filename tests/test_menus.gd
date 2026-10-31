@@ -176,7 +176,7 @@ func test_mode_select_leads_on_and_back() -> void:
 	eq(g.screen, g.Screen.TITLE, "and those go back to the title")
 
 
-func test_quitting_needs_the_race_paused() -> void:
+func test_quitting_needs_the_pause_menu() -> void:
 	var r := race(false, false)
 	var quits := [0]
 	r.quit_requested.connect(func() -> void: quits[0] += 1)
@@ -190,33 +190,25 @@ func test_quitting_needs_the_race_paused() -> void:
 	eq(quits[0], 0, "Esc pauses rather than quitting")
 	check(r.paused, "paused")
 	drive(r, 1)
-	eq(quits[0], 1, "back while paused quits")
+	eq(quits[0], 0, "back while paused resumes rather than quitting")
+	check(not r.paused, "resumed")
 	InputRouter.menu = keep
 
 
-func test_single_race_runs_once_and_returns_to_the_menus() -> void:
+func test_options_from_the_pause_menu_return_to_the_race() -> void:
 	var g := _game()
-	g.show_mode_select()
-	g.menu.handle(menu_input(false, false, 1))
-	g.menu.handle(menu_input(true))
-	eq(g.screen, g.Screen.STAGES, "SINGLE RACE: stage select")
-	eq(g.mode_index, ModeSelect.Item.SINGLE_RACE, "the mode is kept")
-	g.menu.handle(menu_input(false, false, 1))
-	g.menu.handle(menu_input(true))
-	g.menu.handle(menu_input(true))
-	if not check(g.race != null, "race started"):
-		return
-	check(not g.race.tour, "the race knows it's a Single Race")
+	g.start_race()
 	TestSuite.ready_all(g.race)
-	g.race.race_over.emit()
-	eq(g.screen, g.Screen.STAGES, "race over: back to stage select")
-	check(g.race == null, "race dropped")
-	eq(g.menu.index, 1, "on the stage just raced")
+	var r: Node = g.race
+	r.pause()
+	check(r.pause_menu.has_options, "the game offers OPTIONS")
+	r.pause_action(PauseMenu.Action.OPTIONS)
+	eq(g.screen, g.Screen.OPTIONS, "the options open")
+	check(g.race == r and r.paused, "over the paused race")
 	g.menu.handle(menu_input(false, true))
-	g.menu.handle(menu_input(false, false, -1))
-	g.menu.handle(menu_input(true))
-	g.menu.handle(menu_input(true))
-	g.menu.handle(menu_input(true))
-	check(g.race != null and g.race.tour, "GRAND TOUR races tour on")
-	TestSuite.ready_all(g.race)
-	g.race.quit_requested.emit()
+	eq(g.screen, g.Screen.RACE, "back: the race again")
+	check(g.menu == null, "no menu left")
+	check(r.paused and r.pause_menu.visible, "paused, on its menu")
+	r.pause_action(PauseMenu.Action.QUIT)
+	eq(g.screen, g.Screen.TITLE, "QUIT TO TITLE: the title")
+	check(g.race == null, "race dropped")

@@ -171,16 +171,19 @@ func _tick() -> void:
 			_next(2)
 		6:
 			_send("pause", false)
-			_check(_race.paused, "pause")
+			_check(_race.paused and _race.pause_menu.visible, "pause opens the pause menu")
 			_mark = p.distance
 			_next(30)
 		7:
 			_check(p.distance == _mark, "paused car doesn't move")
-			_send("pause", true)
+			_check(_race.pause_menu.index == 0, "on RESUME, and the gas held since before the pause doesn't scroll it")
+			_send("accelerate", false)
+			_send("confirm", true)
 			_next(2)
 		8:
-			_send("pause", false)
-			_check(not _race.paused, "unpause")
+			_send("confirm", false)
+			_check(not _race.paused and not _race.pause_menu.visible, "RESUME on the pause menu resumes")
+			_send("accelerate", true)
 			_send("restart", true)
 			_next(2)
 		9:
@@ -208,40 +211,81 @@ func _tick() -> void:
 		13:
 			_send("pause", false)
 			_check(_race.paused, "paused again")
-			_next(2)
+			_next(2)  # (Esc counts as menu back too: let it go first)
 		14:
 			_send("back", true)
 			_next(2)
 		15:
 			_send("back", false)
-			_check(_game.screen == _game.Screen.TITLE and _game.race == null, "Backspace while paused quits to the title")
-			_check(not is_instance_valid(_race) or _race.is_queued_for_deletion(), "the race is gone")
-			_send("confirm", true)
+			_check(not _race.paused, "Backspace on the pause menu resumes")
+			_send("pause", true)
 			_next(2)
 		16:
+			_send("pause", false)
+			_send("brake", true)
+			_next(2)
+		17:
+			_send("brake", false)
+			_check(_race.pause_menu.index == 1, "Down picks RESTART")
+			_next(2)
+		18:
+			_send("brake", true)
+			_next(2)
+		19:
+			_send("brake", false)
+			_check(_race.pause_menu.index == 2, "Down again picks OPTIONS")
+			_send("confirm", true)
+			_next(2)
+		20:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.OPTIONS and _race.paused and not _race.pause_menu.visible,
+				"OPTIONS on the pause menu opens the options over the paused race")
+			_send("back", true)
+			_next(2)
+		21:
+			_send("back", false)
+			_check(_game.screen == _game.Screen.RACE and _game.menu == null and _race.paused
+				and _race.pause_menu.visible and _race.pause_menu.index == 2,
+				"back from the options: the paused race, its menu on OPTIONS")
+			_send("brake", true)
+			_next(2)
+		22:
+			_send("brake", false)
+			_check(_race.pause_menu.index == 3, "Down picks QUIT TO TITLE")
+			_send("confirm", true)
+			_next(2)
+		23:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.TITLE and _game.race == null, "QUIT TO TITLE on the pause menu quits to the title")
+			_check(not is_instance_valid(_race) or _race.is_queued_for_deletion(), "the race is gone")
+			_next(2)
+		24:
+			_send("confirm", true)
+			_next(2)
+		25:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.MODES, "mode select")
 			_next(2)
-		17:
+		26:
 			_send("confirm", true)
 			_next(2)
-		18:
+		27:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES and _game.menu.index == 1,
 				"stage select opens on the stage the tour reached")
 			_settings.auto_gas = true  # (toggled through the options menu above)
 			_next(2)
-		19:
+		28:
 			_send("confirm", true)
 			_next(2)
-		20:
+		29:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.CARS, "car select")
 			_next(2)
-		21:
+		30:
 			_send("confirm", true)
 			_next(2)
-		22:
+		31:
 			_send("confirm", false)
 			_race = _game.race
 			_check(_race != null and _race.state == _race.State.COUNTDOWN, "a new race with auto gas on")
@@ -249,53 +293,58 @@ func _tick() -> void:
 				quit(1)
 				return
 			_next(260)  # the countdown, then over a second of driving
-		23:
+		32:
 			_check(_race.player.speed > Cfg.MAX_SPEED * 0.2, "auto gas: the car drives off with no key held")
 			_mark = _race.player.speed
 			_send("brake", true)
 			_next(30)
-		24:
+		33:
 			_send("brake", false)
 			_check(_race.player.speed < _mark, "auto gas: brake still slows the car")
 			_settings.auto_gas = false
 			# Single Race: quit, then title, mode select, stage, car, race once
 			_send("pause", true)
 			_next(2)
-		25:
+		34:
 			_send("pause", false)
+			_send("accelerate", true)
 			_next(2)
-		26:
-			_send("back", true)
-			_next(2)
-		27:
-			_send("back", false)
-			_check(_game.screen == _game.Screen.TITLE, "quit to the title")
+		35:
+			_send("accelerate", false)
+			_check(_race.pause_menu.index == 3, "Up from RESUME wraps to QUIT TO TITLE")
 			_send("confirm", true)
 			_next(2)
-		28:
+		36:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.TITLE, "quit to the title")
+			_next(2)
+		37:
+			_send("confirm", true)
+			_next(2)
+		38:
 			_send("confirm", false)
 			_send("steer_right", true)
 			_next(2)
-		29:
+		39:
 			_send("steer_right", false)
 			_check(_game.screen == _game.Screen.MODES and _game.menu.index == 1, "mode select, on SINGLE RACE")
 			_send("confirm", true)
 			_next(2)
-		30:
+		40:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES, "SINGLE RACE opens stage select")
 			_next(2)
-		31:
+		41:
 			_send("confirm", true)
 			_next(2)
-		32:
+		42:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.CARS, "then car select")
 			_next(2)
-		33:
+		43:
 			_send("confirm", true)
 			_next(2)
-		34:
+		44:
 			_send("confirm", false)
 			_race = _game.race
 			_check(_race != null and not _race.tour, "a Single Race starts")
@@ -304,17 +353,17 @@ func _tick() -> void:
 				return
 			_send("accelerate", true)
 			_next(200)
-		35:
+		45:
 			_check(_race.state == _race.State.RACING, "racing")
 			_race.player.distance = _race.finish_distance + 1.0
 			_next(2)
-		36:
+		46:
 			_send("accelerate", false)
 			_check(_race.state == _race.State.FINISHED and "menu" in _race.banner_sub,
 				"the Single Race finishes, and offers the menu: " + _race.banner_sub)
 			_send("confirm", true)
 			_next(2)
-		37:
+		47:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES and _game.race == null, "Enter after the finish goes back to stage select")
 			_check(not is_instance_valid(_race) or _race.is_queued_for_deletion(), "the race is gone")
