@@ -40,7 +40,15 @@ func reset() -> void:
 func load_save() -> void:
 	reset()
 	var cfg := ConfigFile.new()
-	if cfg.load(path) != OK:
+	var err := cfg.load(path)
+	if err == ERR_FILE_NOT_FOUND:
+		return
+	if err != OK:
+		# Unreadable (a cut-off write, a bad hand edit): kept aside, not overwritten by the
+		# next save, so it can be recovered.
+		var bad := ProjectSettings.globalize_path(path + ".bad")
+		DirAccess.rename_absolute(ProjectSettings.globalize_path(path), bad)
+		push_warning("Couldn't read %s (error %d); moved it to %s and started fresh" % [path, err, bad])
 		return
 	loaded_version = migrate(cfg)
 	furthest_stage = clampi(int(cfg.get_value("tour", "furthest_stage", 0)), 0, Stages.count() - 1)
@@ -79,7 +87,15 @@ func save(fresh := false) -> void:
 		var entry: Dictionary = b.duplicate() if b is Dictionary else {}
 		entry.merge(bests[key], true)
 		cfg.set_value("best", key, entry)
-	cfg.save(path)
+	# Written whole to a side file and then renamed over the save, so a crash mid-write
+	# never leaves a cut-off save.
+	var tmp := path + ".tmp"
+	var err := cfg.save(tmp)
+	if err == OK:
+		err = DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(path))
+	if err != OK:
+		push_error("Couldn't save progress to %s (error %d)" % [path, err])
+		return
 	changed.emit()
 
 
