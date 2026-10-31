@@ -20,6 +20,11 @@ const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
 var track: Track
 var stage_index := 0  # into Stages
 var tour := true  # Grand Tour: a finish goes on to the next stage. false: a Single Race
+## An attract-mode demo (Attract): autodriven with traffic, no countdown, the player's
+## controls ignored (the game watches them to end it). It ends itself (quit_requested) at
+## the finish, at time up or after Attract.DEMO_SECONDS, and it never saves anything
+## (_saves).
+var demo := false
 ## Time Attack: solo against the clock and the best run's ghost; no rivals, no time limit.
 var time_attack := false
 ## Free Drive: no clock, no rivals, no finish; the road loops on until you quit (pause menu).
@@ -145,7 +150,8 @@ func start_race() -> void:
 	_fov_stretch = 0.0
 	_was_airborne = false
 	traffic = Traffic.new()
-	var traffic_count := Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT)))
+	var cars := int(track.theme.get("traffic", TRAFFIC_COUNT))
+	var traffic_count := cars if demo else Settings.traffic_count(cars)
 	if _no_traffic or ((time_attack or free_drive) and not Settings.attack_traffic):
 		traffic_count = 0
 	traffic.spawn(track, traffic_count)
@@ -157,8 +163,8 @@ func start_race() -> void:
 		Difficulty.of(Settings.difficulty), tour_state.drivers if tour else [])
 	if tour and tour_state.drivers.is_empty():
 		tour_state.drivers = rivals.driver_names()
-	state = State.COUNTDOWN
-	countdown = 3.0
+	state = State.RACING if demo else State.COUNTDOWN
+	countdown = 0.0 if demo else 3.0
 	clock = stage_clock(track.theme, track.checkpoints.size())
 	time_left = Settings.race_time(clock[0]) + (tour_state.carried if tour else 0.0)
 	after = After.RETRY
@@ -278,6 +284,11 @@ func pause_action(action: int) -> void:
 			quit_requested.emit()
 
 
+## A demo is done: it reached the finish, ran out of time or ran its length.
+func demo_over() -> bool:
+	return state == State.FINISHED or state == State.TIME_UP or race_time >= Attract.DEMO_SECONDS
+
+
 func counting_down() -> bool:
 	return state == State.COUNTDOWN
 
@@ -291,7 +302,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(dt: float) -> void:
 	var inp: DriveInput = Settings.drive_input(InputRouter.state)
-	if _autodrive:
+	if _autodrive or demo:
 		inp = _autodrive_input()
 	else:
 		inp = Assists.apply(inp, player, track, Settings.steer_assist, Settings.brake_assist)
@@ -373,6 +384,9 @@ func _physics_process(dt: float) -> void:
 		if recording != null:
 			recording.record(player)
 		_check_progress()
+	if demo and demo_over():
+		quit_requested.emit()
+		return
 	if ghost != null:
 		ghost_now = ghost.at(recording.count() - 1)
 		road.ghost = ghost_now
@@ -573,7 +587,7 @@ func timed() -> bool:
 ## Whether this race is the player's own, to save from: not autodriven, not started partway,
 ## not staged for a screenshot.
 func _saves() -> bool:
-	return not _autodrive and _start_segment == 0 and not _staged
+	return not _autodrive and not demo and _start_segment == 0 and not _staged
 
 
 func _banner(text: String, sub: String, seconds: float) -> void:
