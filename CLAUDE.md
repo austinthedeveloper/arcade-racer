@@ -31,8 +31,8 @@ fraction and scale; every tool rewrites `assets/sprites/manifest.json`, which th
 No addon. `tests/run_tests.gd` runs every `tests/test_*.gd` (methods named `test_*`, on a
 `TestSuite`, see `tests/suite.gd`). `tests/e2e_input.gd` boots the real main scene (title screen) and drives
 it through the input map: menus, then the race. The race itself is `scenes/race.tscn`. `tests/golden/` holds per-frame traces of autodriven races
-(Palm Coast with traffic and on a clear road, every other stage with traffic, default options so power-ups on); `test_golden` replays them
-and also checks every stage's autodriven race finishes in time. CI (`.github/workflows/ci.yml`) runs `tools/test.sh`. A pushed `v*` tag runs
+(Palm Coast with traffic and rivals and on a clear road with neither, every other stage with traffic and rivals, default options so power-ups on); `test_golden` replays them
+and also checks every stage's autodriven race finishes in time and every rival finishes. `--no-rivals` and `--no-traffic` empty the road for screenshots. CI (`.github/workflows/ci.yml`) runs `tools/test.sh`. A pushed `v*` tag runs
 `.github/workflows/release.yml`: tests, `tools/export.sh`, then a GitHub Release with the zips.
 
 - Add or extend tests with every change.

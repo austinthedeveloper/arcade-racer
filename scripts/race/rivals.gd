@@ -1,0 +1,104 @@
+class_name Rivals
+extends RefCounted
+## The computer-driven field: lines up on a grid ahead of the player, drives each rival with
+## its AIDriver, and settles contact between racers (rivals and the player). Seeded, so the
+## same stage plays out the same way every time.
+
+const COUNT := 7
+const SEED := 4021
+const GRID_FRONT := 1250.0  # world units the front of the grid is ahead of the player's nose
+const GRID_STEP := 150.0  # between one grid slot and the next, staggered left and right
+const GRID_X := 0.5
+const PACE := [0.9, 0.98]  # each rival's top speed, as a share of its car's
+const LANE_BIAS := 0.35  # most a rival's own line sits off the racing line
+const CONTACT_LENGTH := 300.0  # world units along the road two racers touch within
+const CONTACT_SLOWDOWN := 0.97  # the car behind drops to this share of the one in front's speed
+const SIDE_PUSH_LOSS := 0.02  # share of speed a racer-to-racer side contact scrubs off
+
+var cars: Array[RivalCar] = []
+var clock := 0.0  # seconds since GO; runs on after the player finishes, unlike the race clock
+
+
+## Puts `count` rivals on the grid ahead of `player` (already reset at its start), in cars
+## other than `player_car_id`, picked and tuned by `seed_value`.
+func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = COUNT, seed_value: int = SEED) -> void:
+	cars.clear()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var pool: Array = []
+	for car: Dictionary in Cars.LIST:
+		if car["id"] != player_car_id:
+			pool.append(car)
+	for i in count:
+		var car: Dictionary = pool.pop_at(rng.randi() % pool.size()) if not pool.is_empty() else Cars.find(player_car_id)
+		var r := RivalCar.new(car, AIDriver.new(rng.randi(), rng.randf_range(-LANE_BIAS, LANE_BIAS)))
+		r.top_speed *= rng.randf_range(PACE[0], PACE[1])
+		var ahead := GRID_FRONT - i * GRID_STEP
+		r.reset(player.position + ahead)
+		r.distance = player.distance + ahead
+		r.x = -GRID_X if i % 2 == 0 else GRID_X
+		r.road_y = track.height_at(r.position + Cfg.PLAYER_Z)
+		r.strips = CarSprites.strips(car["strip"])
+		cars.append(r)
+
+
+## One tick: every rival drives (no controls until `racing`), then hits traffic and roadside
+## sprites like the player. Records each finish at `finish_distance`.
+func update(dt: float, track: Track, player: PlayerCar, racing: bool, finish_distance: float) -> void:
+	if racing:
+		clock += dt
+	var racers := everyone(player)
+	for r in cars:
+		var inp := r.driver.drive(r, track, racers, dt) if racing else DriveInput.new()
+		r.update(dt, inp, track, racing)
+	for r in cars:
+		r.collide(track)
+		if not r.finished and r.distance >= finish_distance:
+			r.finished = true
+			r.finish_time = clock
+
+
+func everyone(player: PlayerCar) -> Array:
+	var all: Array = [player]
+	all.append_array(cars)
+	return all
+
+
+func finished_count() -> int:
+	var n := 0
+	for r in cars:
+		n += int(r.finished)
+	return n
+
+
+## Racers bumping each other. A car that comes up behind another drops behind it at a little
+## under its speed; two already side by side are pushed apart. Nobody crashes.
+static func resolve_contacts(racers: Array, track: Track) -> void:
+	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
+	var reach := half_car * 2.0 * Cfg.HIT_OVERLAP
+	for i in racers.size():
+		for j in range(i + 1, racers.size()):
+			var a: PlayerCar = racers[i]
+			var b: PlayerCar = racers[j]
+			if a.airborne or b.airborne or absf(a.x - b.x) >= reach:
+				continue
+			var dz := wrapf(b.position - a.position, -track.length * 0.5, track.length * 0.5)
+			if absf(dz) >= CONTACT_LENGTH:
+				continue
+			var was := wrapf(b.last_position - a.last_position, -track.length * 0.5, track.length * 0.5)
+			if absf(was) >= CONTACT_LENGTH:
+				# Ran into the back of it
+				var front := b if dz > 0.0 else a
+				var back := a if dz > 0.0 else b
+				back.speed = minf(back.speed, front.speed * CONTACT_SLOWDOWN)
+				back.move_to(front.position - CONTACT_LENGTH, track)
+				back.bumped = true
+			else:
+				var push := (reach - absf(a.x - b.x)) * 0.5
+				var side := 1.0 if a.x >= b.x else -1.0
+				a.x += side * push
+				b.x -= side * push
+				a.speed *= 1.0 - SIDE_PUSH_LOSS
+				b.speed *= 1.0 - SIDE_PUSH_LOSS
+				a.bumped = true
+				b.bumped = true

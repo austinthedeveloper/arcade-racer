@@ -9,6 +9,7 @@ extends Node2D
 var track: Track
 var player: PlayerCar
 var player_strips: Dictionary = {}  # the player car's CarSprites.strips
+var rivals: Array[RivalCar] = []
 var camera_z := 0.0
 var time := 0.0
 
@@ -19,6 +20,7 @@ var _fog_color := Color.WHITE
 var _covered: Dictionary = {}  # _covered_theme: the darkened colors
 var _covered_from: Dictionary = {}  # and the theme they were made from
 var _font: Font
+var _rivals_in: Dictionary = {}  # segment index -> the rivals in it, this frame
 
 
 func _ready() -> void:
@@ -41,6 +43,12 @@ func _draw() -> void:
 	var dx := -base.curve * base_percent
 	var max_y := float(Cfg.SCREEN_H)
 	var drawn: Array[Segment] = []
+	_rivals_in.clear()
+	for r in rivals:
+		var i := track.find_segment(r.position + Cfg.PLAYER_Z).index
+		if not _rivals_in.has(i):
+			_rivals_in[i] = []
+		_rivals_in[i].append(r)
 
 	for n in Cfg.DRAW_DISTANCE:
 		var seg := segs[(base.index + n) % count]
@@ -167,6 +175,9 @@ func _draw_objects(seg: Segment) -> void:
 			cy -= sin((1.0 - car.flung / Traffic.FLING_TIME) * PI) * w * 0.9
 		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog)
 
+	for r: RivalCar in _rivals_in.get(seg.index, []):
+		_draw_rival(seg, r, tint)
+
 	# Spans sit at the segment's near end, in front of its sprites and cars
 	for id in seg.spans:
 		_draw_span(seg, id, "", tint)
@@ -235,6 +246,24 @@ func _draw_span(seg: Segment, id: String, label: String, tint: Color) -> void:
 static func sprite_rect(sx: float, base_y: float, w: float, h: float, offset: float, flip: bool) -> Rect2:
 	var x0 := sx - w if offset < 0.0 else sx
 	return Rect2(x0, base_y - h, -w if flip else w, h)
+
+
+## A rival in its segment, drawn with its car's steering strip like the player's.
+func _draw_rival(seg: Segment, r: RivalCar, tint: Color) -> void:
+	var p := fposmod(r.position + Cfg.PLAYER_Z, Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH
+	var s := lerpf(seg.scale1, seg.scale2, p)
+	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
+	var cx := lerpf(seg.s1.x, seg.s2.x, p) + s * r.x * Cfg.ROAD_WIDTH * Cfg.PROJ
+	var cy := lerpf(seg.s1.y, seg.s2.y, p)
+	if w < 1.0 or cy - w >= seg.clip or cx + w < 0.0 or cx - w > Cfg.SCREEN_W:
+		return
+	var steer := r.steer
+	var lift := r.air_height * s * Cfg.PROJ
+	if r.crash_time > 0.0:
+		steer = sin(r.crash_time * 20.0) * 2.0
+		lift += sin(r.crash_time / Cfg.CRASH_DURATION * PI) * w * 0.3
+	CarSprites.draw_player(self, r.strips, Vector2(roundf(cx), roundf(cy)), w, steer, r.braking, r.nitro_time > 0.0,
+		time, roundf(lift), r.pitch, 1.0, tint)
 
 
 func _draw_player() -> void:

@@ -24,7 +24,8 @@ static func stage_of(scenario: String) -> int:
 
 ## Frame hashes for a scenario: [frames..., final snapshot string].
 static func run(scenario: String, frames: int = FRAMES) -> PackedStringArray:
-	var r := TestSuite.new_race(true, scenario.ends_with("_traffic"), stage_of(scenario))
+	var busy := scenario.ends_with("_traffic")  # traffic and rivals; the clear road has neither
+	var r := TestSuite.new_race(true, busy, stage_of(scenario), busy)
 	var out := PackedStringArray()
 	var banner := ""
 	for f in frames:
@@ -51,14 +52,24 @@ static func snapshot(r: Node) -> String:
 		cars += c.z
 		lanes += c.offset
 		flung += int(c.flung > 0.0)
+	var rival_z := 0.0
+	var rival_x := 0.0
+	var rival_crashes := 0
+	for rv: RivalCar in r.rivals.cars:
+		rival_z += rv.distance
+		rival_x += rv.x
+		rival_crashes += int(rv.crash_time > 0.0)
+	# Rival columns only with rivals, so a race without them keeps its trace
+	var rival_cols := "" if r.rivals.cars.is_empty() else " rivals=%.1f rx=%.3f rcrash=%d rdone=%d" % [
+		rival_z, rival_x, rival_crashes, r.rivals.finished_count()]
 	var taken := ""
 	for pu: PowerUps.Pickup in r.power_ups.pickups:
 		taken += str(pu.kind) if pu.taken else "-"
 	return ("state=%d t=%.2f left=%.2f cp=%d z=%.1f x=%.3f v=%.1f air=%.1f crash=%.2f nitro=%d/%.2f cars=%.0f"
-		+ " lanes=%.2f flung=%d ram=%.2f ghost=%.2f taken=%s") % [
+		+ " lanes=%.2f flung=%d ram=%.2f ghost=%.2f taken=%s%s") % [
 		r.state, r.race_time, r.time_left, r.next_checkpoint, p.distance, p.x, p.speed,
 		p.air_height, p.crash_time, p.nitro_charges, p.nitro_time, cars, lanes, flung, p.ram_time,
-		p.ghost_time, taken]
+		p.ghost_time, taken, rival_cols]
 
 
 func _initialize() -> void:
