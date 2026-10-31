@@ -135,6 +135,7 @@ func test_rivals_avoid_heavy_traffic() -> void:
 		f.update(DT, t, p, true, 1e12)
 		for r in f.cars:
 			crashes += int(r.crashed)
+	# Was 3 before the erratic drivers (RC-4), who swerve into traffic now and then. Keep it here.
 	check(crashes <= 8, "rarely crash in double traffic (%d crashes in 40 s, 7 cars)" % crashes)
 
 
@@ -368,4 +369,25 @@ func test_an_aggressive_driver_only_blocks_for_a_while() -> void:
 		me.driver.drive(me, t, [me, chaser], DT)
 		blocked += int(me.driver.target == 0.75)
 	check(blocked <= roundi(AIDriver.BLOCK_TIME / DT) + 1, "blocks for BLOCK_TIME at most (%d ticks)" % blocked)
+	near(me.driver.target, 0.0, 0.001, "then lets it by")
+
+
+func test_a_bump_does_not_restart_the_block() -> void:
+	# Review on #116: the contact a block causes slows the chaser below the blocker, which
+	# used to zero the block clock, so the block started over once the chaser sped up.
+	var t := flat_track()
+	var me := RivalCar.new(Cars.find("car_bruiser"), AIDriver.new(1, 0.0, RivalProfile.Style.AGGRESSIVE))
+	me.reset(4000.0)
+	me.speed = Cfg.MAX_SPEED * 0.7
+	var chaser := _player()
+	chaser.reset(4000.0 - 800.0)
+	chaser.x = 0.75
+	var blocked := 0
+	for i in roundi((AIDriver.BLOCK_TIME + 2.0) / DT):
+		var t_s := i * DT
+		# faster for 1 s, bumped under the blocker's speed for 0.3 s, then faster again
+		chaser.speed = Cfg.MAX_SPEED * (0.6 if t_s >= 1.0 and t_s < 1.3 else 1.0)
+		me.driver.drive(me, t, [me, chaser], DT)
+		blocked += int(me.driver.target == 0.75)
+	check(blocked <= roundi(AIDriver.BLOCK_TIME / DT) + 10, "about BLOCK_TIME of blocking in all (%d ticks)" % blocked)
 	near(me.driver.target, 0.0, 0.001, "then lets it by")
