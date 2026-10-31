@@ -47,3 +47,14 @@ Sprite sheet of roadside objects for an arcade racing game set in Timberline Pas
 ```
 Color palette study for a pseudo-3D arcade racing game road in Timberline Pass (alpine forest, snow at the top): a straight road seen from behind the car stretching to the horizon, showing the asphalt color, alternating rumble strip colors, lane markings, and the roadside ground (grass, sand, snow, water or pavement as fits the place). Flat color bands, no cars, no sprites. {STYLE}
 ```
+
+## RS-TIMBER-05 Extras
+- **Output:** `assets/concept/roadside/timberline_extras.png`
+- **Aspect:** 16:9
+- **Round:** 4
+
+```
+Sprite sheet of roadside objects for an arcade racing game set in Timberline Pass (alpine forest, snow at the top): A ski lift chair line with a tower, a small A-frame chapel, a frozen waterfall ice wall, a moose standing by a sign post, a stack of firewood under a little roof, and a snowman with a scarf. Arranged in a row, separate objects with clear gaps, isolated on a flat solid magenta #FF00FF background, front-facing as seen from the road, consistent scale, no ground shadow, no readable text. {STYLE}
+```
+
+Drive-through pieces for this stage are in `drive-through.md`.

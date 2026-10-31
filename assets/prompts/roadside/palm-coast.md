@@ -47,3 +47,14 @@ Sprite sheet of roadside objects for an arcade racing game set in Palm Coast Bou
 ```
 Color palette study for a pseudo-3D arcade racing game road in Palm Coast Boulevard (beach city, golden afternoon): a straight road seen from behind the car stretching to the horizon, showing the asphalt color, alternating rumble strip colors, lane markings, and the roadside ground (grass, sand, snow, water or pavement as fits the place). Flat color bands, no cars, no sprites. {STYLE}
 ```
+
+## RS-PALM-05 Extras
+- **Output:** `assets/concept/roadside/palm-coast_extras.png`
+- **Aspect:** 16:9
+- **Round:** 4
+
+```
+Sprite sheet of roadside objects for an arcade racing game set in Palm Coast Boulevard (beach city, golden afternoon): A wooden fishing pier entrance with a blank sign, a pastel ice cream kiosk shaped like a cone, a stack of surfboards stuck upright in the sand, a red-and-white striped lighthouse, a rack of rental beach cruiser bikes, and a seagull on a post. Arranged in a row, separate objects with clear gaps, isolated on a flat solid magenta #FF00FF background, front-facing as seen from the road, consistent scale, no ground shadow, no readable text. {STYLE}
+```
+
+Drive-through pieces for this stage are in `drive-through.md`.

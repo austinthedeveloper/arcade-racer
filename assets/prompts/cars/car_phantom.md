@@ -40,3 +40,13 @@ Sprite sheet for an arcade racing game: an original muscular full-size pursuit s
 ```
 Sprite sheet for an arcade racing game: an original muscular full-size pursuit sedan with a push bar, a slim roof light bar, steel wheels, and a fictional black-and-white livery with no readable text or real police insignia, painted black and white two-tone, in a cartoonish crash tumble. Six frames in a row showing the car flipping end over end and rolling, with small sparks and debris, seen from behind the chase camera. Consistent scale, isolated on a flat solid magenta #FF00FF background. {STYLE}
 ```
+
+## CAR-PHANTOM-01R Reroll: new design (needed before 02 to 04 are redone)
+- **Output:** `assets/concept/cars/car_phantom_hero_A_v2.png`
+- **Aspect:** 4:3
+- **Round:** 4
+- **Why:** round 2 review (docs/06-concept-review-round2.md): the current design reads as a black-and-white American police sedan. This keeps the pursuit-car role and changes the body, lights and livery (black-and-white two-tone is what reads as a real police car). If the result is original, rerun 02 to 04 with this description and the new hero as the reference image.
+
+```
+Concept art of an original angular pursuit hatchback with a sharp wedge nose, a short tall cabin, faceted body panels like folded paper, hexagonal wheel arches, a fictional roof fin with built-in amber and blue light strips instead of a light bar, a heavy front push bar, and taillights as two stacked vertical red bars at each rear corner, in a fictional livery of deep teal with a silver chevron band and a black roof, seen from the rear three-quarter view on a sunny coastal road. Exaggerated arcade proportions: wide stance, big wheels, low roof. Clearly fictional design that does not resemble any real production car model. Not a black-and-white police sedan, no separate roof light bar, no real police markings or text. Fictional badge shapes only, no real brand or logo. {STYLE}
+```

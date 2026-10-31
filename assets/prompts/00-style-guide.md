@@ -28,7 +28,9 @@ photorealistic, resembles a real production car model, real car brand, logo, bad
 
 ## General rules
 
-- Name original brands only when needed: Vega, Bruiser, Kestrel, Solano, Mesa, Phantom, Hauler, Zenith (cars); fake roadside brands are listed in the roadside files.
+- Name original brands only when needed: Vega, Bruiser, Kestrel, Solano, Mesa, Phantom, Hauler, Zenith, Tempest, Skipper, Halo, Cyclone (cars); fake roadside brands are listed in the roadside files.
 - For single sprites or sprite sheets, add: `isolated on a flat solid magenta #FF00FF background, centered, full subject visible, no ground shadow`.
 - For backgrounds, add: `wide horizontal panorama, seamless left and right edges, no foreground objects, no road`.
+- Sheets the tools slice (traffic, roadside, power-ups) need a clear gap between objects: the slicer finds each sprite as one connected shape.
+- Road-spanning pieces (tunnels, bridges, gates) are straight-on and symmetrical with the opening filled with magenta; see `roadside/drive-through.md`.
 - Aspect ratios: key art 16:9, sprites 1:1 or 4:3, background layers 4:1 (or the widest your generator allows).
