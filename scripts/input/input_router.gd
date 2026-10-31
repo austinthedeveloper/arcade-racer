@@ -17,10 +17,15 @@ const WHEEL_NAME_HINTS := [
 ]
 const PAD_DEADZONE := 0.12
 const PAD_GAMMA := 1.6
+## The input_profiles.cfg format (CfgVersion). 0: no version field, one section per GUID.
+## 1: the same, plus [meta] version.
+const PROFILES_VERSION := 1
 const PEDAL_PRESS := 0.5  # a pedal past this confirms (gas) or goes back (brake) in menus
 
 ## Where wheel and pad profiles are saved. Tests point this at a scratch file.
 var profile_path := "user://input_profiles.cfg"
+## The version of the profile file last loaded (PROFILES_VERSION when there was no file).
+var profiles_version := PROFILES_VERSION
 var state := DriveInput.new()
 var menu := MenuInput.new()
 var speed_factor := 0.0  # set by the race each tick, for speed-sensitive pad steering
@@ -246,14 +251,28 @@ func pressed_buttons(device: int) -> Array[int]:
 func load_profiles() -> void:
 	var cfg := ConfigFile.new()
 	_saved.clear()
+	profiles_version = PROFILES_VERSION
 	if cfg.load(profile_path) != OK:
 		return
+	profiles_version = migrate_profiles(cfg)
 	for section in cfg.get_sections():
-		_saved[section] = DeviceProfile.load_from(cfg, section)
+		if section != CfgVersion.SECTION:
+			_saved[section] = DeviceProfile.load_from(cfg, section)
+
+
+## Brings a loaded input_profiles.cfg up to PROFILES_VERSION; returns the version it had.
+static func migrate_profiles(cfg: ConfigFile) -> int:
+	return CfgVersion.migrate(cfg, PROFILES_VERSION, [_profiles_v0_to_v1])
+
+
+## Version 1 only added the [meta] version: every other section is still a profile by GUID.
+static func _profiles_v0_to_v1(_cfg: ConfigFile) -> void:
+	pass
 
 
 func _write_profiles() -> void:
 	var cfg := ConfigFile.new()
+	CfgVersion.stamp(cfg, PROFILES_VERSION)
 	for guid in _saved:
 		(_saved[guid] as DeviceProfile).save_to(cfg)
 	cfg.save(profile_path)

@@ -12,6 +12,8 @@ const TRAFFIC_MULT := [0.5, 1.0, 1.4]
 const TIMER_NAMES := ["RELAXED", "ARCADE", "TIGHT"]
 const TIMER_MULT := [1.35, 1.0, 0.85]  # on the start time and checkpoint bonuses
 const VOLUME_STEPS := 10
+## The settings.cfg format (CfgVersion). 0: no version field. 1: the same keys, versioned.
+const VERSION := 1
 
 ## Where options are saved. Tests point this at a scratch file.
 var path := "user://settings.cfg"
@@ -21,6 +23,8 @@ var timer: int = Clock.ARCADE  # a Clock
 var power_ups := true  # pickups on the road (PowerUps)
 var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
 var sfx_volume := 10
+## The version of the file last loaded (VERSION when there was no file).
+var loaded_version := VERSION
 
 
 func _ready() -> void:
@@ -40,8 +44,10 @@ func reset() -> void:
 
 func load_settings() -> void:
 	reset()
+	loaded_version = VERSION
 	var cfg := ConfigFile.new()
 	if cfg.load(path) == OK:
+		loaded_version = migrate(cfg)
 		auto_gas = bool(cfg.get_value("play", "auto_gas", auto_gas))
 		traffic = clampi(int(cfg.get_value("play", "traffic", traffic)), 0, Traffic.size() - 1)
 		timer = clampi(int(cfg.get_value("play", "timer", timer)), 0, Clock.size() - 1)
@@ -51,8 +57,19 @@ func load_settings() -> void:
 	apply_volumes()
 
 
+## Brings a loaded settings.cfg up to VERSION; returns the version it had.
+static func migrate(cfg: ConfigFile) -> int:
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1])
+
+
+## Version 1 only added the version field: the keys are as they were.
+static func _v0_to_v1(_cfg: ConfigFile) -> void:
+	pass
+
+
 func save() -> void:
 	var cfg := ConfigFile.new()
+	CfgVersion.stamp(cfg, VERSION)
 	cfg.set_value("play", "auto_gas", auto_gas)
 	cfg.set_value("play", "traffic", traffic)
 	cfg.set_value("play", "timer", timer)

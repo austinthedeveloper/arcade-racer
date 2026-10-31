@@ -6,8 +6,9 @@ extends Node
 
 signal changed
 
-## The file format. A file with another number still loads: older ones by the rules for
-## their version, newer ones as far as the keys this build knows go.
+## The save.cfg format (CfgVersion). A file with another number still loads: older ones are
+## migrated, newer ones are read as far as the keys this build knows go.
+## 0: no version field. 1: the same keys, versioned.
 const VERSION := 1
 
 ## Where progress is saved. Tests point this at a scratch file.
@@ -19,7 +20,7 @@ var unlocks: Array[String] = []
 ## Best results, by best_key(stage, car): {"time": seconds, "place": 1 = first}.
 var bests := {}
 var total_points := 0
-## The version of the file last loaded (VERSION when there was none).
+## The version of the file last loaded (VERSION when there was no file).
 var loaded_version := VERSION
 
 
@@ -41,7 +42,7 @@ func load_save() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(path) != OK:
 		return
-	loaded_version = int(cfg.get_value("meta", "version", VERSION))
+	loaded_version = migrate(cfg)
 	furthest_stage = clampi(int(cfg.get_value("tour", "furthest_stage", 0)), 0, Stages.count() - 1)
 	total_points = maxi(0, int(cfg.get_value("tour", "total_points", 0)))
 	var u = cfg.get_value("tour", "unlocks", [])
@@ -56,9 +57,19 @@ func load_save() -> void:
 				bests[key] = {"time": float(b["time"]), "place": int(b.get("place", 0))}
 
 
+## Brings a loaded save.cfg up to VERSION; returns the version it had.
+static func migrate(cfg: ConfigFile) -> int:
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1])
+
+
+## Version 1 only added the version field: the keys are as they were.
+static func _v0_to_v1(_cfg: ConfigFile) -> void:
+	pass
+
+
 func save() -> void:
 	var cfg := ConfigFile.new()
-	cfg.set_value("meta", "version", VERSION)
+	CfgVersion.stamp(cfg, VERSION)
 	cfg.set_value("tour", "furthest_stage", furthest_stage)
 	cfg.set_value("tour", "total_points", total_points)
 	cfg.set_value("tour", "unlocks", Array(unlocks))
