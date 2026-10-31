@@ -23,7 +23,7 @@ const HELP := [
 	"Back to the title screen.",
 ]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
-const ROW_H := 24.0
+const ROW_H := 22.0
 const TOP := 56.0
 
 var index := 0  # into Row
