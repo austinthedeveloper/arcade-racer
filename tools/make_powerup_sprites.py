@@ -11,7 +11,7 @@ Usage:
 import os
 import sys
 
-from make_stage_sprites import slice_sheet
+from spritelib import slice_objects
 
 # (sheet, texture height of its tallest piece, names in reading order; None skips a piece)
 SHEETS = [
@@ -30,7 +30,7 @@ def main():
     out_dir = os.path.join(project_dir, "assets", "sprites", "powerups")
     os.makedirs(out_dir, exist_ok=True)
     for sheet, height, names in SHEETS:
-        for name, sprite in slice_sheet(os.path.join(concept_dir, "powerups", sheet), names, height):
+        for name, sprite in slice_objects(os.path.join(concept_dir, "powerups", sheet), names, height):
             if name is None:
                 continue
             sprite.save(os.path.join(out_dir, name + ".png"))

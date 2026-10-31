@@ -5,9 +5,8 @@
   one per object, scaled down so the sheet's tallest object is a fixed texture height.
 - Turns the stage's background composite into a seamless parallax strip.
 
-Stages are described in STAGES below. Palm Coast's background and palms still come from
-make_placeholder_sprites.py; "shared" holds race furniture (crowds, barriers, signs) for
-every stage.
+Stages are described in STAGES below; "shared" holds race furniture (crowds, barriers, signs)
+for every stage. Palm Coast's six hand-drawn props come from make_drawn_props.py.
 
 Usage:
     python3 tools/make_stage_sprites.py <concept_dir> <project_dir> [stage ...]
@@ -15,14 +14,13 @@ Usage:
 import os
 import sys
 
-from PIL import Image
-
-from make_placeholder_sprites import key_out, pixelate_down
+from spritelib import make_background, slice_objects
 
 # Per stage: background (composite file, horizon row in it) and roadside sheets.
 # Each sheet lists its objects in reading order (rows top to bottom, left to right) and the
 # texture height of its tallest object. None skips an object (art the renderer can't use yet,
-# such as a tunnel mouth or a covered bridge the road would run through).
+# such as a tunnel mouth or a covered bridge the road would run through). A fourth item,
+# "row", cuts a single row of overlapping objects left to right instead (spritelib.slice_row).
 STAGES = {
     "redrock": {
         "background": ("redrock_composite_A_v1.png", 636),
@@ -125,9 +123,12 @@ STAGES = {
                 "flag_d", "flag_e", "news_van", "fireworks_barge"]),
         ],
     },
-    # Palm Coast's background and palms come from make_placeholder_sprites.py
     "palm_coast": {
+        "background": ("palm-coast_composite_A_v1.png", 584),
         "sheets": [
+            ("palm-coast_palms_A_v1.png", 190, [
+                "palm_tall_a", "palm_tall_b", "palm_lean", "palm_short_a", "palm_short_b", "palm_fan",
+                "palm_cluster"], "row"),
             ("palm-coast_extras_A_v1.png", 200, [
                 "pier", "ice_cream_stand", "surfboards", "lighthouse", "bikes", "gull_post"]),
         ],
@@ -148,145 +149,6 @@ STAGES = {
 }
 
 
-def label_components(img, step=2, min_area=12):
-    """Connected opaque regions on a downsampled alpha mask: (label grid, list of boxes)."""
-    alpha = img.getchannel("A")
-    w, h = img.size[0] // step, img.size[1] // step
-    small = alpha.resize((w, h), Image.NEAREST).load()
-    label = [[-1] * w for _ in range(h)]
-    boxes = []
-    for sy in range(h):
-        for sx in range(w):
-            if label[sy][sx] >= 0 or small[sx, sy] == 0:
-                continue
-            n = len(boxes)
-            stack, area = [(sx, sy)], 0
-            label[sy][sx] = n
-            x0, y0, x1, y1 = sx, sy, sx, sy
-            while stack:
-                x, y = stack.pop()
-                area += 1
-                x0, y0, x1, y1 = min(x0, x), min(y0, y), max(x1, x), max(y1, y)
-                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-                    if 0 <= nx < w and 0 <= ny < h and label[ny][nx] < 0 and small[nx, ny] > 0:
-                        label[ny][nx] = n
-                        stack.append((nx, ny))
-            boxes.append((x0, y0, x1 + 1, y1 + 1, area))
-    return label, boxes, step
-
-
-def overlap(a, b):
-    """Area of the intersection of two boxes over the smaller box's area."""
-    ix = max(0, min(a[2], b[2]) - max(a[0], b[0]))
-    iy = max(0, min(a[3], b[3]) - max(a[1], b[1]))
-    smaller = min((a[2] - a[0]) * (a[3] - a[1]), (b[2] - b[0]) * (b[3] - b[1]))
-    return ix * iy / max(1, smaller)
-
-
-def group_objects(boxes, min_area=400):
-    """Groups components into objects: big components seed objects, and every other
-    component (pebbles, grass tufts, a detached sign) joins the object whose box holds most of it."""
-    seeds = [i for i, b in enumerate(boxes) if b[4] >= min_area]
-    # Two big components that mostly overlap are one object (a sign above its posts)
-    groups = []
-    for i in sorted(seeds, key=lambda i: -boxes[i][4]):
-        for g in groups:
-            if overlap(g["box"], boxes[i]) > 0.5:
-                g["members"].append(i)
-                g["box"] = union(g["box"], boxes[i])
-                break
-        else:
-            groups.append({"members": [i], "box": boxes[i][:4]})
-    for i, b in enumerate(boxes):
-        if i in seeds:
-            continue
-        best = max(groups, key=lambda g: overlap(g["box"], b), default=None)
-        if best is not None and overlap(best["box"], b) > 0.5:
-            best["members"].append(i)
-    _merge_stacked(groups)
-    return in_reading_order(groups)
-
-
-def _merge_stacked(groups, max_gap=12):
-    """Joins a part that sits on top of or under another part (a sign on its pole, a
-    dome on its tower): one box's columns lie mostly within the other's, with at most a
-    small vertical gap between them. Boxes are in label-grid cells (half the sheet's pixels)."""
-    merged = True
-    while merged:
-        merged = False
-        for a in groups:
-            for b in groups:
-                if a is b:
-                    continue
-                ax0, ay0, ax1, ay1 = a["box"]
-                bx0, by0, bx1, by1 = b["box"]
-                shared = min(ax1, bx1) - max(ax0, bx0)
-                narrower = min(ax1 - ax0, bx1 - bx0)
-                gap = max(ay0, by0) - min(ay1, by1)
-                if shared > 0.8 * narrower and gap < max_gap:
-                    a["members"] += b["members"]
-                    a["box"] = union(a["box"], b["box"])
-                    groups.remove(b)
-                    merged = True
-                    break
-            if merged:
-                break
-
-
-def in_reading_order(groups):
-    """Rows top to bottom (a row is every object overlapping the one above it vertically),
-    left to right within a row."""
-    rows = []
-    for g in sorted(groups, key=lambda g: g["box"][1]):
-        if rows and g["box"][1] < rows[-1]["bottom"]:
-            rows[-1]["items"].append(g)
-            rows[-1]["bottom"] = max(rows[-1]["bottom"], g["box"][3])
-        else:
-            rows.append({"items": [g], "bottom": g["box"][3]})
-    return [g for row in rows for g in sorted(row["items"], key=lambda g: g["box"][0])]
-
-
-def union(a, b):
-    return (min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3]))
-
-
-def slice_sheet(path, names, target_height):
-    keyed = key_out(Image.open(path))
-    label, boxes, step = label_components(keyed)
-    groups = group_objects(boxes)
-    if len(groups) != len(names):
-        raise SystemExit("%s: found %d objects, expected %d (%s)" % (path, len(groups), len(names), names))
-    crops = []
-    for g in groups:
-        members = set(g["members"])
-        box = tuple(v * step for v in g["box"])
-        part = keyed.crop(box)
-        px = part.load()
-        for y in range(part.height):
-            for x in range(part.width):
-                ly, lx = (box[1] + y) // step, (box[0] + x) // step
-                if ly >= len(label) or lx >= len(label[0]) or label[ly][lx] not in members:
-                    px[x, y] = (0, 0, 0, 0)
-        crops.append(part.crop(part.getbbox()))
-    scale = target_height / max(c.height for c in crops)
-    return [(name, pixelate_down(c, scale)) for name, c in zip(names, crops)]
-
-
-def make_background(path, horizon, out_path):
-    src = Image.open(path).convert("RGB")
-    strip = src.crop((0, 0, src.width, horizon))
-    width = 1280
-    height = round(strip.height * width / strip.width)
-    strip = strip.resize((width, height), Image.BOX)
-    seamless = Image.new("RGB", (width * 2, height))
-    seamless.paste(strip, (0, 0))
-    seamless.paste(strip.transpose(Image.FLIP_LEFT_RIGHT), (width, 0))
-    seamless = seamless.quantize(colors=96, method=Image.MEDIANCUT).convert("RGB")
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    seamless.save(out_path)
-    print("background", out_path, seamless.size)
-
-
 def build(stage, concept_dir, project_dir):
     spec = STAGES[stage]
     if "background" in spec:
@@ -295,8 +157,9 @@ def build(stage, concept_dir, project_dir):
                         os.path.join(project_dir, "assets", "sprites", "backgrounds", stage + "_far.png"))
     out_dir = os.path.join(project_dir, "assets", "sprites", "roadside", stage)
     os.makedirs(out_dir, exist_ok=True)
-    for sheet, target_height, names in spec["sheets"]:
-        for name, sprite in slice_sheet(os.path.join(concept_dir, "roadside", sheet), names, target_height):
+    for sheet, target_height, names, *how in spec["sheets"]:
+        path = os.path.join(concept_dir, "roadside", sheet)
+        for name, sprite in slice_objects(path, names, target_height, row=how == ["row"]):
             if name is None:
                 continue
             sprite.save(os.path.join(out_dir, name + ".png"))

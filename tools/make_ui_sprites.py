@@ -15,6 +15,8 @@ import sys
 
 from PIL import Image
 
+from spritelib import hard_alpha, rgba
+
 # Stage order matches Stages.NAMES
 STAGES = ["palm-coast", "redrock", "neon", "timberline", "bayou", "harvest", "thunder", "skyline"]
 # Composite version per stage where the first one was rerolled
@@ -53,21 +55,12 @@ def crop_16_9(img):
 
 
 def make_logo(src, out_path):
-    img = src.convert("RGBA")
-    px = img.load()
-    for y in range(img.height):
-        for x in range(img.width):
-            r, g, b, _ = px[x, y]
-            if max(r, g, b) < 28:
-                px[x, y] = (0, 0, 0, 0)
+    a = rgba(src)
+    a[a[..., :3].max(axis=2) < 28] = 0  # the black backdrop
+    img = Image.fromarray(a)
     img = img.crop(img.getbbox())
     h = round(img.height * LOGO_WIDTH / img.width)
-    img = img.resize((LOGO_WIDTH, h), Image.LANCZOS)
-    px = img.load()
-    for y in range(h):
-        for x in range(LOGO_WIDTH):
-            r, g, b, a = px[x, y]
-            px[x, y] = (r, g, b, 255) if a >= 128 else (0, 0, 0, 0)
+    img = hard_alpha(img.resize((LOGO_WIDTH, h), Image.LANCZOS), 128)
     img.save(out_path)
     print("logo", img.size)
 

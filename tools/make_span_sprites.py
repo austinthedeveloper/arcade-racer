@@ -12,8 +12,9 @@ Usage:
 import os
 import sys
 
-from make_placeholder_sprites import key_out, pixelate_down
 from PIL import Image
+
+from spritelib import key_out, pixelate_down
 
 WIDTH = 640  # texture width; a span fills the screen when the car is under it
 
