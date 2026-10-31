@@ -69,10 +69,10 @@ static func _add_traffic(id: String, path: String, world_per_px: float) -> void:
 ## w: on-screen body width.
 ## steer: -1 full left .. 1 full right; beyond that it keeps the hardest frame.
 ## pitch: 1 full nose-down (downhill) .. -1 full nose-up (see PlayerCar.pitch).
-## alpha: below 1 for a see-through car (the ghost power-up).
+## alpha: below 1 for a see-through car (the ghost power-up). tint: fog, for a rival far off.
 ## The nitro flame is the FX layer's (FxLayer), drawn over the car.
 static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float, steer: float, brake: bool,
-		lift: float = 0.0, pitch: float = 0.0, alpha: float = 1.0) -> void:
+		lift: float = 0.0, pitch: float = 0.0, alpha: float = 1.0, tint: Color = Color.WHITE) -> void:
 	var row := pitch_row(pitch, car.keys())
 	var strip: Dictionary = car[row]
 	var tex: Texture2D = strip["tex"]
@@ -92,7 +92,7 @@ static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float
 	var deck_src := Rect2(src.position, Vector2(cell.x, split))
 	var bumper_src := Rect2(src.position + Vector2(0.0, split), Vector2(cell.x, cell.y - split))
 	var bumper_top := roundf(y - bumper_h)
-	var mod := Color(1, 1, 1, alpha)
+	var mod := Color(tint, alpha)
 	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top, roundf(size.x), bumper_h), bumper_src, mod)
 	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top - deck_h, roundf(size.x), deck_h), deck_src, mod)
 	var h := deck_h + bumper_h

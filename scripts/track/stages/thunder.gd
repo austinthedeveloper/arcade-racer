@@ -17,6 +17,7 @@ static func theme() -> Dictionary:
 		"rumble": [Color("#d8d8dc"), Color("#e0a020")],
 		"road": [Color("#3c3e46"), Color("#373941")],  # rain-soaked asphalt
 		"lane": Color("#e6e6ea"),
+		"clock": [21, 36, 29, 24],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/thunder_far.png",
 		"specials": ["tanker", "cement_mixer", "dump_truck"],
 	}
@@ -65,6 +66,10 @@ static func build() -> Track:
 	t.add_sprite(stop_at, "truck_stop", 1.6)
 	t.add_sprite(stop_at + 20, "motel", -1.7)
 	t.scatter(["grain_bin", "storm_cellar", "windmill_old", "radar_dome", "flasher_barricade", "tree_bent"], 250, 450, 1.9)
+	# Highway signs: route and exit boards on the right
+	t.scatter(["sign_green", "sign_green", "sign_green", "sign_green", "sign_green"], 120, 800, 1.5, 1)
+	t.add_road_signs()
+	t.add_race_furniture()
 	t.add_finish_crowd()
 	return t
 

@@ -16,6 +16,7 @@ static func theme() -> Dictionary:
 		"rumble": [Color("#f4efe2"), Color("#b5402a")],
 		"road": [Color("#66625c"), Color("#605c56")],
 		"lane": Color("#f6efd8"),
+		"clock": [48, 38, 25, 19],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/harvest_far.png",
 		"specials": ["tractor", "combine", "pickup_red"],
 	}
@@ -72,6 +73,10 @@ static func build() -> Track:
 	t.add_sprite(stand_at, "farm_stand", 1.3)
 	t.add_sprite(stand_at + 4, "scarecrow", -1.4)
 	t.scatter(["grain_elevator", "produce_cart", "balloon", "farm_truck", "crop_duster", "pumpkins"], 200, 450, 2.0)
+	# Brown scenic-route signs on the right
+	t.scatter(["sign_brown", "sign_brown", "sign_brown", "sign_brown", "sign_brown"], 120, 800, 1.5, 1)
+	t.add_road_signs()
+	t.add_race_furniture()
 	t.add_finish_crowd()
 	return t
 
