@@ -43,7 +43,7 @@ jobs:
       - uses: actions/upload-artifact@v6
         with:
           name: SundownRun-${{ steps.version.outputs.version }}
-          path: build/release/*.zip
+          path: build/release/*
           if-no-files-found: error
 
       - name: Publish the release
@@ -61,8 +61,10 @@ jobs:
           - **Linux** (x86_64, unsupported, for testing only): \`SundownRun-$VERSION-linux.zip\`. Unzip, \`chmod +x SundownRun.x86_64\` if needed, and run it.
 
           Keyboard, gamepads and wheels are supported; see the README for controls and wheel calibration (F2).
+
+          **Updates:** the Windows, macOS and Linux games check for a newer release when they start and update themselves (\`SundownRun-$VERSION.pck\` and \`.json\` are the update; you don't need to download them).
           NOTES
           # A tag like v0.2.0-alpha is marked as a pre-release.
           pre=""; case "$VERSION" in *-*) pre="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" build/release/*.zip $pre \
+          gh release create "$GITHUB_REF_NAME" build/release/* $pre \
             --title "Sundown Run $VERSION" --notes-file notes.md --verify-tag
