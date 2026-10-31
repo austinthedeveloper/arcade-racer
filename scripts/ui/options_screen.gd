@@ -7,14 +7,14 @@ extends MenuScreen
 ## up/down, so steering picks the row and gas changes it (on the page bar, the next page).
 ## The two reset rows leave the wheel profiles alone; resetting the save asks first.
 
-enum Row { PAGE, AUTO_GAS, TRAFFIC, TIMER, POWER_UPS, MUSIC, SFX, CALIBRATE, RESET_OPTIONS, RESET_SAVE, SCREEN_SHAKE,
-	FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, BACK }
+enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
+	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, BACK }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
 ## The rows between the page bar and BACK on each page.
 const PAGE_ROWS := [
-	[Row.AUTO_GAS, Row.TRAFFIC, Row.TIMER, Row.POWER_UPS, Row.RESET_OPTIONS, Row.RESET_SAVE],
+	[Row.AUTO_GAS, Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS, Row.RESET_OPTIONS, Row.RESET_SAVE],
 	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
 	[Row.MUSIC, Row.SFX],
 	[Row.CALIBRATE],
@@ -23,15 +23,17 @@ const PAGE_ROWS := [
 ## Shown on a page with no rows yet.
 const PAGE_EMPTY := ["", "", "", "", ""]
 ## The most rows any page has, page bar and BACK included: the panel's height.
-const SLOTS := 8
-const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "TIMER", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
+const SLOTS := 10
+const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "BACK"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
 	"How many cars share the road.",
+	"How fast the rivals are and how long they wait. Sets the timer to match.",
 	"Time to reach each checkpoint. Relaxed gives more, Tight less.",
+	"Grand Tour: time left at a finish carries into the next stage.",
 	"Nitro cans, clocks, ram plates and ghosts to grab on the road.",
 	"Music loudness.",
 	"Engine, crash and menu sound loudness.",
@@ -45,14 +47,18 @@ const HELP := [
 	"Scale by whole steps only, for even, sharp pixels. Leaves a border.",
 	"Wait for the display between frames: no tearing.",
 	"Dark lines over the picture, like an old arcade monitor.",
-	"Back to the title screen.",
+	"Back to %s.",
 ]
 ## The rows that show ON or OFF.
-const TOGGLES := [Row.AUTO_GAS, Row.POWER_UPS, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES]
+const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
-const ROW_H := 24.0
+## Rows the race only reads when a stage starts.
+const NEXT_RACE := [Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS]
+const ROW_H := 22.0
 const TOP := 56.0
 
+var back_name := "the title screen"  # where BACK goes, for its help line
+var in_race := false  # opened from the pause menu: some rows only change the next race
 var page := 0  # a Page
 var index := 1  # into rows(): 0 is the page bar; opens on the first option
 var confirming := false  # RESET SAVE DATA was selected once; selecting it again erases
@@ -104,7 +110,7 @@ func flip(dir: int) -> int:
 ## Options back to their defaults, saved. The save data and wheel profiles are untouched.
 func reset_options() -> void:
 	Settings.reset()
-	Settings.save()
+	Settings.save(true)
 	done_row = Row.RESET_OPTIONS
 
 
@@ -117,7 +123,7 @@ func select_reset_save() -> bool:
 		return false
 	confirming = false
 	SaveData.reset()
-	SaveData.save()
+	SaveData.save(true)
 	done_row = Row.RESET_SAVE
 	return true
 
@@ -131,8 +137,12 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.auto_gas = not s.auto_gas
 		Row.TRAFFIC:
 			s.traffic = _step(s.traffic, dir, s.Traffic.size(), wrap)
+		Row.DIFFICULTY:
+			s.set_difficulty(_step(s.difficulty, dir, Difficulty.Level.size(), wrap))
 		Row.TIMER:
 			s.timer = _step(s.timer, dir, s.Clock.size(), wrap)
+		Row.CARRY_TIME:
+			s.carry_time = not s.carry_time
 		Row.POWER_UPS:
 			s.power_ups = not s.power_ups
 		Row.MUSIC:
@@ -165,6 +175,8 @@ static func value_text(row: int) -> String:
 	match row:
 		Row.TRAFFIC:
 			return s.TRAFFIC_NAMES[s.traffic]
+		Row.DIFFICULTY:
+			return Difficulty.NAMES[s.difficulty]
 		Row.TIMER:
 			return s.TIMER_NAMES[s.timer]
 		Row.MUSIC:
@@ -190,6 +202,8 @@ static func toggled(row: int) -> bool:
 	match row:
 		Row.AUTO_GAS:
 			return s.auto_gas
+		Row.CARRY_TIME:
+			return s.carry_time
 		Row.POWER_UPS:
 			return s.power_ups
 		Row.INTEGER_SCALE:
@@ -257,12 +271,22 @@ func handle(m: MenuInput) -> void:
 				Audio.play("beep")
 			Row.BACK:
 				Audio.play("beep")
-				game.show_title(1)
+				game.close_options()
 			_:
 				change(row(), 1, true)
 				Audio.play("beep")
 	elif m.back_pressed:
-		game.show_title(1)
+		game.close_options()
+
+
+## The help line for the row under the cursor.
+func help_text() -> String:
+	var r := row()
+	if r == Row.BACK:
+		return HELP[r] % back_name
+	if in_race and NEXT_RACE.has(r):
+		return HELP[r] + " From the next race."
+	return HELP[r]
 
 
 func _draw() -> void:
@@ -313,7 +337,7 @@ func _draw() -> void:
 				if on and not wheel:
 					_small_arrow(Vector2(right - 120, y + mid), -1)
 					_small_arrow(Vector2(right, y + mid), 1)
-	var help: String = CONFIRM_HELP if confirming else HELP[row()]
+	var help: String = CONFIRM_HELP if confirming else help_text()
 	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, panel.end.y + 20), help, 10, Color(1, 1, 1, 0.85))
 	_footer(options_hints())
 

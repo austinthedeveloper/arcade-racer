@@ -200,6 +200,59 @@ func test_save_writes_the_version() -> void:
 	_clean()
 
 
+# Review on #112: saving over a newer file used to rebuild it from scratch at this build's
+# version, dropping what the newer build wrote, which it would then migrate as an old file.
+func test_settings_saved_over_a_newer_file_keep_its_keys() -> void:
+	_clean()
+	_load_settings("settings_future.cfg")
+	Settings.traffic = Settings.Traffic.HEAVY
+	Settings.save()
+	var cfg := ConfigFile.new()
+	cfg.load(TestSuite.SCRATCH_SETTINGS)
+	eq(CfgVersion.of(cfg), 99, "still version 99")
+	eq(cfg.get_value("play", "traffic"), Settings.Traffic.HEAVY, "the change written")
+	eq([cfg.get_value("play", "rivals"), cfg.get_value("audio", "announcer"), cfg.get_value("display", "crt_filter")],
+		["HARD", 5, true], "the newer build's options kept")
+	eq(cfg.get_value("accessibility", "strobe_filter"), true, "in known sections too")
+	Settings.save(true)
+	cfg = ConfigFile.new()
+	cfg.load(TestSuite.SCRATCH_SETTINGS)
+	eq([CfgVersion.of(cfg), cfg.has_section_key("display", "crt_filter")], [Settings.VERSION, false], "a reset starts fresh")
+	_clean()
+
+
+func test_save_over_a_newer_file_keeps_its_keys() -> void:
+	_clean()
+	_load_save("save_v2.cfg")
+	SaveData.record_finish(0, "car_vega", 70.0)
+	var cfg := ConfigFile.new()
+	cfg.load(TestSuite.SCRATCH_SAVE)
+	eq(CfgVersion.of(cfg), 2, "still version 2")
+	eq(cfg.get_value("medals", "palm_coast"), "gold", "[medals] kept")
+	eq(cfg.get_value("tour", "rivals_beaten"), 4, "unknown tour keys kept")
+	var b: Dictionary = cfg.get_value("best", "palm_coast/car_vega")
+	eq([b.get("time"), b.get("place"), b.get("ghost")], [70.0, 1, "replays/palm.bin"], "the new best, with the newer build's ghost path")
+	SaveData.reset()
+	SaveData.save(true)
+	cfg = ConfigFile.new()
+	cfg.load(TestSuite.SCRATCH_SAVE)
+	eq([CfgVersion.of(cfg), cfg.has_section("medals")], [SaveData.VERSION, false], "a reset starts fresh")
+	_clean()
+
+
+func test_profiles_saved_over_a_newer_file_keep_its_keys() -> void:
+	_clean()
+	_load_profiles("input_profiles_v2.cfg")
+	InputRouter._saved.erase(PAD)
+	InputRouter._write_profiles()
+	var cfg := ConfigFile.new()
+	cfg.load(TestSuite.SCRATCH_PROFILES)
+	eq([CfgVersion.of(cfg), cfg.get_value("meta", "layout")], [2, "per-device"], "version 2 and its [meta] kept")
+	eq(cfg.get_value(WHEEL, "ffb_strength"), 0.8, "a key this build doesn't know kept in the profile")
+	check(not cfg.has_section(PAD), "a dropped profile is gone")
+	_clean()
+
+
 func test_profiles_v0_load_as_before() -> void:
 	_clean()
 	var v0 := _load_profiles("input_profiles_v0.cfg")
