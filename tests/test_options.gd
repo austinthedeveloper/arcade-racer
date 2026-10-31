@@ -461,7 +461,8 @@ func test_option_pages() -> void:
 	confirm.confirm_pressed = true
 	o.handle(confirm)
 	eq(o.page, OptionsScreen.Page.DISPLAY, "confirm on the page bar: next page")
-	eq(o.rows(), [OptionsScreen.Row.PAGE, OptionsScreen.Row.UNITS, OptionsScreen.Row.BACK], "Display rows")
+	eq(o.rows(), [OptionsScreen.Row.PAGE, OptionsScreen.Row.FULLSCREEN, OptionsScreen.Row.INTEGER_SCALE,
+		OptionsScreen.Row.VSYNC, OptionsScreen.Row.SCANLINES, OptionsScreen.Row.UNITS, OptionsScreen.Row.BACK], "Display rows")
 	o.handle(up)
 	o.handle(confirm)
 	eq(g.screen, g.Screen.TITLE, "BACK from any page")
@@ -516,3 +517,69 @@ func test_speed_units() -> void:
 	eq(Settings.units, Settings.Units.MPH, "confirm cycles back")
 	o.free()
 	_clean()
+
+
+func test_display_options_round_trip() -> void:
+	_clean()
+	eq([Settings.fullscreen, Settings.integer_scale, Settings.vsync, Settings.scanlines], [false, false, true, false],
+		"defaults: windowed, fractional, V-Sync on, no scanlines")
+	var o := OptionsScreen.new()
+	o.go_to(OptionsScreen.Row.FULLSCREEN)
+	eq(o.page, OptionsScreen.Page.DISPLAY, "on the Display page")
+	eq(OptionsScreen.value_text(OptionsScreen.Row.FULLSCREEN), "WINDOWED", "shown windowed")
+	for r in [OptionsScreen.Row.FULLSCREEN, OptionsScreen.Row.INTEGER_SCALE, OptionsScreen.Row.VSYNC, OptionsScreen.Row.SCANLINES]:
+		check(o.change(r, 1, true), "%s changes" % OptionsScreen.LABELS[r])
+	eq([OptionsScreen.value_text(OptionsScreen.Row.FULLSCREEN), OptionsScreen.value_text(OptionsScreen.Row.INTEGER_SCALE),
+		OptionsScreen.value_text(OptionsScreen.Row.VSYNC), OptionsScreen.value_text(OptionsScreen.Row.SCANLINES)],
+		["FULLSCREEN", "ON", "OFF", "ON"], "shown")
+	Settings.reset()
+	eq(Settings.fullscreen, false, "reset")
+	Settings.load_settings()
+	eq([Settings.fullscreen, Settings.integer_scale, Settings.vsync, Settings.scanlines], [true, true, false, true],
+		"saved and loaded back")
+	o.free()
+	_clean()
+
+
+func test_display_plan_follows_the_options() -> void:
+	_clean()
+	var plan: Dictionary = Settings.display_plan()
+	eq([plan["window_mode"], plan["stretch"], plan["vsync"], plan["scanlines"]],
+		[DisplayServer.WINDOW_MODE_WINDOWED, Window.CONTENT_SCALE_STRETCH_FRACTIONAL, DisplayServer.VSYNC_ENABLED, false],
+		"defaults")
+	Settings.fullscreen = true
+	Settings.integer_scale = true
+	Settings.vsync = false
+	plan = Settings.display_plan()
+	eq([plan["window_mode"], plan["stretch"], plan["vsync"]],
+		[DisplayServer.WINDOW_MODE_FULLSCREEN, Window.CONTENT_SCALE_STRETCH_INTEGER, DisplayServer.VSYNC_DISABLED], "all on")
+	_clean()
+
+
+func test_applying_display_headless_leaves_the_window_alone() -> void:
+	_clean()
+	check(Settings.headless(), "the tests run headless")
+	var mode := DisplayServer.window_get_mode()
+	var stretch: int = runner.root.content_scale_stretch
+	Settings.fullscreen = true
+	Settings.integer_scale = true
+	Settings.vsync = false
+	Settings.scanlines = true
+	Settings.save()
+	eq(DisplayServer.window_get_mode(), mode, "window mode untouched")
+	eq(runner.root.content_scale_stretch, stretch, "stretch untouched")
+	if check(Settings.scanline_layer != null, "the scanline overlay is made"):
+		check(Settings.scanline_layer.visible, "and shows")
+		eq(Settings.scanline_layer.layer, Settings.SCANLINE_LAYER, "on top")
+	_clean()
+	check(Settings.scanline_layer == null or not Settings.scanline_layer.visible, "defaults hide it")
+
+
+func test_view_rect_integer_and_fractional() -> void:
+	var view := Vector2i(640, 360)
+	eq(Settings.view_rect(Vector2i(1920, 1080), view, true), Rect2i(0, 0, 1920, 1080), "1080p: 3x either way")
+	eq(Settings.view_rect(Vector2i(1920, 1080), view, false), Rect2i(0, 0, 1920, 1080), "fractional too")
+	eq(Settings.view_rect(Vector2i(1600, 900), view, true), Rect2i(160, 90, 1280, 720), "900p: 2x with a border")
+	eq(Settings.view_rect(Vector2i(1600, 900), view, false), Rect2i(0, 0, 1600, 900), "fractional fills it")
+	eq(Settings.view_rect(Vector2i(1920, 929), view, true), Rect2i(320, 104, 1280, 720), "a short window: 2x")
+	eq(Settings.view_rect(Vector2i(320, 180), view, true), Rect2i(-160, -90, 640, 360), "never under 1x")

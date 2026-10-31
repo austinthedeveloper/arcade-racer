@@ -19,7 +19,12 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## The settings.cfg format (CfgVersion). 0: no version field. 1: the same keys, versioned.
 ## 2: [accessibility] screen_shake and flash (missing: the designed level).
 ## 3: [display] units (missing: MPH).
-const VERSION := 3
+## 4: [display] fullscreen, integer_scale, vsync, scanlines (missing: windowed, fractional,
+## V-Sync on, no scanlines).
+const VERSION := 4
+## The scanline overlay's CanvasLayer: above the race, the menus and the debug overlay.
+const SCANLINE_LAYER := 100
+const SCANLINE_SHADER := preload("res://scripts/render/scanlines.gdshader")
 
 ## Where options are saved. Tests point this at a scratch file.
 var path := "user://settings.cfg"
@@ -34,11 +39,21 @@ var sfx_volume := 10
 var screen_shake := 10  # 0..EFFECT_STEPS; scales camera shake and the nitro FOV stretch
 var flash := 10  # 0..EFFECT_STEPS; scales flashes and blinking warnings
 var units: int = Units.MPH  # the speedometer's
+var fullscreen := false  # windowed by default
+var integer_scale := false  # whole-number scaling of the 640x360 view (borders round it)
+var vsync := true
+var scanlines := false  # a CRT-style overlay (SCANLINE_SHADER)
+## The overlay apply_display() shows or hides; made on first use.
+var scanline_layer: CanvasLayer
 ## The version of the file last loaded (VERSION when there was no file).
 var loaded_version := VERSION
 
 
 func _ready() -> void:
+	# Dev flag: --settings-file=PATH reads (and saves) another options file, for screenshots.
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--settings-file="):
+			path = arg.get_slice("=", 1)
 	load_settings()
 
 
@@ -55,7 +70,12 @@ func reset() -> void:
 	screen_shake = EFFECT_STEPS
 	flash = EFFECT_STEPS
 	units = Units.MPH
+	fullscreen = false
+	integer_scale = false
+	vsync = true
+	scanlines = false
 	apply_volumes()
+	apply_display()
 
 
 func load_settings() -> void:
@@ -75,12 +95,17 @@ func load_settings() -> void:
 		screen_shake = clampi(int(cfg.get_value("accessibility", "screen_shake", screen_shake)), 0, EFFECT_STEPS)
 		flash = clampi(int(cfg.get_value("accessibility", "flash", flash)), 0, EFFECT_STEPS)
 		units = clampi(int(cfg.get_value("display", "units", units)), 0, Units.size() - 1)
+		fullscreen = bool(cfg.get_value("display", "fullscreen", fullscreen))
+		integer_scale = bool(cfg.get_value("display", "integer_scale", integer_scale))
+		vsync = bool(cfg.get_value("display", "vsync", vsync))
+		scanlines = bool(cfg.get_value("display", "scanlines", scanlines))
 	apply_volumes()
+	apply_display()
 
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -99,6 +124,15 @@ static func _v2_to_v3(cfg: ConfigFile) -> void:
 	cfg.set_value("display", "units", Units.MPH)
 
 
+## Version 4 added the display options, as every earlier build ran: windowed, fractional
+## scaling, V-Sync on, no scanlines.
+static func _v3_to_v4(cfg: ConfigFile) -> void:
+	cfg.set_value("display", "fullscreen", false)
+	cfg.set_value("display", "integer_scale", false)
+	cfg.set_value("display", "vsync", true)
+	cfg.set_value("display", "scanlines", false)
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -114,8 +148,13 @@ func save(fresh := false) -> void:
 	cfg.set_value("accessibility", "screen_shake", screen_shake)
 	cfg.set_value("accessibility", "flash", flash)
 	cfg.set_value("display", "units", units)
+	cfg.set_value("display", "fullscreen", fullscreen)
+	cfg.set_value("display", "integer_scale", integer_scale)
+	cfg.set_value("display", "vsync", vsync)
+	cfg.set_value("display", "scanlines", scanlines)
 	cfg.save(path)
 	apply_volumes()
+	apply_display()
 	changed.emit()
 
 
@@ -181,3 +220,62 @@ func _set_bus(bus: String, steps: int) -> void:
 	if i >= 0:
 		AudioServer.set_bus_volume_db(i, volume_db(steps))
 		AudioServer.set_bus_mute(i, steps <= 0)
+
+
+## What the display options ask of the window: its mode, the stretch, the V-Sync mode and
+## whether the scanline overlay shows.
+func display_plan() -> Dictionary:
+	return {
+		"window_mode": DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED,
+		"stretch": Window.CONTENT_SCALE_STRETCH_INTEGER if integer_scale else Window.CONTENT_SCALE_STRETCH_FRACTIONAL,
+		"vsync": DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED,
+		"scanlines": scanlines,
+	}
+
+
+## Where the `view`-sized picture sits in a `window`-sized window (aspect kept, centred):
+## whole-number steps with `integer`, as large as fits without. Mirrors the engine's stretch.
+static func view_rect(window: Vector2i, view: Vector2i, integer: bool) -> Rect2i:
+	var fit := minf(float(window.x) / view.x, float(window.y) / view.y)
+	var s := maxf(1.0, floorf(fit)) if integer else fit
+	var size := Vector2i(roundi(view.x * s), roundi(view.y * s))
+	return Rect2i((window - size) / 2, size)
+
+
+## True where there is no window to change (headless runs: tests, golden traces).
+static func headless() -> bool:
+	return DisplayServer.get_name() == "headless"
+
+
+## Puts the display options on the window and shows or hides the scanlines. Headless, the
+## window is left alone; the overlay is only a node there, and is made only once it shows.
+func apply_display() -> void:
+	var plan := display_plan()
+	if plan["scanlines"] or scanline_layer != null:
+		_scanline_overlay().visible = plan["scanlines"]
+	if headless() or not is_inside_tree():
+		return
+	get_window().content_scale_stretch = plan["stretch"]
+	var mode := DisplayServer.window_get_mode()
+	var windowed := mode == DisplayServer.WINDOW_MODE_WINDOWED or mode == DisplayServer.WINDOW_MODE_MAXIMIZED
+	if windowed != (plan["window_mode"] == DisplayServer.WINDOW_MODE_WINDOWED):  # maximized counts as windowed
+		DisplayServer.window_set_mode(plan["window_mode"])
+	if DisplayServer.window_get_vsync_mode() != plan["vsync"]:
+		DisplayServer.window_set_vsync_mode(plan["vsync"])
+
+
+## The scanline overlay: a full-screen ColorRect under SCANLINE_SHADER on its own top layer.
+func _scanline_overlay() -> CanvasLayer:
+	if scanline_layer == null:
+		scanline_layer = CanvasLayer.new()
+		scanline_layer.layer = SCANLINE_LAYER
+		scanline_layer.name = "Scanlines"
+		var rect := ColorRect.new()
+		rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var mat := ShaderMaterial.new()
+		mat.shader = SCANLINE_SHADER
+		rect.material = mat
+		scanline_layer.add_child(rect)
+		add_child(scanline_layer)
+	return scanline_layer
