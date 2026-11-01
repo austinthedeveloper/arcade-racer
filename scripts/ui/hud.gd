@@ -100,7 +100,7 @@ func _draw() -> void:
 	var dev: String = ["KEYBOARD", "GAMEPAD", "WHEEL"][inp.kind]
 	if device.has_area():  # (not under the touch controls)
 		_text(device.position + Vector2(4, 10), dev + "  " + inp.device_name.left(28), 8, Color(1, 1, 1, 0.7))
-		_text(device.position + Vector2(4, 22), "F1 input debug   F2 calibrate wheel   R restart", 8, Color(1, 1, 1, 0.45))
+		_text(device.position + Vector2(4, 22), keys_hint(race.online != null), 8, Color(1, 1, 1, 0.45))
 	var hint := InputRouter.wheel_hint()
 	if hint != "":
 		_text_centered(Vector2(w / 2.0, 70), hint, 10, Color("#ffd23a"))
@@ -430,6 +430,11 @@ static func burst_radius(text: String, size: int) -> Vector2:
 
 
 ## A run's time as m:ss.cc.
+## The dev keys under the device line (no R restart online, where restart is off).
+static func keys_hint(online: bool) -> String:
+	return "F1 input debug   F2 calibrate wheel" + ("" if online else "   R restart")
+
+
 static func clock_text(seconds: float) -> String:
 	return "%d:%05.2f" % [int(seconds) / 60, fmod(seconds, 60.0)]
 

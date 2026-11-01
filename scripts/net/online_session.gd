@@ -52,6 +52,7 @@ var gone: Array[int] = []  # slots that left during this race (the race drops th
 var _ticks := 0
 var _loaded := {}  # the host's: slots whose games have the stage loaded
 var _wait := 0.0
+var _hello := false  # a guest's HELLO is sent (once: the relay cuts off a game sending 200 a second)
 
 
 ## A room opened on `l`, with this game's car.
@@ -94,7 +95,7 @@ func poll(dt: float) -> void:
 	link.poll()
 	for s in cars:
 		cars[s][1] += dt
-	if phase == Phase.DIALING and link.ready():
+	if phase == Phase.DIALING and link.ready() and not _hello:
 		_in_room()
 	for got: Array in link.receive():
 		if hosting():
@@ -125,6 +126,7 @@ func _in_room() -> void:
 		error = "OLD VERSION: THE HOST HAS %s, THIS IS %s" % [link.host_version, Updater.version()]
 	else:
 		slot = link.you + 1
+		_hello = true
 		link.send_to(NetLink.HOST, [HELLO, car_id])
 
 

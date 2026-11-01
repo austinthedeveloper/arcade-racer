@@ -104,6 +104,16 @@ If nobody has played for a while, the first room takes about 20 seconds while th
 `godot --headless --path . -s res://tools/online_probe.gd -- --relay=ws://127.0.0.1:8080` runs a
 host and a guest through it: the lobby, the start, cars both ways, a finish and leaving.
 
+To race two windows hands-off (the second joins the first's room from `--room-file`):
+
+```sh
+godot --path . -- --online=host --stage=1 --autodrive --room-file=/tmp/room
+godot --path . -- --online=join:$(cat /tmp/room) --car=car_mesa --autodrive
+```
+
+The host starts once `--players=N` (default 2) are in; each game prints the finishes and quits
+when everyone is over the line.
+
 ### Touch
 
 On a touchscreen (a phone or tablet's browser, or a touch laptop) the controls show at the first
