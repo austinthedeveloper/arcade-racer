@@ -2,15 +2,19 @@ class_name PauseMenu
 extends MenuScreen
 ## The in-race pause menu: Resume, Restart, Options, Quit to title over the frozen race.
 ## Up/down or left/right (a wheel steers) moves, confirm picks, back or pause resumes.
-## `choose` turns a tick of input into an Action; the race carries it out.
+## `choose` turns a tick of input into an Action; the race carries it out. A notice above it
+## says why the race paused when it wasn't the player (the wheel unplugged, WH-7).
 
 enum Action { NONE, RESUME, RESTART, OPTIONS, QUIT }
 
 const ITEMS := [Action.RESUME, Action.RESTART, Action.OPTIONS, Action.QUIT]
 const LABELS := ["RESUME", "RESTART", "OPTIONS", "QUIT TO TITLE"]
 const ROW_H := 30.0
+const WARN := Color("#ff5d5d")  # the notice's heading
 
 var has_options := true  # false when nothing can show the options (a race on its own)
+## Why the race paused, over the menu: [heading, line] (unplugged_notice), or empty.
+var notice: Array[String] = []
 var _hold := 0  # ticks to ignore input for, after coming back from the options
 ## Gas or steering held when the menu opened would auto-repeat through it, so it doesn't
 ## move until they're let go.
@@ -74,6 +78,17 @@ func choose(m: MenuInput, pause_pressed := false) -> int:
 	return Action.NONE
 
 
+## The notice for the joypad driving, `joy_name`, unplugged mid-race (WH-7).
+static func unplugged_notice(joy_name: String, wheel: bool) -> Array[String]:
+	var what := "WHEEL" if wheel else "CONTROLLER"
+	var n := joy_name.strip_edges()
+	if n == "":
+		n = "it"
+	elif n.length() > 40:
+		n = n.substr(0, 40).strip_edges()
+	return ["%s DISCONNECTED" % what, "Plug %s back in to carry on." % n]
+
+
 ## Control hints, worded for the device in use.
 static func pause_hints() -> String:
 	match InputRouter.state.kind:
@@ -102,3 +117,9 @@ func _draw() -> void:
 		var col := GOLD if on else Color(1, 1, 1, 0.3 if off else 0.85)
 		_text_centered(Vector2(w / 2.0, y + 17), LABELS[i], 14, col)
 	_text_centered(Vector2(w / 2.0, panel.end.y - 10), pause_hints(), 9, Color(1, 1, 1, 0.7))
+	if notice.size() == 2:
+		var box := Rect2(w / 2.0 - 210, 26, 420, 46)
+		_panel(box, 0.92)
+		draw_rect(Rect2(box.position.x, box.position.y, 4, box.size.y), WARN)
+		_text_centered(Vector2(w / 2.0, box.position.y + 19), notice[0], 15, Color(WARN, 0.85 + 0.15 * sin(time * 4.0)))
+		_text_centered(Vector2(w / 2.0, box.position.y + 37), notice[1], 10, Color.WHITE)
