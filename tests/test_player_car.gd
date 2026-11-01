@@ -502,3 +502,41 @@ func test_mesa_keeps_its_speed_off_road() -> void:
 			check(p.speed > Cfg.MAX_SPEED * 0.75, "Mesa keeps its speed on the dirt (%.0f)" % p.speed)
 		else:
 			check(p.speed < Cfg.MAX_SPEED * 0.5, "Vega slows on the dirt (%.0f)" % p.speed)
+
+
+func test_off_road_is_past_the_edge_where_the_car_is() -> void:
+	# WS-7: the road's width changes; off the road is past its edge where the car is
+	var t := flat_track(1000)
+	t.set_width(300, 200, 0.6, 2)
+	t.set_width(600, 200, 1.5, 6)
+	var p := _car(Cfg.MAX_SPEED * 0.5)
+	p.x = 0.8
+	p.update(DT, input(1.0), t, true)
+	check(not p.offroad, "on the usual road at 0.8")
+	p.move_to(400.0 * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z, t)
+	p.update(DT, input(1.0), t, true)
+	check(p.offroad, "off the narrowed road at 0.8")
+	p.x = 1.3
+	p.move_to(700.0 * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z, t)
+	p.update(DT, input(1.0), t, true)
+	check(not p.offroad, "on the boulevard at 1.3")
+
+
+func test_roadside_sprites_stand_at_the_edge_where_they_are() -> void:
+	SpriteLibrary.load_all()
+	var t := flat_track(400)
+	t.set_width(100, 200, 0.6, 2)
+	t.add_sprite(200, "barrier_red", 2.5)
+	var def: Dictionary = SpriteLibrary.defs["barrier_red"]
+	var w: float = def["world_w"] / Cfg.ROAD_WIDTH
+	var p := _car(Cfg.MAX_SPEED * 0.5)
+	p.offroad = true
+	var at := 200.0 * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z
+	p.x = 2.5 + w / 2.0
+	p.last_position = at - 20.0
+	p.position = at + 20.0
+	p.collide(t)
+	check(p.crash_time <= 0.0, "not where it would stand on the usual road")
+	p.x = 2.5 * 0.6 + w / 2.0
+	p.collide(t)
+	check(p.crash_time > 0.0, "it stands at the narrowed edge")

@@ -7,6 +7,11 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Roads change width: Thunderhead's road works and the Timberline summit narrow to two lanes,
+  and Palm Coast's town and Skyline's downtown open out into six-lane boulevards (WS-7).
+
 ## [0.2.0] - 2026-11-01
 
 ### Added

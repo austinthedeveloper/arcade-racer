@@ -57,7 +57,8 @@ static func layout(track: Track, seed_value: int) -> Array[Pickup]:
 			continue
 		var p := Pickup.new()
 		p.segment = i
-		p.offset = Traffic.LANE_OFFSETS[rng.randi() % Traffic.LANE_OFFSETS.size()]
+		var seg := track.segments[i]
+		p.offset = seg.lane_x(rng.randi() % seg.lanes)
 		p.kind = pick(ROAD_WEIGHTS, rng.randf())
 		out.append(p)
 	return out

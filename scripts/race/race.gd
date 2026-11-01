@@ -796,9 +796,9 @@ func _autodrive_lane() -> float:
 	const LOOKAHEAD := 40  # segments
 	var want := maxf(player.speed, Cfg.MAX_SPEED * 0.8)
 	var here := track.find_segment(player.position + Cfg.PLAYER_Z).index
-	var best: float = Traffic.LANE_OFFSETS[0]
+	var lanes: Array = track.narrowest_ahead(player.position + Cfg.PLAYER_Z).lane_offsets()
+	var best: float = lanes[0]
 	var best_gap := -1
-	var lanes: Array = Traffic.LANE_OFFSETS.duplicate()
 	lanes.sort_custom(func(a: float, b: float) -> bool: return absf(a - player.x) < absf(b - player.x))
 	for lane: float in lanes:
 		var gap := LOOKAHEAD

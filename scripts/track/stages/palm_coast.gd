@@ -3,6 +3,9 @@ extends RefCounted
 ## Stage 1: Palm Coast Boulevard. A beach boulevard with gentle curves, rolling
 ## hills, a stretch through town and a couple of jump crests.
 
+const BOULEVARD_WIDTH := 1.5  # the road's half-width through town (Track.set_width)
+
+
 static func theme() -> Dictionary:
 	return {
 		"sky_top": Color("#2b9fd8"),
@@ -62,6 +65,8 @@ static func build() -> Track:
 	t.straight(Track.LENGTH_LONG)
 
 	t.finish_stage(final_straight)
+	# Through town the boulevard opens out to six lanes (WS-7)
+	t.set_width(town_start, town_end - town_start, BOULEVARD_WIDTH, 6)
 
 	_decorate(t, town_start, town_end)
 	t.add_spans_at("palm_arch", [0.03, 0.55])

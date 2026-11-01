@@ -1,6 +1,7 @@
 class_name PlayerCar
 extends RefCounted
-## Arcade driving model in track space: z along the road, x across it (-1..1 is the road).
+## Arcade driving model in track space: z along the road, x across it in Cfg.ROAD_WIDTH
+## (-1..1 is the usual road; Segment.width says how wide it is here, WS-7).
 
 const PITCH_SPAN := 400.0  # world units of road the car's pitch is measured over (about its length)
 const PITCH_FULL_DEG := 30.0
@@ -137,7 +138,8 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	if crash_time > 0.0:
 		crash_time -= dt
 		speed = move_toward(speed, 0.0, Cfg.CRASH_BRAKING * dt)
-		x = move_toward(x, clampf(x, -Cfg.CRASH_RECOVER_X, Cfg.CRASH_RECOVER_X), dt * Cfg.CRASH_RECOVER_RATE)
+		var recover := Cfg.CRASH_RECOVER_X * seg.width
+		x = move_toward(x, clampf(x, -recover, recover), dt * Cfg.CRASH_RECOVER_RATE)
 	elif not airborne:
 		if throttle > 0.01:
 			var boost := Cfg.NITRO_ACCEL_MULT if nitro_time > 0.0 else 1.0
@@ -150,7 +152,7 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 			speed -= Cfg.BRAKING * brake * dt
 		if throttle <= 0.01 and brake <= 0.01:
 			speed -= Cfg.DECEL * dt
-	offroad = absf(x) > 1.0
+	offroad = absf(x) > track.width_at(position + Cfg.PLAYER_Z)
 	if offroad and not airborne and offroad_mult > 0.0 and speed > Cfg.OFFROAD_LIMIT / offroad_mult:
 		speed = maxf(Cfg.OFFROAD_LIMIT / offroad_mult, speed - Cfg.OFFROAD_DECEL * offroad_mult * dt)
 	if speed > top:
@@ -239,7 +241,7 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 			if def.is_empty() or def["collide"] <= 0.0:
 				continue
 			var w_units: float = def["world_w"] / Cfg.ROAD_WIDTH
-			var offset: float = sp["offset"]
+			var offset: float = sp["offset"] * seg.width
 			var center := offset - w_units / 2.0 if offset < 0.0 else offset + w_units / 2.0
 			if absf(x - center) < w_units * def["collide"] / 2.0 + half_car:
 				crash()
@@ -298,7 +300,7 @@ func move_to(z: float, track: Track) -> void:
 
 
 ## Whether a car at `car_x` (half-width `half_car`, both in road half-widths) hits the
-## legs or walls of a span or race gate in `seg`.
+## legs or walls of a span or race gate in `seg` (sized for its road, span_scale).
 static func hits_span(seg: Segment, car_x: float, half_car: float) -> bool:
 	var ids: Array[String] = seg.spans.duplicate()
 	var gate := RoadRenderer.gate_for(seg.flags)
@@ -308,8 +310,9 @@ static func hits_span(seg: Segment, car_x: float, half_car: float) -> bool:
 		if not SpriteLibrary.spans.has(id):
 			continue
 		var e := SpriteLibrary.span_edges(id)
-		var inner: Vector2 = e["inner"]
-		var outer: Vector2 = e["outer"]
+		var k := SpriteLibrary.span_scale(seg.width)
+		var inner: Vector2 = e["inner"] * k
+		var outer: Vector2 = e["outer"] * k
 		if (car_x - half_car < inner.x and car_x + half_car > outer.x) or (car_x + half_car > inner.y and car_x - half_car < outer.y):
 			return true
 	return false

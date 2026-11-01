@@ -52,7 +52,7 @@ func _init(seed_value: int = 0, bias: float = 0.0, s: RivalProfile.Style = Rival
 func drive(me: PlayerCar, track: Track, racers: Array, dt: float) -> DriveInput:
 	var inp := DriveInput.new()
 	var z := me.position + Cfg.PLAYER_Z
-	var edge: float = Traffic.LANE_OFFSETS[-1]
+	var edge: float = track.narrowest_ahead(z).lane_offsets()[-1]
 	if style == RivalProfile.Style.ERRATIC and rng.randf() < SWERVE_RATE * dt:
 		lane_bias = rng.randf_range(-SWERVE_BIAS, SWERVE_BIAS)
 	var want := clampf(racing_line(track, z) + lane_bias, -edge, edge)
@@ -140,12 +140,13 @@ static func straight_ahead(track: Track, z: float) -> bool:
 
 
 ## Where to drive across the road: `want` if it's clear for LOOKAHEAD segments, otherwise the
-## lane (nearest `want` first) with the most room before a slower car. Returns {"x", "gap"},
-## gap in segments (LOOKAHEAD when clear).
+## lane (nearest `want` first) with the most room before a slower car. The lanes are those of
+## the narrowest road just ahead (Track.narrowest_ahead). Returns {"x", "gap"}, gap in
+## segments (LOOKAHEAD when clear).
 static func open_lane(track: Track, z: float, want: float, me: PlayerCar, racers: Array,
 		lookahead: int = LOOKAHEAD) -> Dictionary:
 	var lanes: Array = [want]
-	var by_distance: Array = Traffic.LANE_OFFSETS.duplicate()
+	var by_distance: Array = track.narrowest_ahead(z).lane_offsets()
 	by_distance.sort_custom(func(a: float, b: float) -> bool: return absf(a - want) < absf(b - want))
 	lanes.append_array(by_distance)
 	var best := {"x": want, "gap": -1}
