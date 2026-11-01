@@ -93,6 +93,23 @@ func test_a_damaged_download_is_thrown_away() -> void:
 	eq(BootTree.read_current(u.current_path()), {}, "nothing recorded")
 
 
+func test_a_slow_download_goes_on_and_a_stalled_one_fails() -> void:
+	# A whole-request timeout failed an 18 MB pack on any line slower than about 5 Mbps.
+	var u := _updater()
+	u.state = Updater.State.DOWNLOADING
+	u.manifest = {"size": 18000000}
+	for i in 60 * 60 * 5:  # five minutes, a little more every second
+		if u.watch(i / 60 * 60000, 1.0 / 60.0):
+			break
+	eq(u.state, Updater.State.DOWNLOADING, "five slow minutes: still downloading")
+	var t := 0.0
+	while not u.watch(12345, 1.0 / 60.0) and t < 60.0:
+		t += 1.0 / 60.0
+	eq(u.state, Updater.State.FAILED, "no new byte: failed")
+	check(absf(t - Updater.STALL_TIMEOUT) < 0.1, "after %.1f s without a byte" % t)
+	eq(u.error, "The download stopped.", "and says so")
+
+
 func test_up_to_date_and_full_download_releases() -> void:
 	var u := _updater()
 	u.on_release(_release("v" + Updater.version()))

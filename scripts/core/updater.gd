@@ -22,6 +22,10 @@ const PAGE := "https://github.com/%s/releases/latest"
 const REPO := "austinthedeveloper/arcade-racer"  # must be public: the API is asked without signing in
 const NAME := "SundownRun-%s"  # a release's update files: NAME.pck and NAME.json
 const HEADERS := ["User-Agent: SundownRun", "Accept: application/vnd.github+json"]
+const ASK_TIMEOUT := 30.0  # seconds for an answer about the release
+## Seconds a download may go without a byte before it's given up. Not a limit on the whole
+## download: 18 MB on a slow line takes minutes.
+const STALL_TIMEOUT := 30.0
 
 ## Where updates go. BootTree reads BootTree.CURRENT, so only tests change this.
 var dir := "user://updates/"
@@ -38,6 +42,8 @@ var staged_progress := 0.0  # progress() without a download, for tests and scree
 var _http: HTTPRequest
 var _pck_url := ""
 var _job := ""  # "release", "manifest" or "pck"
+var _bytes := 0  # downloaded at the last new byte
+var _stalled := 0.0  # seconds since then
 
 
 func _ready() -> void:
@@ -48,7 +54,6 @@ func _ready() -> void:
 			api = arg.trim_prefix("--update-api=")
 	state = State.IDLE
 	_http = HTTPRequest.new()
-	_http.timeout = 30.0
 	_http.request_completed.connect(_on_done)
 	add_child(_http)
 	check.call_deferred()
@@ -113,6 +118,25 @@ func download() -> void:
 	_job = "pck"
 	if not _request(_pck_url, dir + "download.part"):
 		_fail("Couldn't start the download.")
+
+
+func _process(dt: float) -> void:
+	if _http != null and state == State.DOWNLOADING and watch(_http.get_downloaded_bytes(), dt):
+		_http.cancel_request()
+
+
+## One frame of the download with `bytes` down so far: FAILED (true) once no new byte has
+## come for STALL_TIMEOUT seconds.
+func watch(bytes: int, dt: float) -> bool:
+	if bytes != _bytes:
+		_bytes = bytes
+		_stalled = 0.0
+		return false
+	_stalled += dt
+	if _stalled < STALL_TIMEOUT:
+		return false
+	_fail("The download stopped.")
+	return true
 
 
 ## 0..1 while DOWNLOADING.
@@ -183,6 +207,9 @@ func _request(url: String, to_file: String) -> bool:
 	if _http == null:
 		return true  # tests answer with on_release / on_manifest / on_pck
 	_http.download_file = to_file
+	_http.timeout = 0.0 if to_file != "" else ASK_TIMEOUT  # a download is watched for stalls instead
+	_bytes = 0
+	_stalled = 0.0
 	return _http.request(url, HEADERS) == OK
 
 
