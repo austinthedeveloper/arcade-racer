@@ -14,6 +14,7 @@ config/name="Sundown Run"
 config/description="Sprite-based pseudo-3D arcade racer"
 config/version="0.1.0"
 run/main_scene="res://scenes/main.tscn"
+run/main_loop_type="BootTree"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.png"
 
@@ -23,6 +24,7 @@ InputRouter="*res://scripts/input/input_router.gd"
 Audio="*res://scripts/audio/audio.gd"
 Settings="*res://scripts/core/settings.gd"
 SaveData="*res://scripts/core/save_data.gd"
+Updates="*res://scripts/core/updater.gd"
 
 [display]
 

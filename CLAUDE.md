@@ -9,7 +9,7 @@ tools/test.sh test_player_car                       # one suite (filter on suite
 godot --path .                                      # play
 godot --path . -- --autodrive --screenshots=200,700 --shot-dir=/tmp/shots   # hands-off run with screenshots (race flags skip the menus)
 godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screenshots=300 --shot-dir=/tmp/shots   # start partway in, in another car
-godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, modes, options, stages, cars, pause, results, demo; options:audio etc. for an options page; --car=car_mesa opens car select on it)
+godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, modes, options, stages, cars, pause, results, demo, update (update:failed etc.); options:audio etc. for an options page; --car=car_mesa opens car select on it)
 godot --path . --resolution 1600x900 -- --settings-file=/tmp/opts.cfg --profiles-file=/tmp/prof.cfg --screen=options:display --shot-as-window --menu-shot=/tmp/d.png   # other options and binding files; the shot laid out as the window shows it (also --screen=remap)
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
 godot --headless --path . -s res://tools/track_preview.gd -- --out=/tmp/plots   # plot every stage top-down and side-on to PNG (--stage=N for one)
@@ -38,7 +38,7 @@ No addon. `tests/run_tests.gd` runs every `tests/test_*.gd` (methods named `test
 `TestSuite`, see `tests/suite.gd`). `tests/e2e_input.gd` boots the real main scene (title screen) and drives
 it through the input map: menus, then the race. The race itself is `scenes/race.tscn`. `tests/golden/` holds per-frame traces of autodriven races
 (Palm Coast with traffic and rivals and on a clear road with neither, every other stage with traffic and rivals, default options so power-ups on); `test_golden` replays them
-and also checks every stage's autodriven race finishes in time and every rival finishes. `--no-rivals` and `--no-traffic` empty the road for screenshots. `tools/shots.sh` renders four menus and two race frames at a fixed 60 fps and compares them with
+and also checks every stage's autodriven race finishes in time and every rival finishes. `--no-rivals` and `--no-traffic` empty the road for screenshots. `tools/shots.sh` renders five menus (the update screen staged mid-download) and two race frames at a fixed 60 fps and compares them with
 `tests/shots/` (`tools/shots.py`: a difference hash plus a color difference). CI (`.github/workflows/ci.yml`) runs `tools/test.sh`, and `tools/shots.sh` under xvfb. A pushed `v*` tag runs
 `.github/workflows/release.yml`: tests, `tools/export.sh`, then a GitHub Release with the zips.
 

@@ -1,6 +1,8 @@
 #!/bin/sh
 # Exports the Windows, macOS, Web and Linux builds (export_presets.cfg) and zips
-# each into build/release/SundownRun-<version>-<platform>.zip. Needs the
+# each into build/release/SundownRun-<version>-<platform>.zip, plus the game's
+# .pck and its manifest for the in-game updater (SundownRun-<version>.pck and
+# .json, scripts/core/updater.gd). Needs the
 # Godot export templates for the editor's version installed. Argument: the
 # version for the file names and the macOS bundle (default: the
 # project.godot config/version). Set GODOT to use a binary that isn't
@@ -16,9 +18,14 @@ rm -rf build
 mkdir -p build/windows build/macos build/web build/linux build/release
 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
 
-# The macOS bundle carries the version; set it in a copy of the presets.
+# The macOS bundle and the .exe carry the version, and so does the game (the
+# updater compares it with the latest release's): set it in the presets and
+# project.godot, put back afterwards.
 cp export_presets.cfg build/export_presets.cfg.orig
-trap 'cp build/export_presets.cfg.orig export_presets.cfg' EXIT
+cp project.godot build/project.godot.orig
+trap 'cp build/export_presets.cfg.orig export_presets.cfg; cp build/project.godot.orig project.godot' EXIT
+sed -i.bak -e "s/^config\/version=.*/config\/version=\"$version\"/" project.godot
+rm -f project.godot.bak
 sed -i.bak -e "s/^application\/short_version=.*/application\/short_version=\"$version\"/" \
            -e "s/^application\/version=.*/application\/version=\"$version\"/" \
            -e "s/^application\/file_version=.*/application\/file_version=\"$version.0\"/" \
@@ -37,7 +44,18 @@ for preset in Windows macOS Web Linux; do
   fi
 done
 
+# The updater's: the game alone (the same on every desktop platform; textures
+# aren't VRAM-compressed), and its manifest.
+mkdir -p build/pck
+"$GODOT" --headless --path . --export-pack macOS build/pck/SundownRun.pck >>"$log" 2>&1 || true
+if [ ! -s build/pck/SundownRun.pck ] || grep -q "ERROR:" "$log"; then
+  cat "$log"; echo "FAIL: pack export"; exit 1
+fi
+
 out="$PWD/build/release"
+cp build/pck/SundownRun.pck "$out/SundownRun-$version.pck"
+python3 tools/update_manifest.py "$version" "$("$GODOT" --version)" "$out/SundownRun-$version.pck" >"$out/SundownRun-$version.json"
+cat "$out/SundownRun-$version.json"
 (cd build/windows && zip -q -9 "$out/SundownRun-$version-windows.zip" SundownRun.exe)
 cp build/macos/SundownRun.zip "$out/SundownRun-$version-macos.zip"
 (cd build/web && zip -q -9 -r "$out/SundownRun-$version-web.zip" .)

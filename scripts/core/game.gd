@@ -1,10 +1,10 @@
 extends Node
 ## Main scene: the front end (title, mode select, options, stage select, car select) and the
-## race it starts.
+## race it starts. An exported desktop game opens on the update screen first (UpdateScreen).
 ## Race dev flags (--autodrive, --stage=N, --race) skip the menus and go straight to a race.
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -66,7 +66,10 @@ func _ready() -> void:
 	if quick or pause_shot:
 		start_race()
 	elif menu == null and race == null:  # (--screen=demo starts a race)
-		show_title()
+		if Updates.state != Updater.State.OFF:
+			show_update()
+		else:
+			show_title()
 	if pause_shot:
 		race.pause()
 	if _menu_shot != "":
@@ -114,9 +117,21 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## The title, with START (0) or OPTIONS (1) picked.
 func show_title(item := 0) -> void:
+	if Updater.supported():
+		Updates.mark_good()  # a start on an update got this far: keep it
 	var t := TitleScreen.new()
 	t.index = item
 	_set_menu(t, Screen.TITLE)
+
+
+## The update check, before the title. `staged` (tests and --screen=update) shows that
+## updater instead of the Updates autoload.
+func show_update(staged: Updater = null) -> void:
+	var u := UpdateScreen.new()
+	if staged != null:
+		u.updater = staged
+		u.add_child(staged)
+	_set_menu(u, Screen.UPDATE)
 
 
 ## Mode select, on the last mode picked (or `item`).
@@ -276,7 +291,8 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # --- Dev helpers: `godot -- --screen=stages --menu-shot=/tmp/stages.png` -------------
 # (--screen=pause starts a race and pauses it; add --at-segment=N to pause further in.
 # --car=car_mesa opens car select on that car. --screen=results stages a finish.
-# --screen=demo starts an attract-mode demo, also with --at-segment=N.)
+# --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
+# a download; update:checking, update:failed, update:full and update:ready the other states.)
 
 func _open(which: String) -> void:
 	match which:
@@ -292,10 +308,25 @@ func _open(which: String) -> void:
 			show_mode_select()
 		"demo":
 			start_demo()
+		_ when which.begins_with("update"):
+			show_update(staged_updater(which.get_slice(":", 1) if which.contains(":") else "downloading"))
 		_ when which.begins_with("options:"):
 			show_options(Callable(), "the title screen", OptionsScreen.page_named(which.get_slice(":", 1)))
 		_:
 			show_title()
+
+
+## An updater posed in `state_name` (an Updater.State, lower case) for the update screen's
+## screenshots: version 0.2.0, an 18 MB pack 40% down.
+static func staged_updater(state_name: String) -> Updater:
+	var u := Updater.new()
+	u.state = Updater.State.get(state_name.to_upper(), Updater.State.DOWNLOADING)
+	u.latest = "0.2.0"
+	u.manifest = {"version": "0.2.0", "size": 18382464}
+	u.staged_progress = 0.4
+	if u.state == Updater.State.FAILED:
+		u.error = "The download stopped."
+	return u
 
 
 func _save_menu_shot(frames: int) -> void:

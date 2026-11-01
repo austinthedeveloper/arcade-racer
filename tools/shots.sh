@@ -50,6 +50,7 @@ menu menu_title title || status=1
 menu menu_options options || status=1
 menu menu_stages stages || status=1
 menu menu_cars cars || status=1
+menu menu_update update || status=1
 race race_palm 300 --stage=1 || status=1
 race race_stage3 260 --stage=3 --at-segment=400 || status=1
 

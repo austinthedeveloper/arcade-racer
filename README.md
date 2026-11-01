@@ -101,6 +101,12 @@ git tag v0.1.0 && git push origin v0.1.0
 
 `.github/workflows/release.yml` runs the tests, exports the builds and creates the GitHub Release with the zips and download notes. Running the workflow by hand (Actions > Release > Run workflow) builds the zips as a workflow artifact without publishing. The builds are not code-signed or notarized, so Windows SmartScreen and macOS Gatekeeper warn on first launch; the release notes say how to get past that. The Linux x86_64 zip is not a supported platform and is for testing only (CI smoke-runs it headlessly; a Steam Deck test may follow).
 
+### Updates
+
+From 0.2.0 on, the desktop games update themselves: download once, and every start checks GitHub for the latest release. Each release also carries `SundownRun-<version>.pck` (the whole game without the engine, about 18 MB) and `SundownRun-<version>.json` (version, Godot version, size, SHA-256), written by `tools/export.sh`. When a newer release is for the same Godot version, the update screen downloads its pack into `user://updates/`, checks it and restarts. `BootTree` (`scripts/core/boot_tree.gd`, the main loop) loads the pack before anything else at every start. A release that moves to another Godot version, or changes a `project.godot` setting other than the version, needs a full download; the update screen links to the releases page. 0.1.0 has no updater, so 0.2.0 has to be downloaded by hand once.
+
+To try it without publishing: export two versions, serve the newer one's `.pck`, `.json` and a `release.json` in GitHub's shape from a local web server, and start the older build with `-- --update-api=http://127.0.0.1:8765/release.json`.
+
 ## Docs
 
 - [Game design](docs/01-game-design.md): modes, driving feel, cars, stages, scope
