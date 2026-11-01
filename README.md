@@ -2,7 +2,7 @@
 
 An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports keyboard, gamepads, and steering wheels with pedals.
 
-**Status:** pre-release (v0.2.0; the roadmap aims at a 1.0 candidate in April 2027). Eight stages (Palm Coast Boulevard, Redrock Canyon, Neon Strip, Timberline Pass, Bayou Causeway, Harvest Valley, Thunderhead Highway, Skyline Finale) and twelve cars, each with its own stats. Seven AI rivals with personalities, traffic with each stage's local vehicles, checkpoints against the clock, nitro, drafting, power slides, jumps, crashes and power-ups on the road. Grand Tour, Single Race, Time Attack against your ghost and Free Drive, on three difficulties, with a results screen, standings, saved best times and unlocks. Thunderhead has rain and lightning; every stage has parallax backgrounds and an FX layer. All the sound is synthesized: engines, a four-station radio and an announcer with subtitles. Wheels are calibrated in the game, and every button can be rebound. The art is cut from generated concept art; production car sprites (from 3D renders) and force feedback are still to come ([roadmap](docs/roadmap/00-overview.md)).
+**Status:** pre-release (v0.2.0; the roadmap aims at a 1.0 candidate in April 2027). Eight stages (Palm Coast Boulevard, Redrock Canyon, Neon Strip, Timberline Pass, Bayou Causeway, Harvest Valley, Thunderhead Highway, Skyline Finale) and twelve cars, each with its own stats. Seven AI rivals with personalities, traffic with each stage's local vehicles, checkpoints against the clock, nitro, drafting, power slides, jumps, crashes and power-ups on the road. Grand Tour, Single Race, Time Attack against your ghost and Free Drive, on three difficulties, with a results screen, standings, saved best times and unlocks, including a mirrored version of each stage you win. Thunderhead has rain and lightning; every stage has parallax backgrounds and an FX layer. All the sound is synthesized: engines, a four-station radio and an announcer with subtitles. Wheels are calibrated in the game, and every button can be rebound. The art is cut from generated concept art; production car sprites (from 3D renders) and force feedback are still to come ([roadmap](docs/roadmap/00-overview.md)).
 
 A player and developer guide is on the [wiki](https://github.com/austinthedeveloper/arcade-racer/wiki); the docs in this repository are the source of truth.
 
@@ -14,7 +14,7 @@ Download the latest build from [Releases](https://github.com/austinthedeveloper/
 2. Open Godot, choose **Import**, and pick `project.godot` in this folder.
 3. Press **F5** (or the Play button).
 
-The game opens on the title screen, then mode select, stage select (postcards pinned on a map of the country) and car select.
+The game opens on the title screen, then mode select, stage select (postcards pinned on a map of the country; outside the Grand Tour, Up switches a won stage to its mirror) and car select.
 
 ## Controls
 
