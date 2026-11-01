@@ -14,6 +14,9 @@ var screen := Screen.TITLE
 var mode_index := 0  # into ModeSelect.Item, the last mode picked
 var stage_index := 0  # into Stages
 var car_index := 0  # into Cars
+## The MIRROR toggle on stage select (WS-6): races a stage mirrored where that's open
+## (mirror_for). Not saved; --mirror turns it on.
+var mirror := false
 var menu: MenuScreen
 var race: Node  # race.gd, while racing
 ## Seconds on the title with no input before a demo starts. --attract-delay=N sets it
@@ -52,6 +55,10 @@ func _ready() -> void:
 	var car := DevArgs.value("--car")
 	if car != "":
 		car_index = maxi(0, Cars.LIST.find(Cars.find(car)))
+	mirror = DevArgs.has("--mirror")
+	var mode := DevArgs.value("--mode")
+	if mode != "":
+		mode_index = ModeSelect.Item.get(mode.to_upper(), mode_index)
 	for arg in OS.get_cmdline_user_args():
 		for flag: String in RACE_FLAGS:
 			quick = quick or arg.begins_with(flag)
@@ -254,12 +261,25 @@ func _spawn_race(stage: int, car: int, demo: bool) -> void:
 	race.tour = not demo and mode_index == ModeSelect.Item.GRAND_TOUR
 	race.time_attack = not demo and mode_index == ModeSelect.Item.TIME_ATTACK
 	race.free_drive = not demo and mode_index == ModeSelect.Item.FREE_DRIVE
+	race.mirror = not demo and mirror_for(stage)
 	race.debug_overlay = debug_overlay
 	race.calibration = calibration
 	race.quit_requested.connect(_on_race_quit)
 	race.race_over.connect(_on_race_over)
 	race.options_requested.connect(_on_race_options)
 	add_child(race)
+
+
+## Whether a race on `stage` goes mirrored: the toggle on, in a mode that offers it
+## (mirror_offered), and the stage's mirror open (Unlocks).
+func mirror_for(stage: int) -> bool:
+	return mirror and mirror_offered() and Unlocks.mirror_unlocked(stage)
+
+
+## Mirror mode is for a single stage: a Single Race, Time Attack or Free Drive. The Grand
+## Tour runs on through stages whose mirrors may not be open, so it races them as built.
+func mirror_offered() -> bool:
+	return mode_index != ModeSelect.Item.GRAND_TOUR
 
 
 func _on_race_quit() -> void:
@@ -310,6 +330,8 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # (--screen=pause starts a race and pauses it; add --at-segment=N to pause further in.
 # --screen=unplugged pauses it as a wheel unplugged mid-race does.
 # --car=car_mesa opens car select on that car. --screen=results stages a finish.
+# --mode=single_race (a ModeSelect.Item) picks the mode stage select is in; --mirror turns
+# its MIRROR toggle on.
 # --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
 # a download; update:checking, update:failed, update:full and update:ready the other states.)
 

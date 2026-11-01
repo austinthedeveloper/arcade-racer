@@ -19,7 +19,7 @@ from PIL import Image
 from scipy import ndimage
 
 import manifest
-from spritelib import FOUR, cli_args, key_sheet, pixelate_down, slice_objects
+from spritelib import FOUR, cli_args, key_sheet, pixelate_down, save_sprite, slice_objects
 
 # Background layers, back to front. The sky is opaque and scaled to SKY_HEIGHT pixels; far
 # and near are keyed, cropped to their content and scaled to LAYER_WIDTH pixels per half
@@ -353,7 +353,7 @@ def build(stage, concept_dir, project_dir):
         for name, sprite in slice_objects(path, names, target_height, row=how == ["row"]):
             if name is None:
                 continue
-            sprite.save(os.path.join(out_dir, name + ".png"))
+            save_sprite(sprite, os.path.join(out_dir, name + ".png"))
             print(stage, name, sprite.size)
 
 

@@ -32,9 +32,15 @@ func count() -> int:
 	return ticks.size() / STRIDE
 
 
-## Adds one racing tick of the player.
-func record(p: PlayerCar) -> void:
-	ticks.append_array([p.distance, p.x, p.steer])
+## Adds one racing tick of the player. A mirrored stage (WS-6) is the stage as built flipped,
+## so its runs are saved as built (x and steer times Track.side) and share one ghost.
+func record(p: PlayerCar, side := 1.0) -> void:
+	ticks.append_array([p.distance, p.x * side, p.steer * side])
+
+
+## A tick from `at` placed on a stage mirrored or not (`side`, Track.side).
+static func sided(tick: Vector3, side: float) -> Vector3:
+	return Vector3(tick.x, tick.y * side, tick.z * side)
 
 
 ## Tick `i` (held at the last one after the line) as (distance, x, steer).

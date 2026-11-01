@@ -334,7 +334,8 @@ func collide(track: Track) -> void:
 ## Collides with one segment's spans, sprites and traffic. True once something was hit.
 func _collide_segment(seg: Segment, track: Track) -> bool:
 	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
-	if offroad and hits_span(seg, x, half_car):
+	# A span is kept as built; on a mirrored stage the car meets it at its mirror image
+	if offroad and hits_span(seg, x * track.side(), half_car):
 		crash()
 		return true
 	if offroad:

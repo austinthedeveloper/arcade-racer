@@ -47,6 +47,15 @@ const CAR_SPEED := [0.3, 0.6]
 var cars: Array[TrafficCar] = []
 
 
+## The middle of every lane on `seg` (the usual four when none), left to right as built: on a
+## mirrored stage (Track.side) each is on the other side, so whatever picks a lane by its place
+## in the list picks the mirror of the lane it would pick on the stage as built.
+static func lanes(track: Track, seg: Segment = null) -> Array:
+	var side := track.side()
+	var offsets: Array = LANE_OFFSETS if seg == null else seg.lane_offsets()
+	return offsets.map(func(l: float) -> float: return l * side)
+
+
 func spawn(track: Track, count: int, seed_value: int = 7) -> void:
 	for seg in track.segments:
 		seg.cars.clear()
@@ -55,6 +64,7 @@ func spawn(track: Track, count: int, seed_value: int = 7) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var specials: Array = track.theme.get("specials", SPECIALS)
+	var lane_xs := lanes(track)
 	for i in count:
 		var car := TrafficCar.new()
 		car.z = rng.randf_range(40.0, track.segments.size() - 10.0) * Cfg.SEGMENT_LENGTH
@@ -62,7 +72,7 @@ func spawn(track: Track, count: int, seed_value: int = 7) -> void:
 		var at := track.find_segment(car.z)
 		var k := rng.randi() % at.lanes
 		car.lane_frac = (k + 0.5) / at.lanes
-		car.offset = at.lane_x(k)
+		car.offset = at.lane_x(k) * track.side()
 		car.lane = car.offset
 		var roll := rng.randf()
 		if roll < BIG_SHARE:
@@ -92,7 +102,7 @@ func update(dt: float, track: Track) -> void:
 			car.segment = seg
 		var follows := not is_nan(car.lane_frac)
 		if follows:
-			car.lane = seg.lane_at(car.lane_frac)
+			car.lane = seg.lane_at(car.lane_frac) * track.side()
 		if car.flung > 0.0:
 			car.flung = maxf(0.0, car.flung - dt)
 			car.offset = clampf(car.offset + car.fling_dir * FLING_SPEED * dt, -4.0, 4.0)

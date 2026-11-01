@@ -34,6 +34,11 @@ var camera_z := 0.0
 var camera_depth := Cfg.CAMERA_DEPTH  # the race eases it down for the nitro stretch
 var flash := 1.0  # the FLASHING option's share of the designed blink (Settings.flash_amount(1.0))
 var time := 0.0
+## Stage flow (StageFlow): the end of the stage drawn in the next stage's palette. Off for Free
+## Drive, whose road loops straight back to its own start.
+var flow := true
+var flow_share := 0.0  # the share of the next stage's palette where the camera is (sky and fog)
+var flow_fade := 0.0  # the results' crossfade (StageFlow.crossfade): every segment that far on to all of it
 
 var _pts := PackedVector2Array()
 var _cols := PackedColorArray()
@@ -57,10 +62,11 @@ func _draw() -> void:
 	if track == null or player == null:
 		return
 	var theme := track.theme
-	_fog_color = theme["fog"]
-	var fog_density: float = theme.get("fog_density", Cfg.FOG_DENSITY)
+	var here := StageFlow.palette(track, flow_share) if flow else theme
+	_fog_color = here["fog"]
+	var fog_density: float = here.get("fog_density", Cfg.FOG_DENSITY)
 	_wet = Weather.of(theme).get("wet", 0.0)
-	_wet_sky = theme.get("sky_bottom", _fog_color)
+	_wet_sky = here.get("sky_bottom", _fog_color)
 	var segs := track.segments
 	var count := segs.size()
 	var base := track.find_segment(camera_z)
@@ -87,7 +93,9 @@ func _draw() -> void:
 	var reach := draw_distance(theme)
 	for n in reach:
 		var seg := segs[(base.index + n) % count]
-		var cz := camera_z - (track.length if seg.index < base.index else 0.0)
+		var wrapped := seg.index < base.index
+		var cz := camera_z - (track.length if wrapped else 0.0)
+		seg.shade = segment_shade(seg.handover, flow_fade, wrapped) if flow else 0.0
 		_project(seg, cam_x - x, cam_x - x - dx, cam_y, cz)
 		x += dx
 		dx += seg.curve
@@ -113,7 +121,7 @@ func _draw() -> void:
 			if i > 0 and drawn[i - 1].visible and thin_run(far, seg) and not _stands_on(seg, i == at):
 				run_far = far
 			else:
-				_draw_segment(seg, theme, far, float(i) / reach)
+				_draw_segment(seg, StageFlow.palette(track, seg.shade), far, float(i) / reach)
 				run_far = null
 		_draw_objects(seg, i >= at)
 		if i == at:
@@ -127,6 +135,13 @@ func _draw() -> void:
 			_draw_rival(drawn[at], r, Color.WHITE.lerp(_fog_color, drawn[at].fog))
 		for i in range(at - 1, behind_from(at) - 1, -1):
 			_draw_cars(drawn[i])
+
+
+## The share of the next stage's palette a segment is drawn in: its own (Segment.handover),
+## faded `fade` of the rest of the way by the results, and all of it past the end of the
+## stage (`wrapped`: the road looped round to the start, which stands in for the next stage).
+static func segment_shade(handover: float, fade: float, wrapped: bool) -> float:
+	return 1.0 if wrapped else lerpf(handover, 1.0, fade)
 
 
 ## Segments drawn ahead of the camera on a stage: its theme's "draw_distance" (a busy stage
@@ -258,10 +273,10 @@ func _draw_objects(seg: Segment, cars := true) -> void:
 		var h: float = def["world_h"] * s * Cfg.PROJ
 		var offset: float = sp["offset"]
 		var sx := seg.s1.x + s * offset * seg.width * Cfg.ROAD_WIDTH * Cfg.PROJ
-		var rect := sprite_rect(sx, seg.s1.y, w, h, offset, sp["flip"])
+		var rect := pixel_sprite_rect(sx, seg.s1.y, w, h, offset, sp["flip"])
 		if h < 0.5 or rect.position.x > Cfg.SCREEN_W or rect.position.x + w < 0.0 or rect.position.y >= seg.clip:
 			continue
-		draw_texture_rect(def["tex"], rect, false, tint)
+		draw_texture_rect(SpriteLibrary.texture_for(def, h), rect, false, tint)  # (CP-9: LOD)
 
 	for pu: PowerUps.Pickup in seg.pickups:
 		if pu.taken:
@@ -330,19 +345,31 @@ static func gate_label(flags: int) -> String:
 
 
 ## Screen rect of a span whose opening is centered on the road at (road_x, base_y), the
-## road `road_w` half-width on screen there.
-static func span_rect(def: Dictionary, road_x: float, base_y: float, road_w: float) -> Rect2:
+## road `road_w` half-width on screen there. `mirrored` (a mirrored stage, WS-6): for the art
+## drawn flipped, its opening mirrored too.
+static func span_rect(def: Dictionary, road_x: float, base_y: float, road_w: float, mirrored := false) -> Rect2:
 	var w: float = def["world_w"] / Cfg.ROAD_WIDTH * road_w
 	var h: float = w * def["world_h"] / def["world_w"]
 	var o: Vector2 = def["opening"]
-	return Rect2(road_x - w * (o.x + o.y) / 2.0, base_y - h, w, h)
+	var center := (o.x + o.y) / 2.0
+	if mirrored:
+		center = 1.0 - center
+	return Rect2(road_x - w * center, base_y - h, w, h)
+
+
+## Where a span's gate text goes (its "banner", fractions of the sprite) in its screen
+## `rect`; on a mirrored stage the art is flipped, the text not, so the box moves over.
+static func banner_box(rect: Rect2, banner: Rect2, mirrored: bool) -> Rect2:
+	var x := 1.0 - banner.end.x if mirrored else banner.position.x
+	return Rect2(rect.position + Vector2(x, banner.position.y) * rect.size, banner.size * rect.size)
 
 
 func _draw_span(seg: Segment, id: String, label: String, tint: Color) -> void:
 	var def: Dictionary = SpriteLibrary.spans.get(id, {})
 	if def.is_empty():
 		return
-	var rect := span_rect(def, seg.s1.x, seg.s1.y, seg.sw1 / seg.width * SpriteLibrary.span_scale(seg.width))
+	var mirrored := track.mirrored
+	var rect := span_rect(def, seg.s1.x, seg.s1.y, seg.sw1 / seg.width * SpriteLibrary.span_scale(seg.width), mirrored)
 	if rect.size.y < 1.0 or rect.position.y >= seg.clip or rect.end.x < 0.0 or rect.position.x > Cfg.SCREEN_W:
 		return
 	var fill: Color = def["fill"]
@@ -353,11 +380,12 @@ func _draw_span(seg: Segment, id: String, label: String, tint: Color) -> void:
 		draw_rect(Rect2(rect.end.x - 1.0, top, Cfg.SCREEN_W - rect.end.x + 9.0, rect.end.y - top), col)
 		if def["ceiling"]:
 			draw_rect(Rect2(rect.position.x, top, rect.size.x, rect.position.y - top + 1.0), col)
-	draw_texture_rect(def["tex"], rect, false, tint)
+	# Mirrored, a negative width flips the art within the same rect (as sprite_rect)
+	draw_texture_rect(def["tex"], Rect2(rect.position, Vector2(-rect.size.x, rect.size.y)) if mirrored else rect, false, tint)
 	var banner: Rect2 = def["banner"]
 	if label == "" or banner.size.x <= 0.0:
 		return
-	var box := Rect2(rect.position + banner.position * rect.size, banner.size * rect.size)
+	var box := banner_box(rect, banner, mirrored)
 	var font_size := mini(int(box.size.y * 0.7), 96)
 	if font_size >= 6:
 		draw_string(_font, Vector2(box.position.x, box.position.y + box.size.y * 0.78), label,
@@ -370,6 +398,17 @@ func _draw_span(seg: Segment, id: String, label: String, tint: Color) -> void:
 static func sprite_rect(sx: float, base_y: float, w: float, h: float, offset: float, flip: bool) -> Rect2:
 	var x0 := sx - w if offset < 0.0 else sx
 	return Rect2(x0, base_y - h, -w if flip else w, h)
+
+
+## sprite_rect on the screen's pixel grid (CP-9): its edges rounded to whole pixels, so a
+## sprite never starts partway into a pixel and every one is sampled on the same grid. A
+## mirrored sprite (negative width, the same area) stays mirrored. At least a pixel each way.
+static func pixel_sprite_rect(sx: float, base_y: float, w: float, h: float, offset: float, flip: bool) -> Rect2:
+	var left := sx - w if offset < 0.0 else sx
+	var x0 := roundf(left)
+	var y0 := roundf(base_y - h)
+	var pw := maxf(1.0, roundf(left + w) - x0)
+	return Rect2(x0, y0, -pw if flip else pw, maxf(1.0, roundf(base_y) - y0))
 
 
 ## A rival in its segment, drawn with its car's steering strip like the player's.
@@ -461,7 +500,7 @@ static func covered_colors(theme: Dictionary, depth: float) -> Dictionary:
 ## thin line along the foot of the wall. Drawn with the segment, so nearer frames cover them.
 func _tunnel_lights(seg: Segment, lights: Array) -> void:
 	for k in 2:
-		var side := -1.0 if k == 0 else 1.0
+		var side := (-1.0 if k == 0 else 1.0) * track.side()  # each color on its own wall, mirrored too
 		var col: Color = _fogged(lights[k], seg.fog)
 		var glow := Color(col, 0.35)
 		_quad_pts(wall_strip(seg, side * TUBE_OFFSET, TUBE_HEIGHT - TUBE_THICK, TUBE_THICK * 3.0), glow)

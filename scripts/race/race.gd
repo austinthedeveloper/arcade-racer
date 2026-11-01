@@ -37,6 +37,9 @@ var demo := false
 var time_attack := false
 ## Free Drive: no clock, no rivals, no finish; the road loops on until you quit (pause menu).
 var free_drive := false
+## Mirror mode (WS-6): the stage flipped left for right (Stages.build). It shares the stage's
+## best times and ghost: the same road, the same distances.
+var mirror := false
 var ghost: Ghost  # Time Attack: the best run so far, replayed (null before the first)
 var recording: Ghost  # Time Attack: this run, tick by tick
 var ghost_now := Vector3.ZERO  # the ghost this tick: distance, x, steer (Ghost.at)
@@ -63,12 +66,13 @@ var time_left := START_TIME
 var race_time := 0.0
 var finish_age := 0.0  # seconds since the finish line (real time, not slowed)
 var _results_shown := false  # the results have come up for this finish (closed again or not)
+var results_age := -1.0  # seconds since the results came up, -1 before (StageFlow.crossfade)
 var launch: Launch.Grade = Launch.Grade.PENDING  # how the player's start went
 var score := Scoring.new()
 var place := 1  # the player's place in the field (Rivals.standings)
 var player_finish := -1.0  # race time the player finished in, -1 still racing
 var touched_traffic := false  # the player has touched a traffic car this stage (Unlocks secret)
-var new_unlocks: Array[String] = []  # car ids this finish opened, for the HUD
+var new_unlocks: Array[String] = []  # car ids (and a stage's mirror_id) this finish opened, for the HUD
 var finish_distance := 1.0
 var checkpoint_bonus := CHECKPOINT_BONUS  # the next checkpoint's, after the timer option
 var clock: Array[float] = []  # this stage's ARCADE clock: start, then each checkpoint (stage_clock)
@@ -159,7 +163,7 @@ func _ready() -> void:
 func start_race() -> void:
 	InputRouter.speed_factor = 0.0
 	_frame = 0
-	track = Stages.build(stage_index)
+	track = Stages.build(stage_index, mirror)
 	player = PlayerCar.new()
 	var car := Cars.find(car_id)
 	player.setup(car)
@@ -205,6 +209,7 @@ func start_race() -> void:
 	race_time = 0.0
 	finish_age = 0.0
 	_results_shown = false
+	results_age = -1.0
 	player_finish = -1.0
 	touched_traffic = false
 	new_unlocks.clear()
@@ -217,7 +222,7 @@ func start_race() -> void:
 	place = rivals.place(player, player_finish)
 	ghost = Ghost.load_best(stage_index, car_id) if time_attack else null
 	recording = Ghost.make(stage_index, car_id) if time_attack else null
-	ghost_now = Vector3.ZERO if ghost == null else ghost.at(0)
+	ghost_now = Vector3.ZERO if ghost == null else Ghost.sided(ghost.at(0), track.side())
 	road.ghost = ghost_now
 	split = NAN
 	new_best = false
@@ -234,7 +239,11 @@ func start_race() -> void:
 	# Started partway in (--at-segment): past the checkpoints behind it
 	while next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
-	background.set_theme(track.theme)
+	background.set_theme(track.theme, track.next_theme)
+	background.mirrored = track.mirrored
+	road.flow = not free_drive  # (its road loops straight back to its own start)
+	road.flow_share = 0.0
+	road.flow_fade = 0.0
 	background.offset = 0.0
 	road.track = track
 	road.player = player
@@ -476,14 +485,14 @@ func _physics_process(dt: float) -> void:
 		score.watch(dt, player, track)
 		_check_pickups()
 		if recording != null:
-			recording.record(player)
+			recording.record(player, track.side())
 		_check_progress()
 		_callouts_after_tick(earned, place_before)
 	if demo and demo_over():
 		quit_requested.emit()
 		return
 	if ghost != null:
-		ghost_now = ghost.at(recording.count() - 1)
+		ghost_now = Ghost.sided(ghost.at(recording.count() - 1), track.side())
 		road.ghost = ghost_now
 
 	background.offset += seg_before.curve * (player.speed * sim / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
@@ -505,6 +514,7 @@ func _physics_process(dt: float) -> void:
 	road.camera_z = player.position
 	var rise := track.height_at(player.position + Background.HILL_AHEAD) - player.road_y
 	background.hill = Background.hill_shift(rise, road.camera_depth)
+	_flow(dt)
 	if _results_shot and state == State.RACING and race_time > 1.0:
 		_stage_results_shot()
 	_redraw()
@@ -616,7 +626,11 @@ func _check_progress() -> void:
 			prompt = ("NEW BEST!   " if new_best else "") + against + prompt
 		if _saves() and Unlocks.earns_secret(stage_index, touched_traffic, not traffic.cars.is_empty()):
 			SaveData.unlock(Unlocks.SECRET_CAR)
+		if _saves() and Unlocks.earns_mirror(place, not rivals.cars.is_empty()):
+			SaveData.unlock(Unlocks.mirror_id(stage_index))
 		new_unlocks = Unlocks.newly_open(before_furthest, before_unlocks, SaveData.furthest_stage, SaveData.unlocks)
+		if SaveData.is_unlocked(Unlocks.mirror_id(stage_index)) and not before_unlocks.has(Unlocks.mirror_id(stage_index)):
+			new_unlocks.append(Unlocks.mirror_id(stage_index))
 		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
 		if place == 1 and not rivals.cars.is_empty():
 			callouts.push(Callouts.Kind.FIRST_PLACE)
@@ -698,7 +712,22 @@ func _saves() -> bool:
 
 func _show_results() -> void:
 	_results_shown = true
+	results_age = 0.0
 	results.open()
+
+
+## Stage flow (StageFlow), display only: the sky and fog turn to the next stage's as the car
+## runs into its end, and the results fade the rest of the way when the tour goes on to it.
+func _flow(dt: float) -> void:
+	if results_age >= 0.0:
+		results_age += dt
+	var age := results_age if after == After.NEXT_STAGE else -1.0
+	var here := track.find_segment(player.position + Cfg.PLAYER_Z)
+	var k := StageFlow.share(here.handover, age) if road.flow else 0.0
+	road.flow_share = k
+	road.flow_fade = StageFlow.crossfade(age) if road.flow else 0.0
+	background.share = k
+	results.flow_share = k
 
 
 ## How fast the world runs `age` seconds after the finish line: FINISH_SLOWMO for a moment,
@@ -756,6 +785,8 @@ func _parse_dev_args() -> void:
 			_log_banners = true
 		elif arg.begins_with("--stage="):
 			stage_index = clampi(int(arg.get_slice("=", 1)) - 1, 0, Stages.count() - 1)
+		elif arg == "--mirror":
+			mirror = true
 		elif arg.begins_with("--car="):
 			car_id = Cars.find(arg.get_slice("=", 1))["id"]
 		elif arg.begins_with("--at-segment="):
@@ -810,7 +841,7 @@ func _autodrive_lane() -> float:
 	const LOOKAHEAD := 40  # segments
 	var want := maxf(player.speed, Cfg.MAX_SPEED * 0.8)
 	var here := track.find_segment(player.position + Cfg.PLAYER_Z).index
-	var lanes: Array = track.narrowest_ahead(player.position + Cfg.PLAYER_Z).lane_offsets()
+	var lanes: Array = Traffic.lanes(track, track.narrowest_ahead(player.position + Cfg.PLAYER_Z))
 	var best: float = lanes[0]
 	var best_gap := -1
 	lanes.sort_custom(func(a: float, b: float) -> bool: return absf(a - player.x) < absf(b - player.x))
