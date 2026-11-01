@@ -11,6 +11,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 - Roads change width: Thunderhead's road works and the Timberline summit narrow to two lanes,
   and Palm Coast's town and Skyline's downtown open out into six-lane boulevards (WS-7).
+- Power slides: brake while steering at speed to slide through a bend, turning tighter for a
+  little speed, with squealing tires and smoke; hold the steering to keep it going (RC-8).
 
 ## [0.2.0] - 2026-11-01
 

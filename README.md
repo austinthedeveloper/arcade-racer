@@ -25,6 +25,9 @@ An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports
 | Input debug overlay | F1 | | |
 | Calibrate wheel | F2 | | |
 
+Power slide: brake while steering at speed, then keep the steering on. The car slides round
+tighter for a little speed; it ends when you straighten up.
+
 ### Menus
 
 Menus go left and right only, so every device can drive them:

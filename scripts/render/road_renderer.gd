@@ -414,7 +414,7 @@ func _draw_player() -> void:
 	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
 	var y := Cfg.HORIZON_Y + s * Cfg.CAMERA_HEIGHT * Cfg.PROJ
 	var lift := p.air_height * s * Cfg.PROJ
-	var steer := p.steer
+	var steer := p.shown_steer()
 	if p.crash_time > 0.0:
 		var k := p.crash_time / Cfg.CRASH_DURATION
 		steer = sin(p.crash_time * 20.0) * 2.0
