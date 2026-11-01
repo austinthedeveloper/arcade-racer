@@ -204,6 +204,22 @@ func test_settings_v6_to_v7_adds_subtitles() -> void:
 	_clean()
 
 
+func test_settings_v7_to_v8_adds_manual_gears() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v7.cfg")
+	eq(Settings.migrate(cfg), 7, "from version 7")
+	eq([CfgVersion.of(cfg), cfg.get_value("play", "manual_gears")], [Settings.VERSION, false], "migrated on: automatic")
+	_clean()
+	_load_settings("settings_v7.cfg")
+	eq(Settings.manual_gears, false, "v7 loads with automatic gears")
+	eq([Settings.subtitles, Settings.steer_assist, Settings.radio], [false, true, 2], "the rest as saved")
+	Settings.manual_gears = true
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.manual_gears], [Settings.VERSION, true], "manual saved and loaded back")
+	_clean()
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")

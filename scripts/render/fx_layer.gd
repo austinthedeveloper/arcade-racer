@@ -251,8 +251,8 @@ func _at_wheels(effect: String, base: Vector2, w: float) -> void:
 
 
 ## The effects the car calls for this tick, from its state now and last tick's speed and
-## nitro time: "smoke" (braking hard, wheelspin off the line, cornering on the limit, a crash
-## slide), "kickup" (off the road), "sparks" (any hit), "impact" (a crash), "puff" (landing),
+## nitro time: "smoke" (braking hard, wheelspin off the line, cornering on the limit, a power
+## slide, a crash slide), "kickup" (off the road), "sparks" (any hit), "impact" (a crash), "puff" (landing),
 ## "nitro_burst" (nitro lit this tick).
 static func triggers(p: PlayerCar, last_speed: float, last_nitro: float) -> PackedStringArray:
 	var out := PackedStringArray()
@@ -262,6 +262,7 @@ static func triggers(p: PlayerCar, last_speed: float, last_nitro: float) -> Pack
 		out.append("smoke")
 	elif grounded and not p.offroad and (
 			(p.braking and pct > 0.35)
+			or p.slide != 0.0
 			or (p.speed > last_speed and p.speed > 0.0 and pct < 0.25)
 			or (absf(p.steer) > 0.8 and pct > 0.7)):
 		out.append("smoke")

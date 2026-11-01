@@ -1,11 +1,21 @@
 class_name PlayerCar
 extends RefCounted
-## Arcade driving model in track space: z along the road, x across it (-1..1 is the road).
+## Arcade driving model in track space: z along the road, x across it in Cfg.ROAD_WIDTH
+## (-1..1 is the usual road; Segment.width says how wide it is here, WS-7).
 
 const PITCH_SPAN := 400.0  # world units of road the car's pitch is measured over (about its length)
 const PITCH_FULL_DEG := 30.0
 const PITCH_RATE := 8.0
 const MAX_TICK_SEGMENTS := 4  # more segments than this in one tick is a teleport
+## The five gears: the speed fraction (speed_percent) where each ends. The automatic is in
+## whichever band the speed is in (auto_gear); the engine sound (RaceAudio.engine_rpm) and the
+## tach rev through each. Manual gears (Settings.manual_gears) shift through the same bands. Every gear but the top one has a rev limiter at its band's end; a
+## gear too tall for the speed pulls weakly (down to LUG_ACCEL at a standstill); and the top
+## gear runs MANUAL_TOP_BONUS past the automatic's top speed, the reward for shifting.
+const GEARS: Array[float] = [0.0, 0.16, 0.34, 0.54, 0.76, 1.0]
+const MANUAL_TOP_BONUS := 0.03
+const LUG_ACCEL := 0.3
+const TOP_GEAR := 5  # GEARS.size() - 1
 
 var position := 0.0  # camera z, wrapped to the track length
 var last_position := 0.0  # position before this tick's move
@@ -17,6 +27,11 @@ var steer := 0.0  # smoothed steering, for visuals
 var pitch := 0.0  # smoothed nose angle for visuals: 1 full nose-down (downhill), -1 full nose-up
 var braking := false
 var offroad := false
+var manual := false  # manual gears: the player shifts (shift); otherwise the gear follows the speed
+var gear := 1  # the manual gear, 1..TOP_GEAR
+var shifted := 0  # +1 or -1 for the tick a manual shift happens, else 0
+var slide := 0.0  # power slide (RC-8): -1 sliding left, 1 right, 0 not sliding
+var slides := true  # whether this car power slides (rivals don't: they brake to stay clear)
 
 var nitro_charges := Cfg.NITRO_CHARGES
 var nitro_time := 0.0
@@ -77,9 +92,12 @@ func reset(start_position: float = 0.0) -> void:
 	bog_time = 0.0
 	draft = 0.0
 	draft_time = 0.0
+	slide = 0.0
 	ram_time = 0.0
 	ghost_time = 0.0
 	crash_time = 0.0
+	gear = 1
+	shifted = 0
 	airborne = false
 	air_height = 0.0
 	pitch = 0.0
@@ -90,16 +108,66 @@ func speed_percent() -> float:
 	return speed / Cfg.MAX_SPEED
 
 
+## The gear (1..TOP_GEAR) the automatic is in at `pct` of top speed: the band of GEARS it
+## falls in.
+static func auto_gear(pct: float) -> int:
+	for g in TOP_GEAR:
+		if pct < GEARS[g + 1]:
+			return g + 1
+	return TOP_GEAR
+
+
+## The speed (world units per second) where manual `g`'s rev limiter cuts in: the end of its
+## band in GEARS. The top gear has none (INF): top speed is its limit.
+static func gear_limit(g: int) -> float:
+	return INF if g >= TOP_GEAR else GEARS[g] * Cfg.MAX_SPEED
+
+
+## The share of its pull a car keeps in manual `g` at `pct` of top speed (speed_percent):
+## all of it from the start of the gear's band up, LUG_ACCEL at a standstill below it.
+static func lug(g: int, pct: float) -> float:
+	var start: float = GEARS[clampi(g, 1, TOP_GEAR) - 1]
+	if start <= 0.0 or pct >= start:
+		return 1.0
+	return lerpf(LUG_ACCEL, 1.0, maxf(pct, 0.0) / start)
+
+
+## Manual gears: one gear up (`dir` 1) or down (-1). A downshift that would put the car past
+## the lower gear's limiter is refused, as is shifting past 1st or the top gear. Returns true
+## when the gear changed.
+func shift(dir: int) -> bool:
+	var to := clampi(gear + signi(dir), 1, TOP_GEAR)
+	if to == gear or (to < gear and speed > gear_limit(to)):
+		return false
+	gear = to
+	shifted = signi(dir)
+	return true
+
+
+## The gear the tach shows and the engine is in: the manual gear, or (automatic) the one
+## the speed is in.
+func shown_gear() -> int:
+	return gear if manual else auto_gear(speed_percent())
+
+
+## True while a manual gear's rev limiter holds the car back.
+func on_limiter() -> bool:
+	return manual and gear < TOP_GEAR and speed >= gear_limit(gear) - 0.01
+
+
 func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	landed = false
 	crashed = false
 	bumped = false
 	hit_traffic = false
+	shifted = 0
 	var seg := track.find_segment(position + Cfg.PLAYER_Z)
 	var pct := speed / Cfg.MAX_SPEED
 	var top := top_speed * (Cfg.NITRO_SPEED_MULT if nitro_time > 0.0 else 1.0)
 	if draft_time > 0.0:
 		top *= Draft.SPEED_MULT
+	if manual:
+		top *= 1.0 + MANUAL_TOP_BONUS
 
 	var throttle := 0.0
 	var brake := 0.0
@@ -111,11 +179,18 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 		if inp.nitro_pressed and nitro_charges > 0 and nitro_time <= 0.0:
 			nitro_charges -= 1
 			nitro_time = nitro_duration
+	if controls and manual:  # a crashed car can still drop a gear for the restart
+		if inp.shift_up_pressed:
+			shift(1)
+		elif inp.shift_down_pressed:
+			shift(-1)
 	nitro_time = maxf(0.0, nitro_time - dt)
 	launch_time = maxf(0.0, launch_time - dt)
 	bog_time = maxf(0.0, bog_time - dt)
 	ram_time = maxf(0.0, ram_time - dt)
 	ghost_time = maxf(0.0, ghost_time - dt)
+
+	slide = slide_after(slide, speed, steer_in, brake, slides and not airborne and not offroad and crash_time <= 0.0)
 
 	var step := speed * dt
 	last_position = position
@@ -128,16 +203,21 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	last_x = x
 	if airborne:
 		rate *= Cfg.AIR_STEER
-	x += steer_in * rate * (1.0 if airborne else grip_for(seg.grip, offroad))
+	x += steer_in * rate * (1.0 if airborne else grip_for(seg.grip, offroad)) * (Cfg.SLIDE_TURN if slide != 0.0 else 1.0)
 	if not airborne:
 		x -= rate / steer_mult * pct * seg.curve * Cfg.CENTRIFUGAL * pull_mult
 	steer = lerpf(steer, steer_in, minf(1.0, dt * Cfg.STEER_SMOOTHING))
 
 	# Speed
+	var was := speed
 	if crash_time > 0.0:
 		crash_time -= dt
 		speed = move_toward(speed, 0.0, Cfg.CRASH_BRAKING * dt)
-		x = move_toward(x, clampf(x, -Cfg.CRASH_RECOVER_X, Cfg.CRASH_RECOVER_X), dt * Cfg.CRASH_RECOVER_RATE)
+		var recover := Cfg.CRASH_RECOVER_X * seg.width
+		x = move_toward(x, clampf(x, -recover, recover), dt * Cfg.CRASH_RECOVER_RATE)
+	elif slide != 0.0:
+		# Sliding: neither the throttle nor the brake bites, the tires scrub a little speed off
+		speed -= Cfg.SLIDE_DECEL * dt
 	elif not airborne:
 		if throttle > 0.01:
 			var boost := Cfg.NITRO_ACCEL_MULT if nitro_time > 0.0 else 1.0
@@ -145,22 +225,46 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 				boost *= Launch.BOOST_ACCEL
 			elif bog_time > 0.0:
 				boost *= Launch.BOG_ACCEL
+			if manual:
+				boost *= lug(gear, pct)
 			speed += Cfg.ACCEL * accel_mult * boost * throttle * (Cfg.ACCEL_START - Cfg.ACCEL_FADE * speed / top) * dt
 		if brake > 0.01:
 			speed -= Cfg.BRAKING * brake * dt
 		if throttle <= 0.01 and brake <= 0.01:
 			speed -= Cfg.DECEL * dt
-	offroad = absf(x) > 1.0
+	offroad = absf(x) > track.width_at(position + Cfg.PLAYER_Z)
 	if offroad and not airborne and offroad_mult > 0.0 and speed > Cfg.OFFROAD_LIMIT / offroad_mult:
 		speed = maxf(Cfg.OFFROAD_LIMIT / offroad_mult, speed - Cfg.OFFROAD_DECEL * offroad_mult * dt)
 	if speed > top:
 		speed = move_toward(speed, top, Cfg.OVERSPEED_DECAY * dt)
+	if manual and speed > gear_limit(gear):  # the rev limiter: held there, or let down to it
+		speed = gear_limit(gear) if was <= gear_limit(gear) else move_toward(speed, gear_limit(gear), Cfg.OVERSPEED_DECAY * dt)
 	speed = maxf(speed, 0.0)
 	x = clampf(x, -Cfg.MAX_X, Cfg.MAX_X)
 	braking = brake > 0.1
 
 	_update_air(dt, track.height_at(position + Cfg.PLAYER_Z))
 	_update_pitch(dt, track)
+
+
+## The power slide (RC-8) after this tick, from `slide` before it (-1 left, 1 right, 0 none):
+## braking at least SLIDE_BRAKE with SLIDE_STEER lock at SLIDE_SPEED or faster starts one the
+## way the car is steering; it lasts while the lock stays at least SLIDE_HOLD that way and the
+## car faster than SLIDE_EXIT_SPEED. `can` is false in the air, off the road or crashed: no slide.
+static func slide_after(slide: float, speed: float, steer_in: float, brake: float, can: bool) -> float:
+	if not can:
+		return 0.0
+	if slide != 0.0:
+		return slide if steer_in * slide >= Cfg.SLIDE_HOLD and speed > Cfg.SLIDE_EXIT_SPEED else 0.0
+	if brake >= Cfg.SLIDE_BRAKE and absf(steer_in) >= Cfg.SLIDE_STEER and speed >= Cfg.SLIDE_SPEED:
+		return signf(steer_in)
+	return 0.0
+
+
+## The steering the car's sprite shows: its smoothed steering, or the strip's last frame the
+## way it slides (the slide frames until CP-3 draws its own).
+func shown_steer() -> float:
+	return slide if slide != 0.0 else steer
 
 
 ## The share of its steering a car keeps on road of `grip` (Segment.grip), `off` it or not:
@@ -239,7 +343,7 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 			if def.is_empty() or def["collide"] <= 0.0:
 				continue
 			var w_units: float = def["world_w"] / Cfg.ROAD_WIDTH
-			var offset: float = sp["offset"]
+			var offset: float = sp["offset"] * seg.width
 			var center := offset - w_units / 2.0 if offset < 0.0 else offset + w_units / 2.0
 			if absf(x - center) < w_units * def["collide"] / 2.0 + half_car:
 				crash()
@@ -298,7 +402,7 @@ func move_to(z: float, track: Track) -> void:
 
 
 ## Whether a car at `car_x` (half-width `half_car`, both in road half-widths) hits the
-## legs or walls of a span or race gate in `seg`.
+## legs or walls of a span or race gate in `seg` (sized for its road, span_scale).
 static func hits_span(seg: Segment, car_x: float, half_car: float) -> bool:
 	var ids: Array[String] = seg.spans.duplicate()
 	var gate := RoadRenderer.gate_for(seg.flags)
@@ -308,8 +412,9 @@ static func hits_span(seg: Segment, car_x: float, half_car: float) -> bool:
 		if not SpriteLibrary.spans.has(id):
 			continue
 		var e := SpriteLibrary.span_edges(id)
-		var inner: Vector2 = e["inner"]
-		var outer: Vector2 = e["outer"]
+		var k := SpriteLibrary.span_scale(seg.width)
+		var inner: Vector2 = e["inner"] * k
+		var outer: Vector2 = e["outer"] * k
 		if (car_x - half_car < inner.x and car_x + half_car > outer.x) or (car_x + half_car > inner.y and car_x - half_car < outer.y):
 			return true
 	return false

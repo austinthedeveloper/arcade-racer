@@ -4,6 +4,9 @@ extends RefCounted
 ## marching beside the road, windswept trees, a truck stop and motel, and a
 ## construction zone lined with cones and barrels.
 
+const WORKS_WIDTH := 0.6  # the road's half-width through the road works (Track.set_width)
+
+
 static func theme() -> Dictionary:
 	return {
 		"sky_top": Color("#1b2140"),
@@ -62,6 +65,8 @@ static func build() -> Track:
 	t.straight(Track.LENGTH_LONG)
 
 	t.finish_stage(final_straight)
+	# The road works close it down to two lanes, coned off at the narrowed edge (WS-7)
+	t.set_width(works_start, works_end - works_start, WORKS_WIDTH, 2)
 
 	_decorate(t, works_start, works_end)
 	t.add_spans_at("thunder_overpass", [0.15, 0.45, 0.6, 0.88])

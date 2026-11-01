@@ -163,6 +163,7 @@ func start_race() -> void:
 	player = PlayerCar.new()
 	var car := Cars.find(car_id)
 	player.setup(car)
+	player.manual = Settings.manual_gears and not demo  # the attract demo shows the automatic
 	CarSprites.load_all()
 	player.reset(_start_segment * Cfg.SEGMENT_LENGTH)
 	player.distance = _start_segment * Cfg.SEGMENT_LENGTH  # that far along the route, so the finish is where it is drawn
@@ -786,8 +787,21 @@ func _autodrive_input() -> DriveInput:
 	inp.throttle = 0.0 if state == State.COUNTDOWN and countdown > 0.1 else 1.0
 	var lane := _drive_x if not is_nan(_drive_x) else _autodrive_lane()
 	inp.steer = clampf((seg.curve * 0.25) + (lane - player.x) * 1.5, -1.0, 1.0)
+	# A dab of brake with the lock on throws it into a power slide through a hard bend (RC-8)
+	if autodrive_slides(seg.curve, inp.steer, player):
+		inp.brake = 1.0
 	inp.nitro_pressed = _frame % 600 == 300
+	inp.shift_up_pressed = player.on_limiter()
+	inp.shift_down_pressed = player.manual and player.gear > 1 and player.speed < PlayerCar.gear_limit(player.gear - 1) * 0.8
 	return inp
+
+
+## Whether the autodrive brakes into a power slide: a hard bend ahead (Track.CURVE_HARD), the
+## lock on for it and the speed for a slide, on the road and not sliding already (the brake
+## would only brake).
+static func autodrive_slides(curve_ahead: float, steer: float, car: PlayerCar) -> bool:
+	return car.slide == 0.0 and not car.airborne and not car.offroad and absf(curve_ahead) >= Track.CURVE_HARD \
+		and absf(steer) >= Cfg.SLIDE_STEER and car.speed >= Cfg.SLIDE_SPEED
 
 
 ## The lane with the most open road ahead, keeping the current one on a tie. Anything slower
@@ -796,9 +810,9 @@ func _autodrive_lane() -> float:
 	const LOOKAHEAD := 40  # segments
 	var want := maxf(player.speed, Cfg.MAX_SPEED * 0.8)
 	var here := track.find_segment(player.position + Cfg.PLAYER_Z).index
-	var best: float = Traffic.LANE_OFFSETS[0]
+	var lanes: Array = track.narrowest_ahead(player.position + Cfg.PLAYER_Z).lane_offsets()
+	var best: float = lanes[0]
 	var best_gap := -1
-	var lanes: Array = Traffic.LANE_OFFSETS.duplicate()
 	lanes.sort_custom(func(a: float, b: float) -> bool: return absf(a - player.x) < absf(b - player.x))
 	for lane: float in lanes:
 		var gap := LOOKAHEAD

@@ -196,3 +196,17 @@ func test_race_uses_the_assists_only_when_on() -> void:
 	check(absf(r2.player.x - Assists.nearest_lane(r2.player.x)) <= absf(x_off - Assists.nearest_lane(x_off)) + 0.01,
 		"and keeps nearer a lane (%.2f against %.2f)" % [r2.player.x, x_off])
 	_clean()
+
+
+func test_steering_pulls_toward_the_lanes_of_this_road() -> void:
+	# WS-7: the lanes of the road under the car, however wide it is
+	var p := _car(Cfg.MAX_SPEED)
+	var seg := Segment.new()
+	seg.width = 1.5
+	seg.lanes = 6
+	near(Assists.nearest_lane(1.1, seg.lane_offsets()), 1.25, 0.0001, "the boulevard's outer lane")
+	check(Assists.steer_help(0.0, 1.1, 1.0, 0.0, p, seg) > 0.0, "steers out to it, past the usual edge")
+	seg.width = 0.6
+	seg.lanes = 2
+	check(Assists.steer_help(0.0, 0.1, 1.0, 0.0, p, seg) > 0.0, "toward the narrowing's right lane (0.3)")
+	eq(Assists.steer_help(0.0, 0.7, 1.0, 0.0, p, seg), 0.0, "off the narrowed road: nothing")
