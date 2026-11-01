@@ -238,6 +238,42 @@ func test_cars_behind_the_player_are_drawn_over_it() -> void:
 	eq(RoadRenderer.player_slot(drawn, 7), -1, "not drawn: the player goes last")
 
 
+func test_background_layers_scroll_at_their_own_rates() -> void:
+	# WS-3: the sky drifts, the far strip turns once per unit of offset, the near one faster.
+	check(Background.SCROLL_RATE["sky"] < Background.SCROLL_RATE["far"], "the sky is slower than the far layer")
+	check(Background.SCROLL_RATE["far"] < Background.SCROLL_RATE["near"], "the far layer is slower than the near one")
+	var wide := 100000.0  # wide enough not to wrap
+	for layer: String in Background.LAYERS:
+		var moved := -Background.layer_x(0.01, layer, wide)
+		eq(moved, roundf(0.01 * Background.SCROLL_WIDTH * Background.SCROLL_RATE[layer]),
+			"%s: SCROLL_RATE times the far strip's pixels" % layer)
+	eq(Background.layer_x(1.0, "far", Background.SCROLL_WIDTH), 0.0, "a full turn of a far strip as wide as SCROLL_WIDTH")
+	eq(Background.layer_x(0.0, "near", 1920.0), 0.0, "no scroll: flush left")
+	for o: float in [0.13, -0.4, 2.7]:
+		for layer: String in Background.LAYERS:
+			var x := Background.layer_x(o, layer, 1200.0)
+			check(x <= 0.0 and x > -1200.0, "%s at %s: the first copy starts at or left of 0" % [layer, o])
+
+
+func test_background_layers_shift_with_the_hills() -> void:
+	eq(Background.hill_shift(0.0, Cfg.CAMERA_DEPTH), 0.0, "flat road: the horizon stays")
+	check(Background.hill_shift(1500.0, Cfg.CAMERA_DEPTH) < 0.0, "a climb ahead lifts the scenery")
+	check(Background.hill_shift(-1500.0, Cfg.CAMERA_DEPTH) > 0.0, "a crest drops it")
+	eq(Background.hill_shift(1e6, Cfg.CAMERA_DEPTH), -Background.HILL_MAX, "at most HILL_MAX up")
+	eq(Background.hill_shift(-1e6, Cfg.CAMERA_DEPTH), Background.HILL_MAX, "and down")
+	# Where the road HILL_AHEAD ahead lands on the screen, relative to the flat horizon
+	var rise := -1000.0
+	var road_dy := -rise * Cfg.CAMERA_DEPTH / Background.HILL_AHEAD * Cfg.PROJ
+	eq(Background.hill_shift(rise, Cfg.CAMERA_DEPTH), roundf(road_dy), "follows the road's far end")
+	var hill := 20.0
+	var sky := Background.layer_bottom("sky", hill) - Background.layer_bottom("sky", 0.0)
+	var far := Background.layer_bottom("far", hill) - Background.layer_bottom("far", 0.0)
+	var near := Background.layer_bottom("near", hill) - Background.layer_bottom("near", 0.0)
+	check(sky < far and far <= near, "the sky moves least, the near layer most (%s, %s, %s)" % [sky, far, near])
+	eq(near, hill, "the near layer sits on the road's far end")
+	eq(Background.layer_path("res://bg/neon_far.png", "sky"), "res://bg/neon_sky.png", "layers sit beside the far strip")
+
+
 func test_only_cars_close_behind_are_drawn_over_the_player() -> void:
 	# Cars nearer the camera than that filled the screen at a grid start.
 	eq(RoadRenderer.behind_from(7), 7 - RoadRenderer.BEHIND_SEGMENTS, "one segment behind the player's")

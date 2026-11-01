@@ -93,13 +93,19 @@ func test_background_strip_tiles_from_the_left() -> void:
 func test_every_stage_theme_has_what_the_background_draws() -> void:
 	var bg := Background.new()
 	bg.set_theme({"sky_top": Color.BLACK, "sky_bottom": Color.BLACK, "below_horizon": Color.BLACK})
-	check(bg.texture == null, "no strip without a background")
+	check(bg.textures.is_empty(), "no strips without a background")
 	for i in Stages.count():
 		var theme := Stages.build(i).theme
 		for key in ["sky_top", "sky_bottom", "below_horizon"]:
 			check(theme.get(key) is Color, "%s: %s" % [Stages.stage_name(i), key])
 		bg.set_theme(theme)
-		check(bg.texture != null, Stages.stage_name(i) + ": the horizon strip loads")
-		if bg.texture != null:
-			check(bg.texture.get_width() >= Cfg.SCREEN_W, Stages.stage_name(i) + ": the strip is at least a screen wide")
+		for layer: String in Background.LAYERS:
+			var tex: Texture2D = bg.textures.get(layer)
+			check(tex != null, "%s: the %s strip loads" % [Stages.stage_name(i), layer])
+			if tex != null:
+				check(tex.get_width() >= Cfg.SCREEN_W, "%s: the %s strip is at least a screen wide" % [Stages.stage_name(i), layer])
+				# The sky covers the top of the screen even with the scenery dropped all the way
+				if layer == "sky":
+					check(Background.layer_bottom(layer, Background.HILL_MAX) - tex.get_height() <= 0.0,
+						"%s: the sky reaches the top of the screen" % Stages.stage_name(i))
 	bg.free()
