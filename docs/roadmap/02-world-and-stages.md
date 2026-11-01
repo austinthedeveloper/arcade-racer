@@ -28,7 +28,7 @@ every stage top-down and side-on.
 | WS-7 | **Road width and lane count.** Per-segment half-width and lanes (2 to 6) in the track builder; narrowings for the Thunderhead roadworks and the Timberline summit; wider boulevards on Palm Coast and Skyline. Traffic lane offsets follow. | M | 4 | | Builder tests for width easing; traffic stays on the road through a narrowing |
 | WS-8 | **Stage flow.** Each stage's end dresses like the next stage's start (palette and a landmark), and the results screen crossfades the palette. | S | 6 | RC-5 | Screenshots of each handover |
 | WS-9 ✓ | **Track preview tool.** An `@tool` script that plots a stage top-down and in side elevation with sprites marked, for authoring. | M | 5 | | Plots all eight stages to PNG headlessly |
-| WS-10 | **Round 5 art import.** Skyline pylon v2 (check the opening lines up with the road), red combine, Cyclone v2 sheets after Austin approves the design, hubcap icons. | S | 1 | | Sprites rebuilt by the tools; screenshots of the pylon and the Cyclone |
+| WS-10 ✓ | **Round 5 art import.** Skyline pylon v2 (check the opening lines up with the road), red combine, Cyclone v2 sheets after Austin approves the design, hubcap icons. | S | 1 | | Sprites rebuilt by the tools; screenshots of the pylon and the Cyclone |
 | WS-11 ✓ | **Stage balancing.** Checkpoint spacing and bonuses per timer option, per-stage traffic counts and specials mix, jump sizes. Once with rivals in month 2 and once at the end. | S | 2, 6 | RC-1 | Every stage finishes in autodrive on Tight with time to spare; the table of finish margins is in the commit |
 
 ## Open decisions
