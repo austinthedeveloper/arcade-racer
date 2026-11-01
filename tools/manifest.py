@@ -16,7 +16,9 @@ import sys
 PATH = os.path.join("assets", "sprites", "manifest.json")
 
 
-def build():
+def build(project_dir="."):
+    """The manifest for the sprites in `project_dir`: a roadside sprite with reduced copies
+    (spritelib.lod_steps of its height) lists them under "lod"."""
     # Imported here: the tools import this module too
     from make_car_sprites import TRAFFIC
     from make_drawn_props import DRAWN
@@ -44,7 +46,23 @@ def build():
         for name in names:
             if name is not None:
                 traffic[name] = {"file": "traffic/%s.png" % name, "world_per_px": world_per_px}
+    for entry in roadside.values():
+        steps = sprite_lods(project_dir, entry["file"])
+        if steps:
+            entry["lod"] = steps
     return {"roadside": roadside, "spans": spans, "traffic": traffic}
+
+
+def sprite_lods(project_dir, file):
+    """The reduced copies (CP-9) of a sprite in assets/sprites: the steps spritelib.lod_steps
+    gives its height on disk that are written (tools/make_lod_sprites.py)."""
+    from PIL import Image
+    from spritelib import lod_path, lod_steps
+    path = os.path.join(project_dir, "assets", "sprites", file)
+    if not os.path.exists(path):
+        return []
+    with Image.open(path) as img:
+        return [s for s in lod_steps(img.height) if os.path.exists(lod_path(path, s))]
 
 
 def dumps(manifest):
@@ -60,7 +78,7 @@ def write(project_dir):
     path = os.path.join(project_dir, PATH)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
-        f.write(dumps(build()))
+        f.write(dumps(build(project_dir)))
     print("manifest", path)
 
 

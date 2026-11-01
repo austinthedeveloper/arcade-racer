@@ -256,10 +256,10 @@ func _draw_objects(seg: Segment, cars := true) -> void:
 		var h: float = def["world_h"] * s * Cfg.PROJ
 		var offset: float = sp["offset"]
 		var sx := seg.s1.x + s * offset * Cfg.ROAD_WIDTH * Cfg.PROJ
-		var rect := sprite_rect(sx, seg.s1.y, w, h, offset, sp["flip"])
+		var rect := pixel_sprite_rect(sx, seg.s1.y, w, h, offset, sp["flip"])
 		if h < 0.5 or rect.position.x > Cfg.SCREEN_W or rect.position.x + w < 0.0 or rect.position.y >= seg.clip:
 			continue
-		draw_texture_rect(def["tex"], rect, false, tint)
+		draw_texture_rect(SpriteLibrary.texture_for(def, h), rect, false, tint)  # (CP-9: LOD)
 
 	for pu: PowerUps.Pickup in seg.pickups:
 		if pu.taken:
@@ -368,6 +368,17 @@ func _draw_span(seg: Segment, id: String, label: String, tint: Color) -> void:
 static func sprite_rect(sx: float, base_y: float, w: float, h: float, offset: float, flip: bool) -> Rect2:
 	var x0 := sx - w if offset < 0.0 else sx
 	return Rect2(x0, base_y - h, -w if flip else w, h)
+
+
+## sprite_rect on the screen's pixel grid (CP-9): its edges rounded to whole pixels, so a
+## sprite never starts partway into a pixel and every one is sampled on the same grid. A
+## mirrored sprite (negative width, the same area) stays mirrored. At least a pixel each way.
+static func pixel_sprite_rect(sx: float, base_y: float, w: float, h: float, offset: float, flip: bool) -> Rect2:
+	var left := sx - w if offset < 0.0 else sx
+	var x0 := roundf(left)
+	var y0 := roundf(base_y - h)
+	var pw := maxf(1.0, roundf(left + w) - x0)
+	return Rect2(x0, y0, -pw if flip else pw, maxf(1.0, roundf(base_y) - y0))
 
 
 ## A rival in its segment, drawn with its car's steering strip like the player's.
