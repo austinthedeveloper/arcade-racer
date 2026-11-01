@@ -127,6 +127,37 @@ func test_corner_speed_follows_the_car_grip() -> void:
 	eq(Assists.brake_help(Cfg.MAX_SPEED, INF), 0.0, "no corner: no brake")
 
 
+func test_assists_read_a_slippery_road_as_a_sharper_curve() -> void:
+	var dry := _corner_track()
+	var wet := _corner_track()
+	for seg in wet.segments:
+		seg.grip = 0.85
+	var p := _car(Cfg.MAX_SPEED * 0.8, 0.25)
+	var hold := 0  # the first segment at the curve's full sharpness
+	while absf(dry.segments[hold].curve) < Track.CURVE_HARD:
+		hold += 1
+	var entry := hold - 40  # coming up on the hard curve
+	var dry_limit := Assists.corner_speed_ahead(p, dry, entry)
+	var wet_limit := Assists.corner_speed_ahead(p, wet, entry)
+	check(wet_limit < dry_limit, "brakes earlier on the wet (%.0f against %.0f)" % [wet_limit, dry_limit])
+	# An easy curve at 40%, so the lean stays under STEER_CAP on both
+	p.speed = Cfg.MAX_SPEED * 0.4
+	var easy_dry := Track.new()
+	easy_dry.straight(Track.LENGTH_LONG)
+	easy_dry.curve(Track.LENGTH_MEDIUM, Track.CURVE_EASY)
+	easy_dry.finish_building(easy_dry.segments.size() - 10)
+	var easy_wet := Track.new()
+	easy_wet.straight(Track.LENGTH_LONG)
+	easy_wet.curve(Track.LENGTH_MEDIUM, Track.CURVE_EASY)
+	easy_wet.finish_building(easy_wet.segments.size() - 10)
+	for seg in easy_wet.segments:
+		seg.grip = 0.85
+	p.position = (hold + 5) * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z  # in the curve
+	var dry_steer := Assists.apply(input(1.0), p, easy_dry, true, false).steer
+	var wet_steer := Assists.apply(input(1.0), p, easy_wet, true, false).steer
+	check(wet_steer > dry_steer, "leans harder into a wet curve (%.3f against %.3f)" % [wet_steer, dry_steer])
+
+
 func test_braking_assist_slows_for_a_hard_corner() -> void:
 	var t := _corner_track()
 	var helped := _car(Cfg.MAX_SPEED)
