@@ -102,6 +102,7 @@ var _start_segment := 0  # --at-segment=N: start the race this far in (screensho
 var _results_shot := false  # --screen=results: a staged finish, for a screenshot of the results
 var _staged := false  # this race was staged for a screenshot: nothing it does is saved
 var _drive_x := NAN  # --drive-x=X: start on this line and autodrive holds it (road half-widths; past 1 is off the road)
+var _lightning_at := NAN  # --lightning-at=SECONDS: a full lightning strike then, on a stage with lightning (screenshots)
 var _screenshot_frames: Array[int] = []
 var _screenshot_dir := ""
 var _gas_since := NAN  # when the gas went down, in seconds from GO (Launch.grade)
@@ -222,6 +223,7 @@ func start_race() -> void:
 	road.rivals = rivals.cars
 	road.ghost_strips = road.player_strips if ghost != null else {}
 	fx.clear()
+	fx.set_weather(track.theme, _lightning_at)
 	fx.player = player
 
 
@@ -441,6 +443,7 @@ func _physics_process(dt: float) -> void:
 	road.camera_depth = camera_depth(_fov_stretch)
 	road.flash = Settings.flash_amount(1.0)
 	road.time += sim
+	fx.flash_share = road.flash
 	fx.update(sim, player, track)
 	fx.position = road.position
 	road.camera_z = player.position
@@ -674,6 +677,8 @@ func _parse_dev_args() -> void:
 			_start_segment = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--drive-x="):
 			_drive_x = float(arg.get_slice("=", 1))
+		elif arg.begins_with("--lightning-at="):
+			_lightning_at = float(arg.get_slice("=", 1))
 		elif arg == "--no-traffic":
 			_no_traffic = true
 		elif arg == "--screen=results":

@@ -40,6 +40,7 @@ seamless; the engine loops are pitch-shifted, so a steady single-note recording 
 | `finish` | sfx | no | Crossing the finish line |
 | `crowd` | sfx | no | The crowd roaring and clapping at the finish line, with `finish`; mixed loud |
 | `time_up` | sfx | no | The clock runs out |
+| `thunder` | sfx | no | A beat after a lightning flash, on a stage with lightning (Thunderhead) |
 | `music_race` | music | yes | From the countdown until the finish or time up |
 
 The engine loops are about 56 Hz (`engine_low`) and 112 Hz (`engine_high`) at a pitch of 1.0.

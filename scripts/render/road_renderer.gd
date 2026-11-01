@@ -38,6 +38,8 @@ var _pts := PackedVector2Array()
 var _cols := PackedColorArray()
 var _idx := PackedInt32Array()
 var _fog_color := Color.WHITE
+var _wet := 0.0  # the stage's wet road (Weather "wet"), this frame
+var _wet_sky := Color.WHITE  # and the sky it reflects
 var _covered: Array[Dictionary] = []  # _covered_theme: the darkened colors, per depth step
 var _covered_from: Dictionary = {}  # and the theme they were made from
 var _font: Font
@@ -56,6 +58,8 @@ func _draw() -> void:
 	var theme := track.theme
 	_fog_color = theme["fog"]
 	var fog_density: float = theme.get("fog_density", Cfg.FOG_DENSITY)
+	_wet = Weather.of(theme).get("wet", 0.0)
+	_wet_sky = theme.get("sky_bottom", _fog_color)
 	var segs := track.segments
 	var count := segs.size()
 	var base := track.find_segment(camera_z)
@@ -99,7 +103,7 @@ func _draw() -> void:
 	for i in range(drawn.size() - 1, -1, -1):
 		var seg := drawn[i]
 		if seg.visible:
-			_draw_segment(seg, theme)
+			_draw_segment(seg, theme, float(i) / Cfg.DRAW_DISTANCE)
 		_draw_objects(seg, i >= at)
 		if i == at:
 			_draw_player()
@@ -145,7 +149,8 @@ func _project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float) -> 
 	seg.sw2 = seg.scale2 * Cfg.ROAD_WIDTH * Cfg.PROJ
 
 
-func _draw_segment(seg: Segment, theme: Dictionary) -> void:
+## `far`: how far off the segment is, 0 (the camera) to 1 (the draw distance).
+func _draw_segment(seg: Segment, theme: Dictionary, far: float) -> void:
 	var b := seg.band
 	var fog := seg.fog
 	var lights: Array = theme.get("tunnel_lights", []) if seg.covered else []
@@ -173,8 +178,11 @@ func _draw_segment(seg: Segment, theme: Dictionary) -> void:
 	_quad(Vector2(x1 - w1 - r1, y1), Vector2(x1 - w1, y1), Vector2(x2 - w2, y2), Vector2(x2 - w2 - r2, y2), rumble)
 	_quad(Vector2(x1 + w1, y1), Vector2(x1 + w1 + r1, y1), Vector2(x2 + w2 + r2, y2), Vector2(x2 + w2, y2), rumble)
 
-	# Asphalt
-	_quad(Vector2(x1 - w1, y1), Vector2(x1 + w1, y1), Vector2(x2 + w2, y2), Vector2(x2 - w2, y2), _fogged(theme["road"][b], fog))
+	# Asphalt, catching the sky when it's wet (not under cover)
+	var asphalt: Color = theme["road"][b]
+	if _wet > 0.0 and not seg.covered:
+		asphalt = Weather.wet_color(asphalt, _wet_sky, _wet, far)
+	_quad(Vector2(x1 - w1, y1), Vector2(x1 + w1, y1), Vector2(x2 + w2, y2), Vector2(x2 - w2, y2), _fogged(asphalt, fog))
 
 	# Dashed lane markings on alternate bands
 	if b == 0:
