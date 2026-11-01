@@ -11,6 +11,13 @@ const HORN_FADE := 30.0  # the horn is on or off at once
 const RIVAL_HEAR := 2500.0  # world units along the road a rival's engine carries
 const WHOOSH_REACH := 1.0  # road half-widths to the side a passed car whooshes within
 const PASS_WINDOW := 1000.0  # world units: a gap jump bigger than this is a wrap, not a pass
+## The announcer's line for each callout kind (Callouts.Kind).
+const CALLOUT_LINES := {
+	Callouts.Kind.GO: "go", Callouts.Kind.LAUNCH: "launch", Callouts.Kind.CHECKPOINT: "checkpoint",
+	Callouts.Kind.TIME_EXTENDED: "time_extended", Callouts.Kind.NEAR_MISS: "near_miss",
+	Callouts.Kind.BIG_AIR: "big_air", Callouts.Kind.FINAL_STRETCH: "final_stretch",
+	Callouts.Kind.FIRST_PLACE: "first_place",
+}
 const PICKUP_CUES := {
 	PowerUps.Kind.NITRO: "pickup_nitro", PowerUps.Kind.CLOCK: "pickup_clock",
 	PowerUps.Kind.RAM: "pickup_ram", PowerUps.Kind.GHOST: "pickup_ghost",
@@ -32,6 +39,9 @@ var _tick := 0
 var _paused := false
 var _draft_time := 0.0
 var station := 0  # the radio station playing (Radio)
+var announcer := Announcer.new()
+var _callout := {}  # the callout up last tick, to notice a new one
+var _hurried := false
 var _rng := RandomNumberGenerator.new()  # SHUFFLE's own: play never sees it
 var _gaps := {}  # traffic car or rival -> its gap ahead of the player last tick (whooshes)
 
@@ -68,6 +78,7 @@ func update(dt: float) -> void:
 	if race.player != _player:
 		_new_race()
 	_events()
+	_announce(dt)
 	_set_loops(dt)
 
 
@@ -83,6 +94,10 @@ func _new_race() -> void:
 	_gaps.clear()
 	station = Radio.start_station(Settings.radio, _rng.randi())
 	Audio.play_music(Radio.cue(station))
+	announcer.reset()
+	announcer.say("ready")
+	_callout = {}
+	_hurried = false
 
 
 ## The radio button: the next station, carrying on at the same point in the loop, so the
@@ -110,9 +125,11 @@ func _events() -> void:
 				Audio.stop_music()
 				Audio.play("finish")
 				Audio.play("crowd")
+				announcer.say(Announcer.finish_line(race.place, not race.rivals.cars.is_empty()))
 			race.State.TIME_UP:
 				Audio.stop_music()
 				Audio.play("time_up")
+				announcer.say("time_up")
 		_state = state
 	if race.next_checkpoint > _checkpoint:
 		Audio.play("checkpoint")
@@ -141,6 +158,9 @@ func _events() -> void:
 		if s != _tick:
 			_tick = s
 			Audio.play("tick")
+		if not _hurried:
+			_hurried = true
+			announcer.say("hurry")
 
 
 func _set_loops(dt: float) -> void:
@@ -269,3 +289,17 @@ static func draft_level(p: PlayerCar) -> float:
 static func rival_level(gap: float) -> float:
 	var t := 1.0 - absf(gap) / RIVAL_HEAR
 	return t * t if t > 0.0 else 0.0
+
+
+## The announcer: a line for each new callout (GO, CHECKPOINT, NEAR MISS and the rest) on
+## top of the finish and the low clock, then whichever line starts now, with the music
+## ducked under it.
+func _announce(dt: float) -> void:
+	var c: Dictionary = race.callouts.current
+	if not c.is_empty() and not is_same(c, _callout):
+		announcer.say(CALLOUT_LINES.get(c["kind"], ""))
+	_callout = c
+	var line := announcer.update(dt)
+	if line != "":
+		Audio.play(Announcer.cue(line))
+		Audio.duck(Announcer.duration(line))

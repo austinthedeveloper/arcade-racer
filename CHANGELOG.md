@@ -25,6 +25,9 @@ the release workflow puts that section at the top of the GitHub Release notes
   button honks (PR-1, PR-3).
 - A radio with four stations of original music: rock, synthwave, funk and techno. Pick one
   on car select or in Options, or leave it on shuffle; M changes station mid-race (PR-2).
+- An announcer calls the countdown, GO, checkpoints, near misses, big air, the final stretch
+  and your finish, with the music dipping under it (PR-4).
+- Subtitles for the announcer, on by default (Options > Accessibility) (AC-5).
 
 ### Changed
 

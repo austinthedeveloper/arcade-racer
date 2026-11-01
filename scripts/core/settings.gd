@@ -22,7 +22,7 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 4: [display] fullscreen, integer_scale, vsync, scanlines (missing: windowed, fractional,
 ## V-Sync on, no scanlines).
 ## 5: [play] steer_assist, brake_assist (missing: off).
-const VERSION := 6
+const VERSION := 7
 ## The scanline overlay's CanvasLayer: above the race, the menus and the debug overlay.
 const SCANLINE_LAYER := 100
 const SCANLINE_SHADER := preload("res://scripts/render/scanlines.gdshader")
@@ -44,6 +44,7 @@ var sfx_volume := 10
 var radio: int = Radio.SHUFFLE  # the station races start on (Radio)
 var screen_shake := 10  # 0..EFFECT_STEPS; scales camera shake and the nitro FOV stretch
 var flash := 10  # 0..EFFECT_STEPS; scales flashes and blinking warnings
+var subtitles := true  # the announcer's words on screen (Announcer)
 var units: int = Units.MPH  # the speedometer's
 var fullscreen := false  # windowed by default
 var integer_scale := false  # whole-number scaling of the 640x360 view (borders round it)
@@ -78,6 +79,7 @@ func reset() -> void:
 	radio = Radio.SHUFFLE
 	screen_shake = EFFECT_STEPS
 	flash = EFFECT_STEPS
+	subtitles = true
 	units = Units.MPH
 	fullscreen = false
 	integer_scale = false
@@ -108,6 +110,7 @@ func load_settings() -> void:
 		radio = clampi(int(cfg.get_value("audio", "radio", radio)), Radio.SHUFFLE, Radio.count() - 1)
 		screen_shake = clampi(int(cfg.get_value("accessibility", "screen_shake", screen_shake)), 0, EFFECT_STEPS)
 		flash = clampi(int(cfg.get_value("accessibility", "flash", flash)), 0, EFFECT_STEPS)
+		subtitles = bool(cfg.get_value("accessibility", "subtitles", subtitles))
 		units = clampi(int(cfg.get_value("display", "units", units)), 0, Units.size() - 1)
 		fullscreen = bool(cfg.get_value("display", "fullscreen", fullscreen))
 		integer_scale = bool(cfg.get_value("display", "integer_scale", integer_scale))
@@ -119,7 +122,7 @@ func load_settings() -> void:
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -158,6 +161,11 @@ static func _v5_to_v6(cfg: ConfigFile) -> void:
 	cfg.set_value("audio", "radio", Radio.SHUFFLE)
 
 
+## Version 7 added subtitles for the announcer, on (the default).
+static func _v6_to_v7(cfg: ConfigFile) -> void:
+	cfg.set_value("accessibility", "subtitles", true)
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -177,6 +185,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("audio", "radio", radio)
 	cfg.set_value("accessibility", "screen_shake", screen_shake)
 	cfg.set_value("accessibility", "flash", flash)
+	cfg.set_value("accessibility", "subtitles", subtitles)
 	cfg.set_value("display", "units", units)
 	cfg.set_value("display", "fullscreen", fullscreen)
 	cfg.set_value("display", "integer_scale", integer_scale)
