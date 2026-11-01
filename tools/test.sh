@@ -3,7 +3,9 @@
 # (the real main scene driven through the input map), then the sprite tools'
 # Python self-tests if Pillow, numpy and scipy are there. Exits non-zero if
 # any fails. Optional argument: a substring filter on suite.test names (skips
-# the e2e and the Python tests). Set GODOT to use a binary that isn't `godot`
+# the e2e and the Python tests), or --skip=<substring> to run everything but
+# the suite.test names containing it (CI: --skip=test_golden. beside a
+# test_golden. job). Set GODOT to use a binary that isn't `godot`
 # on the PATH, PYTHON for a Python with tools/requirements.txt.
 cd "$(dirname "$0")/.." || exit 2
 GODOT=${GODOT:-godot}
@@ -21,7 +23,8 @@ filter "$out"
 if grep -q "SCRIPT ERROR" "$out"; then
   echo "FAIL: script errors in the test run (see above)"; status=1
 fi
-if [ -z "$1" ]; then
+case "$1" in ""|--skip=*) all=1 ;; *) all= ;; esac
+if [ -n "$all" ]; then
   printf "\nend-to-end input smoke:\n"
   "$GODOT" --headless --path . -s res://tests/e2e_input.gd >"$out" 2>&1
   e2e=$?

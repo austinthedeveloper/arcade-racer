@@ -4,13 +4,15 @@ extends TestSuite
 
 
 ## Compares a scenario's run with its golden trace; `mirror` runs it on the stage mirrored
-## (WS-6), which has to give the very same trace mirrored back (Golden.snapshot).
+## (WS-6), which has to give the very same trace mirrored back (Golden.snapshot). A race
+## with traffic and rivals, as built, is then also checked for a proper finish.
 func _check(scenario: String, mirror := false) -> void:
 	var path := Golden.DIR + scenario + ".txt"
 	if not check(FileAccess.file_exists(path), "golden trace %s exists" % scenario):
 		return
 	var want := FileAccess.get_file_as_string(path).strip_edges().split("\n")
-	var got := Golden.run(scenario, Golden.FRAMES, mirror)
+	var finish := _finishes_in_time if scenario.ends_with("_traffic") and not mirror else Callable()
+	var got := Golden.run(scenario, Golden.FRAMES, mirror, finish)
 	if mirror:
 		scenario += " mirrored"
 	eq(got.size(), want.size(), scenario + " length")
@@ -77,16 +79,11 @@ func test_a_race_without_rivals_has_no_rival_columns() -> void:
 	check(not Golden.run("autodrive_clear_road", 10)[-1].contains("rivals="), "the clear road keeps its old format")
 
 
-func test_autodriven_race_finishes_in_time() -> void:
-	for stage in Stages.count():
-		_finishes_in_time(stage)
-
-
-func _finishes_in_time(stage: int) -> void:
-	var r := race(true, true, stage)
-	var ticks := run_until(r, func(): return r.state == r.State.FINISHED or r.state == r.State.TIME_UP, Golden.FRAMES)
+## The autodriven race ends inside Golden.FRAMES, the longest the clock allows; this
+## looks at how it ended, then runs on until the rivals are home.
+func _finishes_in_time(r: Node) -> void:
 	var name: String = r.track.name
-	check(ticks > 0, name + ": the race ends")
+	check(r.state == r.State.FINISHED or r.state == r.State.TIME_UP, name + ": the race ends")
 	eq(r.state, r.State.FINISHED, name + ": finished, not timed out")
 	eq(r.next_checkpoint, r.checkpoint_distances.size(), name + ": every checkpoint passed")
 	check(r.race_time > 60.0 and r.race_time < 120.0, "%s: a believable lap time (%.1f s)" % [name, r.race_time])
@@ -95,10 +92,12 @@ func _finishes_in_time(stage: int) -> void:
 
 
 func test_every_stage_has_a_golden_scenario() -> void:
+	# With traffic and rivals: that run is also each stage's finish check (_finishes_in_time)
 	var stages := {}
 	for sc: String in Golden.SCENARIOS:
-		stages[Golden.stage_of(sc)] = true
-	eq(stages.size(), Stages.count(), "one scenario per stage at least")
+		if sc.ends_with("_traffic"):
+			stages[Golden.stage_of(sc)] = true
+	eq(stages.size(), Stages.count(), "one scenario with traffic per stage at least")
 	eq(Golden.stage_of("autodrive_traffic"), 0, "no prefix is Palm Coast")
 	eq(Golden.stage_of("skyline_autodrive_traffic"), 7, "skyline_ is the Skyline Finale")
 
