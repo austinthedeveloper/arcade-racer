@@ -17,7 +17,8 @@ Stage:
 - traffic: specials <[ids]>, count <70 default, 80-95 for a busy city>
 - kickup off grass / sand: <two of smoke, dust, sand, snow, water>
 Art:
-- assets/concept/backgrounds/<slug>_composite_A_v1.png
+- assets/concept/backgrounds/<slug>_composite_A_v1.png (the postcard) and its layers
+  <slug>_l1_sky_A_v1.png, <slug>_l2_far_A_v1.png and <slug>_l3_near_A_v1.png (far and near on magenta)
 - assets/concept/roadside/<slug>_<group>_A_v1.png sheets, each with its objects in reading
   order: <name world_h collide, ...>
 - assets/concept/roadside/<slug>_road_colors_A_v1.png (pick theme colors from it)
@@ -25,22 +26,23 @@ Art:
 
 Do this:
 1. Sprites (PIL venv, tools/requirements.txt):
-   - tools/make_stage_sprites.py: add STAGES["<slug>"] = {"background": ("<slug>_composite_A_v1.png",
-     <horizon row>), "sheets": [...]}, like "redrock". The horizon row is the first row of flat
-     ground under the skyline (existing ones: 560 to 706 of 821); find it by looking at the image.
+   - tools/make_stage_sprites.py: add STAGES["<slug>"] = {"background": layers("<slug>"),
+     "sheets": [...]}, like "redrock". With a composite and no layers, cut them from it like
+     "skyline" (layer(file, key="sky", rows=(top, bottom)) keys the sky out).
      Sprite names must not clash with any in assets/sprites/manifest.json.
    - tools/make_span_sprites.py: add the span to SPANS (see docs/templates/new-element.md).
    - tools/make_ui_sprites.py: add "<slug>" to STAGES before "skyline" (the postcard).
    - Run: python3 tools/make_stage_sprites.py assets/concept . <slug>
           python3 tools/make_span_sprites.py assets/concept .
           python3 tools/make_ui_sprites.py assets/concept .
-     Commit only the new files (backgrounds/<slug>_far.png, roadside/<slug>/, spans/<span_id>.png,
+     Commit only the new files (backgrounds/<slug>_sky.png, _far.png, _near.png, roadside/<slug>/, spans/<span_id>.png,
      ui/postcard_<slug>.png) and the manifest lines; git checkout anything else they rewrote.
 2. scripts/track/stages/<slug>.gd, modeled on redrock.gd:
    - class_name <ClassName>, a ## doc line "Stage 8: <Display Name>. ..."
    - static func theme() with: sky_top, sky_bottom, fog, below_horizon, grass [2], sand [2],
      kickup [2], rumble [2], road [2], lane, clock [start, cp1, cp2, cp3] (placeholder
-     [45, 25, 25, 25] until step 6), background "res://assets/sprites/backgrounds/<slug>_far.png",
+     [45, 25, 25, 25] until step 6), background "res://assets/sprites/backgrounds/<slug>_far.png" (the far layer; Background
+     finds _sky and _near beside it),
      specials, and optionally traffic, fog_density (default Cfg.FOG_DENSITY), tunnel_lights.
      sky_top, grass[0] and the background must differ from every other stage.
    - static func build() -> Track: t.name = "<Display Name>", t.theme = theme(), the layout from

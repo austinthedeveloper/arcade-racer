@@ -30,7 +30,7 @@ stats (`scripts/car/cars.gd`).
 | RC-9 ✓ | **Collision fixes.** Side-swipes are no longer rear-ends (G3): check which car is ahead within the segment. Rammed cars drift back onto the road before they turn solid (G4). | S | 2 | EQ-5 | Tests from `docs/09`; traces regenerated |
 | RC-10 | **Manual gears.** Optional paddles or buttons; a small top-end advantage; the rev model in `race_audio.gd` already has five gears. | S | 6 | WH-2 | Option in AC; test that automatic and manual reach the same speed within the advantage |
 | RC-11 | **Oncoming traffic and lane-change tells.** Oncoming vehicles on undivided roads using the front-view frames; some traffic changes lanes after flashing a turn signal for a second. | M | 4 | CP-6 | A stage flag for divided roads; test that a signalling car changes lanes after the delay; traces regenerated |
-| RC-12 | **Grip per surface.** A theme grip value: Thunderhead's wet road widens slides and off-road feel; snow at Timberline's summit slightly lower. | S | 3 | WS-2 | Test the steer rate scales with grip; traces regenerated |
+| RC-12 ✓ | **Grip per surface.** A theme grip value: Thunderhead's wet road widens slides and off-road feel; snow at Timberline's summit slightly lower. | S | 3 | WS-2 | Test the steer rate scales with grip; traces regenerated |
 
 ## Open decisions
 

@@ -3,7 +3,8 @@
 
 - Slices each roadside concept sheet (a row of objects on magenta) into keyed sprites,
   one per object, scaled down so the sheet's tallest object is a fixed texture height.
-- Turns the stage's background composite into a seamless parallax strip.
+- Cuts the stage's background into three seamless parallax strips: sky, far and near
+  (<stage>_sky.png, _far.png, _near.png; scripts/render/background.gd scrolls them).
 
 Stages are described in STAGES below; "shared" holds race furniture (crowds, barriers, signs)
 for every stage. Palm Coast's six hand-drawn props come from make_drawn_props.py.
@@ -13,10 +14,43 @@ Usage:
 """
 import os
 
-import manifest
-from spritelib import cli_args, make_background, slice_objects
+import numpy as np
+from PIL import Image
+from scipy import ndimage
 
-# Per stage: background (composite file, horizon row in it) and roadside sheets.
+import manifest
+from spritelib import FOUR, cli_args, key_sheet, pixelate_down, slice_objects
+
+# Background layers, back to front. The sky is opaque and scaled to SKY_HEIGHT pixels; far
+# and near are keyed, cropped to their content and scaled to LAYER_WIDTH pixels per half
+# strip (each strip is its art followed by its mirror image, so the ends meet).
+LAYERS = ("sky", "far", "near")
+SKY_HEIGHT = 200
+LAYER_WIDTH = {"far": 800, "near": 960}
+LAYER_COLORS = 96
+# Sky keying for a composite with no layers of its own (key="sky"): a pixel is sky when it
+# is within SKY_STEP (sum of RGB differences) of its right and lower neighbours and that
+# smooth patch reaches the top edge; then only the opaque parts touching the bottom stay.
+SKY_STEP = 36
+
+
+def layers(prefix):
+    """The round 2 concept layers of a stage: <prefix>_l1_sky, _l2_far and _l3_near, the
+    far and near ones on magenta."""
+    return {
+        "sky": layer("%s_l1_sky_A_v1.png" % prefix),
+        "far": layer("%s_l2_far_A_v1.png" % prefix, key="sheet"),
+        "near": layer("%s_l3_near_A_v1.png" % prefix, key="sheet"),
+    }
+
+
+def layer(file, key=None, rows=None):
+    """A background layer cut from `file`: its `rows` (top, bottom) only when given, keyed
+    by `key` ("sheet": spritelib.key_sheet, "sky": key_sky, None: opaque)."""
+    return {"file": file, "key": key, "rows": rows}
+
+
+# Per stage: background (sky, far and near layers) and roadside sheets.
 # Each sheet lists its objects in reading order (rows top to bottom, left to right) and the
 # texture height of its tallest object. An object is (name, world height, fraction of its
 # width that collides); the game reads those from the manifest (tools/manifest.py). None skips
@@ -25,7 +59,7 @@ from spritelib import cli_args, make_background, slice_objects
 # left to right instead (spritelib.slice_row).
 STAGES = {
     "redrock": {
-        "background": ("redrock_composite_A_v1.png", 636),
+        "background": layers("redrock"),
         "sheets": [
             ("redrock_cactus_A_v1.png", 160, [
                 ("saguaro_a", 3600, 0.3), ("saguaro_b", 3800, 0.3), ("saguaro_c", 3400, 0.3),
@@ -49,7 +83,7 @@ STAGES = {
         ],
     },
     "neon": {
-        "background": ("neon_composite_A_v1.png", 676),
+        "background": layers("neon"),
         "sheets": [
             ("neon_buildings_A_v1.png", 200, [
                 ("casino_spire", 11000, 1), ("casino_lotus", 11000, 1), ("casino_round", 11000, 1),
@@ -77,7 +111,7 @@ STAGES = {
         ],
     },
     "timberline": {
-        "background": ("timberline_composite_A_v1.png", 706),
+        "background": layers("timberline"),
         "sheets": [
             ("timberline_pines_A_v1.png", 170, [
                 ("pine_a", 6400, 0.25), ("pine_b", 6000, 0.25), ("pine_c", 4200, 0.25),
@@ -101,7 +135,7 @@ STAGES = {
         ],
     },
     "bayou": {
-        "background": ("bayou_composite_A_v1.png", 600),
+        "background": layers("bayou"),
         "sheets": [
             ("bayou_trees_A_v1.png", 220, [
                 ("cypress_a", 8000, 0.15), ("cypress_b", 8400, 0.2), ("cypress_c", 6200, 0.15),
@@ -128,7 +162,7 @@ STAGES = {
         ],
     },
     "harvest": {
-        "background": ("harvest_composite_A_v1.png", 600),
+        "background": layers("harvest"),
         "sheets": [
             ("harvest_buildings_A_v1.png", 200, [
                 ("barn", 6500, 1), ("silos", 7500, 1), ("water_tower", 8000, 0.4),
@@ -150,7 +184,7 @@ STAGES = {
         ],
     },
     "thunder": {
-        "background": ("thunder_composite_A_v1.png", 630),
+        "background": layers("thunder"),
         "sheets": [
             ("thunder_buildings_A_v1.png", 160, [
                 ("truck_stop", 6500, 1), ("motel", 6000, 1),
@@ -178,7 +212,13 @@ STAGES = {
         ],
     },
     "skyline": {
-        "background": ("skyline_composite_A_v2.png", 560),
+        # The v2 composite has no layers (its v1 layers have the lookalike landmarks): the
+        # generic v1 sunset sky, the v2 city with its sky keyed out, and v2's harbor water
+        "background": {
+            "sky": layer("skyline_l1_sky_A_v1.png"),
+            "far": layer("skyline_composite_A_v2.png", key="sky", rows=(0, 568)),
+            "near": layer("skyline_composite_A_v2.png", rows=(566, 640)),
+        },
         "sheets": [
             ("skyline_buildings_A_v1.png", 220, [
                 ("tower_twin", 11000, 1), ("tower_glass", 11000, 1), ("tower_round", 11000, 1),
@@ -205,7 +245,7 @@ STAGES = {
         ],
     },
     "palm_coast": {
-        "background": ("palm-coast_composite_A_v1.png", 584),
+        "background": layers("palm-coast"),
         "sheets": [
             ("palm-coast_palms_A_v1.png", 190, [
                 ("palm_tall_a", 5200, 0.2), ("palm_tall_b", 4800, 0.2), ("palm_lean", 4800, 0.2),
@@ -240,12 +280,71 @@ STAGES = {
 }
 
 
+def key_sky(img):
+    """The image with its sky keyed out (see SKY_STEP) and anything left floating in the
+    sky (fireworks, clouds) with it."""
+    a = np.array(img.convert("RGBA"))
+    rgb = a[..., :3].astype(np.int16)
+    smooth = np.ones(a.shape[:2], dtype=bool)
+    step_x = np.abs(rgb[:, 1:] - rgb[:, :-1]).sum(axis=2) >= SKY_STEP
+    step_y = np.abs(rgb[1:] - rgb[:-1]).sum(axis=2) >= SKY_STEP
+    smooth[:, :-1] &= ~step_x
+    smooth[:, 1:] &= ~step_x
+    smooth[:-1] &= ~step_y
+    smooth[1:] &= ~step_y
+    labels, _ = ndimage.label(smooth, structure=FOUR)
+    sky = np.isin(labels, np.unique(labels[0][labels[0] > 0]))
+    solid, _ = ndimage.label(~sky, structure=FOUR)
+    grounded = np.isin(solid, np.unique(solid[-1][solid[-1] > 0]))
+    a[~grounded] = 0
+    return Image.fromarray(a)
+
+
+def cut_layer(path, kind, key=None, rows=None):
+    """One background layer as a seamless strip: the art then its mirror image."""
+    img = Image.open(path).convert("RGBA")
+    if rows:
+        img = img.crop((0, rows[0], img.width, rows[1]))
+    if key == "sheet":
+        img = key_sheet(img)
+    elif key == "sky":
+        img = key_sky(img)
+    if kind == "sky":
+        width = round(img.width * SKY_HEIGHT / img.height)
+        img = img.resize((width, SKY_HEIGHT), Image.BOX)
+    else:
+        top, bottom = content_rows(img)
+        img = img.crop((0, top, img.width, bottom))
+        img = pixelate_down(img, LAYER_WIDTH[kind] / img.width)
+    a = np.array(img)
+    colors = Image.fromarray(a[..., :3]).quantize(colors=LAYER_COLORS, method=Image.MEDIANCUT)
+    a[..., :3] = np.array(colors.convert("RGB"))
+    a[a[..., 3] == 0] = 0
+    return np.concatenate([a, a[:, ::-1]], axis=1)
+
+
+def content_rows(img):
+    """The first and one past the last row with any opaque pixel."""
+    rows = np.nonzero((np.array(img)[..., 3] > 0).any(axis=1))[0]
+    return int(rows[0]), int(rows[-1]) + 1
+
+
+def build_background(stage, spec, concept_dir, project_dir):
+    out_dir = os.path.join(project_dir, "assets", "sprites", "backgrounds")
+    os.makedirs(out_dir, exist_ok=True)
+    for kind in LAYERS:
+        cut = spec[kind]
+        strip = cut_layer(os.path.join(concept_dir, "backgrounds", cut["file"]), kind, cut["key"], cut["rows"])
+        out = os.path.join(out_dir, "%s_%s.png" % (stage, kind))
+        img = Image.fromarray(strip)
+        (img.convert("RGB") if kind == "sky" else img).save(out)
+        print("background", out, strip.shape[1], "x", strip.shape[0])
+
+
 def build(stage, concept_dir, project_dir):
     spec = STAGES[stage]
     if "background" in spec:
-        bg_file, horizon = spec["background"]
-        make_background(os.path.join(concept_dir, "backgrounds", bg_file), horizon,
-                        os.path.join(project_dir, "assets", "sprites", "backgrounds", stage + "_far.png"))
+        build_background(stage, spec["background"], concept_dir, project_dir)
     out_dir = os.path.join(project_dir, "assets", "sprites", "roadside", stage)
     os.makedirs(out_dir, exist_ok=True)
     for sheet, target_height, names, *how in spec["sheets"]:

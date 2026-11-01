@@ -40,6 +40,7 @@ var hazards: Array[int] = []
 
 var _ground_left := GROUND_GRASS
 var _ground_right := GROUND_GRASS
+var _grip := NAN  # set_grip: NAN for the theme's
 
 
 func find_segment(z: float) -> Segment:
@@ -74,6 +75,12 @@ func set_ground(left: int, right: int) -> void:
 	_ground_right = right
 
 
+## The grip of the road from here on (PlayerCar.grip_for): NAN goes back to the theme's
+## "grip" (1, dry, without one).
+func set_grip(grip: float) -> void:
+	_grip = grip
+
+
 func last_y() -> float:
 	return 0.0 if segments.is_empty() else segments[-1].w2.y
 
@@ -88,6 +95,7 @@ func add_segment(curve_amount: float, y: float) -> void:
 	seg.band = posmod(floori(float(n) / Cfg.RUMBLE_LENGTH), 2)
 	seg.ground_left = _ground_left
 	seg.ground_right = _ground_right
+	seg.grip = theme.get("grip", 1.0) if is_nan(_grip) else _grip
 	segments.append(seg)
 
 

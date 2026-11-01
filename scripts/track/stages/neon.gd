@@ -19,6 +19,7 @@ static func theme() -> Dictionary:
 		"background": "res://assets/sprites/backgrounds/neon_far.png",
 		"specials": ["taxi", "limo_white", "tuk_tuk"],
 		"traffic": 95,
+		"draw_distance": 220,  # segments; the busiest stage trades a little horizon for frame time (EQ-7)
 		"tunnel_lights": [Color("#ff3fb4"), Color("#2fe0ff")],  # neon tubes down the tunnel walls
 	}
 

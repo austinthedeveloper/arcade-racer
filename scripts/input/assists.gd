@@ -6,6 +6,7 @@ extends RefCounted
 ##   nearest lane and leans into the curve, fading out while the player steers.
 ## - Braking assist (any device): brakes before a corner the car is too fast for, judged by
 ##   the car's own grip: how much lock it would need to hold the curve (PlayerCar.update).
+## Both read a slippery road's curves as sharper (curve / Segment.grip), as the steering does.
 
 const STEER_CAP := 0.3  # the most the steering assist adds to the steering, of full lock
 const BRAKE_CAP := 0.5  # the most the braking assist brakes, of full brake
@@ -27,7 +28,7 @@ static func apply(inp: DriveInput, car: PlayerCar, track: Track, steer_on: bool,
 	var out := inp.copy()
 	var seg := track.find_segment(car.position + Cfg.PLAYER_Z)
 	if steer_on and inp.kind != DriveInput.Kind.WHEEL:
-		out.steer = clampf(inp.steer + steer_help(inp.steer, car.x, car.speed_percent(), seg.curve, car), -1.0, 1.0)
+		out.steer = clampf(inp.steer + steer_help(inp.steer, car.x, car.speed_percent(), seg.curve / seg.grip, car), -1.0, 1.0)
 	if brake_on:
 		var assist := brake_help(car.speed, corner_speed_ahead(car, track, seg.index))
 		out.brake = maxf(inp.brake, assist)
@@ -72,7 +73,8 @@ static func corner_speed_ahead(car: PlayerCar, track: Track, from: int) -> float
 	var limit := INF
 	var n := track.segments.size()
 	for i in LOOKAHEAD:
-		var v := corner_speed(track.segments[(from + i) % n].curve, car)
+		var seg := track.segments[(from + i) % n]
+		var v := corner_speed(seg.curve / seg.grip, car)
 		if v == INF:
 			continue
 		var dist := i * Cfg.SEGMENT_LENGTH

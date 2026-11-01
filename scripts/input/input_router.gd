@@ -7,6 +7,10 @@ extends Node
 ## DeviceProfile; until a wheel is calibrated only its steering is used.
 
 signal devices_changed
+## The joypad driving (last_active_device) was unplugged; the race pauses (WH-7).
+signal driver_unplugged(guid: String, joy_name: String, wheel: bool)
+## That joypad is back (by its GUID, whatever device id it gets), with the same profile.
+signal driver_replugged(guid: String)
 
 const AXIS_COUNT := 10
 const BUTTON_COUNT := 24
@@ -33,9 +37,15 @@ var speed_factor := 0.0  # set by the race each tick, for speed-sensitive pad st
 var last_active_device := -1  # -1 is the keyboard
 ## The keyboard's bindings (RemapScreen), put on the InputMap by apply_keyboard_bindings.
 var keyboard := DeviceProfile.keyboard()
+## The GUID of the joypad that was driving while it's unplugged, or "".
+var unplugged_driver := ""
 
 var _saved: Dictionary = {}  # guid -> DeviceProfile
 var _transient: Dictionary = {}  # device id -> DeviceProfile, for devices without a saved profile
+## Device id -> [guid, name] of every joypad seen, kept after it's unplugged: by then Godot
+## has forgotten them.
+var _joys: Dictionary = {}
+var _parked: Dictionary = {}  # guid -> an unplugged joypad's unsaved profile, for its return
 var _kb_steer := 0.0
 var _pad_steer: Dictionary = {}
 var _prev := {"nitro": false, "pause": false, "restart": false, "confirm": false}
@@ -49,7 +59,10 @@ func _ready() -> void:
 	profile_path = DevArgs.value("--profiles-file", profile_path)
 	_register_actions()
 	load_profiles()
-	Input.joy_connection_changed.connect(_on_joy_connection_changed)
+	for d in Input.get_connected_joypads():
+		_joys[d] = [Input.get_joy_guid(d), Input.get_joy_name(d)]
+	if not Input.joy_connection_changed.is_connected(_on_joy_connection_changed):  # (tests make it first)
+		Input.joy_connection_changed.connect(_on_joy_connection_changed)
 
 
 func _physics_process(dt: float) -> void:
@@ -247,6 +260,29 @@ func reset_profile(device: int) -> void:
 	devices_changed.emit()
 
 
+## The wheels whose steering can be set (WheelScreen): each connected wheel, then every
+## saved wheel profile that isn't plugged in.
+func wheel_profiles() -> Array[DeviceProfile]:
+	var out: Array[DeviceProfile] = []
+	for d in Input.get_connected_joypads():
+		var p := get_profile(d)
+		if p.kind == DeviceProfile.Kind.WHEEL and not out.has(p):
+			out.append(p)
+	for guid in _saved:
+		var p: DeviceProfile = _saved[guid]
+		if p.kind == DeviceProfile.Kind.WHEEL and not out.has(p):
+			out.append(p)
+	return out
+
+
+## The connected joypad with `guid`, or -1.
+func device_for(guid: String) -> int:
+	for d in Input.get_connected_joypads():
+		if Input.get_joy_guid(d) == guid:
+			return d
+	return -1
+
+
 func raw_axes(device: int) -> PackedFloat32Array:
 	var out := PackedFloat32Array()
 	for a in AXIS_COUNT:
@@ -351,12 +387,45 @@ static func key_event(code: int) -> InputEventKey:
 	return ev
 
 
-func _on_joy_connection_changed(device: int, _connected: bool) -> void:
-	_transient.erase(device)
+## Input.joy_connection_changed. An unplugged joypad's GUID and name come from _joys; a
+## joypad plugged back in that Godot can't name (a test's fake one) is taken to be the one
+## that had its device id.
+func _on_joy_connection_changed(device: int, connected: bool) -> void:
+	var known: Array = _joys.get(device, ["", ""])
+	var named := connected and Input.get_connected_joypads().has(device)
+	var guid := Input.get_joy_guid(device) if named else ""
+	var joy_name := Input.get_joy_name(device) if named else ""
+	joy_changed(device, connected, guid if guid != "" else known[0], joy_name if joy_name != "" else known[1])
+
+
+## A joypad plugged in or unplugged. Unplugging the one driving says so (driver_unplugged);
+## plugging it back in, on any device id, says that (driver_replugged) and lets it drive again
+## with the profile it had: a saved one by its GUID, an unsaved one kept for it here.
+func joy_changed(device: int, connected: bool, guid: String, joy_name: String) -> void:
+	var driving := last_active_device == device
+	if connected:
+		_joys[device] = [guid, joy_name]
+		_transient.erase(device)
+		if _parked.has(guid):
+			_transient[device] = _parked[guid]
+			_parked.erase(guid)
+	else:
+		if _transient.has(device) and guid != "":
+			_parked[guid] = _transient[device]
+		_transient.erase(device)
 	_pad_steer.erase(device)
-	if last_active_device == device:
+	if driving:
 		last_active_device = -1
 	devices_changed.emit()
+	if not connected and driving and guid != "":
+		unplugged_driver = guid
+		var p: DeviceProfile = _saved.get(guid, _parked.get(guid))
+		var wheel := p.kind == DeviceProfile.Kind.WHEEL if p != null else looks_like_wheel(joy_name)
+		driver_unplugged.emit(guid, joy_name, wheel)
+	elif connected and guid != "" and guid == unplugged_driver:
+		unplugged_driver = ""
+		last_active_device = device
+		driver_replugged.emit(guid)
 
 
 # --- Keyboard actions ----------------------------------------------------------

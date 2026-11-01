@@ -19,6 +19,7 @@ static func theme() -> Dictionary:
 		"clock": [31, 33, 35, 24],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/timberline_far.png",
 		"specials": ["log_truck", "suv_green", "street_sweeper"],
+		"snow_grip": 0.92,  # the road over the snowy summit (RC-12); dry elsewhere
 	}
 
 
@@ -49,6 +50,7 @@ static func build() -> Track:
 
 	# The summit: snow on both sides, the fire lookout, a crest to jump
 	t.set_ground(Track.GROUND_SAND, Track.GROUND_SAND)
+	t.set_grip(t.theme["snow_grip"])
 	t.straight(Track.LENGTH_MEDIUM)
 	var lookout_at := t.segments.size() - 30
 	t.jump()
@@ -58,6 +60,7 @@ static func build() -> Track:
 
 	# The descent: past the waterfall, down to the lodge and the finish
 	t.set_ground(Track.GROUND_GRASS, Track.GROUND_GRASS)
+	t.set_grip(NAN)
 	t.curve(Track.LENGTH_MEDIUM, Track.CURVE_MEDIUM, -Track.HILL_MEDIUM)
 	var waterfall_at := t.segments.size() - 40
 	t.curve(Track.LENGTH_MEDIUM, -Track.CURVE_EASY, -Track.HILL_LOW)
