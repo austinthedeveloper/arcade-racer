@@ -36,3 +36,18 @@ func test_profiles_save_to_the_scratch_file_and_reload() -> void:
 		eq(loaded.calibrated, true, "calibrated")
 	TestSuite.use_scratch_profiles(r)
 	eq(r._saved.size(), 0, "scratch file wiped")
+
+
+func test_an_unmapped_pads_axis_1_never_moves_the_menus() -> void:
+	# A wheel or pedals read as a pad: a pedal resting at full travel on axis 1 used to
+	# scroll Options down forever. Only a mapped gamepad's stick moves up and down.
+	var r := _router()
+	eq(r.stick_menu_y(1.0, false), 0.0, "unmapped device: axis 1 ignored")
+	eq(r.stick_menu_y(-1.0, false), 0.0, "either end")
+	eq(r.stick_menu_y(0.8, true), 0.8, "a mapped gamepad's stick still scrolls")
+	var m := MenuInput.new()
+	var moves := 0
+	for i in 120:
+		m.step_axis_y(r.stick_menu_y(1.0, false), 1.0 / 60.0)
+		moves += absi(m.step_y())
+	eq(moves, 0, "two seconds of a resting pedal: no scrolling")

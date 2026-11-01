@@ -13,6 +13,9 @@ var restart_pressed := false
 var confirm_pressed := false
 var kind := Kind.KEYBOARD
 var device_name := "Keyboard"
+## False for a pad without a standard gamepad layout (most likely a wheel or pedals not
+## recognized by name): it has no stick for up and down, so menus let it steer instead.
+var mapped := true
 
 
 ## A field-by-field copy, including any field added later.

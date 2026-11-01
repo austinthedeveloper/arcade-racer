@@ -56,3 +56,19 @@ func test_project_settings_the_exports_need() -> void:
 		"ETC2/ASTC import on")
 	var version: String = ProjectSettings.get_setting("application/config/version", "")
 	check(version.split(".").size() == 3, "config/version is x.y.z: " + version)
+
+
+func test_every_build_has_the_game_icon() -> void:
+	# tools/make_icon.py writes all three; the window and the Web build use the project's.
+	var icon: String = ProjectSettings.get_setting("application/config/icon", "")
+	eq(icon, "res://icon.png", "project icon")
+	check(load(icon) is Texture2D, "the project icon loads")
+	var cfg := presets()
+	var win := section(cfg, "Windows") + ".options"
+	eq(cfg.get_value(win, "application/icon", ""), "res://icon.ico", "Windows icon")
+	# Off, the .exe keeps Godot's icon and has no version strings.
+	check(cfg.get_value(win, "application/modify_resources") == true, "Windows writes its resources")
+	eq(cfg.get_value(section(cfg, "macOS") + ".options", "application/icon", ""), "res://icon.icns", "macOS icon")
+	check(cfg.get_value(section(cfg, "Web") + ".options", "html/export_icon") == true, "Web favicon")
+	for f in ["res://icon.png", "res://icon.ico", "res://icon.icns"]:
+		check(FileAccess.file_exists(f), f + " exists")

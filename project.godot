@@ -16,6 +16,7 @@ config/version="0.1.0"
 run/main_scene="res://scenes/main.tscn"
 run/main_loop_type="BootTree"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.png"
 
 [autoload]
 
