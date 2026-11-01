@@ -64,6 +64,35 @@ func test_stage_select_wraps_and_has_every_postcard() -> void:
 	s.free()
 
 
+func test_stage_select_map_places_every_postcard() -> void:
+	check(ResourceLoader.exists(StageSelect.MAP), "the country map")
+	eq(StageSelect.PINS.size(), Stages.count(), "a pin per stage")
+	eq(StageSelect.CARD_ABOVE.size(), Stages.count(), "a postcard side per stage")
+	var map := Rect2(0, 40, Cfg.SCREEN_W, StageSelect.BAND.position.y - 40)  # under the header, over the band
+	check(map.encloses(StageSelect.BIG), "the big postcard on the map")
+	for i in Stages.count():
+		var name := Stages.stage_name(i)
+		var r := StageSelect.card_rect(i)
+		check(map.encloses(r), "postcard on the map: " + name)
+		check(map.has_point(StageSelect.pin(i)), "pin on the map: " + name)
+		check(not r.has_point(StageSelect.pin(i)), "postcard beside its pin, not over it: " + name)
+		check(not r.intersects(StageSelect.BIG), "postcard clear of the big one: " + name)
+		for j in Stages.count():
+			check(not StageSelect.BIG.has_point(StageSelect.pin(j)), "big postcard clear of pin %d" % (j + 1))
+			if j != i:
+				check(not r.intersects(StageSelect.card_rect(j)), "postcards %d and %d apart" % [i + 1, j + 1])
+				check(not r.grow(2).has_point(StageSelect.pin(j)), "postcard %d clear of pin %d" % [i + 1, j + 1])
+
+
+func test_stage_select_steps_along_the_tour_route() -> void:
+	# Right steps east along the route in tour order, the way the wheel turns.
+	var s := StageSelect.new()
+	for i in Stages.count() - 1:
+		eq(s.move(1), i + 1, "right: the next stage on the route")
+	check(StageSelect.pin(Stages.count() - 1).x > StageSelect.pin(0).x + 400, "the tour crosses the country west to east")
+	s.free()
+
+
 func test_car_select_lists_the_garage() -> void:
 	var v := Cars.get_car(0)
 	eq(v["name"], "Vega GT", "the Vega comes first")
