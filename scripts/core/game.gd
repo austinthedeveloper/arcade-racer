@@ -4,10 +4,11 @@ extends Node
 ## Race dev flags (--autodrive, --stage=N, --race) skip the menus and go straight to a race.
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
+const STAGED_JOYPAD := 99  # stage_unplug's joypad
 
 var screen := Screen.TITLE
 var mode_index := 0  # into ModeSelect.Item, the last mode picked
@@ -47,6 +48,7 @@ func _ready() -> void:
 	top.add_child(calibration)
 	var quick := false
 	var pause_shot := false
+	var unplug_shot := false
 	var car := DevArgs.value("--car")
 	if car != "":
 		car_index = maxi(0, Cars.LIST.find(Cars.find(car)))
@@ -55,6 +57,9 @@ func _ready() -> void:
 			quick = quick or arg.begins_with(flag)
 		if arg == "--screen=pause":
 			pause_shot = true
+		elif arg == "--screen=unplugged":
+			pause_shot = true
+			unplug_shot = true
 		elif arg == "--screen=results":
 			quick = true  # a race, staged to a finish (race.gd)
 		elif arg.begins_with("--screen="):
@@ -70,7 +75,9 @@ func _ready() -> void:
 			show_update()
 		else:
 			show_title()
-	if pause_shot:
+	if unplug_shot:
+		stage_unplug()
+	elif pause_shot:
 		race.pause()
 	if _menu_shot != "":
 		_save_menu_shot(300 if quick else (240 if is_demo() else 30))  # a demo gets going first
@@ -165,6 +172,17 @@ func show_remap() -> void:
 ## Back from remapping: the options again, on REMAP BUTTONS, still going back where they did.
 func close_remap() -> void:
 	show_options(_options_back, _options_back_name, OptionsScreen.Page.CONTROLS, OptionsScreen.Row.REMAP)
+	menu.in_race = race != null
+
+
+## Controls > WHEEL SETTINGS.
+func show_wheel() -> void:
+	_set_menu(WheelScreen.new(), Screen.WHEEL)
+
+
+## Back from the wheel settings: the options again, on WHEEL SETTINGS.
+func close_wheel() -> void:
+	show_options(_options_back, _options_back_name, OptionsScreen.Page.CONTROLS, OptionsScreen.Row.WHEEL)
 	menu.in_race = race != null
 
 
@@ -290,6 +308,7 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 
 # --- Dev helpers: `godot -- --screen=stages --menu-shot=/tmp/stages.png` -------------
 # (--screen=pause starts a race and pauses it; add --at-segment=N to pause further in.
+# --screen=unplugged pauses it as a wheel unplugged mid-race does.
 # --car=car_mesa opens car select on that car. --screen=results stages a finish.
 # --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
 # a download; update:checking, update:failed, update:full and update:ready the other states.)
@@ -304,6 +323,8 @@ func _open(which: String) -> void:
 			show_options()
 		"remap":
 			show_remap()
+		"wheel":
+			show_wheel()
 		"modes":
 			show_mode_select()
 		"demo":
@@ -314,6 +335,13 @@ func _open(which: String) -> void:
 			show_options(Callable(), "the title screen", OptionsScreen.page_named(which.get_slice(":", 1)))
 		_:
 			show_title()
+
+
+## The wheel driving unplugged mid-race, for --screen=unplugged: a made-up joypad (an id
+## no real one has) drives, then goes, through InputRouter as a real one would.
+static func stage_unplug() -> void:
+	InputRouter.last_active_device = STAGED_JOYPAD
+	InputRouter.joy_changed(STAGED_JOYPAD, false, "staged-wheel", "Logitech G29 Driving Force Racing Wheel")
 
 
 ## An updater posed in `state_name` (an Updater.State, lower case) for the update screen's

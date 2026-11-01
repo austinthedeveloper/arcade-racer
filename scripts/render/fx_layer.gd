@@ -2,7 +2,8 @@ class_name FxLayer
 extends Node2D
 ## Sprite particles between the road and the HUD (tools/make_fx_sprites.py): tire smoke,
 ## kick-up off the road by ground type, sparks on hits, nitro flames and speed lines, and a
-## puff on landing; confetti at the finish, and fireworks on a stage that has them. Purely visual: it reads the car and never writes it, and its randomness
+## puff on landing; confetti at the finish, fireworks on a stage that has them, and a stage's
+## weather (Weather: rain, lightning). Purely visual: it reads the car and never writes it, and its randomness
 ## is a generator of its own, so play (and the golden traces) can't tell it is there.
 ##
 ## Particles live in screen space in a fixed pool; at most SPAWN_CAP start in one tick and
@@ -95,6 +96,12 @@ var spawned := 0  # this tick, against SPAWN_CAP
 var dropped := 0  # spawns refused for the cap or a full pool, since the race started
 var player: PlayerCar
 var time := 0.0
+var weather := {}  # the stage's (Weather.of), {} for clear skies
+var storm: Array[Vector3] = []  # its lightning (Weather.strikes), none without
+var flash := 0.0  # the lightning flash this tick, as designed (Weather.shown_flash scales it)
+var flash_share := 1.0  # the flash option's share of it (Settings.flash_amount(1.0)); the race sets it
+var thunder := false  # true for the tick thunder rolls (RaceAudio plays it)
+var _drops := PackedVector3Array()  # the rain streaks' starts (Weather.rain_streak)
 var _free: Array[int] = []
 var _tick := 0
 var _last_speed := 0.0
@@ -125,7 +132,22 @@ func clear() -> void:
 	celebrating = false
 	fireworks = false
 	celebrate_age = 0.0
+	flash = 0.0
+	thunder = false
 	_rng.seed = 2024
+
+
+## The stage's weather from its theme, for a race that starts now (after clear). `forced`
+## (seconds, NAN for none) adds a full lightning strike then, for a screenshot.
+func set_weather(theme: Dictionary, forced: float = NAN) -> void:
+	weather = Weather.of(theme)
+	var seed: int = weather.get("seed", 0)
+	storm = Weather.strikes(seed, Weather.STRIKES_UNTIL, forced) if weather.get("lightning", false) else ([] as Array[Vector3])
+	_drops.clear()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	for i in Weather.drop_count(weather):
+		_drops.append(Vector3(rng.randf(), rng.randf(), rng.randf_range(0.8, 1.2)))
 
 
 ## The car crossed the line: confetti, and fireworks if `with_fireworks`.
@@ -172,6 +194,8 @@ func alive_count() -> int:
 func update(dt: float, p: PlayerCar, track: Track) -> void:
 	player = p
 	time += dt
+	flash = Weather.flash_at(time, storm)
+	thunder = Weather.thunder_between(time - dt, time, storm)
 	spawned = 0
 	_tick += 1
 	for i in MAX_PARTICLES:
@@ -371,6 +395,20 @@ func _draw() -> void:
 			if side > 0.0:
 				rect = Rect2(rect.position.x + rect.size.x, rect.position.y, -rect.size.x, rect.size.y)
 			draw_texture_rect(tex, rect, false)
+	if not _drops.is_empty():
+		_draw_rain()
+	var shown := Weather.shown_flash(flash, flash_share)
+	if shown > 0.0:
+		# Oversized, so the camera shake (this layer's position) never shows an edge
+		var c := Weather.FLASH_COLOR
+		draw_rect(Rect2(-16, -16, Cfg.SCREEN_W + 32, Cfg.SCREEN_H + 32), Color(c, shown))
+
+
+func _draw_rain() -> void:
+	var pct := player.speed_percent()
+	for d in _drops:
+		var s := Weather.rain_streak(d, time, pct)
+		draw_line(s[0], s[1], Weather.RAIN_COLOR, 1.0)
 
 
 func _draw_particle(q: Particle) -> void:

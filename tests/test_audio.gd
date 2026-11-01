@@ -149,3 +149,14 @@ func test_pause_holds_sound() -> void:
 	r.paused = false
 	r.audio.update(DT)
 	check(not audio_node().paused, "and resumed")
+
+
+func test_thunder_after_lightning() -> void:
+	var r := race(false, false, 6, false)  # Thunderhead
+	audio_node().history.clear()
+	r.fx.set_weather(r.track.theme, 1.0)
+	step(r, 60 + int(Weather.THUNDER_NEAR * 60.0) + 2)
+	eq(count("thunder"), 1, "thunder a beat after the flash")
+	var palm := fresh_race()
+	step(palm, 600)
+	eq(count("thunder"), 0, "none on a clear stage")

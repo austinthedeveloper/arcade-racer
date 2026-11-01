@@ -108,12 +108,14 @@ static func blocking_target(me: PlayerCar, track: Track, racers: Array) -> Playe
 ## The line through the curves ahead: toward the inside of the coming bend, 0 on a straight.
 ## A right-hand curve (positive) puts it right of center (positive x).
 ## The fastest `me` can take the sharpest curve just ahead and still hold its line: a curve
-## pulls harder the faster the car goes, and full lock only holds so much.
+## pulls harder the faster the car goes, and full lock only holds so much (less on a wet or
+## snowy road, Segment.grip: the bend is taken slower).
 static func corner_speed(me: PlayerCar, track: Track, z: float) -> float:
 	var here := track.find_segment(z).index
 	var sharpest := 0.0
 	for k in CORNER_AHEAD:
-		sharpest = maxf(sharpest, absf(track.segments[(here + k) % track.segments.size()].curve))
+		var seg := track.segments[(here + k) % track.segments.size()]
+		sharpest = maxf(sharpest, absf(seg.curve) / seg.grip)
 	if sharpest <= 0.0:
 		return INF
 	return Cfg.MAX_SPEED * CORNER_GRIP * me.steer_mult / (sharpest * Cfg.CENTRIFUGAL * me.pull_mult)

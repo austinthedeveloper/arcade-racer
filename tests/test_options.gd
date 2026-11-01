@@ -585,6 +585,163 @@ func test_view_rect_integer_and_fractional() -> void:
 	eq(Settings.view_rect(Vector2i(320, 180), view, true), Rect2i(-160, -90, 640, 360), "never under 1x")
 
 
+## A saved wheel profile in the scratch profile file, for the wheel settings screen.
+func _saved_wheel(guid := "03000000-wheel-options", wheel_name := "Test Wheel") -> DeviceProfile:
+	var p := DeviceProfile.new()
+	p.guid = guid
+	p.name = wheel_name
+	p.kind = DeviceProfile.Kind.WHEEL
+	p.calibrated = true
+	InputRouter.save_profile(p)
+	return p
+
+
+func test_wheel_settings_from_the_options_and_back() -> void:
+	_clean()
+	TestSuite.use_scratch_profiles(InputRouter)
+	var keep := _as_device(DriveInput.Kind.KEYBOARD)
+	var g := _game()
+	g.show_options()
+	var o: OptionsScreen = g.menu
+	o.go_to(OptionsScreen.Row.WHEEL)
+	eq(o.page, OptionsScreen.Page.CONTROLS, "on the Controls page")
+	var confirm := MenuInput.new()
+	confirm.confirm_pressed = true
+	o.handle(confirm)
+	eq(g.screen, g.Screen.WHEEL, "opens the wheel settings")
+	var w: WheelScreen = g.menu
+	eq(w.row(), WheelScreen.Row.RANGE, "on the first setting")
+	check(w.profile() == null, "no wheel in a fresh profile file")
+	eq(w.device_name(), "NO WHEEL FOUND", "and says so")
+	eq(w.help_text(), WheelScreen.NO_WHEEL, "with how to get one")
+	check(not w.change(WheelScreen.Row.RANGE, 1, false), "nothing to change")
+	eq(WheelScreen.value_text(null, WheelScreen.Row.LOCK), "---", "no values")
+	var back := MenuInput.new()
+	back.back_pressed = true
+	w.handle(back)
+	eq(g.screen, g.Screen.OPTIONS, "back to the options")
+	eq([g.menu.page, g.menu.row()], [OptionsScreen.Page.CONTROLS, OptionsScreen.Row.WHEEL], "on the wheel row")
+	g._open("wheel")
+	eq(g.screen, g.Screen.WHEEL, "--screen=wheel")
+	InputRouter.state = keep
+	TestSuite.use_scratch_profiles(InputRouter)
+	_clean()
+
+
+func test_wheel_settings_edit_and_save_with_keys() -> void:
+	_clean()
+	TestSuite.use_scratch_profiles(InputRouter)
+	var keep := _as_device(DriveInput.Kind.KEYBOARD)
+	var first := _saved_wheel()
+	var second := _saved_wheel("03000000-wheel-two", "Other Wheel")
+	var g := _game()
+	g.show_wheel()
+	var w: WheelScreen = g.menu
+	eq(InputRouter.wheel_profiles().size(), 2, "both saved wheels")
+	eq(w.device_name(), "TEST WHEEL (UNPLUGGED)", "a saved wheel that isn't plugged in")
+	eq([WheelScreen.value_text(first, WheelScreen.Row.RANGE), WheelScreen.value_text(first, WheelScreen.Row.LOCK),
+		WheelScreen.value_text(first, WheelScreen.Row.DEADZONE), WheelScreen.value_text(first, WheelScreen.Row.LINEARITY)],
+		["900°", "360°", "1.5%", "1.0"], "the defaults")
+	var left := MenuInput.new()
+	left.left_pressed = true
+	var right := MenuInput.new()
+	right.right_pressed = true
+	var down := MenuInput.new()
+	down.down_pressed = true
+	var up := MenuInput.new()
+	up.up_pressed = true
+	w.handle(left)
+	eq(first.hardware_range_deg, 720.0, "left: less range")
+	w.handle(down)
+	w.handle(left)
+	w.handle(left)
+	eq(first.lock_deg, 300.0, "lock down two steps")
+	w.handle(down)
+	w.handle(right)
+	near(first.steer_deadzone, 0.02, 0.0001, "deadzone up")
+	w.handle(down)
+	w.handle(right)
+	w.handle(right)
+	near(first.steer_gamma, 1.2, 0.0001, "linearity up two")
+	eq(WheelScreen.value_text(first, WheelScreen.Row.LINEARITY), "1.2", "shown")
+	eq(second.hardware_range_deg, 900.0, "the other wheel untouched")
+	# Saved on every change: a fresh load has them
+	InputRouter.load_profiles()
+	var back: DeviceProfile = InputRouter._saved[first.guid]
+	eq([back.hardware_range_deg, back.lock_deg], [720.0, 300.0], "range and lock saved")
+	near(back.steer_deadzone, 0.02, 0.0001, "deadzone saved")
+	near(back.steer_gamma, 1.2, 0.0001, "linearity saved")
+	eq((InputRouter._saved[second.guid] as DeviceProfile).hardware_range_deg, 900.0, "and only on that wheel")
+	# The device row flips to the other wheel; RESET puts this one back
+	w.index = WheelScreen.Row.DEVICE
+	w.handle(right)
+	eq(w.device_name(), "OTHER WHEEL (UNPLUGGED)", "right on the wheel row: the next wheel")
+	w.handle(right)
+	w.index = WheelScreen.Row.RESET
+	w.handle(right)
+	eq(w.profile().hardware_range_deg, 720.0, "left/right don't reset")
+	var confirm := MenuInput.new()
+	confirm.confirm_pressed = true
+	w.handle(confirm)
+	InputRouter.load_profiles()
+	back = InputRouter._saved[first.guid]
+	eq([back.hardware_range_deg, back.lock_deg, back.steer_gamma], [900.0, 360.0, 1.0], "reset, and saved")
+	w.handle(down)
+	eq(w.row(), WheelScreen.Row.BACK, "down to BACK")
+	w.handle(confirm)
+	eq(g.screen, g.Screen.OPTIONS, "BACK: the options")
+	InputRouter.state = keep
+	TestSuite.use_scratch_profiles(InputRouter)
+	_clean()
+
+
+func test_wheel_settings_on_a_wheel_steer_and_gas() -> void:
+	_clean()
+	TestSuite.use_scratch_profiles(InputRouter)
+	var keep := _as_device(DriveInput.Kind.WHEEL)
+	var p := _saved_wheel()
+	var g := _game()
+	g.show_wheel()
+	var w: WheelScreen = g.menu
+	var gas := MenuInput.new()
+	gas.confirm_pressed = true
+	w.handle(gas)
+	eq(p.hardware_range_deg, 1080.0, "gas: the range up a step")
+	var steer := MenuInput.new()
+	steer.right_pressed = true
+	w.handle(steer)
+	eq([w.row(), p.lock_deg], [WheelScreen.Row.LOCK, 360.0], "steering picks the row and changes nothing")
+	for i in 3:
+		w.handle(gas)
+	eq(p.lock_deg, 450.0, "gas: the lock up")
+	p.lock_deg = p.hardware_range_deg
+	w.handle(gas)
+	eq(p.lock_deg, DeviceProfile.LOCK_MIN, "and round past the range")
+	InputRouter.load_profiles()
+	eq((InputRouter._saved[p.guid] as DeviceProfile).lock_deg, DeviceProfile.LOCK_MIN, "saved")
+	var brake := MenuInput.new()
+	brake.back_pressed = true
+	g.menu.handle(brake)
+	eq(g.screen, g.Screen.OPTIONS, "brake: back to the options")
+	InputRouter.state = keep
+	TestSuite.use_scratch_profiles(InputRouter)
+	_clean()
+
+
+func test_wheel_settings_curve() -> void:
+	var p := DeviceProfile.new()
+	p.steer_deadzone = 0.0
+	var c := WheelScreen.curve(p, 10)
+	eq(c.size(), 11, "a point per sample and the end")
+	eq(c[0], Vector2.ZERO, "center: no steer")
+	near(c[10].x, 450.0, 0.001, "out to half the range")
+	near(c[4].y, 1.0, 0.001, "full steer at half the lock (180 of 450)")
+	near(c[2].y, 0.5, 0.001, "linear on the way")
+	p.steer_gamma = 2.0
+	near(WheelScreen.curve(p, 10)[2].y, 0.25, 0.001, "gentler with more linearity")
+	eq([WheelScreen.percent(0.015), WheelScreen.percent(0.2), WheelScreen.percent(0.0)], ["1.5%", "20%", "0%"], "percent")
+
+
 func test_an_unmapped_pad_steers_through_options() -> void:
 	# A wheel the game doesn't recognize by name is read as a pad without a gamepad layout:
 	# it has no stick for up and down, so it steers through the rows like a wheel.

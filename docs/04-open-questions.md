@@ -6,7 +6,7 @@ Decisions that change the direction of the docs or the art. Defaults in **bold**
 |---|---|---|---|
 | 1 | Art style: high-color pixel art, hi-res pre-rendered CG sprites, or painted/illustrated? | **Decided: pixel art at 640x360** (docs/05, docs/03 section 2) | Resolution, sprite sizes, production pipeline, every prompt |
 | 2 | Renderer: classic pseudo-3D segment renderer, or a 3D scene with flat sprite billboards? | **Classic pseudo-3D** | Whole rendering and physics approach |
-| 3 | Which wheel and pedals do you own (brand/model)? | Unknown | First wheel profile, testing |
+| 3 | Which wheel and pedals do you own (brand/model)? | **Answered:** a Thrustmaster force feedback wheel, Xbox edition, with its pedals. Most likely the TMX Force Feedback (Xbox One / PC, 900 degrees); confirm the model on the base's label. It is the first known profile (WH-4) and the force feedback test rig (WH-3) | First wheel profile, testing |
 | 4 | Target platforms: macOS only, or also Windows / Linux / Steam Deck? | **macOS + Windows** | Wheel testing, force feedback work |
 | 5 | Setting: fictional country coast-to-coast, or a world tour of fictional places? | **Fictional country** | Stage list, map screen |
 | 6 | Working title | **SUNDOWN RUN** (placeholder) | Logo prompts |
