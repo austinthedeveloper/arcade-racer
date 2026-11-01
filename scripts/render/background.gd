@@ -24,38 +24,68 @@ var theme: Dictionary = {}
 var textures: Dictionary = {}  # layer name -> Texture2D, for the layers this stage has
 var offset := 0.0  # scroll, in turns of the far strip
 var hill := 0.0  # pixels the horizon moved down (hill_shift)
+## Stage flow (StageFlow): the next stage's theme and layers, crossfaded in by `share`.
+var next_theme: Dictionary = {}
+var next_textures: Dictionary = {}
+var share := 0.0
+var mirrored := false  # a mirrored stage (WS-6): every strip drawn flipped
 
 
-func set_theme(new_theme: Dictionary) -> void:
+## The stage's theme, and the next stage's (empty for none) that its end turns to.
+func set_theme(new_theme: Dictionary, new_next: Dictionary = {}) -> void:
 	theme = new_theme
-	textures.clear()
-	if theme.has("background"):
+	textures = layers_of(theme)
+	next_theme = new_next
+	next_textures = layers_of(next_theme)
+	share = 0.0
+
+
+## A theme's layer textures by layer name, for the layers it has.
+static func layers_of(of_theme: Dictionary) -> Dictionary:
+	var out := {}
+	if of_theme.has("background"):
 		for layer: String in LAYERS:
-			var path := layer_path(theme["background"], layer)
+			var path := layer_path(of_theme["background"], layer)
 			if ResourceLoader.exists(path):
-				textures[layer] = load(path)
+				out[layer] = load(path)
+	return out
 
 
 func _draw() -> void:
 	if theme.is_empty():
 		return
 	var w := float(Cfg.SCREEN_W)
-	var top: Color = theme["sky_top"]
-	var bottom: Color = theme["sky_bottom"]
+	var k := share if not next_theme.is_empty() else 0.0
+	var top := sky_color(theme, next_theme, "sky_top", k)
+	var bottom := sky_color(theme, next_theme, "sky_bottom", k)
 	var ground_y := Cfg.HORIZON_Y + hill
 	draw_polygon(
 		PackedVector2Array([Vector2(0, 0), Vector2(w, 0), Vector2(w, ground_y), Vector2(0, ground_y)]),
 		PackedColorArray([top, top, bottom, bottom]))
 	for layer: String in LAYERS:
-		if not textures.has(layer):
-			continue
-		var tex: Texture2D = textures[layer]
-		var tw := float(tex.get_width())
-		var y0 := layer_bottom(layer, hill) - tex.get_height()
-		var x0 := layer_x(offset, layer, tw)
-		draw_texture(tex, Vector2(x0, y0))
-		draw_texture(tex, Vector2(x0 + tw, y0))
-	draw_rect(Rect2(0, ground_y, w, Cfg.SCREEN_H - ground_y), theme["below_horizon"])
+		_draw_layer(textures.get(layer), layer, 1.0 - k)
+		_draw_layer(next_textures.get(layer), layer, k)
+	draw_rect(Rect2(0, ground_y, w, Cfg.SCREEN_H - ground_y), sky_color(theme, next_theme, "below_horizon", k))
+
+
+## One strip, twice across, at `alpha` (none drawn at 0). On a mirrored stage each copy is
+## flipped in place (a negative width), where it was: a strip that tiles seamlessly still does.
+func _draw_layer(tex: Texture2D, layer: String, alpha: float) -> void:
+	if tex == null or alpha <= 0.0:
+		return
+	var tw := float(tex.get_width())
+	var y0 := layer_bottom(layer, hill) - tex.get_height()
+	var x0 := layer_x(offset, layer, tw)
+	var tint := Color(1, 1, 1, alpha)
+	var size := Vector2(-tw if mirrored else tw, tex.get_height())
+	draw_texture_rect(tex, Rect2(Vector2(x0, y0), size), false, tint)
+	draw_texture_rect(tex, Rect2(Vector2(x0 + tw, y0), size), false, tint)
+
+
+## A sky color `key` of `of_theme`, `k` of the way to `next`'s (its own with no next).
+static func sky_color(of_theme: Dictionary, next: Dictionary, key: String, k: float) -> Color:
+	var c: Color = of_theme[key]
+	return c if next.is_empty() else c.lerp(next[key], k)
 
 
 ## The path of a stage's `layer` strip, from the far strip's path.

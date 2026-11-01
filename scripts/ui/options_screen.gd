@@ -9,7 +9,7 @@ extends MenuScreen
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
 	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP,
-	WHEEL, BACK, RADIO, SUBTITLES }
+	WHEEL, BACK, RADIO, SUBTITLES, GEARS }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -20,7 +20,7 @@ const PAGE_ROWS := [
 	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
 	[Row.MUSIC, Row.SFX, Row.RADIO],
 	[Row.CALIBRATE, Row.WHEEL, Row.REMAP],
-	[Row.SCREEN_SHAKE, Row.FLASH, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST],
+	[Row.SCREEN_SHAKE, Row.FLASH, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.GEARS],
 ]
 ## Shown on a page with no rows yet.
 const PAGE_EMPTY := ["", "", "", "", ""]
@@ -29,7 +29,7 @@ const SLOTS := 11
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
-	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES"]
+	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -58,13 +58,14 @@ const HELP := [
 	"Back to %s.",
 	"The station races start on, or a different one each race. M changes it while you drive.",
 	"The announcer's words at the top of the screen.",
+	"Shift up and down yourself (E / Q, or buttons set in Remap) for a bit more top speed.",
 ]
 ## The rows that show ON or OFF.
 const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES,
 	Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.SUBTITLES]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
 ## Rows the race only reads when a stage starts.
-const NEXT_RACE := [Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS]
+const NEXT_RACE := [Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS, Row.GEARS]
 const ROW_H := 20.0
 const TOP := 56.0
 
@@ -191,6 +192,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.brake_assist = not s.brake_assist
 		Row.SUBTITLES:
 			s.subtitles = not s.subtitles
+		Row.GEARS:
+			s.manual_gears = not s.manual_gears
 		_:
 			return false
 	s.save()
@@ -221,6 +224,8 @@ static func value_text(row: int) -> String:
 			return s.UNIT_NAMES[s.units]
 		Row.FULLSCREEN:
 			return "FULLSCREEN" if s.fullscreen else "WINDOWED"
+		Row.GEARS:
+			return "MANUAL" if s.manual_gears else "AUTOMATIC"
 	if TOGGLES.has(row):
 		return "ON" if toggled(row) else "OFF"
 	return ""

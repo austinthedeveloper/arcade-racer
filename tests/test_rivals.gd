@@ -437,3 +437,26 @@ func test_a_bump_does_not_restart_the_block() -> void:
 		blocked += int(me.driver.target == 0.75)
 	check(blocked <= roundi(AIDriver.BLOCK_TIME / DT) + 10, "about BLOCK_TIME of blocking in all (%d ticks)" % blocked)
 	near(me.driver.target, 0.0, 0.001, "then lets it by")
+
+
+func test_rivals_keep_to_a_narrowing() -> void:
+	# WS-7: a rival wanting the outside of the road moves in before it narrows to two lanes
+	var t := flat_track(1200)
+	t.set_width(400, 300, 0.6, 2)
+	var me := RivalCar.new(Cars.find("car_vega"), AIDriver.new(3, 0.7))
+	me.reset(330.0 * Cfg.SEGMENT_LENGTH)
+	me.speed = Cfg.MAX_SPEED * 0.8
+	var off := 0
+	var through := 0
+	var widest := 0.0
+	for i in 600:
+		me.update(DT, me.driver.drive(me, t, [me], DT), t, true)
+		var seg := t.find_segment(me.position + Cfg.PLAYER_Z)
+		if seg.index >= 400 and seg.index < 700:
+			through += 1
+			widest = maxf(widest, absf(me.driver.target))
+			if absf(me.x) + Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH > seg.width + 0.02:
+				off += 1
+	check(through > 60, "drove through it (%d ticks)" % through)
+	eq(off, 0, "ticks with a wheel off the narrowed road")
+	check(widest <= 0.3 + 0.0001, "heading no wider than its outer lane (%.2f)" % widest)

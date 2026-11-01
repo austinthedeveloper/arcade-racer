@@ -5,12 +5,13 @@ extends Node
 ## rival's engine follows its gap, the horn follows its button, one-shots mark events.
 ## Reads the race and never writes to it, so play is the same with or without sound.
 
-const GEARS: Array[float] = [0.0, 0.16, 0.34, 0.54, 0.76, 1.0]  # speed fraction where each gear ends
+const GEARS: Array[float] = PlayerCar.GEARS  # speed fraction where each gear ends
 const FADE := 6.0  # loop level change per second
 const HORN_FADE := 30.0  # the horn is on or off at once
 const RIVAL_HEAR := 2500.0  # world units along the road a rival's engine carries
 const WHOOSH_REACH := 1.0  # road half-widths to the side a passed car whooshes within
 const PASS_WINDOW := 1000.0  # world units: a gap jump bigger than this is a wrap, not a pass
+const SLIDE_SQUEAL := 0.6  # a power slide's squeal at a standstill, up to full at top speed
 ## The announcer's line for each callout kind (Callouts.Kind).
 const CALLOUT_LINES := {
 	Callouts.Kind.GO: "go", Callouts.Kind.LAUNCH: "launch", Callouts.Kind.CHECKPOINT: "checkpoint",
@@ -165,7 +166,7 @@ func _events() -> void:
 
 func _set_loops(dt: float) -> void:
 	var pct := _player.speed_percent()
-	var rpm := engine_rpm(pct)
+	var rpm := engine_rpm(pct, _player.gear if _player.manual else 0)
 	var high := smoothstep(0.35, 0.85, rpm)
 	var target := {
 		"engine_low": 1.0 - 0.7 * high,
@@ -200,19 +201,24 @@ func _set_loops(dt: float) -> void:
 				p.stop()
 
 
-## Engine revs, 0..1 in each gear (a shift drops them back), up to 1.2 on nitro.
-static func engine_rpm(pct: float) -> float:
+## Engine revs, 0..1 in each gear (a shift drops them back), up to 1.2 on nitro. `gear` 0
+## is automatic: the gear the speed is in. A manual gear (1..5, PlayerCar.gear) revs through
+## the same band; below it (too tall a gear) the revs sag toward 0, and above it they sit at
+## 1, on the limiter (PlayerCar.gear_limit), except in the top gear.
+static func engine_rpm(pct: float, gear := 0) -> float:
 	pct = maxf(pct, 0.0)
-	var last := GEARS.size() - 2
-	for g in GEARS.size() - 1:
-		if pct < GEARS[g + 1] or g == last:
-			var t := (pct - GEARS[g]) / (GEARS[g + 1] - GEARS[g])
-			var floor_rpm := 0.0 if g == 0 else 0.35 + 0.05 * g
-			return minf(lerpf(floor_rpm, 1.0, t), 1.2)
-	return 0.0
+	var g := (PlayerCar.auto_gear(pct) if gear <= 0 else mini(gear, GEARS.size() - 1)) - 1
+	var floor_rpm := 0.0 if g == 0 else 0.35 + 0.05 * g
+	if pct < GEARS[g]:
+		return floor_rpm * pct / GEARS[g]
+	var t := (pct - GEARS[g]) / (GEARS[g + 1] - GEARS[g])
+	if g < GEARS.size() - 2 and gear > 0:
+		t = minf(t, 1.0)
+	return minf(lerpf(floor_rpm, 1.0, t), 1.2)
 
 
-## Tire squeal: braking hard, cornering at full lock at speed, or sliding after a crash.
+## Tire squeal: braking hard, cornering at full lock at speed, a power slide, or sliding
+## after a crash.
 static func skid_level(p: PlayerCar) -> float:
 	if p.airborne or p.offroad:
 		return 0.0
@@ -224,6 +230,8 @@ static func skid_level(p: PlayerCar) -> float:
 		level = pct
 	if absf(p.steer) > 0.75 and pct > 0.6:
 		level = maxf(level, (absf(p.steer) - 0.75) * 4.0 * pct)
+	if p.slide != 0.0:
+		level = maxf(level, SLIDE_SQUEAL + (1.0 - SLIDE_SQUEAL) * pct)
 	return clampf(level, 0.0, 1.0)
 
 

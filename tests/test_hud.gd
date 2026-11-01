@@ -109,6 +109,17 @@ func test_dial_and_gears() -> void:
 	eq(Hud.gear(1.1), RaceAudio.GEARS.size() - 1, "top gear on nitro")
 
 
+func test_the_tach_shows_the_manual_gear() -> void:
+	var p := PlayerCar.new()
+	p.reset()
+	p.speed = Cfg.MAX_SPEED * 0.5
+	eq(p.shown_gear(), Hud.gear(0.5), "automatic: the gear the speed is in")
+	p.manual = true
+	eq(p.shown_gear(), 1, "manual: the gear it's in, here 1st")
+	p.gear = 4
+	eq(p.shown_gear(), 4, "4th")
+
+
 func test_flame_shape() -> void:
 	var pts := Hud.flame(Vector2(50, 40), 12, 21)
 	var box := Rect2(pts[0], Vector2.ZERO)

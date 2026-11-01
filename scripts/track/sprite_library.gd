@@ -92,6 +92,12 @@ static func span_edges(id: String) -> Dictionary:
 	return {"inner": Vector2(o.x - center, o.y - center) * w, "outer": Vector2(solid.x - center, solid.y - center) * w}
 
 
+## How much bigger than its usual size a span is drawn over road `width` half-widths wide
+## (Segment.width): it widens with a boulevard; a narrowing passes under the usual size.
+static func span_scale(width: float) -> float:
+	return maxf(width, 1.0)
+
+
 ## Adds a roadside sprite, with its reduced copies (`lod`: the steps, 2 for half size...).
 static func _add(id: String, path: String, world_h: float, collide: float, lod: Array = []) -> void:
 	var tex: Texture2D = load(path)

@@ -176,12 +176,10 @@ static func dial_angle(pct: float) -> float:
 	return DIAL_START + DIAL_SWEEP * clampf(pct, 0.0, 1.0)
 
 
-## The gear the tach shows for `pct` of top speed (RaceAudio.GEARS, as the engine sound).
+## The gear the tach shows for `pct` of top speed (PlayerCar.GEARS, as the engine sound)
+## with the automatic; manual gears show PlayerCar.shown_gear.
 static func gear(pct: float) -> int:
-	for g in RaceAudio.GEARS.size() - 1:
-		if pct < RaceAudio.GEARS[g + 1]:
-			return g + 1
-	return RaceAudio.GEARS.size() - 1
+	return PlayerCar.auto_gear(pct)
 
 
 ## A nitro flame standing on `base`, `w` wide and `h` tall: round at the bottom, licking up
@@ -333,7 +331,7 @@ func _draw_speedo(r: Rect2, p: PlayerCar) -> void:
 	draw_circle(c, rad + 2, Color(0.04, 0.03, 0.1, 0.7))
 	draw_arc(c, rad + 1, 0, TAU, 48, Color(GOLD, 0.8), 2)
 	# The tach: revs on the inner ring, red past the redline
-	var rpm := RaceAudio.engine_rpm(p.speed_percent())
+	var rpm := RaceAudio.engine_rpm(p.speed_percent(), p.gear if p.manual else 0)
 	var tach := rad - 17
 	draw_arc(c, tach, DIAL_START, DIAL_START + DIAL_SWEEP, 32, Color(1, 1, 1, 0.12), 4)
 	var revs := clampf(rpm / 1.2, 0.0, 1.0)
@@ -344,7 +342,7 @@ func _draw_speedo(r: Rect2, p: PlayerCar) -> void:
 		var major := i % 3 == 0
 		var col := Color("#ff5a2a") if i >= 10 else Color.WHITE
 		draw_line(c + dir * (rad - (8.0 if major else 4.0)), c + dir * (rad - 1), col, 2.0 if major else 1.0)
-	_text_centered(c + Vector2(0, -6), str(gear(p.speed_percent())), 10, Color(GOLD, 0.9))
+	_text_centered(c + Vector2(0, -6), str(p.shown_gear()), 10, Color(GOLD, 0.9))
 	# The needle
 	var tip := c + Vector2.from_angle(dial_angle(pct)) * (rad - 4)
 	draw_line(c + Vector2(1, 1), tip + Vector2(1, 1), Color(0, 0, 0, 0.6), 2.0)
@@ -427,12 +425,21 @@ static func clock_text(seconds: float) -> String:
 	return "%d:%05.2f" % [int(seconds) / 60, fmod(seconds, 60.0)]
 
 
-## The finish's notice of cars it opened (Unlocks.newly_open).
+## The finish's notice of cars it opened (Unlocks.newly_open) and a stage mirror it won
+## (Unlocks.mirror_id).
 static func unlock_line(ids: Array[String]) -> String:
 	var names: Array[String] = []
+	var parts: Array[String] = []
 	for id in ids:
+		if id.begins_with("mirror_"):
+			continue
 		names.append(String(Cars.find(id)["name"]).to_upper())
-	return ("NEW CAR: " if ids.size() == 1 else "NEW CARS: ") + ", ".join(names)
+	if not names.is_empty():
+		parts.append(("NEW CAR: " if names.size() == 1 else "NEW CARS: ") + ", ".join(names))
+	for i in Stages.count():
+		if ids.has(Unlocks.mirror_id(i)):
+			parts.append("MIRROR MODE: " + Stages.stage_name(i).to_upper())
+	return "   ".join(parts)
 
 
 ## Where a racer `distance` along the stage sits on the progress bar.

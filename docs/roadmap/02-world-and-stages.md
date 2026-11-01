@@ -24,9 +24,9 @@ every stage top-down and side-on.
 | WS-3 ✓ | **Multi-layer parallax.** Split each stage background into sky, far and near layers with different scroll rates and a vertical shift on hills. Cut from the round 2 L1/L2/L3 images; the Skyline v2 composite still needs its layers cut or generated (`docs/08`). | L | 3 | | `make_stage_sprites.py` emits three layers per stage; `test_render` checks scroll rates; screenshots of a hill crest on Harvest and a bend on Neon |
 | WS-4 ✓ | **Neon tunnel walls.** Building faces either side of the tunnel entrance so it is not a free-standing gate; a darker interior ramp and neon strip lights inside. | S | 3 | | Screenshot at the entrance and inside |
 | WS-5 ✓ | **Race furniture.** Place or drop the nine loaded but unused sprites: tire stack, barrels, cone, barricade, barrier, delineator, inflatable arch, green and brown signs (T4 in `docs/09`). | S | 1 | EQ-2 | No sprite is loaded and never placed; `test_track` asserts it |
-| WS-6 | **Mirror mode.** Flip every stage: curves reversed, sprite sides swapped, background mirrored. Unlocked per stage (MP-4). | S | 6 | MP-4 | A mirrored stage finishes in autodrive; its golden trace is the mirror of the original |
-| WS-7 | **Road width and lane count.** Per-segment half-width and lanes (2 to 6) in the track builder; narrowings for the Thunderhead roadworks and the Timberline summit; wider boulevards on Palm Coast and Skyline. Traffic lane offsets follow. | M | 4 | | Builder tests for width easing; traffic stays on the road through a narrowing |
-| WS-8 | **Stage flow.** Each stage's end dresses like the next stage's start (palette and a landmark), and the results screen crossfades the palette. | S | 6 | RC-5 | Screenshots of each handover |
+| WS-6 ✓ | **Mirror mode.** Flip every stage: curves reversed, sprite sides swapped, background mirrored. Unlocked per stage (MP-4). | S | 6 | MP-4 | A mirrored stage finishes in autodrive; its golden trace is the mirror of the original |
+| WS-7 ✓ | **Road width and lane count.** Per-segment half-width and lanes (2 to 6) in the track builder; narrowings for the Thunderhead roadworks and the Timberline summit; wider boulevards on Palm Coast and Skyline. Traffic lane offsets follow. | M | 4 | | Builder tests for width easing; traffic stays on the road through a narrowing |
+| WS-8 ✓ | **Stage flow.** Each stage's end dresses like the next stage's start (palette and a landmark), and the results screen crossfades the palette. | S | 6 | RC-5 | Screenshots of each handover |
 | WS-9 ✓ | **Track preview tool.** An `@tool` script that plots a stage top-down and in side elevation with sprites marked, for authoring. | M | 5 | | Plots all eight stages to PNG headlessly |
 | WS-10 ✓ | **Round 5 art import.** Skyline pylon v2 (check the opening lines up with the road), red combine, Cyclone v2 sheets after Austin approves the design, hubcap icons. | S | 1 | | Sprites rebuilt by the tools; screenshots of the pylon and the Cyclone |
 | WS-11 ✓ | **Stage balancing.** Checkpoint spacing and bonuses per timer option, per-stage traffic counts and specials mix, jump sizes. Once with rivals in month 2 and once at the end. | S | 2, 6 | RC-1 | Every stage finishes in autodrive on Tight with time to spare; the table of finish margins is in the commit |
@@ -35,7 +35,7 @@ every stage top-down and side-on.
 
 - Does rain fall on any stage other than Thunderhead, say a wet dawn on Bayou? Default: no, each stage keeps one weather.
 - Parallax layer count: three everywhere, or four on stages with a near treeline? Default: three; a fourth only where the concept art has it.
-- Is the roadworks chicane a narrowing (WS-7) or cones only, as today? Default: narrowing, once WS-7 lands.
+- Is the roadworks chicane a narrowing (WS-7) or cones only, as today? Decided: a narrowing to two lanes, coned off at the new edge.
 
 ## Stretch
 

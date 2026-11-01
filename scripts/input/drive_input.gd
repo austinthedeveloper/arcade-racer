@@ -13,6 +13,8 @@ var restart_pressed := false
 var confirm_pressed := false
 var horn := false  # held (only RaceAudio listens)
 var radio_pressed := false  # edge: the next station (RaceAudio)
+var shift_up_pressed := false  # edge: one gear up (manual gears only, PlayerCar.shift)
+var shift_down_pressed := false  # edge: one gear down
 var kind := Kind.KEYBOARD
 var device_name := "Keyboard"
 ## False for a pad without a standard gamepad layout (most likely a wheel or pedals not

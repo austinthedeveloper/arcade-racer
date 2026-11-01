@@ -56,6 +56,14 @@ const AIR_STEER := 0.35  # steering authority in the air
 const STEER_SMOOTHING := 12.0  # how fast the shown steering follows the input, per second
 const OVERSPEED_DECAY := MAX_SPEED * 0.4  # per second, back down to top speed (after nitro)
 const TAKEOFF_SPEED := MAX_SPEED * 0.4  # slower than this, a crest doesn't launch the car
+# Power slide (RC-8): brake while steering at speed to throw the car into a slide
+const SLIDE_SPEED := MAX_SPEED * 0.5  # a slide starts no slower than this...
+const SLIDE_BRAKE := 0.5  # ...with at least this much brake...
+const SLIDE_STEER := 0.5  # ...and this much lock
+const SLIDE_HOLD := 0.3  # it lasts while the lock stays at least this much the same way...
+const SLIDE_EXIT_SPEED := MAX_SPEED * 0.35  # ...and the car faster than this
+const SLIDE_TURN := 1.5  # steering authority while sliding: a tighter line
+const SLIDE_DECEL := MAX_SPEED * 0.1  # per second sliding, in place of braking or the throttle
 
 # Hitting traffic
 const HIT_OVERLAP := 0.8  # cars hit when they overlap this much of their combined half-widths

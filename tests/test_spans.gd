@@ -73,6 +73,20 @@ func test_car_hits_span_legs_only_offroad() -> void:
 	check(PlayerCar.hits_span(gate, gi.y + half, half), "checkpoint gate legs")
 
 
+func test_spans_widen_with_a_boulevard_but_not_for_a_narrowing() -> void:
+	# WS-7: a span over a wider road opens out to fit it; a narrowing passes under the usual size
+	eq([SpriteLibrary.span_scale(0.6), SpriteLibrary.span_scale(1.0), SpriteLibrary.span_scale(1.5)], [1.0, 1.0, 1.5], "scales")
+	var half := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
+	var inner: Vector2 = SpriteLibrary.span_edges("redrock_arch")["inner"]
+	var seg := Segment.new()
+	seg.spans.append("redrock_arch")
+	seg.width = 1.5
+	check(not PlayerCar.hits_span(seg, inner.y + half, half), "the usual leg is open road on a boulevard")
+	check(PlayerCar.hits_span(seg, inner.y * 1.5 + half, half), "its leg stands out past the wider road")
+	seg.width = 0.6
+	check(PlayerCar.hits_span(seg, inner.y + half, half), "the usual size over a narrowing")
+
+
 func test_free_spot_avoids_gates_and_spans() -> void:
 	var t := _flat(100)
 	t.add_checkpoint(50)

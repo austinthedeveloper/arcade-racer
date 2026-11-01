@@ -788,3 +788,23 @@ func test_an_unmapped_pad_steers_through_options() -> void:
 	check(not OptionsScreen.wheel_driven(), "a mapped gamepad uses up and down")
 	InputRouter.state = keep
 	_clean()
+
+
+func test_gears_option_saves_and_reaches_the_race() -> void:
+	_clean()
+	var o := OptionsScreen.new()
+	o.go_to(OptionsScreen.Row.GEARS)
+	eq(o.page, OptionsScreen.Page.ACCESSIBILITY, "with the assists")
+	eq(OptionsScreen.value_text(OptionsScreen.Row.GEARS), "AUTOMATIC", "automatic by default")
+	o.change(OptionsScreen.Row.GEARS, 1, true)
+	eq(OptionsScreen.value_text(OptionsScreen.Row.GEARS), "MANUAL", "manual")
+	Settings.load_settings()
+	check(Settings.manual_gears, "saved")
+	o.in_race = true
+	check(o.help_text().ends_with("From the next race."), "from the pause menu: the next race")
+	var r := race(false, false)
+	check(r.player.manual, "the race shifts by hand")
+	o.free()
+	_clean()
+	r.start_race()
+	check(not r.player.manual, "the default keeps the automatic (golden traces)")

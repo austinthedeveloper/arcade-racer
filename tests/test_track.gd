@@ -369,3 +369,103 @@ func test_signs_and_furniture_stay_clear_of_spans_tunnels_and_gates() -> void:
 				if furniture.has(sp["id"]) and not t.open_roadside(seg.index):
 					bad += 1
 		eq(bad, 0, t.name + " signs and furniture under a span, in a tunnel or on a gate")
+
+
+# --- Road width (WS-7) -----------------------------------------------------------
+
+func _narrowed(width := 0.6, lanes := 2) -> Track:
+	var t := flat_track(600)
+	t.set_width(200, 100, width, lanes, 40)
+	return t
+
+
+func test_set_width_eases_in_holds_and_eases_out() -> void:
+	var t := _narrowed()
+	for i in 160:
+		eq([t.segments[i].width, t.segments[i].lanes], [1.0, 4], "segment %d before the ease" % i)
+	for i in range(160, 199):
+		check(t.segments[i].width_far < t.segments[i].width, "segment %d narrows" % i)
+	for i in range(200, 300):
+		eq([t.segments[i].width, t.segments[i].lanes], [0.6, 2], "segment %d narrowed" % i)
+	for i in range(301, 340):
+		check(t.segments[i].width_far > t.segments[i].width, "segment %d widens again" % i)
+	for i in range(340, 600):
+		eq([t.segments[i].width, t.segments[i].lanes], [1.0, 4], "segment %d after" % i)
+	eq([t.segments[179].lanes, t.segments[180].lanes], [4, 2], "lanes merge halfway through the ease in")
+	eq([t.segments[319].lanes, t.segments[320].lanes], [2, 4], "and split halfway through the ease out")
+	near(t.segments[180].width, 0.8, 0.001, "half narrowed halfway in")
+
+
+func test_road_width_is_continuous() -> void:
+	var tracks: Array[Track] = [_narrowed(), _narrowed(1.5, 6)]
+	tracks.append_array(_stages())
+	for t in tracks:
+		var bad := ""
+		for i in t.segments.size() - 1:
+			var seg := t.segments[i]
+			if seg.width_far != t.segments[i + 1].width:
+				bad = "the road jumps width after segment %d" % i
+			elif absf(seg.width_far - seg.width) > 0.02:
+				bad = "segment %d changes width too fast" % i
+			elif seg.lanes < Track.MIN_LANES or seg.lanes > Track.MAX_LANES:
+				bad = "segment %d has %d lanes" % [i, seg.lanes]
+			if bad != "":
+				break
+		eq(bad, "", t.name + " eases from width to width")
+
+
+func test_width_ease_at() -> void:
+	eq(Track.width_ease_at(0, 100, 50, 40, 1.0, 0.5, 1.2), 1.0, "before the ease")
+	eq(Track.width_ease_at(60, 100, 50, 40, 1.0, 0.5, 1.2), 1.0, "where it starts")
+	near(Track.width_ease_at(80, 100, 50, 40, 1.0, 0.5, 1.2), 0.75, 0.0001, "halfway in")
+	eq(Track.width_ease_at(100, 100, 50, 40, 1.0, 0.5, 1.2), 0.5, "eased in")
+	eq(Track.width_ease_at(150, 100, 50, 40, 1.0, 0.5, 1.2), 0.5, "held")
+	near(Track.width_ease_at(170, 100, 50, 40, 1.0, 0.5, 1.2), 0.85, 0.0001, "halfway out, to the width after")
+	eq(Track.width_ease_at(500, 100, 50, 40, 1.0, 0.5, 1.2), 1.2, "after")
+	# Eased in and out: slow at both ends of the ease, quickest in the middle
+	var a := Track.width_ease_at(61, 100, 50, 40, 1.0, 0.5, 1.0) - Track.width_ease_at(60, 100, 50, 40, 1.0, 0.5, 1.0)
+	var m := Track.width_ease_at(81, 100, 50, 40, 1.0, 0.5, 1.0) - Track.width_ease_at(80, 100, 50, 40, 1.0, 0.5, 1.0)
+	check(absf(m) > absf(a) * 5.0, "eases in gently (%.4f, %.4f)" % [a, m])
+
+
+func _lanes_near(actual: Array[float], expected: Array, msg: String) -> void:
+	if eq(actual.size(), expected.size(), msg + ": lane count"):
+		for k in expected.size():
+			near(actual[k], expected[k], 0.0001, "%s: lane %d" % [msg, k])
+
+
+func test_lane_offsets_follow_the_width() -> void:
+	var seg := Segment.new()
+	_lanes_near(seg.lane_offsets(), Traffic.LANE_OFFSETS, "the usual road")
+	seg.width = 1.5
+	seg.lanes = 6
+	_lanes_near(seg.lane_offsets(), [-1.25, -0.75, -0.25, 0.25, 0.75, 1.25], "a boulevard")
+	seg.width = 0.6
+	seg.lanes = 2
+	_lanes_near(seg.lane_offsets(), [-0.3, 0.3], "a narrowing")
+	var merged: Array[float] = [seg.lane_at(0.125), seg.lane_at(0.375), seg.lane_at(0.625), seg.lane_at(0.875)]
+	_lanes_near(merged, [-0.3, -0.3, 0.3, 0.3], "four lanes merge two into each")
+
+
+func test_width_at_and_narrowest_ahead() -> void:
+	var t := _narrowed()
+	eq(t.width_at(100.0 * Cfg.SEGMENT_LENGTH), 1.0, "the usual road")
+	eq(t.width_at(250.5 * Cfg.SEGMENT_LENGTH), 0.6, "the narrowing")
+	var s := t.segments[170]
+	near(t.width_at(170.5 * Cfg.SEGMENT_LENGTH), (s.width + s.width_far) / 2.0, 0.0001, "between a segment's ends")
+	eq(t.narrowest_ahead(100.0 * Cfg.SEGMENT_LENGTH).lanes, 4, "nothing narrow just ahead")
+	eq(t.narrowest_ahead(170.0 * Cfg.SEGMENT_LENGTH).lanes, 2, "two lanes coming up")
+
+
+func test_stages_narrow_and_widen() -> void:
+	var want := {"Palm Coast Boulevard": 6, "Skyline Finale": 6, "Timberline Pass": 2, "Thunderhead Highway": 2}
+	for t in _stages():
+		var lanes := {}
+		for seg in t.segments:
+			lanes[seg.lanes] = true
+		if want.has(t.name):
+			check(lanes.has(want[t.name]), "%s has a %d-lane stretch" % [t.name, want[t.name]])
+		else:
+			eq(lanes.keys(), [Cfg.LANES], t.name + " keeps to four lanes")
+		for i in [Track.START_SEGMENT, t.finish_index]:
+			eq(t.segments[i].lanes, Cfg.LANES, "%s: four lanes at segment %d" % [t.name, i])

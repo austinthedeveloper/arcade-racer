@@ -47,14 +47,14 @@ func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = 
 		var pick := rng.randi() % pool.size()
 		var prof: RivalProfile = named[i] if i < named.size() else pool.pop_at(pick)
 		var car := Cars.find(prof.car_id)
-		var r := RivalCar.new(car, AIDriver.new(rng.randi(), prof.lane_bias, prof.style))
+		var r := RivalCar.new(car, AIDriver.new(rng.randi(), prof.lane_bias, prof.style, track.side()))
 		r.profile = prof
 		r.top_speed *= prof.pace * difficulty.rival_pace
 		r.base_top = r.top_speed
 		var ahead := GRID_FRONT - i * GRID_STEP
 		r.reset(player.position + ahead)
 		r.distance = player.distance + ahead
-		r.x = -GRID_X if i % 2 == 0 else GRID_X
+		r.x = (-GRID_X if i % 2 == 0 else GRID_X) * track.side()
 		r.road_y = track.height_at(r.position + Cfg.PLAYER_Z)
 		r.strips = CarSprites.strips(car["strip"])
 		cars.append(r)

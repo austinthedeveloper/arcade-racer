@@ -22,7 +22,9 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 4: [display] fullscreen, integer_scale, vsync, scanlines (missing: windowed, fractional,
 ## V-Sync on, no scanlines).
 ## 5: [play] steer_assist, brake_assist (missing: off).
-const VERSION := 7
+## 6: [audio] radio (missing: shuffle). 7: [accessibility] subtitles (missing: on).
+## 8: [play] manual_gears (missing: automatic).
+const VERSION := 8
 ## The scanline overlay's CanvasLayer: above the race, the menus and the debug overlay.
 const SCANLINE_LAYER := 100
 const SCANLINE_SHADER := preload("res://scripts/render/scanlines.gdshader")
@@ -37,6 +39,7 @@ var difficulty: int = Difficulty.Level.NORMAL
 var carry_time := false  # Grand Tour: clock left at a finish carries into the next stage
 var steer_assist := false  # Assists: keyboard and gamepad steering pulls toward the lane
 var brake_assist := false  # Assists: brakes into corners taken too fast
+var manual_gears := false  # the player shifts (PlayerCar.shift); automatic by default
 var attack_traffic := false  # Time Attack and Free Drive with traffic (picked on stage select)
 var unlock_all := false  # every car and stage open (Unlocks), for testing and accessibility
 var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
@@ -72,6 +75,7 @@ func reset() -> void:
 	carry_time = false
 	steer_assist = false
 	brake_assist = false
+	manual_gears = false
 	unlock_all = false
 	attack_traffic = false
 	music_volume = 10
@@ -103,6 +107,7 @@ func load_settings() -> void:
 		carry_time = bool(cfg.get_value("play", "carry_time", carry_time))
 		steer_assist = bool(cfg.get_value("play", "steer_assist", steer_assist))
 		brake_assist = bool(cfg.get_value("play", "brake_assist", brake_assist))
+		manual_gears = bool(cfg.get_value("play", "manual_gears", manual_gears))
 		unlock_all = bool(cfg.get_value("play", "unlock_all", unlock_all))
 		attack_traffic = bool(cfg.get_value("play", "attack_traffic", attack_traffic))
 		music_volume = clampi(int(cfg.get_value("audio", "music", music_volume)), 0, VOLUME_STEPS)
@@ -122,7 +127,7 @@ func load_settings() -> void:
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -166,6 +171,11 @@ static func _v6_to_v7(cfg: ConfigFile) -> void:
 	cfg.set_value("accessibility", "subtitles", true)
 
 
+## Version 8 added manual gears, off: every earlier build shifted for you.
+static func _v7_to_v8(cfg: ConfigFile) -> void:
+	cfg.set_value("play", "manual_gears", false)
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -178,6 +188,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("play", "carry_time", carry_time)
 	cfg.set_value("play", "steer_assist", steer_assist)
 	cfg.set_value("play", "brake_assist", brake_assist)
+	cfg.set_value("play", "manual_gears", manual_gears)
 	cfg.set_value("play", "unlock_all", unlock_all)
 	cfg.set_value("play", "attack_traffic", attack_traffic)
 	cfg.set_value("audio", "music", music_volume)
