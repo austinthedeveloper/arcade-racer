@@ -108,13 +108,13 @@ table in the overview.
 
 `tools/export.sh [version]` builds Windows, macOS (universal), Web and Linux into `build/release/SundownRun-<version>-<platform>.zip`. It needs the Godot 4.7.2 export templates (Editor > Manage Export Templates). The presets are in `export_presets.cfg`.
 
-To publish, bump `config/version` in `project.godot`, then push a tag:
+To publish, rename **Unreleased** in `CHANGELOG.md` to the version and date, bump `config/version` in `project.godot`, then push a tag (the steps and the signing and store decisions are in [docs/10-releases.md](docs/10-releases.md)):
 
 ```sh
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-`.github/workflows/release.yml` runs the tests, exports the builds and creates the GitHub Release with the zips and download notes. Running the workflow by hand (Actions > Release > Run workflow) builds the zips as a workflow artifact without publishing. The builds are not code-signed or notarized, so Windows SmartScreen and macOS Gatekeeper warn on first launch; the release notes say how to get past that. The Linux x86_64 zip is not a supported platform and is for testing only (CI smoke-runs it headlessly; a Steam Deck test may follow).
+`.github/workflows/release.yml` runs the tests, exports the builds and creates the GitHub Release with the zips, that version's `CHANGELOG.md` section (`tools/changelog.py`; a tag without one stops the workflow) and download notes. Running the workflow by hand (Actions > Release > Run workflow) builds the zips as a workflow artifact without publishing. The builds are not code-signed or notarized, so Windows SmartScreen and macOS Gatekeeper warn on first launch; the release notes say how to get past that. The Linux x86_64 zip is not a supported platform and is for testing only (CI smoke-runs it headlessly; a Steam Deck test may follow).
 
 ### Updates
 
@@ -133,6 +133,7 @@ To try it without publishing: export two versions, serve the newer one's `.pck`,
 - [Art prompts, round 4](docs/07-art-prompts-round4.md)
 - [Concept review, round 4](docs/08-concept-review-round4.md)
 - [Known bugs and cleanup plan](docs/09-known-bugs-and-cleanup.md)
+- [Releases](docs/10-releases.md): monthly tags, the changelog, why the builds aren't signed yet, where the game is published
 - [Roadmap, November 2026 to April 2027](docs/roadmap/00-overview.md): the six-month feature list (feature IDs like RC-1), split into eight group docs in `docs/roadmap/`
 
 ## Concept art prompts

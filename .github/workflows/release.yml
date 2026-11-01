@@ -37,6 +37,11 @@ jobs:
           else v="$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)-dev.${GITHUB_SHA::7}"; fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
+      # Before the builds: a tag whose version CHANGELOG.md doesn't describe stops here.
+      - name: Release notes from CHANGELOG.md
+        if: github.ref_type == 'tag'
+        run: python3 tools/changelog.py "${{ steps.version.outputs.version }}" > changes.md
+
       - name: Export Windows, macOS, Web, Linux
         run: tools/export.sh "${{ steps.version.outputs.version }}"
 
@@ -52,10 +57,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          cat > notes.md <<NOTES
+          { echo "## What's new"; echo; cat changes.md; echo; } > notes.md
+          cat >> notes.md <<NOTES
           ## Downloads
 
-          - **Windows:** \`SundownRun-$VERSION-windows.zip\`. Unzip and run \`SundownRun.exe\`. It isn't code-signed, so SmartScreen may warn: choose *More info*, then *Run anyway*.
+          - **Windows:** \`SundownRun-$VERSION-windows.zip\`. Unzip and run \`SundownRun.exe\`. It isn't code-signed (docs/10-releases.md says why), so SmartScreen may warn: choose *More info*, then *Run anyway*.
           - **macOS** (Intel and Apple Silicon): \`SundownRun-$VERSION-macos.zip\`. Unzip and move *Sundown Run* to Applications. It isn't notarized, so the first time right-click it and choose *Open* (or run \`xattr -cr "/Applications/Sundown Run.app"\` if macOS says it is damaged).
           - **Web:** \`SundownRun-$VERSION-web.zip\`. Serve the folder from any static web server (for example \`python3 -m http.server\` inside it) and open \`index.html\`; opening the file directly doesn't work. Works on itch.io as an HTML upload.
           - **Linux** (x86_64, unsupported, for testing only): \`SundownRun-$VERSION-linux.zip\`. Unzip, \`chmod +x SundownRun.x86_64\` if needed, and run it.

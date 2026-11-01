@@ -1,0 +1,96 @@
+# Releases
+
+How a version of Sundown Run gets out, and the decisions behind it (EQ-9). The mechanics
+(`tools/export.sh`, `.github/workflows/release.yml`, the auto-updater) are in the README's
+Releases section.
+
+## Cadence
+
+One pre-release tag a month, at the end of each roadmap month, the 1.0 candidate last:
+
+| Tag | Month | Roadmap milestone |
+|---|---|---|
+| v0.2.0 | Nov 2026 | M1 |
+| v0.3.0 | Dec 2026 | M2 |
+| v0.4.0 | Jan 2027 | M3 |
+| v0.5.0 | Feb 2027 | M4 |
+| v0.6.0 | Mar 2027 | M5 |
+| v0.7.0 | Apr 2027 | M6, the 1.0 candidate |
+
+A fix between them is a patch tag (v0.2.1). A tag with a suffix (v0.3.0-beta) is marked as a
+pre-release on GitHub, and the auto-updater still offers it.
+
+## Cutting a release
+
+1. `tools/test.sh` and `tools/shots.sh` pass on main.
+2. In `CHANGELOG.md`, rename **Unreleased** to `[x.y.z] - YYYY-MM-DD` and start a new empty
+   **Unreleased** above it. Every line says what a player notices, not which file changed.
+3. Set `config/version="x.y.z"` in `project.godot`. `test_export` checks that the changelog has
+   a section for this version, so a bump without notes fails the tests.
+4. Merge that, then `git tag vx.y.z && git push origin vx.y.z`.
+5. The release workflow stops at once if `tools/changelog.py` finds no section for the tag;
+   otherwise it runs the tests, exports, and publishes the release with the changelog section
+   as "What's new" above the download notes.
+6. Start the previous release's desktop build and check it updates itself to the new one.
+
+## Decision: no code signing yet (2026-11-01)
+
+The builds stay unsigned on Windows and ad-hoc signed (not notarized) on macOS until the 1.0
+candidate at least. Austin decided this on 2026-11-01.
+
+- **Why:** the players are friends and family, who can get past the first-launch warning with
+  the steps in the release notes. Signing costs money every year: the Apple Developer Program is
+  $99 a year, and Windows signing runs from about $10 a month (Azure Trusted Signing) to a few
+  hundred dollars a year for a certificate. Notarization also adds secrets and a slow Apple
+  step to the release workflow.
+- **What players see:** Windows SmartScreen says the app is unrecognized (*More info*, *Run
+  anyway*). macOS Gatekeeper blocks the first open (right-click, *Open*, or
+  `xattr -cr "/Applications/Sundown Run.app"` if it says the app is damaged). The release
+  notes and the README say so.
+- **The updater is not affected:** it downloads a `.pck`, not an executable, and checks its
+  SHA-256 against the release's manifest, so updates need no new signature and raise no
+  warning.
+- **Revisit when:** the game goes on a store (itch.io's desktop app and Steam both still run
+  unsigned builds, but strangers bounce off the warnings), or a player can't get past the warning.
+  Then: Apple Developer ID and `notarytool` in the release workflow (the macOS preset has
+  the codesign and notarization fields), and Azure Trusted Signing for the `.exe`.
+
+## Decision: GitHub Releases only for now (2026-11-01)
+
+The game is published only as GitHub Releases. The auto-updater reads the latest release from
+the GitHub API, so every desktop build already finds updates there, and nothing else needs an
+account or upkeep.
+
+**itch.io** comes next, once the game seems worth showing to people who don't know Austin (his
+call). It fits without code changes: the Web zip is an HTML upload as it is, and the desktop
+zips upload as downloads (`butler push` from the release workflow, with an itch API key as a
+secret). The updater keeps reading GitHub, so an itch download updates itself too. Steam comes
+after that, if ever: a $100 app fee, a Steamworks account and its review.
+
+### itch.io page draft
+
+Ready for when the page is made. Screenshots: the Palm Coast start, Neon Strip at night, a
+Thunderhead lightning strike, the car select, a results screen.
+
+> **Sundown Run**
+>
+> *A sunset arcade racer: eight stages, one clock, no brakes worth mentioning.*
+>
+> Race the sun across a made-up country, from Palm Coast through neon cities, desert mesas,
+> storm passes and snowy summits. Beat the clock to each checkpoint, weave through traffic,
+> draft the seven rivals and fire nitro on the straights. Finish in the top three to go on
+> to the next stage.
+>
+> - Eight hand-built stages with their own weather, traffic and scenery
+> - Twelve cars, unlocked as you go, from a wedge supercar to a surprisingly fast delivery van
+> - Grand Tour, Single Race, Time Attack against your ghost, and Free Drive
+> - Plays with a keyboard, a gamepad or a steering wheel with pedals (calibration built in)
+> - Auto gas, assists and a colorblind-safe HUD, so a kid can play by steering
+> - Updates itself when a new version is out
+>
+> Windows and macOS downloads, or play in the browser. Free.
+>
+> Controls: arrows or WASD to drive, Space for nitro, Esc to pause. F2 calibrates a wheel.
+
+Tags: racing, arcade, retro, pixel-art, pseudo-3d, singleplayer. Genre: Racing.
+Classification: game, released (or in development until 1.0).
