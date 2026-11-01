@@ -64,6 +64,67 @@ KEY_DISTANCE = 90
 # or more and its surroundings 200 or more.
 GAP_DISTANCE = 40
 GAP_FRAME = 200
+# Past the is_key fringe, up to HUE_FRINGE more pixels are keyed off if their hue is within
+# KEY_HUE degrees of the background's and they have at least KEY_CHROMA of color: the
+# shadowed, darker magenta line under a vehicle that is_key misses (docs/09 A3). The window
+# is narrow because the Zenith's iridescent paint runs from violet into magenta.
+HUE_FRINGE = 2
+KEY_HUE = 14
+KEY_CHROMA = 30
+# Pixels this close to the keyed background have their magenta spill taken out (docs/09 A2):
+# red and blue both lowered by however far the smaller of them stands above green.
+DESPILL = 3
+
+
+def hue(arr):
+    """Hue in degrees (0..360) and chroma (max - min channel) of an (..., 3+) array."""
+    rgb = arr[..., :3].astype(np.int32)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    hi, lo = rgb.max(axis=-1), rgb.min(axis=-1)
+    c = np.maximum(hi - lo, 1)
+    h = np.where(hi == r, ((g - b) / c) % 6, np.where(hi == g, (b - r) / c + 2, (r - g) / c + 4))
+    return h * 60.0, hi - lo
+
+
+def near_key_hue(arr, key):
+    """Pixels of `arr` whose hue is within KEY_HUE degrees of the color `key`, with at least
+    KEY_CHROMA of color (dark and pale pixels have no reliable hue)."""
+    h, c = hue(arr)
+    kh = hue(np.array(key[:3]))[0]
+    off = np.abs((h - kh + 180.0) % 360.0 - 180.0)
+    return (off <= KEY_HUE) & (c >= KEY_CHROMA)
+
+
+def recolor_hue(img, box, hues, to_hue, sat=1.0, min_chroma=12):
+    """The pixels inside `box` (fractions of the image: left, top, right, bottom) whose hue is
+    in `hues` (lo, hi degrees) turned to hue `to_hue`, their saturation scaled by `sat`; the
+    brightness stays, so highlights and reflections keep their shape."""
+    a = rgba(img)
+    h, w = a.shape[:2]
+    x0, y0, x1, y1 = round(box[0] * w), round(box[1] * h), round(box[2] * w), round(box[3] * h)
+    part = a[y0:y1, x0:x1]
+    hh, c = hue(part)
+    pick = (part[..., 3] > 0) & (hh >= hues[0]) & (hh <= hues[1]) & (c >= min_chroma)
+    v = part[..., :3].max(axis=-1).astype(np.float64)
+    s = np.where(v > 0, c / np.maximum(v, 1), 0.0) * sat
+    # HSV to RGB at the new hue
+    k = (np.array([5.0, 3.0, 1.0]) + to_hue / 60.0) % 6
+    k = np.broadcast_to(k, part.shape[:2] + (3,))
+    rgb = v[..., None] - v[..., None] * s[..., None] * np.clip(np.minimum(k, 4 - k), 0, 1)
+    part[pick, :3] = np.clip(np.round(rgb[pick]), 0, 255).astype(np.uint8)
+    return Image.fromarray(a)
+
+
+def despill(a, near):
+    """Takes magenta spill out of the `near` pixels of the RGBA array `a`, in place: where both
+    red and blue stand above green, both drop by the smaller excess. Blue glass, red paint and
+    grey stay as they are; a pink-tinged outline goes neutral, a pink glow goes warm."""
+    rgb = a[..., :3].astype(np.int16)
+    spill = np.minimum(rgb[..., 0], rgb[..., 2]) - rgb[..., 1]
+    spill = np.where(near & (spill > 0), spill, 0)
+    rgb[..., 0] -= spill
+    rgb[..., 2] -= spill
+    a[..., :3] = rgb.astype(np.uint8)
 
 
 def _shifts(mask_shape):
@@ -101,11 +162,23 @@ def _frame_medians(labels, near, bright, count):
     return medians
 
 
-def key_sheet(img, fringe=1):
+def _grow(mask, through, steps):
+    """`mask` grown `steps` pixels (4-connected) into the pixels of `through`."""
+    for _ in range(steps):
+        grow = np.zeros_like(mask)
+        for dst, src in _shifts(mask.shape):
+            grow[dst] |= mask[src]
+        mask = mask | (grow & through)
+    return mask
+
+
+def key_sheet(img, fringe=1, hue_fringe=HUE_FRINGE, spill=DESPILL):
     """Keys out the sheet's background color (read from its corner): every patch of it that
     touches the edge or is a real gap (GAP_DISTANCE, GAP_FRAME), plus up to `fringe` pixels
-    of magenta-ish fringe around those (is_key, grown one pixel at a time). Pink or purple
-    paint stays, unless it touches the background within `fringe` pixels."""
+    of magenta-ish fringe around those (is_key, grown one pixel at a time), then up to
+    `hue_fringe` more pixels near the key's hue (near_key_hue). Pink or purple paint stays,
+    unless it touches the background within those pixels. What is left within `spill` pixels
+    of the background is despilled."""
     a = rgba(img)
     h, w = a.shape[:2]
     bg = a[1, 1, :3].astype(np.int16)
@@ -123,13 +196,10 @@ def key_sheet(img, fringe=1):
     gap |= frame < GAP_FRAME
     keep = edge | gap
     keep[0] = False
-    keyed = keep[labels]
-    keyish = is_key(a)
-    for _ in range(fringe):
-        grow = np.zeros_like(keyed)
-        for dst, src in _shifts(keyed.shape):
-            grow[dst] |= keyed[src]
-        keyed |= grow & keyish
+    keyed = _grow(keep[labels], is_key(a), fringe)
+    keyed = _grow(keyed, near_key_hue(a, bg), hue_fringe)
+    if spill:
+        despill(a, _grow(keyed, ~keyed, spill) & ~keyed)
     a[keyed] = 0
     return Image.fromarray(a)
 
@@ -167,9 +237,10 @@ def cell_boxes(labels):
             for k, (ys, xs) in enumerate(ndimage.find_objects(labels))]
 
 
-def mask_crop(img, box, labels, step, members):
+def mask_crop(img, box, labels, step, members, trim=None):
     """`img` cropped to `box` (full-res), keeping only pixels whose label cell is one of
-    `members`, then trimmed to what is left."""
+    `members`, then trimmed to what is left (of `trim`, the same sheet keyed another way,
+    if given)."""
     part = rgba(img.crop(box))
     ph, pw = part.shape[:2]
     full = np.zeros((ph, pw), dtype=labels.dtype)
@@ -178,9 +249,14 @@ def mask_crop(img, box, labels, step, members):
     oky, okx = ys < labels.shape[0], xs < labels.shape[1]
     sub = labels[np.ix_(ys[oky], xs[okx])]
     full[np.ix_(np.nonzero(oky)[0], np.nonzero(okx)[0])] = sub
-    part[~np.isin(full, list(members))] = 0
+    outside = ~np.isin(full, list(members))
+    part[outside] = 0
     out = Image.fromarray(part)
-    return out.crop(out.getbbox())
+    if trim is None:
+        return out.crop(out.getbbox())
+    t = rgba(trim.crop(box))
+    t[outside] = 0
+    return out.crop(Image.fromarray(t).getbbox())
 
 
 def overlap(a, b):
@@ -259,13 +335,14 @@ def in_reading_order(groups):
     return [g for row in rows for g in sorted(row["items"], key=lambda g: g["box"][0])]
 
 
-def slice_row(keyed, shape=None):
+def slice_row(keyed, shape=None, trim=None):
     """A keyed sheet's big objects (components) left to right, each trimmed, with pixels of
     its neighbours inside its box cleared. For sheets of one row: cars, the palms. `shape`,
     if given, is the same sheet keyed more lightly: objects are found on it, so a part that
-    `keyed` cut loose (a mirror on a stalk of fringe) still belongs to its object."""
+    `keyed` cut loose (a mirror on a stalk of fringe) still belongs to its object. `trim`,
+    if given, is the same sheet keyed another way that sets each object's box."""
     boxes, labels, step = components(keyed if shape is None else shape)
-    return [mask_crop(keyed, box, labels, step, {comp}) for box, comp in boxes]
+    return [mask_crop(keyed, box, labels, step, {comp}, trim) for box, comp in boxes]
 
 
 def slice_objects(path, names, target_height, row=False):
