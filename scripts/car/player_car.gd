@@ -7,6 +7,15 @@ const PITCH_SPAN := 400.0  # world units of road the car's pitch is measured ove
 const PITCH_FULL_DEG := 30.0
 const PITCH_RATE := 8.0
 const MAX_TICK_SEGMENTS := 4  # more segments than this in one tick is a teleport
+## The five gears: the speed fraction (speed_percent) where each ends. The automatic is in
+## whichever band the speed is in (auto_gear); the engine sound (RaceAudio.engine_rpm) and the
+## tach rev through each. Manual gears (Settings.manual_gears) shift through the same bands. Every gear but the top one has a rev limiter at its band's end; a
+## gear too tall for the speed pulls weakly (down to LUG_ACCEL at a standstill); and the top
+## gear runs MANUAL_TOP_BONUS past the automatic's top speed, the reward for shifting.
+const GEARS: Array[float] = [0.0, 0.16, 0.34, 0.54, 0.76, 1.0]
+const MANUAL_TOP_BONUS := 0.03
+const LUG_ACCEL := 0.3
+const TOP_GEAR := 5  # GEARS.size() - 1
 
 var position := 0.0  # camera z, wrapped to the track length
 var last_position := 0.0  # position before this tick's move
@@ -18,6 +27,9 @@ var steer := 0.0  # smoothed steering, for visuals
 var pitch := 0.0  # smoothed nose angle for visuals: 1 full nose-down (downhill), -1 full nose-up
 var braking := false
 var offroad := false
+var manual := false  # manual gears: the player shifts (shift); otherwise the gear follows the speed
+var gear := 1  # the manual gear, 1..TOP_GEAR
+var shifted := 0  # +1 or -1 for the tick a manual shift happens, else 0
 var slide := 0.0  # power slide (RC-8): -1 sliding left, 1 right, 0 not sliding
 var slides := true  # whether this car power slides (rivals don't: they brake to stay clear)
 
@@ -84,6 +96,8 @@ func reset(start_position: float = 0.0) -> void:
 	ram_time = 0.0
 	ghost_time = 0.0
 	crash_time = 0.0
+	gear = 1
+	shifted = 0
 	airborne = false
 	air_height = 0.0
 	pitch = 0.0
@@ -94,16 +108,66 @@ func speed_percent() -> float:
 	return speed / Cfg.MAX_SPEED
 
 
+## The gear (1..TOP_GEAR) the automatic is in at `pct` of top speed: the band of GEARS it
+## falls in.
+static func auto_gear(pct: float) -> int:
+	for g in TOP_GEAR:
+		if pct < GEARS[g + 1]:
+			return g + 1
+	return TOP_GEAR
+
+
+## The speed (world units per second) where manual `g`'s rev limiter cuts in: the end of its
+## band in GEARS. The top gear has none (INF): top speed is its limit.
+static func gear_limit(g: int) -> float:
+	return INF if g >= TOP_GEAR else GEARS[g] * Cfg.MAX_SPEED
+
+
+## The share of its pull a car keeps in manual `g` at `pct` of top speed (speed_percent):
+## all of it from the start of the gear's band up, LUG_ACCEL at a standstill below it.
+static func lug(g: int, pct: float) -> float:
+	var start: float = GEARS[clampi(g, 1, TOP_GEAR) - 1]
+	if start <= 0.0 or pct >= start:
+		return 1.0
+	return lerpf(LUG_ACCEL, 1.0, maxf(pct, 0.0) / start)
+
+
+## Manual gears: one gear up (`dir` 1) or down (-1). A downshift that would put the car past
+## the lower gear's limiter is refused, as is shifting past 1st or the top gear. Returns true
+## when the gear changed.
+func shift(dir: int) -> bool:
+	var to := clampi(gear + signi(dir), 1, TOP_GEAR)
+	if to == gear or (to < gear and speed > gear_limit(to)):
+		return false
+	gear = to
+	shifted = signi(dir)
+	return true
+
+
+## The gear the tach shows and the engine is in: the manual gear, or (automatic) the one
+## the speed is in.
+func shown_gear() -> int:
+	return gear if manual else auto_gear(speed_percent())
+
+
+## True while a manual gear's rev limiter holds the car back.
+func on_limiter() -> bool:
+	return manual and gear < TOP_GEAR and speed >= gear_limit(gear) - 0.01
+
+
 func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	landed = false
 	crashed = false
 	bumped = false
 	hit_traffic = false
+	shifted = 0
 	var seg := track.find_segment(position + Cfg.PLAYER_Z)
 	var pct := speed / Cfg.MAX_SPEED
 	var top := top_speed * (Cfg.NITRO_SPEED_MULT if nitro_time > 0.0 else 1.0)
 	if draft_time > 0.0:
 		top *= Draft.SPEED_MULT
+	if manual:
+		top *= 1.0 + MANUAL_TOP_BONUS
 
 	var throttle := 0.0
 	var brake := 0.0
@@ -115,6 +179,11 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 		if inp.nitro_pressed and nitro_charges > 0 and nitro_time <= 0.0:
 			nitro_charges -= 1
 			nitro_time = nitro_duration
+	if controls and manual:  # a crashed car can still drop a gear for the restart
+		if inp.shift_up_pressed:
+			shift(1)
+		elif inp.shift_down_pressed:
+			shift(-1)
 	nitro_time = maxf(0.0, nitro_time - dt)
 	launch_time = maxf(0.0, launch_time - dt)
 	bog_time = maxf(0.0, bog_time - dt)
@@ -140,6 +209,7 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	steer = lerpf(steer, steer_in, minf(1.0, dt * Cfg.STEER_SMOOTHING))
 
 	# Speed
+	var was := speed
 	if crash_time > 0.0:
 		crash_time -= dt
 		speed = move_toward(speed, 0.0, Cfg.CRASH_BRAKING * dt)
@@ -155,6 +225,8 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 				boost *= Launch.BOOST_ACCEL
 			elif bog_time > 0.0:
 				boost *= Launch.BOG_ACCEL
+			if manual:
+				boost *= lug(gear, pct)
 			speed += Cfg.ACCEL * accel_mult * boost * throttle * (Cfg.ACCEL_START - Cfg.ACCEL_FADE * speed / top) * dt
 		if brake > 0.01:
 			speed -= Cfg.BRAKING * brake * dt
@@ -165,6 +237,8 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 		speed = maxf(Cfg.OFFROAD_LIMIT / offroad_mult, speed - Cfg.OFFROAD_DECEL * offroad_mult * dt)
 	if speed > top:
 		speed = move_toward(speed, top, Cfg.OVERSPEED_DECAY * dt)
+	if manual and speed > gear_limit(gear):  # the rev limiter: held there, or let down to it
+		speed = gear_limit(gear) if was <= gear_limit(gear) else move_toward(speed, gear_limit(gear), Cfg.OVERSPEED_DECAY * dt)
 	speed = maxf(speed, 0.0)
 	x = clampf(x, -Cfg.MAX_X, Cfg.MAX_X)
 	braking = brake > 0.1

@@ -163,6 +163,7 @@ func start_race() -> void:
 	player = PlayerCar.new()
 	var car := Cars.find(car_id)
 	player.setup(car)
+	player.manual = Settings.manual_gears and not demo  # the attract demo shows the automatic
 	CarSprites.load_all()
 	player.reset(_start_segment * Cfg.SEGMENT_LENGTH)
 	player.distance = _start_segment * Cfg.SEGMENT_LENGTH  # that far along the route, so the finish is where it is drawn
@@ -790,6 +791,8 @@ func _autodrive_input() -> DriveInput:
 	if autodrive_slides(seg.curve, inp.steer, player):
 		inp.brake = 1.0
 	inp.nitro_pressed = _frame % 600 == 300
+	inp.shift_up_pressed = player.on_limiter()
+	inp.shift_down_pressed = player.manual and player.gear > 1 and player.speed < PlayerCar.gear_limit(player.gear - 1) * 0.8
 	return inp
 
 

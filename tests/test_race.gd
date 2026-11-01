@@ -220,6 +220,16 @@ func test_a_restart_starts_the_clocks_over() -> void:
 	eq(InputRouter.speed_factor, 0.0, "pad steering back at rest")
 
 
+func test_autodrive_shifts_with_manual_gears() -> void:
+	TestSuite.use_scratch_settings(Settings)
+	Settings.manual_gears = true
+	var r := race(true, false, 0, false)
+	var top := run_until(r, func() -> bool: return r.player.gear == PlayerCar.TOP_GEAR, 1500)
+	check(top > 0, "up through the gears to the top one (%d ticks)" % top)
+	check(r.player.speed > Cfg.MAX_SPEED * 0.7, "at speed")
+	TestSuite.use_scratch_settings(Settings)
+
+
 func test_launch_window_edges() -> void:
 	var G := Launch.Grade
 	eq(Launch.grade(-Launch.WINDOW_BEFORE - 0.01, 0.0), G.BOG, "just too early bogs")

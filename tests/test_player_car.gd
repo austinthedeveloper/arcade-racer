@@ -504,6 +504,117 @@ func test_mesa_keeps_its_speed_off_road() -> void:
 			check(p.speed < Cfg.MAX_SPEED * 0.5, "Vega slows on the dirt (%.0f)" % p.speed)
 
 
+# --- Manual gears (RC-10) ---------------------------------------------------------
+
+func _manual(speed: float = 0.0) -> PlayerCar:
+	var p := _car(speed)
+	p.manual = true
+	return p
+
+
+## Full throttle for `seconds`, shifting up each time the limiter is reached (a perfect
+## manual driver; the automatic ignores the shift). Returns the seconds to 70% of top speed.
+func _flat_out(p: PlayerCar, track: Track, seconds: float) -> float:
+	var to_70 := INF
+	for i in roundi(seconds / DT):
+		var inp := input(1.0)
+		inp.shift_up_pressed = p.on_limiter()
+		p.update(DT, inp, track, true)
+		if is_inf(to_70) and p.speed >= Cfg.MAX_SPEED * 0.7:
+			to_70 = (i + 1) * DT
+	return to_70
+
+
+func test_automatic_and_manual_reach_the_same_speed_within_the_advantage() -> void:
+	var t := flat_track(6000)
+	var auto := _car()
+	var manual := _manual()
+	var auto_70 := _flat_out(auto, t, 30.0)
+	var manual_70 := _flat_out(manual, t, 30.0)
+	eq(manual.gear, PlayerCar.TOP_GEAR, "shifted all the way up")
+	near(auto.speed, auto.top_speed, 0.5, "the automatic at its top speed")
+	check(manual.speed >= auto.speed, "manual at least as fast (%.1f vs %.1f)" % [manual.speed, auto.speed])
+	check(manual.speed <= auto.speed * (1.0 + PlayerCar.MANUAL_TOP_BONUS) + 0.5,
+		"and no faster than the advantage (%.1f vs %.1f)" % [manual.speed, auto.speed])
+	check(manual.speed > auto.speed * (1.0 + PlayerCar.MANUAL_TOP_BONUS * 0.9), "the advantage is there at the top end")
+	check(absf(manual_70 - auto_70) < 0.25, "about as quick to 70%% (%.2f s vs %.2f s)" % [manual_70, auto_70])
+
+
+func test_every_car_keeps_the_manual_advantage_small() -> void:
+	var t := flat_track(6000)
+	for car: Dictionary in Cars.LIST:
+		var auto := PlayerCar.new()
+		auto.setup(car)
+		auto.reset()
+		var manual := PlayerCar.new()
+		manual.setup(car)
+		manual.reset()
+		manual.manual = true
+		_flat_out(auto, t, 30.0)
+		_flat_out(manual, t, 30.0)
+		var gain := manual.speed / auto.speed - 1.0
+		check(gain >= 0.0 and gain <= PlayerCar.MANUAL_TOP_BONUS + 0.005, "%s: manual %.1f%% faster" % [car["id"], gain * 100.0])
+
+
+func test_the_rev_limiter_holds_each_gear() -> void:
+	var t := flat_track(3000)
+	var p := _manual()
+	_drive(p, t, 5.0, input(1.0))
+	eq(p.gear, 1, "never shifted")
+	near(p.speed, PlayerCar.gear_limit(1), 0.01, "held at 1st's limiter")
+	check(p.on_limiter(), "on the limiter")
+	near(RaceAudio.engine_rpm(p.speed_percent(), p.gear), 1.0, 0.001, "the engine at full revs")
+	check(p.shift(1) and p.gear == 2, "up to 2nd")
+	eq(p.shifted, 1, "the shift is marked")
+	check(not p.on_limiter(), "off the limiter")
+	_drive(p, t, 0.5, input(1.0))
+	check(p.speed > PlayerCar.gear_limit(1), "pulling again in 2nd")
+
+
+func test_a_downshift_past_the_limiter_is_refused() -> void:
+	var p := _manual(Cfg.MAX_SPEED * 0.5)
+	p.gear = 3
+	check(not p.shift(-1), "too fast for 2nd")
+	eq(p.gear, 3, "still 3rd")
+	p.speed = PlayerCar.gear_limit(2) - 1.0
+	check(p.shift(-1), "slow enough")
+	eq([p.gear, p.shifted], [2, -1], "in 2nd")
+	p.gear = 1
+	check(not p.shift(-1), "nothing below 1st")
+	p.gear = PlayerCar.TOP_GEAR
+	check(not p.shift(1), "nothing above the top gear")
+
+
+func test_too_tall_a_gear_pulls_weakly() -> void:
+	var t := flat_track(3000)
+	var first := _manual()
+	var fifth := _manual()
+	fifth.gear = PlayerCar.TOP_GEAR
+	_drive(first, t, 0.4, input(1.0))
+	_drive(fifth, t, 0.4, input(1.0))
+	check(first.speed < PlayerCar.gear_limit(1), "(1st not on its limiter yet)")
+	check(fifth.speed < first.speed * 0.6, "a standing start in 5th is slow (%.0f vs %.0f)" % [fifth.speed, first.speed])
+	eq(PlayerCar.lug(3, PlayerCar.GEARS[2]), 1.0, "full pull from the gear's band up")
+	near(PlayerCar.lug(3, 0.0), PlayerCar.LUG_ACCEL, 0.001, "the least at a standstill")
+	check(RaceAudio.engine_rpm(0.05, 4) < RaceAudio.engine_rpm(0.05), "and the revs sag")
+
+
+func test_shift_buttons_do_nothing_with_the_automatic() -> void:
+	var t := flat_track(3000)
+	var p := _car(Cfg.MAX_SPEED * 0.5)
+	var inp := input(1.0)
+	inp.shift_up_pressed = true
+	p.update(DT, inp, t, true)
+	eq([p.gear, p.shifted], [1, 0], "no manual gear")
+	eq(p.shown_gear(), Hud.gear(p.speed_percent()), "the gear follows the speed")
+	var m := _manual(Cfg.MAX_SPEED * 0.1)
+	m.update(DT, inp, t, true)
+	eq([m.gear, m.shown_gear()], [2, 2], "manual: the button shifts, and the tach shows it")
+	m.update(DT, input(1.0, 0.0, 0.0), t, false)
+	inp.shift_up_pressed = true
+	m.update(DT, inp, t, false)
+	eq(m.gear, 2, "no shifting without controls (the countdown)")
+
 func test_off_road_is_past_the_edge_where_the_car_is() -> void:
 	# WS-7: the road's width changes; off the road is past its edge where the car is
 	var t := flat_track(1000)

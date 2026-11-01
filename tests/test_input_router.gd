@@ -51,3 +51,22 @@ func test_an_unmapped_pads_axis_1_never_moves_the_menus() -> void:
 		m.step_axis_y(r.stick_menu_y(1.0, false), 1.0 / 60.0)
 		moves += absi(m.step_y())
 	eq(moves, 0, "two seconds of a resting pedal: no scrolling")
+
+
+func test_shift_keys_reach_the_drive_input_as_presses() -> void:
+	var r := _router()
+	TestSuite.use_scratch_profiles(r)
+	r._register_actions()  # (a -s run starts before the autoload's _ready)
+	eq([r.keyboard.binding("shift_up"), r.keyboard.binding("shift_down")], [[KEY_E], [KEY_Q]], "E and Q by default")
+	Input.action_press("shift_up")
+	r._physics_process(DT)
+	eq([r.state.shift_up_pressed, r.state.shift_down_pressed], [true, false], "shift up on the tick it's pressed")
+	r._physics_process(DT)
+	eq(r.state.shift_up_pressed, false, "once: held is not another shift")
+	Input.action_release("shift_up")
+	Input.action_press("shift_down")
+	r._physics_process(DT)
+	eq([r.state.shift_up_pressed, r.state.shift_down_pressed], [false, true], "shift down")
+	Input.action_release("shift_down")
+	r._physics_process(DT)
+	eq(r.state.shift_down_pressed, false, "released")

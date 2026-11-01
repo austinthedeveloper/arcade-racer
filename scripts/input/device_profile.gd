@@ -10,18 +10,21 @@ enum Kind { KEYBOARD = 0, GAMEPAD = 1, WHEEL = 2 }
 ## The section the keyboard's bindings are saved under in input_profiles.cfg.
 const KEYBOARD_GUID := "keyboard"
 ## The actions the player can rebind on every device (RemapScreen), in screen order.
-## shift_up, shift_down and view have no effect in play yet; horn and radio only sound (RaceAudio).
+## shift_up and shift_down only change gear with manual gears on (Settings.manual_gears); view
+## has no effect in play yet; horn and radio only sound (RaceAudio).
 const REMAP_ACTIONS := ["nitro", "shift_up", "shift_down", "horn", "radio", "pause", "view"]
 const ACTION_NAMES := {"nitro": "NITRO", "shift_up": "SHIFT UP", "shift_down": "SHIFT DOWN", "horn": "HORN", "radio": "RADIO",
 	"pause": "PAUSE", "view": "VIEW"}
 ## Default bindings: physical keycodes on the keyboard, joypad buttons on a pad. A wheel's
-## buttons differ by model, so only its nitro has one (from calibration, nitro_button).
+## buttons differ by model, so only its nitro has one (from calibration, nitro_button): its
+## paddles are bound to shift_up and shift_down on the remap screen. A pad shifts up on Y and
+## down on LB, so nitro has RB alone.
 const KEYBOARD_DEFAULTS := {
 	"nitro": [KEY_SPACE, KEY_SHIFT], "shift_up": [KEY_E], "shift_down": [KEY_Q], "horn": [KEY_H], "radio": [KEY_M],
 	"pause": [KEY_ESCAPE, KEY_P], "view": [KEY_V],
 }
 const PAD_DEFAULTS := {
-	"nitro": [JOY_BUTTON_RIGHT_SHOULDER, JOY_BUTTON_Y], "shift_up": [], "shift_down": [JOY_BUTTON_LEFT_SHOULDER],
+	"nitro": [JOY_BUTTON_RIGHT_SHOULDER], "shift_up": [JOY_BUTTON_Y], "shift_down": [JOY_BUTTON_LEFT_SHOULDER],
 	"horn": [JOY_BUTTON_LEFT_STICK], "radio": [], "pause": [JOY_BUTTON_START], "view": [JOY_BUTTON_RIGHT_STICK],
 }
 ## The keyboard's fixed actions (InputRouter registers them), which a binding can clash with:
