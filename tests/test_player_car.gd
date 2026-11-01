@@ -210,6 +210,41 @@ func test_fast_hit_on_traffic_crashes() -> void:
 	check(p.speed < Cfg.MAX_SPEED, "slows down while crashing")
 
 
+func test_a_crash_into_traffic_is_a_short_spin_not_a_stop() -> void:
+	# Running into traffic cost about three seconds (a stop and a standing start): now it's a
+	# short spin behind the car at most of its speed, about a second.
+	var t := flat_track()
+	var p := _car(Cfg.MAX_SPEED)
+	p.position = 2000.0
+	var c := _traffic_car(t, p, 0.0, Cfg.MAX_SPEED * 0.4)
+	p.collide(t)
+	check(p.crashed, "still a crash")
+	near(p.crash_time, Cfg.TRAFFIC_CRASH_DURATION, 0.001, "a short one")
+	near(p.speed, c.speed * Cfg.TRAFFIC_CRASH_KEEP, 0.001, "at a share of the car's speed")
+	check(p.position + Cfg.PLAYER_Z < c.z, "dropped in behind it")
+	var lowest := p.speed
+	while p.crash_time > 0.0:
+		p.update(DT, input(1.0), t, true)
+		lowest = minf(lowest, p.speed)
+	near(lowest, c.speed * Cfg.TRAFFIC_CRASH_KEEP, 1.0, "doesn't slow to a stop")
+	var palm := _car(Cfg.MAX_SPEED)
+	palm.crash()
+	near(palm.crash_time, Cfg.CRASH_DURATION, 0.001, "a roadside crash is the full length...")
+	for i in 60:
+		palm.update(DT, input(1.0), t, true)
+	eq(palm.speed, 0.0, "...and stops the car")
+
+
+func test_a_bump_keeps_most_of_the_cars_speed() -> void:
+	var t := flat_track()
+	var p := _car(Cfg.MAX_SPEED * 0.75)
+	p.position = 2000.0
+	var c := _traffic_car(t, p, 0.0, Cfg.MAX_SPEED * 0.3)
+	p.collide(t)
+	check(p.bumped and not p.crashed, "a bump")
+	near(p.speed, c.speed * Cfg.BUMP_KEEP, 0.001, "most of the car's speed, not its square")
+
+
 func test_slow_hit_on_traffic_bumps() -> void:
 	var t := flat_track()
 	var p := _car(Cfg.MAX_SPEED * 0.6)

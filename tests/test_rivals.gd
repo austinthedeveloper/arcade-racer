@@ -39,6 +39,16 @@ func test_grid_lines_up_ahead_of_the_player() -> void:
 	eq(ids.size(), Rivals.COUNT, "seven different cars")
 
 
+func test_the_grid_is_spaced_out() -> void:
+	var t := flat_track()
+	var f := _field(t)
+	for i in range(1, f.cars.size()):
+		near(f.cars[i - 1].distance - f.cars[i].distance, Rivals.GRID_STEP, 0.001, "a slot apart")
+	for i in range(2, f.cars.size()):
+		check(f.cars[i - 2].distance - f.cars[i].distance > Rivals.CONTACT_LENGTH * 1.5, "clear of the car ahead in its lane")
+	check(f.cars[-1].distance > Cfg.CAR_LENGTH, "the back of the grid clear of the player")
+
+
 func test_the_same_seed_gives_the_same_field() -> void:
 	var t := flat_track()
 	var a := _field(t)
@@ -203,6 +213,30 @@ func test_racers_side_by_side_are_pushed_apart() -> void:
 	check(a.x > 0.1 and b.x < -0.1, "pushed apart")
 	near(a.x - b.x, Cfg.CAR_WIDTH / Cfg.ROAD_WIDTH * Cfg.HIT_OVERLAP, 0.001, "just touching")
 	near(a.position, 2000.0, 0.001, "no one moved along the road")
+
+
+func test_rubbing_doors_scrubs_speed_once() -> void:
+	var t := flat_track()
+	var a := RivalCar.new()
+	a.reset(2000.0)
+	a.speed = 8000.0
+	var b := RivalCar.new()
+	b.reset(2050.0)
+	b.speed = 8000.0
+	for i in 60:  # a second side by side, steered back into each other every tick
+		a.x = 0.1
+		b.x = -0.1
+		Rivals.resolve_contacts([a, b], t)
+	near(a.speed, 8000.0 * (1.0 - Rivals.SIDE_PUSH_LOSS), 0.001, "scrubbed when they touched, not every tick")
+	check(a.rubbing and b.rubbing, "still rubbing")
+	a.x = 0.5
+	b.x = -0.5
+	Rivals.resolve_contacts([a, b], t)
+	check(not a.rubbing, "apart")
+	a.x = 0.1
+	b.x = -0.1
+	Rivals.resolve_contacts([a, b], t)
+	near(a.speed, 8000.0 * pow(1.0 - Rivals.SIDE_PUSH_LOSS, 2), 0.001, "a new touch scrubs again")
 
 
 func test_a_ghosted_car_drives_through_racers() -> void:

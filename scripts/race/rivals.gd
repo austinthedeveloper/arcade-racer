@@ -6,8 +6,10 @@ extends RefCounted
 
 const COUNT := 7
 const SEED := 4021
-const GRID_FRONT := 1250.0  # world units the front of the grid is ahead of the player's nose
-const GRID_STEP := 150.0  # between one grid slot and the next, staggered left and right
+const GRID_FRONT := 2200.0  # world units the front of the grid is ahead of the player's nose
+## Between one grid slot and the next, staggered left and right: two cars in a lane start
+## well clear of CONTACT_LENGTH, so the launch isn't a pile of bumps.
+const GRID_STEP := 250.0
 const GRID_X := 0.5
 ## Rubber band: rivals ahead of the player ease off and rivals behind get a little more, in
 ## full at BAND_RANGE away. BAND_MAX caps either way, whatever a difficulty asks for.
@@ -17,7 +19,7 @@ const BAND_EASE := 0.05  # normal difficulty: most a rival ahead gives up...
 const BAND_BOOST := 0.04  # ...and most a rival behind gains
 const CONTACT_LENGTH := 300.0  # world units along the road two racers touch within
 const CONTACT_SLOWDOWN := 0.97  # the car behind drops to this share of the one in front's speed
-const SIDE_PUSH_LOSS := 0.02  # share of speed a racer-to-racer side contact scrubs off
+const SIDE_PUSH_LOSS := 0.02  # share of speed a racer-to-racer side contact scrubs off, once
 
 var cars: Array[RivalCar] = []
 var band_ease := BAND_EASE
@@ -147,11 +149,17 @@ func finished_count() -> int:
 
 
 ## Racers bumping each other. A car that comes up behind another drops behind it at a little
-## under its speed; two already side by side are pushed apart. Nobody crashes. A ghosted car
-## (the GHOST power-up) drives right through the others.
+## under its speed; two already side by side are pushed apart, scrubbing speed when they first
+## touch but not again while they rub doors (that took 2% every tick, and held the player at a
+## quarter of top speed beside a rival). Nobody crashes. A ghosted car (the GHOST power-up)
+## drives right through the others.
 static func resolve_contacts(racers: Array, track: Track) -> void:
 	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
 	var reach := half_car * 2.0 * Cfg.HIT_OVERLAP
+	var was_rubbing := {}
+	for r: PlayerCar in racers:
+		was_rubbing[r] = r.rubbing
+		r.rubbing = false
 	for i in racers.size():
 		for j in range(i + 1, racers.size()):
 			var a: PlayerCar = racers[i]
@@ -174,7 +182,10 @@ static func resolve_contacts(racers: Array, track: Track) -> void:
 				var side := 1.0 if a.x >= b.x else -1.0
 				a.x += side * push
 				b.x -= side * push
-				a.speed *= 1.0 - SIDE_PUSH_LOSS
-				b.speed *= 1.0 - SIDE_PUSH_LOSS
+				if not (was_rubbing[a] and was_rubbing[b]):
+					a.speed *= 1.0 - SIDE_PUSH_LOSS
+					b.speed *= 1.0 - SIDE_PUSH_LOSS
+				a.rubbing = true
+				b.rubbing = true
 				a.bumped = true
 				b.bumped = true

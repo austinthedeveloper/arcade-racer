@@ -6,10 +6,12 @@ extends TestSuite
 func test_menu_screens_wrap_their_selection() -> void:
 	var t := TitleScreen.new()
 	eq(t.index, 0, "the title opens on START")
+	var n := TitleScreen.items().size()
 	eq(t.move(1), 1, "right: OPTIONS")
+	t.index = n - 1
 	eq(t.move(1), 0, "and wraps back to START")
-	eq(t.move(-1), 1, "left wraps too")
-	eq(t.move(4), 1, "a big step wraps by the count")
+	eq(t.move(-1), n - 1, "left wraps too")
+	eq(t.move(n + 1), 0, "a big step wraps by the count")
 	t.free()
 	var m := MenuScreen.new()
 	eq(m.choice_count(), 1, "a screen with nothing to choose has the one choice")

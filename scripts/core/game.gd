@@ -24,6 +24,7 @@ var race: Node  # race.gd, while racing
 var attract_delay := Attract.IDLE_SECONDS
 var idle := 0.0  # seconds on the title with no input
 var demo_count := 0  # demos played, for Attract.pick
+var on_quit := Callable()  # in place of quitting (quit), for tests
 ## Menu ticks to ignore after a demo ends, so the press that ended it doesn't also pick
 ## something on the title.
 var _swallow := 0
@@ -191,6 +192,14 @@ func show_wheel() -> void:
 func close_wheel() -> void:
 	show_options(_options_back, _options_back_name, OptionsScreen.Page.CONTROLS, OptionsScreen.Row.WHEEL)
 	menu.in_race = race != null
+
+
+## QUIT on the title: closes the game. Tests set `on_quit` so the run carries on.
+func quit() -> void:
+	if on_quit.is_valid():
+		on_quit.call()
+	else:
+		get_tree().quit()
 
 
 ## Options opened from mode select come back to it.

@@ -53,6 +53,26 @@ func test_an_unmapped_pads_axis_1_never_moves_the_menus() -> void:
 	eq(moves, 0, "two seconds of a resting pedal: no scrolling")
 
 
+func test_a_wheel_works_the_menus_like_a_pad() -> void:
+	# Steering and pedals through menus was miserable: the wheel's D-pad and face buttons do it.
+	var r := _router()
+	var none: Array[int] = []
+	var m: Dictionary = r.wheel_menu(none, false)
+	eq([m["menu_x"], m["menu_y"], m["menu_confirm"], m["menu_back"]], [0.0, 0.0, false, false], "nothing held")
+	var held: Array[int] = [JOY_BUTTON_DPAD_LEFT, JOY_BUTTON_DPAD_DOWN]
+	m = r.wheel_menu(held, false)
+	eq([m["menu_x"], m["menu_y"]], [-1.0, 1.0], "D-pad left and down")
+	held = [JOY_BUTTON_A]
+	check(r.wheel_menu(held, false)["menu_confirm"], "A selects")
+	check(not r.wheel_menu(held, false)["menu_back"], "and doesn't go back")
+	held = [JOY_BUTTON_B]
+	m = r.wheel_menu(held, false)
+	check(m["menu_back"] and not m["menu_confirm"], "B goes back (any button used to select)")
+	check(r.wheel_menu(none, true)["menu_confirm"], "its pause button selects, as Start does on a pad")
+	held = [JOY_BUTTON_Y]
+	check(not r.wheel_menu(held, false)["menu_confirm"], "another button does nothing")
+
+
 func test_shift_keys_reach_the_drive_input_as_presses() -> void:
 	var r := _router()
 	TestSuite.use_scratch_profiles(r)

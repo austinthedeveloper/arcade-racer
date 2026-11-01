@@ -1,10 +1,10 @@
 class_name TitleScreen
 extends MenuScreen
-## Attract screen: the logo over the Palm Coast sunset, with START (on to mode select)
-## and OPTIONS side by side so a wheel can steer between them.
+## Attract screen: the logo over the Palm Coast sunset, with START (on to mode select),
+## OPTIONS and QUIT side by side. A browser tab can't be quit, so the web build has no QUIT.
 
 const LOGO := "res://assets/sprites/ui/logo.png"
-const ITEMS := ["START", "OPTIONS"]
+const PILL_STEP := 160.0
 
 var _logo: Texture2D
 
@@ -18,14 +18,22 @@ func _ready() -> void:
 static func start_prompt() -> String:
 	match InputRouter.state.kind:
 		DriveInput.Kind.WHEEL:
-			return "PRESS GAS OR ANY WHEEL BUTTON"
+			return "PRESS A"
 		DriveInput.Kind.GAMEPAD:
 			return "PRESS START"
 	return "PRESS ENTER"
 
 
+## The title's choices: QUIT too, except in a browser.
+static func items(web := OS.has_feature("web")) -> Array[String]:
+	var out: Array[String] = ["START", "OPTIONS"]
+	if not web:
+		out.append("QUIT")
+	return out
+
+
 func choice_count() -> int:
-	return ITEMS.size()
+	return items().size()
 
 
 func handle(m: MenuInput) -> void:
@@ -34,10 +42,13 @@ func handle(m: MenuInput) -> void:
 		Audio.play("tick")
 	elif m.confirm_pressed:
 		Audio.play("beep")
-		if index == 0:
-			game.show_mode_select()
-		else:
-			game.show_options()
+		match items()[index]:
+			"START":
+				game.show_mode_select()
+			"OPTIONS":
+				game.show_options()
+			"QUIT":
+				game.quit()
 
 
 func _draw() -> void:
@@ -46,14 +57,15 @@ func _draw() -> void:
 	if _logo != null:
 		var bob := roundf(sin(time * 2.0) * 2.0)
 		draw_texture(_logo, Vector2(roundf((w - _logo.get_width()) / 2.0), 22 + bob))
-	for i in ITEMS.size():
-		var pill := Rect2(w / 2.0 - 150 + i * 160, 270, 140, 26)
+	var names := items()
+	for i in names.size():
+		var pill := Rect2(w / 2.0 - names.size() * PILL_STEP / 2.0 + 10 + i * PILL_STEP, 270, 140, 26)
 		var on := i == index
 		if on:
 			draw_rect(pill.grow(4), Color(GOLD, 0.45 + 0.2 * sin(time * 5.0)))
 		draw_rect(pill.grow(2), Color("#c9d4ff") if on else Color(1, 1, 1, 0.35))
 		draw_rect(pill, Color("#1d3fa8") if on else Color(0.07, 0.07, 0.2, 0.85))
-		_text_centered(Vector2(pill.get_center().x, 288), ITEMS[i], 14, Color.WHITE if on else Color(1, 1, 1, 0.55))
+		_text_centered(Vector2(pill.get_center().x, 288), names[i], 14, Color.WHITE if on else Color(1, 1, 1, 0.55))
 	if fmod(time, 1.0) < 0.65:
 		_text_centered(Vector2(w / 2.0, 314), start_prompt(), 10, Color(1, 1, 1, 0.85))
 	draw_rect(Rect2(0, Cfg.SCREEN_H - 20, w, 20), Color(0, 0, 0, 0.6))

@@ -60,8 +60,11 @@ var airborne := false
 var landed := false  # true for the tick the car touches down
 var crashed := false  # true for the tick a crash starts
 var bumped := false  # true for the tick the car nudges slower traffic without crashing
+var rubbing := false  # side by side against another racer this tick (Rivals.resolve_contacts)
 var hit_traffic := false  # true for the tick the car touches a traffic car (any way)
 var crash_time := 0.0
+var crash_length := Cfg.CRASH_DURATION  # seconds the crash under way lasts in all
+var crash_floor := 0.0  # the speed the crash under way slows to
 
 var _alt := 0.0
 var _vy := 0.0
@@ -212,7 +215,7 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	var was := speed
 	if crash_time > 0.0:
 		crash_time -= dt
-		speed = move_toward(speed, 0.0, Cfg.CRASH_BRAKING * dt)
+		speed = move_toward(speed, crash_floor, Cfg.CRASH_BRAKING * dt)
 		var recover := Cfg.CRASH_RECOVER_X * seg.width
 		x = move_toward(x, clampf(x, -recover, recover), dt * Cfg.CRASH_RECOVER_RATE)
 	elif slide != 0.0:
@@ -377,9 +380,9 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 			Traffic.fling(car, x)
 			rammed = true
 		elif speed - car.speed > Cfg.CRASH_CLOSING_SPEED:
-			crash()
+			spin_out(car, track)
 		else:
-			speed = car.speed * (car.speed / speed)
+			speed = car.speed * maxf(Cfg.BUMP_KEEP, car.speed / speed)
 			bumped = true
 			move_to(car.z - Cfg.PLAYER_Z - Cfg.BUMP_GAP, track)
 		return true
@@ -421,7 +424,19 @@ static func hits_span(seg: Segment, car_x: float, half_car: float) -> bool:
 	return false
 
 
-func crash() -> void:
-	crash_time = Cfg.CRASH_DURATION
+## Ran into the back of traffic too fast to bump it: a short spin, dropped in behind it at a
+## share of its speed. Costs about a second, not the stop of a roadside crash.
+func spin_out(car: Traffic.TrafficCar, track: Track) -> void:
+	speed = minf(speed, car.speed * Cfg.TRAFFIC_CRASH_KEEP)
+	move_to(car.z - Cfg.PLAYER_Z - Cfg.BUMP_GAP, track)
+	crash(Cfg.TRAFFIC_CRASH_DURATION, speed)
+
+
+## A crash: no controls for `duration` seconds while the car slows to `slow_to` (a stop, unless
+## it's a spin off traffic).
+func crash(duration := Cfg.CRASH_DURATION, slow_to := 0.0) -> void:
+	crash_time = duration
+	crash_length = duration
+	crash_floor = slow_to
 	crashed = true
 	nitro_time = 0.0

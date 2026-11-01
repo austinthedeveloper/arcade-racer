@@ -25,7 +25,6 @@ const PAD_GAMMA := 1.6
 ## 1: the same, plus [meta] version. 2: a bindings key per profile, and a [keyboard] section
 ## of keyboard bindings (missing: the defaults).
 const PROFILES_VERSION := 2
-const PEDAL_PRESS := 0.5  # a pedal past this confirms (gas) or goes back (brake) in menus
 
 ## Where wheel and pad profiles are saved. Tests point this at a scratch file.
 var profile_path := "user://input_profiles.cfg"
@@ -222,11 +221,19 @@ func _read_wheel(device: int, prof: DeviceProfile) -> Dictionary:
 		"shift_up": prof.pressed("shift_up", device),
 		"shift_down": prof.pressed("shift_down", device),
 		"active": absf(steer) > 0.05 or throttle > 0.05 or brake > 0.05 or nitro,
-		# Any wheel button confirms too, so an uncalibrated wheel (pedals unused) gets through
-		"menu_x": steer,
-		"menu_y": 0.0,  # a wheel has no up/down; OptionsScreen lets it steer through rows
-		"menu_confirm": throttle > PEDAL_PRESS or not pressed_buttons(device).is_empty(),
-		"menu_back": brake > PEDAL_PRESS,
+	}.merged(wheel_menu(pressed_buttons(device), prof.pressed("pause", device)))
+
+
+## A wheel in the menus, as a gamepad: its D-pad moves, A (button 0) or its pause button
+## selects, B (button 1) goes back. Steering a wheel through menus was miserable, so the
+## wheel and pedals only drive. An unmapped wheel's hat still arrives as the D-pad buttons.
+static func wheel_menu(buttons: Array[int], pause_held: bool) -> Dictionary:
+	var held := func(b: int) -> float: return 1.0 if buttons.has(b) else 0.0
+	return {
+		"menu_x": held.call(JOY_BUTTON_DPAD_RIGHT) - held.call(JOY_BUTTON_DPAD_LEFT),
+		"menu_y": held.call(JOY_BUTTON_DPAD_DOWN) - held.call(JOY_BUTTON_DPAD_UP),
+		"menu_confirm": buttons.has(JOY_BUTTON_A) or pause_held,
+		"menu_back": buttons.has(JOY_BUTTON_B),
 	}
 
 

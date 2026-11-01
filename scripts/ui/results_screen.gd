@@ -114,9 +114,7 @@ static func best_line(new_best: bool, best_before: Dictionary) -> String:
 
 static func results_hints() -> String:
 	match InputRouter.state.kind:
-		DriveInput.Kind.WHEEL:
-			return "Steer: choose    Gas: select"
-		DriveInput.Kind.GAMEPAD:
+		DriveInput.Kind.GAMEPAD, DriveInput.Kind.WHEEL:
 			return "D-pad: choose    A: select"
 	return "Left / Right: choose    Enter: select"
 

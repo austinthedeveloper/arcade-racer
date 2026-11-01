@@ -1,6 +1,6 @@
 class_name ModeSelect
 extends MenuScreen
-## Mode select, after the title: a row of cards a wheel steers along. A mode that isn't
+## Mode select, after the title: a row of cards to pick along. A mode that isn't
 ## built yet (none, now) stays on the row, marked COMING SOON; picking it shows a short notice.
 
 enum Item { GRAND_TOUR, SINGLE_RACE, TIME_ATTACK, FREE_DRIVE, OPTIONS }

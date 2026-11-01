@@ -206,39 +206,31 @@ func test_options_rows_change_with_keys_and_pad() -> void:
 	_clean()
 
 
-func test_options_on_a_wheel_steer_and_gas() -> void:
+func test_options_on_a_wheel_use_its_dpad_like_a_pad() -> void:
 	_clean()
 	var keep := _as_device(DriveInput.Kind.WHEEL)
+	check(not OptionsScreen.steer_driven(), "a wheel doesn't steer through the rows")
 	var g := _game()
 	g.show_options()
 	var o: OptionsScreen = g.menu
-	var gas := MenuInput.new()
-	gas.confirm_pressed = true
-	o.handle(gas)
-	check(Settings.auto_gas, "gas on the first row turns auto gas on")
-	var steer := MenuInput.new()
-	steer.right_pressed = true
-	o.handle(steer)
-	eq(o.row(), OptionsScreen.Row.TRAFFIC, "steering right goes down a row")
-	eq(Settings.traffic, Settings.Traffic.NORMAL, "and doesn't change the value")
-	var left := MenuInput.new()
-	left.left_pressed = true
-	o.handle(left)
-	o.handle(left)
-	eq(o.row(), OptionsScreen.Row.PAGE, "steering left up to the page bar")
-	for i in OptionsScreen.Page.CONTROLS:
-		o.handle(gas)
-	eq(o.page, OptionsScreen.Page.CONTROLS, "gas on the page bar flips pages")
-	o.handle(steer)
-	eq(o.row(), OptionsScreen.Row.CALIBRATE, "on calibrate")
-	o.handle(gas)
-	check(g.calibration.visible, "gas opens the wheel calibration")
-	g.calibration.visible = false
-	check(OptionsScreen.options_hints().begins_with("Steer: choose"), "wheel hints")
-	var brake := MenuInput.new()
-	brake.back_pressed = true
-	o.handle(brake)
-	eq(g.screen, g.Screen.TITLE, "brake: back to the title")
+	var a := MenuInput.new()
+	a.confirm_pressed = true
+	o.handle(a)
+	check(Settings.auto_gas, "A on the first row turns auto gas on")
+	var down := MenuInput.new()
+	down.down_pressed = true
+	o.handle(down)
+	eq(o.row(), OptionsScreen.Row.TRAFFIC, "D-pad down goes down a row")
+	var right := MenuInput.new()
+	right.right_pressed = true
+	o.handle(right)
+	eq(o.row(), OptionsScreen.Row.TRAFFIC, "D-pad right stays on the row...")
+	check(Settings.traffic != Settings.Traffic.NORMAL, "...and changes it")
+	check(OptionsScreen.options_hints().begins_with("D-pad"), "pad hints on a wheel")
+	var b := MenuInput.new()
+	b.back_pressed = true
+	o.handle(b)
+	eq(g.screen, g.Screen.TITLE, "B: back to the title")
 	eq(g.menu.index, 1, "on OPTIONS")
 	InputRouter.state = keep
 	_clean()
@@ -425,9 +417,10 @@ func test_reset_save_asks_then_leaves_options_and_profiles() -> void:
 	_clean_all()
 
 
-func test_reset_save_on_a_wheel_cancels_on_steer() -> void:
+func test_reset_save_on_an_unmapped_pad_cancels_on_steer() -> void:
 	_fill_all_three()
-	var keep := _as_device(DriveInput.Kind.WHEEL)
+	var keep := _as_device(DriveInput.Kind.GAMEPAD)
+	InputRouter.state.mapped = false
 	var g := _game()
 	g.show_options()
 	var o: OptionsScreen = g.menu
@@ -721,10 +714,11 @@ func test_wheel_settings_edit_and_save_with_keys() -> void:
 	_clean()
 
 
-func test_wheel_settings_on_a_wheel_steer_and_gas() -> void:
+func test_wheel_settings_on_an_unmapped_pad_steer_and_confirm() -> void:
 	_clean()
 	TestSuite.use_scratch_profiles(InputRouter)
-	var keep := _as_device(DriveInput.Kind.WHEEL)
+	var keep := _as_device(DriveInput.Kind.GAMEPAD)
+	InputRouter.state.mapped = false
 	var p := _saved_wheel()
 	var g := _game()
 	g.show_wheel()
@@ -774,7 +768,7 @@ func test_an_unmapped_pad_steers_through_options() -> void:
 	_clean()
 	var keep := _as_device(DriveInput.Kind.GAMEPAD)
 	InputRouter.state.mapped = false
-	check(OptionsScreen.wheel_driven(), "steering picks the rows")
+	check(OptionsScreen.steer_driven(), "steering picks the rows")
 	check(OptionsScreen.options_hints().begins_with("Steer: choose"), "and the hints say so")
 	var g := _game()
 	g.show_options()
@@ -785,7 +779,7 @@ func test_an_unmapped_pad_steers_through_options() -> void:
 	o.handle(steer)
 	eq(o.row(), start + 1, "steering right goes down a row")
 	InputRouter.state.mapped = true
-	check(not OptionsScreen.wheel_driven(), "a mapped gamepad uses up and down")
+	check(not OptionsScreen.steer_driven(), "a mapped gamepad uses up and down")
 	InputRouter.state = keep
 	_clean()
 
