@@ -303,6 +303,20 @@ def crowd():
     return shot(finish(out), fade_out=0.2)
 
 
+def thunder():
+    """Thunder a beat after the lightning: a sharp crack, then a low rumble that rolls and
+    dies away over a few seconds."""
+    seconds = 3.5
+    n = int(seconds * RATE)
+    crack = decay(highpass(lowpass(noise(n), 5000.0), 600.0), 0.08)
+    # Rumble: deep filtered noise, swelling in and rolling (a slow wobble) as it fades
+    rumble = lowpass(lowpass(noise(n), 160.0), 220.0)
+    roll = [min(1.0, i / (0.25 * RATE)) * math.exp(-i / (1.1 * RATE))
+            * (0.75 + 0.25 * math.sin(2 * math.pi * 1.7 * i / RATE)) for i in range(n)]
+    out = [r * g for r, g in zip(rumble, roll)]
+    return shot(finish(mix((crack, 0.5), (out, 3.0))), fade_out=0.3)
+
+
 def time_up():
     out = silence(1.5)
     for k, (a, b) in enumerate(((67, 66), (64, 63), (60, 55))):
@@ -394,7 +408,8 @@ FILES = {
     "sfx/finish.wav": finish_fanfare,
     "sfx/time_up.wav": time_up,
     "music/music_race.wav": music_race,
-    "sfx/crowd.wav": crowd,  # last, so the shared random stream leaves the others as they were
+    "sfx/crowd.wav": crowd,  # last (with thunder after it), so the shared random stream leaves the others as they were
+    "sfx/thunder.wav": thunder,
 }
 
 

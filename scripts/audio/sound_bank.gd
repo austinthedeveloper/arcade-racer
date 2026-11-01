@@ -25,6 +25,7 @@ const CUES := {
 	"finish": ["sfx", false, -8.0],
 	"crowd": ["sfx", false, -2.0],  # the finish-line roar: the loudest cue on purpose
 	"time_up": ["sfx", false, -8.0],
+	"thunder": ["sfx", false, -4.0],  # a beat after a lightning flash (Weather)
 	"music_race": ["music", true, -12.0],
 }
 

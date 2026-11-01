@@ -20,6 +20,7 @@ static func theme() -> Dictionary:
 		"clock": [21, 36, 29, 24],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/thunder_far.png",
 		"specials": ["tanker", "cement_mixer", "dump_truck"],
+		"weather": Weather.STORM,  # rain, a wet road, lightning and thunder (WS-2)
 	}
 
 

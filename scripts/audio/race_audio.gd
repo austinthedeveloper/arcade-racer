@@ -102,6 +102,8 @@ func _events() -> void:
 		Audio.play("bump")
 	if _player.landed:
 		Audio.play("land")
+	if race.fx.thunder:
+		Audio.play("thunder")
 	if state == race.State.RACING and race.time_left < Cfg.LOW_TIME:
 		var s := ceili(race.time_left)
 		if s != _tick:
