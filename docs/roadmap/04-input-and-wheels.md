@@ -24,7 +24,7 @@ value with no UI yet (360 of 900 degrees, WH-1).
 | WH-6 ✓ | **Assists.** Gamepad steering assist (pulls toward the lane center at speed) and a beginner braking assist (brakes into sharp curves). Options in AC-3. | S | 6 | | Tests that the assists never exceed their caps; traces unchanged because they are off by default |
 | WH-7 | **Hot-plug during a race.** A disconnected device pauses the race with a message; reconnecting resumes with the same profile. | S | 2 | | Test through `Input.joy_connection_changed` with a fake device |
 | WH-8 | **Web gamepad check.** Verify browser axis mapping for common pads; calibration profile in browser storage survives a reload. | S | 6 | EQ-10 | Manual check noted in the README |
-| WH-9 | **Answer open question 3.** Which wheel and pedals Austin owns becomes the first known profile and the FFB test rig. | S | 1 | | `docs/04-open-questions.md` updated |
+| WH-9 ✓ | **Answer open question 3.** Which wheel and pedals Austin owns becomes the first known profile and the FFB test rig. | S | 1 | | `docs/04-open-questions.md` updated |
 | WH-10 ✓ | **Options scroll forever with a wheel.** Played with a wheel: Options scrolled down forever, every visit. A device read as a pad (no name match) took its up/down from axis 1, which on a wheel or pedal set without a gamepad mapping is often a pedal resting at full travel. Unmapped pads no longer move the menus up and down, and steer through Options like a wheel. | S | 1 | | A resting pedal on axis 1 doesn't move the list; an unmapped pad steers through Options |
 
 ## Open decisions
