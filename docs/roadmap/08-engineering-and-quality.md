@@ -32,6 +32,46 @@ against GitHub. Version 0.1.0.
 | EQ-13 ✓ | **Linux export.** Add the Linux preset so CI can run the exported build headlessly and a Steam Deck test is possible later. Not a supported platform in these six months. | S | 6 | | The zip appears in the release; one smoke run in CI |
 | EQ-14 ✓ | **Auto-updater.** Download the game once; it updates itself from GitHub Releases (Pickleball '94's design, port ADR-057). Each release adds `SundownRun-X.Y.Z.pck` and its manifest (version, engine, size, SHA-256). An exported desktop game opens on the update screen: it checks, downloads a newer pack for its engine at once, and restarts on it. It goes on to the title when up to date, offline or after 8 s; a failed download offers retry or play; a release for another Godot version links to the releases page. `BootTree`, the main loop, loads the pack before the autoloads; an update that never reaches the title is skipped. | M | 1 | | An exported older build updates to a release and restarts on it; a damaged pack falls back to the built-in game |
 
+## Performance budget (EQ-7)
+
+`tests/perf_probe.gd` drives an autodriven race on Neon Strip (7 rivals, 95 traffic cars,
+FX, three-layer parallax, default options) and times each frame: `update` is the race's tick,
+`draw` is every `_draw` that tick queued (road projection and sprite list, parallax, FX, HUD),
+`frame` the wall time between frames with vsync off (windowed only). `tests/test_perf.gd` runs
+it headless in its own Godot and fails when the CPU share averages 12 ms or more, or its 95th
+percentile reaches 25 ms (this Mac: 3 to 5 ms mean, so a slow CI runner has room and a change
+that doubles the work still fails). `PERF_PROBE=skip` skips it.
+
+```sh
+godot --headless --path . -s res://tests/perf_probe.gd                      # what the test runs
+godot --path . --resolution 1920x1080 -s res://tests/perf_probe.gd -- --perf-frames=1200   # real frames
+# --perf-quiet: no rivals or traffic; --perf-draw-distance=N: weigh the draw distance; --perf-stage=N
+```
+
+Levers:
+- **Draw distance per stage:** a theme's `draw_distance` (default `Cfg.DRAW_DISTANCE`, 300
+  segments). Neon Strip draws 220; fog thickens to match. Display only, golden traces unchanged.
+- **Thin runs:** past about 40 segments a segment is under a pixel tall; runs of bare segments
+  under `RoadRenderer.THIN_RUN` (1 px) together are drawn as one band, and a segment with the
+  same ground on both sides draws one ground quad. Screenshots match the old renderer.
+- **FX cap:** `FxLayer.MAX_PARTICLES` (160 alive) and `SPAWN_CAP` (12 a tick), from WS-1; the
+  probe reports the peak (98 on Neon).
+- **Atlas batching:** not done. The cost is GDScript building draw commands, not texture
+  switches (the canvas renders at 640x360 and is scaled up), so an atlas would not move these numbers.
+
+Neon Strip, 1200 frames after the launch. Measured 2026-10-31 on the dev MacBook Pro (M1 Pro,
+16 GB, macOS 27) while four other agents built and tested in parallel (load average 15 to 25),
+so expect these to be a little pessimistic.
+
+| Machine | Window | Build | Frame mean / p95 (ms) | CPU mean / p95 (ms) | 60 fps? |
+|---|---|---|---|---|---|
+| M1 Pro MacBook Pro | 1920x1080 | before (draw distance 300, no thin runs) | 12.3 / 17.0 | 6.7 / 8.6 | mostly; p95 misses |
+| M1 Pro MacBook Pro | 1920x1080 | thin runs, draw distance 300 | 11.5 / 16.7 | 5.4 / 7.0 | just |
+| M1 Pro MacBook Pro | 1920x1080 | thin runs, draw distance 220 (shipped) | 7.9 to 8.2 / 10.6 to 11.7 | 4.1 to 4.2 / 5.2 to 5.7 | yes |
+| M1 Pro MacBook Pro | headless (the test) | shipped | | 2.8 to 4.9 / 3.7 to 8.7 | |
+| Low-end Mac | 1920x1080 | shipped | not measured: no such machine here (Austin) | | |
+| Windows laptop | 1920x1080 | shipped | not measured: no such machine here (Austin) | | |
+
 ## Open decisions
 
 - Is the manifest JSON hand-editable, or only tool-written? Default: tool-written, with the tools as the source of truth.
