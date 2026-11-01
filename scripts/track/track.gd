@@ -48,6 +48,11 @@ var checkpoints: Array[int] = []
 var finish_index := 0
 ## First segment of every jump and bumpy stretch, for the bump signs (add_road_signs).
 var hazards: Array[int] = []
+## Stage flow (StageFlow.dress): the next stage's theme, and this stage's palette mixed toward
+## it in StageFlow.STEPS steps. Empty on the last stage, which keeps its own end.
+var next_theme: Dictionary = {}
+var flow: Array[Dictionary] = []
+
 ## Mirror mode (WS-6): the stage flipped left for right (mirror). Spans and the background
 ## are drawn flipped, and whatever is placed across the road (traffic, pickups, rivals'
 ## lines) goes by side().

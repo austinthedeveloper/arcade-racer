@@ -28,6 +28,7 @@ var spans: Array[String] = []  # road-spanning sprite ids (SpriteLibrary.spans) 
 var covered := false  # inside a tunnel or covered bridge: darker, no sky
 var depth := 0.0  # how far into the tunnel, 0 at a mouth to 1 well inside: darker still
 var pickups: Array = []  # PowerUps.Pickup lying in this segment
+var handover := 0.0  # its share of the next stage's palette (StageFlow.blend), 0 to 1
 
 # Projection results, rewritten every frame by the renderer
 var cam_z1 := 0.0
@@ -41,6 +42,7 @@ var sw2 := 0.0
 var clip := 0.0  # top of the road already covered by nearer segments
 var fog := 0.0
 var visible := false
+var shade := 0.0  # the share of the next stage's palette it is drawn in this frame
 
 
 ## The half-width `p` (0 near end, 1 far end) along the segment.

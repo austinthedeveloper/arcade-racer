@@ -12,9 +12,11 @@ static func count() -> int:
 	return NAMES.size()
 
 
-## Stage `index` as built, or flipped left for right with `mirror` (WS-6, Track.mirror).
+## Stage `index`, built, its end dressed like the next stage's start (StageFlow); flipped
+## left for right with `mirror` (WS-6, Track.mirror), dressing and all.
 static func build(index: int, mirror := false) -> Track:
 	var t := _build(index)
+	StageFlow.dress(t, index)
 	if mirror:
 		t.mirror()
 	return t
@@ -38,6 +40,27 @@ static func _build(index: int) -> Track:
 			return SkylineFinale.build()
 		_:
 			return PalmCoast.build()
+
+
+## Stage `index`'s theme (colors, background, clock), without building its road.
+static func theme(index: int) -> Dictionary:
+	match index:
+		1:
+			return Redrock.theme()
+		2:
+			return NeonStrip.theme()
+		3:
+			return Timberline.theme()
+		4:
+			return BayouCauseway.theme()
+		5:
+			return HarvestValley.theme()
+		6:
+			return Thunderhead.theme()
+		7:
+			return SkylineFinale.theme()
+		_:
+			return PalmCoast.theme()
 
 
 ## The stage after `index`, or -1 after the last one.

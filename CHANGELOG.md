@@ -22,6 +22,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Mirror mode: win a stage and you can race it flipped left for right, from stage select in
   Single Race, Time Attack and Free Drive (Up switches it). Saves that already won stages
   have their mirrors open (WS-6).
+- Stage flow: each stage's finish runs into the next stage's colors and scenery, and the
+  results fade the sky over to it before you go on (WS-8).
 
 ## [0.2.0] - 2026-11-01
 

@@ -34,6 +34,11 @@ var camera_z := 0.0
 var camera_depth := Cfg.CAMERA_DEPTH  # the race eases it down for the nitro stretch
 var flash := 1.0  # the FLASHING option's share of the designed blink (Settings.flash_amount(1.0))
 var time := 0.0
+## Stage flow (StageFlow): the end of the stage drawn in the next stage's palette. Off for Free
+## Drive, whose road loops straight back to its own start.
+var flow := true
+var flow_share := 0.0  # the share of the next stage's palette where the camera is (sky and fog)
+var flow_fade := 0.0  # the results' crossfade (StageFlow.crossfade): every segment that far on to all of it
 
 var _pts := PackedVector2Array()
 var _cols := PackedColorArray()
@@ -57,10 +62,11 @@ func _draw() -> void:
 	if track == null or player == null:
 		return
 	var theme := track.theme
-	_fog_color = theme["fog"]
-	var fog_density: float = theme.get("fog_density", Cfg.FOG_DENSITY)
+	var here := StageFlow.palette(track, flow_share) if flow else theme
+	_fog_color = here["fog"]
+	var fog_density: float = here.get("fog_density", Cfg.FOG_DENSITY)
 	_wet = Weather.of(theme).get("wet", 0.0)
-	_wet_sky = theme.get("sky_bottom", _fog_color)
+	_wet_sky = here.get("sky_bottom", _fog_color)
 	var segs := track.segments
 	var count := segs.size()
 	var base := track.find_segment(camera_z)
@@ -87,7 +93,9 @@ func _draw() -> void:
 	var reach := draw_distance(theme)
 	for n in reach:
 		var seg := segs[(base.index + n) % count]
-		var cz := camera_z - (track.length if seg.index < base.index else 0.0)
+		var wrapped := seg.index < base.index
+		var cz := camera_z - (track.length if wrapped else 0.0)
+		seg.shade = segment_shade(seg.handover, flow_fade, wrapped) if flow else 0.0
 		_project(seg, cam_x - x, cam_x - x - dx, cam_y, cz)
 		x += dx
 		dx += seg.curve
@@ -113,7 +121,7 @@ func _draw() -> void:
 			if i > 0 and drawn[i - 1].visible and thin_run(far, seg) and not _stands_on(seg, i == at):
 				run_far = far
 			else:
-				_draw_segment(seg, theme, far, float(i) / reach)
+				_draw_segment(seg, StageFlow.palette(track, seg.shade), far, float(i) / reach)
 				run_far = null
 		_draw_objects(seg, i >= at)
 		if i == at:
@@ -127,6 +135,13 @@ func _draw() -> void:
 			_draw_rival(drawn[at], r, Color.WHITE.lerp(_fog_color, drawn[at].fog))
 		for i in range(at - 1, behind_from(at) - 1, -1):
 			_draw_cars(drawn[i])
+
+
+## The share of the next stage's palette a segment is drawn in: its own (Segment.handover),
+## faded `fade` of the rest of the way by the results, and all of it past the end of the
+## stage (`wrapped`: the road looped round to the start, which stands in for the next stage).
+static func segment_shade(handover: float, fade: float, wrapped: bool) -> float:
+	return 1.0 if wrapped else lerpf(handover, 1.0, fade)
 
 
 ## Segments drawn ahead of the camera on a stage: its theme's "draw_distance" (a busy stage
