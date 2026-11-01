@@ -14,7 +14,8 @@ const ROAD_WEIGHTS := [0.15, 0.15, 0.15, 0.15, 0.4]
 const MYSTERY_WEIGHTS := [0.3, 0.25, 0.25, 0.2, 0.0]
 ## Below this much time left, a mystery hubcap is much more likely to be a clock: a little
 ## earlier than the clock flashes (Cfg.LOW_TIME), so the help comes before the panic
-const LOW_TIME := 12.0
+const LOW_TIME_LEAD := 2.0
+const LOW_TIME := Cfg.LOW_TIME + LOW_TIME_LEAD
 const CLOCK_BONUS := 3.0
 const RAM_TIME := 5.0
 const GHOST_TIME := 4.0

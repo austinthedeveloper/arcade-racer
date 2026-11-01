@@ -65,4 +65,7 @@ const CAR_LENGTH := 400.0  # world units along the road a car counts as beside y
 const SIDESWIPE_SPEED_LOSS := 0.05  # share of your speed a side-swipe scrubs off
 
 # Race clock
-const LOW_TIME := 10.0  # seconds left when the clock flashes and ticks
+## Seconds left when time runs low, the one threshold for all of it: the HUD's clock beats
+## red (Hud.timer_pulse), the audio ticks, and mystery hubcaps lean to clocks a little before
+## (PowerUps.LOW_TIME).
+const LOW_TIME := 10.0
