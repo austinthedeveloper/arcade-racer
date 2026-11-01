@@ -64,21 +64,23 @@ Steering lock defaults to using 360 of the wheel's 900 degrees. You can change `
 scripts/
   core/cfg.gd               tuning constants (camera, speeds, physics)
   track/                    segment + track builder, sprite library, stages/
-  render/                   road renderer, background, car sprites
-  car/                      player driving model, traffic, the garage (cars.gd)
+  render/                   road renderer, background, car sprites, FX layer
+  car/                      player driving model, rivals and their AI, traffic, the garage (cars.gd)
   input/                    InputRouter autoload, device profiles, DriveInput
-  core/game.gd              main scene: title, options, stage select, car select, then the race
+  core/game.gd              main scene: title, mode select, options, stage and car select, then the race
+  core/                     settings, save data, unlocks, difficulty, attract mode, updater (boot_tree.gd)
   core/settings.gd          Settings autoload: the options, saved to user://settings.cfg
-  race/                     race flow (race.gd: countdown, checkpoints, timer, finish), power-ups
-  ui/                       menu screens, HUD, input debug overlay, calibration wizard
+  race/                     race flow (race.gd), rivals, scoring, drafting, launch, tour, ghosts, power-ups
+  ui/                       menu screens, HUD, results, pause, remap, input debug overlay, calibration wizard
   audio/                    Audio autoload, SoundBank (cue -> file), RaceAudio (race -> cues)
 assets/sprites/             in-game sprites (placeholders for now)
 assets/audio/               generated placeholder sounds and music (how to swap: its README)
 tests/                      test runner, suites, golden traces, end-to-end smoke
-tools/                      test.sh, sprite-cutting scripts, make_audio.py (placeholder sound)
+tools/                      test.sh, shots.sh, sprite-cutting scripts, make_audio.py, export.sh,
+                            car_angles.sh (car review page), roadmap_sync.py (docs vs GitHub)
 ```
 
-For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--car=car_mesa` picks a car by id (the ids are in `scripts/car/cars.gd`), `--at-segment=N` starts N segments into the stage, `--no-traffic` removes traffic, `--drive-x=1.8` starts the car on that line (past 1 is off the road) and keeps autodrive on it, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|options|stages|cars --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits. Left on the title for 20 seconds, the game plays an autodriven demo race (attract mode) until any key or button; `--attract-delay=N` changes the wait and `--screen=demo` starts one straight away.
+For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--car=car_mesa` picks a car by id (the ids are in `scripts/car/cars.gd`), `--at-segment=N` starts N segments into the stage, `--no-traffic` removes traffic, `--no-rivals` removes the rivals, `--drive-x=1.8` starts the car on that line (past 1 is off the road) and keeps autodrive on it, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|modes|options|stages|cars|pause|results|update|remap --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits. Left on the title for 20 seconds, the game plays an autodriven demo race (attract mode) until any key or button; `--attract-delay=N` changes the wait and `--screen=demo` starts one straight away.
 
 ## Tests
 
@@ -87,7 +89,20 @@ tools/test.sh                  # every suite, then the end-to-end input smoke
 tools/test.sh test_race        # only tests whose name contains "test_race"
 ```
 
-`test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, menu input and the menu flow, options, the driving model, traffic, race flow and renderer regressions. The end-to-end smoke boots the game on the title screen, changes some options, and goes through stage and car select into the race (and later into a second race with auto gas on). `tests/golden/` holds frame-by-frame traces of autodriven races (Palm Coast with and without traffic, every other stage with traffic, power-ups on). If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`. CI runs the same script on every push.
+`test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, remapping, menu input and the menu flow, options and saves, the driving model, rivals, traffic, scoring, the modes, the updater and renderer regressions. The end-to-end smoke boots the game on the title screen, changes some options, and goes through the menus into races and the results screen. `tests/golden/` holds frame-by-frame traces of autodriven races (Palm Coast with traffic and rivals and on a clear road, every other stage with traffic and rivals, power-ups on). `tools/shots.sh` compares menu and race screenshots with `tests/shots/`. If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`. CI runs the same script on every push.
+
+### Looking at the cars
+
+`tools/car_angles.sh` poses every car in each of its seven steering frames on level road, gentle
+and steep uphills and gentle and steep downhills, in the real race scene, and builds one page to
+look through them, flag shots and write notes: `build/car_angles/car_angles.html`. It needs a
+display and PIL (`SHOTS_PYTHON=...`); `--car=car_mesa` does one car.
+
+### Roadmap and GitHub
+
+`python3 tools/roadmap_sync.py` checks `docs/roadmap/` against the GitHub issues and project board;
+`--fix-board --write-docs` moves closed issues to Done, ticks their rows and rewrites the status
+table in the overview.
 
 ## Releases
 

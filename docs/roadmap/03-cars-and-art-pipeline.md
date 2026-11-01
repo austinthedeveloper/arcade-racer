@@ -7,10 +7,12 @@ The pipeline decision from `docs/06`: pre-render each car from a simple 3D model
 ## Built today
 
 Twelve cars cut from the concept steering sheets by `tools/make_car_sprites.py` (seven steer
-frames each; the Vega also has uphill and downhill strips). Magenta keying with interior gap
-detection. Brake glow and nitro flame drawn at the Vega's anchors on every car (bug A4).
-Twenty-four traffic vehicles, rear view only. Showroom pictures on car select. Roadside, span,
-power-up and UI sprites from their own tools.
+frames each; the Vega also has uphill and downhill strips, the rest fake the pitch by stretching,
+`CarSprites.pitch_warp`). Shared keying and slicing in `tools/spritelib.py`; every sprite tool
+writes `assets/sprites/manifest.json`, which the game loads. Twenty-four traffic vehicles, rear
+view only. Showroom pictures on car select. Roadside, span, power-up, FX and UI sprites and the
+game icon from their own tools. `tools/car_angles.sh` renders every car in every steering frame
+on level road and on hills to one review page.
 
 ## Features
 
