@@ -17,6 +17,8 @@ the release workflow puts that section at the top of the GitHub Release notes
   pad, or your wheel's paddles once bound in Remap) for a little more top speed; the engine and
   the tach follow your gear. Automatic stays the default. Nitro on a pad is now RB only, as Y
   shifts up (RC-10).
+- Stage select is a map of the country: each stage's postcard pinned where it is, the tour
+  route drawn between them, stages not reached yet dimmed (PR-8).
 
 ## [0.2.0] - 2026-11-01
 
