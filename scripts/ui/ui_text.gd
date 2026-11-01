@@ -19,4 +19,8 @@ static func draw_centered(ci: CanvasItem, pos: Vector2, s: String, size: int, co
 
 ## Where text `size` high starts so its middle is at `x`.
 static func centered_x(x: float, s: String, size: int) -> float:
-	return x - ThemeDB.fallback_font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x / 2.0
+	return x - width(s, size) / 2.0
+
+
+static func width(s: String, size: int) -> float:
+	return ThemeDB.fallback_font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x

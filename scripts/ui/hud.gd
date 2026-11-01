@@ -5,6 +5,19 @@ extends Control
 
 const LOGO := "res://assets/sprites/ui/logo.png"
 const DEMO_LOGO_SCALE := 0.6
+const CALLOUT_Y := 120.0  # the middle of the callouts
+## Each starburst's look (Callouts.Kind): the rim, the fill, the lighter core, the text, its
+## size and how many spikes.
+const BURSTS := {
+	Callouts.Kind.GO: {"rim": Color("#1a5a2a"), "fill": Color("#3ad86a"), "core": Color("#a8ffb8"), "text": Color.WHITE, "size": 34, "spikes": 12},
+	Callouts.Kind.LAUNCH: {"rim": Color("#6a1a08"), "fill": Color("#ff5a2a"), "core": Color("#ffd23a"), "text": Color.WHITE, "size": 30, "spikes": 14},
+	Callouts.Kind.CHECKPOINT: {"rim": Color("#6a3a00"), "fill": Color("#ffb21a"), "core": Color("#ffe36a"), "text": Color.WHITE, "size": 26, "spikes": 16},
+	Callouts.Kind.TIME_EXTENDED: {"rim": Color("#0a3a5a"), "fill": Color("#3ad0ff"), "core": Color("#b8f0ff"), "text": Color.WHITE, "size": 22, "spikes": 18},
+	Callouts.Kind.NEAR_MISS: {"rim": Color("#5a0a3a"), "fill": Color("#ff4f8b"), "core": Color("#ffa8c8"), "text": Color.WHITE, "size": 22, "spikes": 10},
+	Callouts.Kind.BIG_AIR: {"rim": Color("#2a1a6a"), "fill": Color("#8a5aff"), "core": Color("#c8b0ff"), "text": Color.WHITE, "size": 24, "spikes": 14},
+	Callouts.Kind.FINAL_STRETCH: {"rim": Color("#5a0a0a"), "fill": Color("#ff3a3a"), "core": Color("#ffb21a"), "text": Color.WHITE, "size": 22, "spikes": 16},
+	Callouts.Kind.FIRST_PLACE: {"rim": Color("#6a4a00"), "fill": Color("#ffd23a"), "core": Color("#fff2a8"), "text": Color("#3a1a00"), "size": 28, "spikes": 20},
+}
 
 var race: Node  # race.gd
 var time := 0.0  # seconds since the HUD appeared, for blinking
@@ -145,10 +158,44 @@ func _draw() -> void:
 	# Banners
 	if race.counting_down():
 		_text_centered(Vector2(w / 2.0, 130), str(ceili(race.countdown)), 64, Color("#ffd23a"))
-	if race.banner != "" and race.banner_time > 0.0 and not race.results.visible:
-		_text_centered(Vector2(w / 2.0, 130), race.banner, 44, Color("#ffd23a"))
-		if race.banner_sub != "":
-			_text_centered(Vector2(w / 2.0, 156), race.banner_sub, 14, Color.WHITE)
+	if not race.callouts.current.is_empty() and not race.results.visible:
+		_draw_callout(race.callouts.current, Vector2(w / 2.0, CALLOUT_Y))
+
+
+## A callout (Callouts.current) centered on `center`: a plain message as gold text, or a
+## starburst in its kind's colors with the text over it.
+func _draw_callout(c: Dictionary, center: Vector2) -> void:
+	var kind: Callouts.Kind = c["kind"]
+	if kind == Callouts.Kind.MESSAGE:
+		_text_centered(center + Vector2(0, 10), c["text"], 44, Color("#ffd23a"))
+		if c["sub"] != "":
+			_text_centered(center + Vector2(0, 36), c["sub"], 14, Color.WHITE)
+		return
+	var style: Dictionary = BURSTS[kind]
+	var a := Callouts.alpha(c)
+	var k := Callouts.pop_scale(c["age"])
+	var text := Callouts.label(c)
+	var size: int = style["size"]
+	var radius := burst_radius(text, size) * k
+	var spin := sin(time * 2.0) * 0.06
+	var spikes: int = style["spikes"]
+	draw_colored_polygon(Callouts.starburst(center + Vector2(0, 4), radius * 1.12, spikes, 0.74, spin), Color(0, 0, 0, 0.45 * a))
+	draw_colored_polygon(Callouts.starburst(center, radius * 1.12, spikes, 0.74, spin), Color(style["rim"], a))
+	draw_colored_polygon(Callouts.starburst(center, radius, spikes, 0.74, spin), Color(style["fill"], a))
+	draw_colored_polygon(Callouts.starburst(center, radius * 0.7, spikes, 0.86, -spin), Color(style["core"], a))
+	if k < 0.9:
+		return  # (the text comes in with the burst nearly grown)
+	var ty := center.y + size * 0.35 - (6.0 if c["sub"] != "" else 0.0)
+	_text_centered(Vector2(center.x, ty), text, size, Color(style["text"], a))
+	if c["sub"] != "":
+		_text_centered(Vector2(center.x, ty + 15), c["sub"], 11, Color(1, 1, 1, a))
+
+
+## A starburst's half-size for `text` at `size`: room round the text, and never so flat
+## it stops looking like a burst.
+static func burst_radius(text: String, size: int) -> Vector2:
+	var tw := UiText.width(text, size)
+	return Vector2(maxf(tw / 2.0 + 30.0, 70.0), maxf(size * 1.25, 34.0))
 
 
 ## A run's time as m:ss.cc.

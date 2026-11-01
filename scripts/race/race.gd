@@ -75,6 +75,7 @@ var next_checkpoint := 0
 var banner := ""
 var banner_sub := ""
 var banner_time := 0.0
+var callouts := Callouts.new()  # what the HUD shows of the banners, and the starbursts (PR-5)
 var paused := false
 var pause_menu: PauseMenu
 var results: ResultsScreen  # after the finish (RC-5)
@@ -106,6 +107,9 @@ var _screenshot_frames: Array[int] = []
 var _screenshot_dir := ""
 var _gas_since := NAN  # when the gas went down, in seconds from GO (Launch.grade)
 var _frame := 0  # physics ticks since this race (re)started
+var _final_stretch := false  # FINAL STRETCH has come up this race
+var _led_at := -INF  # race time of the last 1ST PLACE callout
+var _callout_shot := Callouts.Kind.NONE  # --callout=ID: that starburst held up after GO (screenshots)
 ## The dev flags are for the race the game starts with; later races come from the menus.
 static var _dev_args_read := false
 
@@ -206,6 +210,9 @@ func start_race() -> void:
 	new_best = false
 	next_checkpoint = 0
 	banner = ""
+	callouts.clear()
+	_final_stretch = false
+	_led_at = -INF
 	resume()
 	finish_distance = track.finish_index * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z
 	checkpoint_distances.clear()
@@ -380,7 +387,9 @@ func _physics_process(dt: float) -> void:
 					car.speed = Launch.ROLL_SPEED
 			if countdown <= 0.0:
 				state = State.RACING
-				_banner("GO!", "", 1.0)
+				_banner("GO!", "", 1.0, Callouts.Kind.GO)
+				if _callout_shot != Callouts.Kind.NONE:
+					callouts.push(_callout_shot, "", Callouts.HOLD)
 				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
@@ -389,7 +398,7 @@ func _physics_process(dt: float) -> void:
 			if time_left <= 0.0 and timed():
 				time_left = 0.0
 				state = State.TIME_UP
-				_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", 999.0)
+				_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", Callouts.HOLD)
 
 	# Past the line the world drops into slow motion for a moment (sim, the world's tick), and
 	# the car brakes itself to a stop
@@ -411,16 +420,20 @@ func _physics_process(dt: float) -> void:
 	touched_traffic = touched_traffic or player.hit_traffic
 	Rivals.resolve_contacts(rivals.everyone(player), track)
 	place = rivals.place(player, player_finish)
+	var place_before := place
 	picked_up = false
 	pickup_age += sim
 	ram_flash = 0.3 if player.rammed else maxf(0.0, ram_flash - sim)
 	score.age_feed(dt)
+	callouts.update(dt)
+	var earned := score.bonuses.size()
 	if state == State.RACING:
 		score.watch(dt, player, track)
 		_check_pickups()
 		if recording != null:
 			recording.record(player)
 		_check_progress()
+		_callouts_after_tick(earned, place_before)
 	if demo and demo_over():
 		quit_requested.emit()
 		return
@@ -488,9 +501,9 @@ func _watch_launch(inp: DriveInput) -> void:
 	launch = Launch.Grade.NONE if Settings.auto_gas and not _autodrive else Launch.grade(_gas_since, now)
 	Launch.apply(player, launch)
 	if launch == Launch.Grade.LAUNCH:
-		_banner("LAUNCH!", "", 1.0)
+		_banner("LAUNCH!", "", 1.0, Callouts.Kind.LAUNCH)
 	elif launch == Launch.Grade.BOG:
-		_banner("GO!", "Too early!", 1.0)
+		_banner("GO!", "Too early!", 1.0, Callouts.Kind.GO)
 
 
 func _check_pickups() -> void:
@@ -524,10 +537,12 @@ func _check_progress() -> void:
 		score.checkpoint()
 		if time_attack:
 			split = race_time - ghost.time_at(player.distance, 1.0 / Engine.physics_ticks_per_second) if ghost != null else NAN
-			_banner("CHECKPOINT", "" if is_nan(split) else split_text(split) + " vs best", 2.0)
+			_banner("CHECKPOINT", "" if is_nan(split) else split_text(split) + " vs best", 2.0, Callouts.Kind.CHECKPOINT)
 		else:
 			time_left += checkpoint_bonus
-			_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0)
+			_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0, Callouts.Kind.NONE)
+			callouts.push(Callouts.Kind.CHECKPOINT)
+			callouts.push(Callouts.Kind.TIME_EXTENDED, "+%d SEC" % checkpoint_bonus)
 			checkpoint_bonus = Settings.race_time(clock[next_checkpoint + 1]) if next_checkpoint + 1 < clock.size() else 0.0
 	if player.distance >= finish_distance:
 		state = State.FINISHED
@@ -555,7 +570,9 @@ func _check_progress() -> void:
 			SaveData.unlock(Unlocks.SECRET_CAR)
 		new_unlocks = Unlocks.newly_open(before_furthest, before_unlocks, SaveData.furthest_stage, SaveData.unlocks)
 		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
-		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], 999.0)
+		if place == 1 and not rivals.cars.is_empty():
+			callouts.push(Callouts.Kind.FIRST_PLACE)
+		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], Callouts.HOLD)
 
 
 ## A tour stage finished: points, then on, another go, or the end of the tour. Returns the
@@ -644,12 +661,35 @@ static func finish_time_scale(age: float) -> float:
 	return lerpf(FINISH_SLOWMO, 1.0, clampf((age - FINISH_SLOWMO_HOLD) / FINISH_SLOWMO_EASE, 0.0, 1.0))
 
 
-func _banner(text: String, sub: String, seconds: float) -> void:
+## The race's last banner (banner, banner_sub: what the tests and golden traces read), and
+## the callout it shows as: a starburst `kind`, a plain message, or NONE when the caller
+## pushes its own.
+func _banner(text: String, sub: String, seconds: float, kind := Callouts.Kind.MESSAGE) -> void:
 	banner = text
 	banner_sub = sub
 	banner_time = seconds
+	if kind == Callouts.Kind.MESSAGE:
+		callouts.push_message(text, sub, seconds)
+	else:
+		callouts.push(kind, sub, seconds)
 	if _log_banners:
 		print("[autodrive] %.1fs  %s  %s" % [race_time, text, sub])
+
+
+## The callouts that come from a racing tick rather than a banner: NEAR MISS and BIG AIR
+## as they're scored (the bonuses past `earned`), FINAL STRETCH once, and 1ST PLACE on
+## taking the lead (not more often than Callouts.LEAD_GAP).
+func _callouts_after_tick(earned: int, place_before: int) -> void:
+	for i in range(earned, score.bonuses.size()):
+		callouts.push(Callouts.for_bonus(score.bonuses[i]["name"]))
+	if state != State.RACING:
+		return  # (the finish has its own)
+	if not _final_stretch and not free_drive and Callouts.in_final_stretch(player.distance, finish_distance):
+		_final_stretch = true
+		callouts.push(Callouts.Kind.FINAL_STRETCH)
+	if place == 1 and place_before > 1 and not rivals.cars.is_empty() and race_time - _led_at >= Callouts.LEAD_GAP:
+		_led_at = race_time
+		callouts.push(Callouts.Kind.FIRST_PLACE)
 
 
 func _redraw() -> void:
@@ -683,6 +723,8 @@ func _parse_dev_args() -> void:
 		elif arg.begins_with("--screenshots="):
 			for f in arg.get_slice("=", 1).split(","):
 				_screenshot_frames.append(int(f))
+		elif arg.begins_with("--callout="):
+			_callout_shot = Callouts.IDS.get(arg.get_slice("=", 1), Callouts.Kind.NONE)
 		elif arg.begins_with("--shot-dir="):
 			_screenshot_dir = arg.get_slice("=", 1)
 
