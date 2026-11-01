@@ -1,15 +1,26 @@
 class_name RaceAudio
 extends Node
 ## Race sounds. Watches the race each tick (after it updates) and turns what changed
-## into cues: engine and tire loops follow the player's car, one-shots mark events.
+## into cues: engine, tire, wind and slipstream loops follow the player's car, the nearest
+## rival's engine follows its gap, the horn follows its button, one-shots mark events.
 ## Reads the race and never writes to it, so play is the same with or without sound.
 
 const GEARS: Array[float] = [0.0, 0.16, 0.34, 0.54, 0.76, 1.0]  # speed fraction where each gear ends
 const FADE := 6.0  # loop level change per second
+const HORN_FADE := 30.0  # the horn is on or off at once
+const RIVAL_HEAR := 2500.0  # world units along the road a rival's engine carries
+const WHOOSH_REACH := 1.0  # road half-widths to the side a passed car whooshes within
+const PASS_WINDOW := 1000.0  # world units: a gap jump bigger than this is a wrap, not a pass
+const PICKUP_CUES := {
+	PowerUps.Kind.NITRO: "pickup_nitro", PowerUps.Kind.CLOCK: "pickup_clock",
+	PowerUps.Kind.RAM: "pickup_ram", PowerUps.Kind.GHOST: "pickup_ghost",
+}
 
 var race: Node
-var levels := {"engine_low": 0.0, "engine_high": 0.0, "skid": 0.0, "offroad": 0.0}
-var pitches := {"engine_low": 1.0, "engine_high": 1.0, "skid": 1.0, "offroad": 1.0}
+var levels := {"engine_low": 0.0, "engine_high": 0.0, "skid": 0.0, "offroad": 0.0, "wind": 0.0, "draft": 0.0,
+	"rival": 0.0, "horn": 0.0}
+var pitches := {"engine_low": 1.0, "engine_high": 1.0, "skid": 1.0, "offroad": 1.0, "wind": 1.0, "draft": 1.0,
+	"rival": 1.0, "horn": 1.0}
 
 var _loops := {}
 var _player: PlayerCar
@@ -19,6 +30,8 @@ var _checkpoint := 0
 var _nitro := 0
 var _tick := 0
 var _paused := false
+var _draft_time := 0.0
+var _gaps := {}  # traffic car or rival -> its gap ahead of the player last tick (whooshes)
 
 
 func _init(r: Node = null) -> void:
@@ -64,6 +77,8 @@ func _new_race() -> void:
 	_checkpoint = race.next_checkpoint
 	_nitro = _player.nitro_charges
 	_tick = 0
+	_draft_time = 0.0
+	_gaps.clear()
 	Audio.play_music("music_race")
 
 
@@ -93,7 +108,11 @@ func _events() -> void:
 		Audio.play("nitro")
 	_nitro = _player.nitro_charges
 	if race.picked_up:
-		Audio.play("checkpoint", 1.5)
+		Audio.play(PICKUP_CUES.get(race.pickup_gave, "pickup_nitro"))
+	if _player.draft_time > _draft_time:
+		Audio.play("draft_boost")
+	_draft_time = _player.draft_time
+	_whooshes()
 	if _player.rammed:
 		Audio.play("bump", 0.7)
 	if _player.crashed:
@@ -125,8 +144,16 @@ func _set_loops(dt: float) -> void:
 	pitches["engine_high"] = 0.6 + 0.9 * rpm
 	pitches["skid"] = 0.9 + 0.2 * pct
 	pitches["offroad"] = 0.7 + 0.6 * pct
+	target["wind"] = wind_level(_player)
+	pitches["wind"] = 0.8 + 0.4 * clampf(pct, 0.0, 1.2)
+	target["draft"] = draft_level(_player)
+	var rival := _nearest_rival()
+	target["rival"] = 0.0 if rival == null else rival_level(rival.distance - _player.distance)
+	if rival != null:
+		pitches["rival"] = 0.8 + engine_rpm(rival.speed_percent())
+	target["horn"] = 1.0 if race.horn and race.state != race.State.FINISHED else 0.0
 	for cue in levels:
-		levels[cue] = move_toward(levels[cue], target[cue], dt * FADE)
+		levels[cue] = move_toward(levels[cue], target[cue], dt * (HORN_FADE if cue == "horn" else FADE))
 		var p: AudioStreamPlayer = _loops.get(cue)
 		if p == null:
 			continue
@@ -172,3 +199,60 @@ static func offroad_level(p: PlayerCar) -> float:
 	if not p.offroad or p.airborne:
 		return 0.0
 	return clampf(p.speed_percent() * 3.0, 0.0, 1.0)
+
+
+## A whoosh for each traffic car or rival the player passes (or that passes the player)
+## close alongside, panned to its side.
+func _whooshes() -> void:
+	var length: float = race.track.length
+	var seen := {}
+	var cars: Array = race.traffic.cars if race.traffic != null else []
+	for car in cars:
+		_whoosh_check(car, wrapf(car.z - (_player.position + Cfg.PLAYER_Z), -length * 0.5, length * 0.5), car.offset, seen)
+	for r: RivalCar in race.rivals.cars:
+		_whoosh_check(r, wrapf(r.position - _player.position, -length * 0.5, length * 0.5), r.x, seen)
+	_gaps = seen
+
+
+func _whoosh_check(car, gap: float, x: float, seen: Dictionary) -> void:
+	seen[car] = gap
+	if _gaps.has(car) and passed(_gaps[car], gap) and absf(x - _player.x) < WHOOSH_REACH:
+		Audio.play("whoosh", 0.9 + 0.2 * clampf(_player.speed_percent(), 0.0, 1.0), pan_side(x, _player.x))
+
+
+func _nearest_rival() -> RivalCar:
+	var best: RivalCar = null
+	for r: RivalCar in race.rivals.cars:
+		if best == null or absf(r.distance - _player.distance) < absf(best.distance - _player.distance):
+			best = r
+	return best
+
+
+## Whether a car's gap ahead of the player went through zero this tick (a pass, either
+## way), and not by wrapping around the track.
+static func passed(gap_before: float, gap: float) -> bool:
+	if absf(gap - gap_before) > PASS_WINDOW:
+		return false
+	return (gap_before > 0.0 and gap <= 0.0) or (gap_before < 0.0 and gap >= 0.0)
+
+
+## Which side a car at road x sounds on, seen from the player at player_x: -1 left, 1 right.
+static func pan_side(x: float, player_x: float) -> int:
+	return -1 if x < player_x else 1
+
+
+## Wind over the car: silent at a crawl, full at top speed; quieter in the air.
+static func wind_level(p: PlayerCar) -> float:
+	var level := smoothstep(0.15, 1.0, p.speed_percent())
+	return level * (0.6 if p.airborne else 1.0)
+
+
+## The slipstream buffet, with the draft meter (Draft).
+static func draft_level(p: PlayerCar) -> float:
+	return clampf(p.draft * 1.2, 0.0, 1.0) if p.speed_percent() > Draft.MIN_SPEED else 0.0
+
+
+## The nearest rival's engine, by its gap along the road (either way).
+static func rival_level(gap: float) -> float:
+	var t := 1.0 - absf(gap) / RIVAL_HEAR
+	return t * t if t > 0.0 else 0.0

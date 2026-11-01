@@ -52,6 +52,7 @@ var pickup := -1  # the last pickup taken (PowerUps.Kind), for the HUD
 var pickup_gave := -1  # what it gave (a mystery hubcap opens into another kind)
 var pickup_age := 99.0  # seconds since it was taken
 var picked_up := false  # true for the tick a pickup is taken
+var horn := false  # the horn button held this tick (RaceAudio sounds it; play ignores it)
 var ram_flash := 0.0  # seconds left on the ram plate's impact flash
 var traffic: Traffic
 var rivals := Rivals.new()
@@ -374,6 +375,7 @@ func _physics_process(dt: float) -> void:
 		inp = _autodrive_input()
 	else:
 		inp = Assists.apply(inp, player, track, Settings.steer_assist, Settings.brake_assist)
+	horn = inp.horn
 	if calibration.visible:
 		_redraw()
 		return

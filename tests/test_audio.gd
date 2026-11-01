@@ -160,3 +160,92 @@ func test_thunder_after_lightning() -> void:
 	var palm := fresh_race()
 	step(palm, 600)
 	eq(count("thunder"), 0, "none on a clear stage")
+
+
+func test_whooshes_pan_to_the_passed_cars_side() -> void:
+	eq(RaceAudio.pan_side(-0.5, 0.0), -1, "a car on the left sounds left")
+	eq(RaceAudio.pan_side(0.75, 0.25), 1, "a car on the right sounds right")
+	eq(RaceAudio.pan_side(-0.25, 0.25), -1, "left of the player, though right of center")
+	check(RaceAudio.passed(120.0, -40.0), "overtaking: the gap goes through zero")
+	check(RaceAudio.passed(-30.0, 10.0), "being overtaken counts too")
+	check(not RaceAudio.passed(300.0, 200.0), "still ahead")
+	check(not RaceAudio.passed(-200.0, 50000.0), "a wrap round the track is no pass")
+
+
+func test_wind_rises_with_speed() -> void:
+	var p := PlayerCar.new()
+	eq(RaceAudio.wind_level(p), 0.0, "no wind parked")
+	p.speed = Cfg.MAX_SPEED * 0.1
+	eq(RaceAudio.wind_level(p), 0.0, "none at a crawl")
+	var last := 0.0
+	for pct in [0.3, 0.5, 0.7, 0.9]:
+		p.speed = Cfg.MAX_SPEED * pct
+		var w := RaceAudio.wind_level(p)
+		check(w > last, "louder at %d%%" % int(pct * 100))
+		last = w
+	p.speed = Cfg.MAX_SPEED
+	near(RaceAudio.wind_level(p), 1.0, 0.001, "full at top speed")
+	p.airborne = true
+	check(RaceAudio.wind_level(p) < 1.0, "quieter in the air")
+
+
+func test_rival_engine_and_slipstream_levels() -> void:
+	near(RaceAudio.rival_level(0.0), 1.0, 0.001, "alongside: full")
+	check(RaceAudio.rival_level(-800.0) > RaceAudio.rival_level(1600.0), "nearer is louder, either side")
+	eq(RaceAudio.rival_level(RaceAudio.RIVAL_HEAR + 1.0), 0.0, "out of earshot")
+	var p := PlayerCar.new()
+	p.speed = Cfg.MAX_SPEED * 0.8
+	p.draft = 0.5
+	check(RaceAudio.draft_level(p) > 0.5, "the buffet follows the draft meter")
+	p.speed = Cfg.MAX_SPEED * 0.3
+	eq(RaceAudio.draft_level(p), 0.0, "no slipstream at low speed")
+
+
+func test_passing_traffic_whooshes_once() -> void:
+	var r := race(false, true)  # traffic, no rivals
+	audio_node().history.clear()
+	step(r, 185)
+	var car = r.traffic.cars[0]
+	car.offset = r.player.x + 0.4
+	car.speed = 0.0
+	car.z = fposmod(r.player.position + Cfg.PLAYER_Z + 60.0, r.track.length)
+	car.last_z = car.z
+	r.audio.update(DT)  # remember the gap
+	car.z = fposmod(r.player.position + Cfg.PLAYER_Z - 60.0, r.track.length)  # now behind
+	r.audio.update(DT)
+	eq(count("whoosh"), 1, "a whoosh as it goes by")
+	r.audio.update(DT)
+	eq(count("whoosh"), 1, "just the one")
+	eq(audio_node()._pool.filter(func(p): return p.bus == "SFX Right").size(), 1, "on the right")
+
+
+func test_each_pickup_has_its_own_sound() -> void:
+	var r := fresh_race()
+	step(r, 185)
+	for kind: int in RaceAudio.PICKUP_CUES:
+		r.picked_up = true
+		r.pickup_gave = kind
+		r.audio.update(DT)
+		eq(count(RaceAudio.PICKUP_CUES[kind]), 1, RaceAudio.PICKUP_CUES[kind])
+	r.picked_up = false
+	r.player.draft_time = Draft.BOOST_TIME
+	r.audio.update(DT)
+	eq(count("draft_boost"), 1, "the slipstream boost")
+
+
+func test_horn_sounds_while_held() -> void:
+	var r := fresh_race()
+	step(r, 185)
+	var n := input(1.0)
+	n.horn = true
+	step(r, 2, n)
+	near(r.audio.levels["horn"], 1.0, 0.001, "horn on at once")
+	step(r, 2, input(1.0))
+	eq(r.audio.levels["horn"], 0.0, "and off on release")
+
+
+func test_every_cue_level_is_set() -> void:
+	for cue: String in SoundBank.CUES:
+		check(SoundBank.volume_db(cue) < 0.0, cue + " sits under full scale")
+	for cue: String in ["rival", "wind", "draft", "horn"]:
+		check(SoundBank.loops(cue), cue + " loops")

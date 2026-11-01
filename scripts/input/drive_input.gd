@@ -11,6 +11,7 @@ var nitro_pressed := false  # edge: true only on the tick it was pressed
 var pause_pressed := false
 var restart_pressed := false
 var confirm_pressed := false
+var horn := false  # held (only RaceAudio listens)
 var kind := Kind.KEYBOARD
 var device_name := "Keyboard"
 ## False for a pad without a standard gamepad layout (most likely a wheel or pedals not

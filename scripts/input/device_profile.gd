@@ -10,7 +10,7 @@ enum Kind { KEYBOARD = 0, GAMEPAD = 1, WHEEL = 2 }
 ## The section the keyboard's bindings are saved under in input_profiles.cfg.
 const KEYBOARD_GUID := "keyboard"
 ## The actions the player can rebind on every device (RemapScreen), in screen order.
-## shift_up, shift_down, horn and view have no effect in play yet.
+## shift_up, shift_down and view have no effect in play yet; horn only sounds (RaceAudio).
 const REMAP_ACTIONS := ["nitro", "shift_up", "shift_down", "horn", "pause", "view"]
 const ACTION_NAMES := {"nitro": "NITRO", "shift_up": "SHIFT UP", "shift_down": "SHIFT DOWN", "horn": "HORN",
 	"pause": "PAUSE", "view": "VIEW"}

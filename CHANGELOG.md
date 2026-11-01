@@ -20,9 +20,14 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Starburst callouts for near misses, big air, drafting and more (PR-5).
 - A new HUD: speedometer, position, clock and power-ups redrawn (PR-6).
 - A colorblind-safe HUD option (AC-4).
+- New sounds: passing cars whoosh by on their side, wind rises with speed, rivals' engines
+  close by, the slipstream buffets, each power-up has its own pickup sound, and the horn
+  button honks (PR-1, PR-3).
 
 ### Changed
 
+- Every sound effect remade: fuller engines, crunchier crashes, bells and brass for the chimes
+  and fanfares, and a new mix (PR-1).
 - Faster road drawing, so busy stages hold 60 fps on slower machines (EQ-7).
 - Cleaner car and prop edges (CP-7).
 
