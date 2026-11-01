@@ -23,6 +23,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 - New sounds: passing cars whoosh by on their side, wind rises with speed, rivals' engines
   close by, the slipstream buffets, each power-up has its own pickup sound, and the horn
   button honks (PR-1, PR-3).
+- A radio with four stations of original music: rock, synthwave, funk and techno. Pick one
+  on car select or in Options, or leave it on shuffle; M changes station mid-race (PR-2).
 
 ### Changed
 

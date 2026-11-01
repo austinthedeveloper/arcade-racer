@@ -18,6 +18,7 @@ var up_pressed := false
 var down_pressed := false
 var confirm_pressed := false
 var back_pressed := false
+var radio_pressed := false  # edge: car select changes the station
 
 var _x_rep := [0, 0.0]  # held direction, seconds held
 var _y_rep := [0, 0.0]

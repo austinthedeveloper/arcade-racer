@@ -20,6 +20,14 @@ func count(cue: String) -> int:
 	return audio_node().history.count(cue)
 
 
+## How many times a station started.
+func music_starts() -> int:
+	var n := 0
+	for i in Radio.count():
+		n += count(Radio.cue(i))
+	return n
+
+
 func fresh_race() -> Node:
 	var r := race(false, false)
 	audio_node().history.clear()
@@ -77,8 +85,8 @@ func test_tires_squeal_braking_and_cornering_only() -> void:
 func test_countdown_beeps_then_go_and_music() -> void:
 	var r := fresh_race()
 	step(r, 1)
-	eq(count("music_race"), 1, "music starts with the race")
-	eq(audio_node().music_cue, "music_race", "music playing")
+	eq(audio_node().music_cue, Radio.cue(r.audio.station), "the radio starts with the race")
+	eq(music_starts(), 1, "once")
 	step(r, 185)
 	eq(count("beep"), 3, "three, two, one")
 	eq(count("go"), 1, "GO")
@@ -134,7 +142,7 @@ func test_restart_starts_over() -> void:
 	step(r, 300)
 	r.start_race()
 	step(r, 185)
-	eq(count("music_race"), 2, "music restarts")
+	eq(music_starts(), 2, "music restarts")
 	eq(count("beep"), 6, "a fresh countdown")
 
 
@@ -249,3 +257,48 @@ func test_every_cue_level_is_set() -> void:
 		check(SoundBank.volume_db(cue) < 0.0, cue + " sits under full scale")
 	for cue: String in ["rival", "wind", "draft", "horn"]:
 		check(SoundBank.loops(cue), cue + " loops")
+
+
+func test_radio_dial() -> void:
+	eq(Radio.count(), 4, "rock, synthwave, funk, techno")
+	eq(Radio.next(Radio.count() - 1), 0, "round the dial")
+	eq(Radio.next_setting(Radio.SHUFFLE), 0, "shuffle, then each station")
+	eq(Radio.next_setting(Radio.count() - 1), Radio.SHUFFLE, "and back to shuffle")
+	eq(Radio.start_station(2, 999), 2, "a chosen station")
+	for roll in [0, 1, 7, -3, 123456789]:
+		var s := Radio.start_station(Radio.SHUFFLE, roll)
+		check(s >= 0 and s < Radio.count(), "shuffle lands on a station (%d)" % roll)
+	for i in Radio.count():
+		check(SoundBank.loops(Radio.cue(i)), Radio.genre(i) + " loops")
+		eq(SoundBank.CUES[Radio.cue(i)][0], "music", Radio.genre(i) + " on the music bus")
+
+
+func test_race_starts_on_the_chosen_station() -> void:
+	var saved: int = Settings.radio
+	Settings.radio = 3
+	var r := fresh_race()
+	step(r, 1)
+	eq(r.audio.station, 3, "the setting's station")
+	eq(audio_node().music_cue, Radio.cue(3), "playing it")
+	Settings.radio = saved
+
+
+func test_radio_button_switches_without_a_gap() -> void:
+	var r := fresh_race()
+	step(r, 200, input(1.0))
+	var was: int = r.audio.station
+	var n := input(1.0)
+	n.radio_pressed = true
+	r.callouts.clear()
+	step(r, 1, n)
+	eq(r.audio.station, Radio.next(was), "the next station")
+	eq(audio_node().music_cue, Radio.cue(Radio.next(was)), "playing at once")
+	eq(count("radio_tune"), 1, "a burst of tuning")
+	var shown: Array = [r.callouts.current.get("text", "")]
+	for c: Dictionary in r.callouts.waiting:
+		shown.append(c["text"])
+	check(Radio.station_name(r.audio.station) in shown, "its name comes up")
+	r.player.distance = r.finish_distance + 1.0
+	step(r, 3)
+	r.audio.next_station()
+	eq(audio_node().music_cue, "", "no music back after the finish")

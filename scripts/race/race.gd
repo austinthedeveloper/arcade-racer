@@ -12,6 +12,7 @@ enum State { COUNTDOWN, RACING, FINISHED, TIME_UP }
 
 ## The clock on the ARCADE timer, for a stage whose theme has no "clock" of its own (each
 ## stage sets one, WS-11); Settings scales it for the others.
+const RADIO_SHOW := 1.5  # seconds the new station's name stays up
 const START_TIME := 45.0
 const CHECKPOINT_BONUS := 25.0
 const BACKGROUND_SCROLL := 0.0006  # per segment travelled, per unit of curve
@@ -416,6 +417,9 @@ func _physics_process(dt: float) -> void:
 		pause()
 		_redraw()
 		return
+	if inp.radio_pressed and not over:
+		audio.next_station()
+		callouts.push_message(Radio.station_name(audio.station), Radio.genre(audio.station), RADIO_SHOW)
 
 	banner_time = maxf(0.0, banner_time - dt)
 	_watch_launch(inp)

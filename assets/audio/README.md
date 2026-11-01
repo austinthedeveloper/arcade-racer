@@ -56,7 +56,20 @@ seamless; the engine loops are pitch-shifted, so a steady single-note recording 
 | `crowd` | sfx | no | The crowd roaring and clapping at the finish line, with `finish`; mixed loud |
 | `time_up` | sfx | no | The clock runs out |
 | `thunder` | sfx | no | A beat after a lightning flash, on a stage with lightning (Thunderhead) |
-| `music_race` | music | yes | From the countdown until the finish or time up |
+| `radio_tune` | sfx | no | Changing radio station (in the race or on car select) |
+| `station_rock` | music | yes | 98.3 THE CANYON: rock, E minor, 144 bpm |
+| `station_synthwave` | music | yes | 104.7 NEON FM: synthwave, A minor, 100 bpm |
+| `station_funk` | music | yes | 92.1 SOUL STOP: funk, E, 104 bpm |
+| `station_techno` | music | yes | 107.9 PULSE: techno, F minor, 128 bpm |
+
+## The radio
+
+`scripts/audio/radio.gd` lists the four stations. A race starts on the station chosen in
+Options > Audio or on car select (the radio button, M), or a random one on SHUFFLE (the
+default), from the countdown until the finish or time up. The radio button changes station
+mid-race: the next one picks up at the same point in its loop, so the music never drops
+out, and its name comes up over the road. On a pad the radio button is unbound until set
+in Remap. Each station is one 16-bar loop (an A and a B section) rendered at 32 kHz.
 
 The engine loops are about 56 Hz (`engine_low`) and 112 Hz (`engine_high`) at a pitch of 1.0.
 

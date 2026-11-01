@@ -181,6 +181,18 @@ func test_settings_v4_to_v5_adds_assists() -> void:
 	_clean()
 
 
+func test_settings_v5_to_v6_adds_the_radio() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v5.cfg")
+	eq(Settings.migrate(cfg), 5, "from version 5")
+	eq([CfgVersion.of(cfg), cfg.get_value("audio", "radio")], [Settings.VERSION, Radio.SHUFFLE], "migrated on: the radio on shuffle")
+	_clean()
+	_load_settings("settings_v5.cfg")
+	eq(Settings.radio, Radio.SHUFFLE, "v5 loads with the radio on shuffle")
+	eq(Settings.steer_assist, true, "the rest as saved")
+	_clean()
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")

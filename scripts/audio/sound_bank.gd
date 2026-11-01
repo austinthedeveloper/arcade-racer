@@ -37,7 +37,11 @@ const CUES := {
 	"crowd": ["sfx", false, -1.0],  # the finish-line roar: the loudest cue on purpose
 	"time_up": ["sfx", false, -3.0],
 	"thunder": ["sfx", false, -9.0],  # a beat after a lightning flash (Weather)
-	"music_race": ["music", true, -12.0],
+	"radio_tune": ["sfx", false, -10.0],  # changing station
+	"station_rock": ["music", true, -11.0],  # the radio (Radio)
+	"station_synthwave": ["music", true, -9.5],
+	"station_funk": ["music", true, -10.0],
+	"station_techno": ["music", true, -10.5],
 }
 
 static var _streams: Dictionary = {}

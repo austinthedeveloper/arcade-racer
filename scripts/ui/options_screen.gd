@@ -9,7 +9,7 @@ extends MenuScreen
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
 	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP,
-	WHEEL, BACK }
+	WHEEL, BACK, RADIO }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -18,7 +18,7 @@ const PAGE_ROWS := [
 	[Row.AUTO_GAS, Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.RESET_OPTIONS,
 		Row.RESET_SAVE],
 	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
-	[Row.MUSIC, Row.SFX],
+	[Row.MUSIC, Row.SFX, Row.RADIO],
 	[Row.CALIBRATE, Row.WHEEL, Row.REMAP],
 	[Row.SCREEN_SHAKE, Row.FLASH, Row.STEER_ASSIST, Row.BRAKE_ASSIST],
 ]
@@ -29,7 +29,7 @@ const SLOTS := 11
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
-	"WHEEL SETTINGS", "BACK"]
+	"WHEEL SETTINGS", "BACK", "RADIO STATION"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -56,6 +56,7 @@ const HELP := [
 	"Choose the keys and buttons for nitro, pause and more, on each device.",
 	"Wheel range, steering lock, deadzone and linearity, for each wheel.",
 	"Back to %s.",
+	"The station races start on, or a different one each race. M changes it while you drive.",
 ]
 ## The rows that show ON or OFF.
 const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES,
@@ -167,6 +168,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.music_volume = _step(s.music_volume, dir, s.VOLUME_STEPS + 1, wrap)
 		Row.SFX:
 			s.sfx_volume = _step(s.sfx_volume, dir, s.VOLUME_STEPS + 1, wrap)
+		Row.RADIO:
+			s.radio = _step(s.radio + 1, dir, Radio.count() + 1, wrap) - 1  # SHUFFLE (-1), then each station
 		Row.SCREEN_SHAKE:
 			s.screen_shake = _step(s.screen_shake, dir, s.EFFECT_STEPS + 1, wrap)
 		Row.FLASH:
@@ -205,6 +208,8 @@ static func value_text(row: int) -> String:
 			return str(s.music_volume)
 		Row.SFX:
 			return str(s.sfx_volume)
+		Row.RADIO:
+			return Radio.setting_name(s.radio)
 		Row.SCREEN_SHAKE:
 			return str(s.screen_shake)
 		Row.FLASH:

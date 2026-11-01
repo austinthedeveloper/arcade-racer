@@ -31,6 +31,8 @@ var _nitro := 0
 var _tick := 0
 var _paused := false
 var _draft_time := 0.0
+var station := 0  # the radio station playing (Radio)
+var _rng := RandomNumberGenerator.new()  # SHUFFLE's own: play never sees it
 var _gaps := {}  # traffic car or rival -> its gap ahead of the player last tick (whooshes)
 
 
@@ -79,7 +81,18 @@ func _new_race() -> void:
 	_tick = 0
 	_draft_time = 0.0
 	_gaps.clear()
-	Audio.play_music("music_race")
+	station = Radio.start_station(Settings.radio, _rng.randi())
+	Audio.play_music(Radio.cue(station))
+
+
+## The radio button: the next station, carrying on at the same point in the loop, so the
+## music never drops out.
+func next_station() -> void:
+	var at := Audio.music_position()
+	station = Radio.next(station)
+	Audio.play("radio_tune")
+	if race != null and race.state != race.State.FINISHED and race.state != race.State.TIME_UP:
+		Audio.play_music(Radio.cue(station), at)
 
 
 func _events() -> void:

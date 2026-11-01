@@ -306,13 +306,13 @@ def midi(note):
     return 440.0 * 2.0 ** ((note - 69) / 12.0)
 
 
-def write(path, sig):
+def write(path, sig, rate=None):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     data = b"".join(struct.pack("<h", int(max(-1.0, min(1.0, x)) * 32767)) for x in sig)
     with wave.open(path, "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
-        w.setframerate(RATE)
+        w.setframerate(rate or RATE)
         w.writeframes(data)
 
 
@@ -622,70 +622,355 @@ def thunder():
     return shot(finish(reverb(mix((crack, 0.5), (out, 4.0)), 0.3, 1.6, 0.0)), fade_out=0.3)
 
 
-# --- Music -----------------------------------------------------------------
+# --- Music: the radio (four original stations) ------------------------------
+#
+# Each station is one loop of 16 bars, A section then B section, sequenced in
+# sixteenth notes. Notes are added into a loop-length buffer with wrap=True, and the
+# effects run over two loops keeping the second (loop_fx), so a reverb tail or a
+# filter's state carries across the seam. Music renders at MUSIC_RATE to keep the files
+# small; Godot compresses them on import too.
 
-BPM = 128
-EIGHTH = 60.0 / BPM / 2  # seconds
-
-# vi-IV-I-V in C, one bar each, played twice: (bass root, arpeggio notes)
-CHORDS = [(45, (69, 72, 76)), (41, (65, 69, 72)), (48, (67, 72, 76)), (43, (67, 71, 74))] * 2
-# Lead, (note or None, length in eighths); 8 eighths per bar.
-LEAD = [
-    (76, 2), (81, 2), (79, 1), (76, 2), (74, 1),
-    (72, 2), (74, 1), (76, 3), (None, 2),
-    (76, 1), (79, 2), (84, 2), (83, 1), (79, 2),
-    (79, 3), (74, 1), (71, 2), (74, 2),
-    (76, 2), (81, 2), (83, 1), (84, 2), (83, 1),
-    (81, 2), (77, 1), (81, 3), (84, 2),
-    (84, 2), (83, 1), (79, 2), (76, 1), (79, 2),
-    (83, 4), (86, 2), (None, 2),
-]
+MUSIC_RATE = 32000
 
 
-def music_race():
-    bars = len(CHORDS)
-    n = int(round(bars * 8 * EIGHTH * RATE))
-    step = lambda k: int(round(k * EIGHTH * RATE))  # eighth k -> sample
-    bass, arp, lead, drums = [0.0] * n, [0.0] * n, [0.0] * n, [0.0] * n
+class Song:
+    """A loop-length buffer per part, with a sixteenth-note clock."""
 
-    kick = decay(tone("sine", 140.0, 0.25, to=45.0), 0.07)
-    snare = mix((decay(highpass(noise(int(0.2 * RATE)), 1500.0), 0.06), 1.0),
-                (decay(tone("tri", 190.0, 0.2), 0.04), 0.6))
-    hat = decay(highpass(noise(int(0.05 * RATE)), 6000.0), 0.012)
+    def __init__(self, bpm, bars):
+        self.six = 60.0 / bpm / 4.0  # seconds per sixteenth
+        self.bars = bars
+        self.n = int(round(bars * 16 * self.six * RATE))
+        self.parts = {}
 
-    for bar, (root, chord) in enumerate(CHORDS):
-        b0 = bar * 8
+    def at(self, step):
+        return int(round(step * self.six * RATE))
+
+    def secs(self, steps):
+        return steps * self.six
+
+    def add(self, part, sig, step, gain=1.0):
+        buf = self.parts.setdefault(part, [0.0] * self.n)
+        add_at(buf, sig, self.at(step) % self.n, gain, wrap=True)
+
+    def part(self, name):
+        return self.parts.get(name, [0.0] * self.n)
+
+    def mixdown(self, levels):
+        out = [0.0] * self.n
+        for name, g in levels.items():
+            for i, x in enumerate(self.part(name)):
+                out[i] += x * g
+        return out
+
+
+def loop_fx(buf, fx):
+    """Runs fx over two copies of a loop and keeps the second, so the loop stays seamless."""
+    n = len(buf)
+    return fx(buf + buf)[n:2 * n]
+
+
+def pattern(song, part, hits, sound, gain=1.0, bars=None, accent=None):
+    """hits: a 16-character bar ("x" a hit, "o" a softer one, "." a rest), every bar (or
+    `bars`, a list of bar numbers)."""
+    for bar in (range(song.bars) if bars is None else bars):
+        for k, ch in enumerate(hits):
+            if ch in "xo":
+                g = gain * (1.0 if ch == "x" else 0.45)
+                if accent and k in accent:
+                    g *= 1.2
+                song.add(part, sound, bar * 16 + k, g)
+
+
+def play_notes(song, part, notes, make, gain=1.0, offset=0):
+    """notes: (step, midi or [midis], length in sixteenths); make(notes, seconds) renders one."""
+    for step, note, length in notes:
+        if note is None:
+            continue
+        song.add(part, make(note if isinstance(note, list) else [note], song.secs(length)), offset + step, gain)
+
+
+def m_kick(punch=1.0):
+    body = decay(tone("sine", 150.0, 0.35, to=44.0), 0.11 * punch)
+    click = decay(biquad(noise(int(0.01 * RATE)), "highpass", 3000.0), 0.002)
+    return shot(mix((body, 1.0), (click, 0.4)))
+
+
+def m_snare(tight=1.0):
+    n = int(0.25 * RATE)
+    rattle = decay(biquad(noise(n), "bandpass", 1900.0, 0.7), 0.09 * tight)
+    body = decay(tone("tri", 190.0, 0.25, to=170.0), 0.045)
+    return shot(mix((rattle, 1.1), (body, 0.8)))
+
+
+def m_hat(open_hat=False):
+    n = int((0.3 if open_hat else 0.06) * RATE)
+    return shot(decay(biquad(noise(n), "highpass", 7500.0, 0.8), 0.09 if open_hat else 0.014))
+
+
+def m_clap():
+    out = silence(0.25)
+    burst = biquad(noise(int(0.012 * RATE)), "bandpass", 1300.0, 1.0)
+    for k in range(3):
+        add_at(out, burst, int(k * 0.011 * RATE), 0.7)
+    add_at(out, decay(biquad(noise(int(0.2 * RATE)), "bandpass", 1300.0, 1.0), 0.06), int(0.033 * RATE))
+    return shot(out)
+
+
+def m_crash():
+    n = int(1.6 * RATE)
+    wash = decay(biquad(noise(n), "highpass", 4500.0, 0.6), 0.55)
+    ring = modal([(3150.0, 0.5, 0.2), (4720.0, 0.4, 0.15), (5980.0, 0.3, 0.1)], 1.6)
+    return shot(mix((wash, 1.0), (ring, 0.6)))
+
+
+def m_tom(note):
+    return shot(decay(tone("sine", midi(note), 0.4, to=midi(note) * 0.7), 0.12))
+
+
+def saws(notes, seconds, detune=0.006, voices=2):
+    """Detuned saws for every note: the pads, leads and guitars start here."""
+    out = [0.0] * int(round(seconds * RATE))
+    for note in notes:
+        for v in range(voices):
+            d = 1.0 + detune * (v - (voices - 1) / 2.0)
+            add_at(out, osc("saw", [midi(note) * d] * len(out)), 0, 1.0 / voices)
+    return out
+
+
+# Rock: 98.3 THE CANYON. E minor, 144 bpm. Palm-muted eighths on power chords (A), then
+# open chords under a lead guitar (B).
+
+def guitar(notes, seconds, muted=False):
+    root = notes[0]
+    raw = saws([root, root + 7, root + 12], seconds, 0.008, 2)
+    raw = [math.tanh(6.0 * x) for x in raw]
+    tone_ = biquad(biquad(raw, "lowpass", 1300.0 if muted else 3400.0, 0.8), "peak", 900.0, 1.0, 4.0)
+    if muted:
+        return env(tone_, attack=0.002, decay=0.08, sustain=0.25, release=0.03)
+    return env(tone_, attack=0.004, decay=0.3, sustain=0.7, release=0.08)
+
+
+def lead_guitar(notes, seconds):
+    raw = tone("saw", midi(notes[0]), seconds, vibrato=0.012, vib_rate=5.5)
+    raw = [math.tanh(4.0 * x) for x in raw]
+    return env(biquad(raw, "lowpass", 3200.0, 1.2), attack=0.01, decay=0.2, sustain=0.8, release=0.06)
+
+
+def rock_bass(notes, seconds):
+    raw = osc("saw", [midi(notes[0])] * int(round(seconds * RATE)))
+    return env(biquad(raw, "lowpass", 700.0, 1.0), attack=0.003, decay=0.1, sustain=0.6, release=0.03)
+
+
+def station_rock():
+    song = Song(144, 16)
+    a_roots = [40, 40, 36, 38, 40, 40, 43, 45]  # E E C D E E G A
+    b_roots = [36, 43, 38, 40, 36, 43, 45, 47]  # C G D E C G A B
+    for bar, root in enumerate(a_roots):
         for e in range(8):
-            note = root + (12 if e % 2 else 0)
-            add_at(bass, env(tone("square", midi(note), EIGHTH * 0.9), decay=0.08, sustain=0.5,
-                             release=0.03), step(b0 + e), wrap=True)
-            add_at(drums, hat, step(b0 + e), 0.35 if e % 2 else 0.2, wrap=True)
-        for s in range(16):  # sixteenth-note arpeggio
-            note = chord[s % 3] + (12 if (s // 3) % 2 else 0)
-            add_at(arp, env(tone("square", midi(note), EIGHTH / 2, duty=0.125), decay=0.03,
-                            sustain=0.3, release=0.02), step(b0 + s / 2), wrap=True)
-        for e in (0, 3, 4):
-            add_at(drums, kick, step(b0 + e), 1.0, wrap=True)
-        for e in (2, 6):
-            add_at(drums, snare, step(b0 + e), 0.7, wrap=True)
-        if bar % 4 == 3:
-            add_at(drums, snare, step(b0 + 7), 0.4, wrap=True)
-            add_at(drums, snare, step(b0 + 7.5), 0.5, wrap=True)
-
-    e = 0
-    for note, length in LEAD:
-        if note is not None:
-            dur = length * EIGHTH
-            add_at(lead, env(tone("square", midi(note), dur, duty=0.25, vibrato=0.008 if length > 1 else 0.0),
-                             attack=0.004, decay=0.06, sustain=0.75, release=0.05), step(e), wrap=True)
-        e += length
-
-    bass = lowpass(bass, 1200.0)
-    lead = lowpass(lead, 4000.0)
-    out = [0.0] * n
-    for i in range(n):
-        out[i] = 0.55 * bass[i] + 0.18 * arp[i] + 0.35 * lead[i] + 0.6 * drums[i]
+            song.add("gtr", guitar([root], song.secs(1.8), muted=e != 0), bar * 16 + e * 2, 0.8 if e else 1.0)
+            song.add("bass", rock_bass([root - 12], song.secs(1.8)), bar * 16 + e * 2)
+    for bar, root in enumerate(b_roots):
+        b = 8 + bar
+        song.add("gtr", guitar([root], song.secs(7.5)), b * 16)
+        song.add("gtr", guitar([root], song.secs(7.5)), b * 16 + 8, 0.85)
+        for e in range(8):
+            song.add("bass", rock_bass([root - 12], song.secs(1.8)), b * 16 + e * 2)
+    lead = [(0, 64, 6), (6, 67, 2), (8, 71, 4), (12, 69, 4), (16, 67, 6), (22, 66, 2), (24, 64, 8),
+            (32, 64, 4), (36, 67, 4), (40, 71, 4), (44, 74, 4), (48, 72, 8), (56, 71, 8),
+            (64, 76, 6), (70, 74, 2), (72, 72, 4), (76, 71, 4), (80, 69, 8), (88, 71, 8),
+            (96, 72, 6), (102, 74, 2), (104, 76, 8), (112, 79, 4), (116, 78, 4), (120, 76, 8)]
+    play_notes(song, "lead", lead, lead_guitar, 1.0, offset=8 * 16)
+    pattern(song, "drums", "x.....x.x.......", m_kick(), 1.0)
+    pattern(song, "drums", "....x.......x...", m_snare(), 0.9)
+    pattern(song, "drums", "x.x.x.x.x.x.x.x.", m_hat(), 0.3)
+    for bar in (0, 8):
+        song.add("drums", m_crash(), bar * 16, 0.6)
+    for k, note in enumerate((50, 50, 45, 45, 41, 41)):  # tom fill into the B section
+        song.add("drums", m_tom(note), 7 * 16 + 10 + k, 0.7)
+    gtr = loop_fx(song.part("gtr"), lambda x: reverb(x, 0.15, 0.8, 0.0))
+    lead_wet = loop_fx(song.part("lead"), lambda x: reverb(x, 0.3, 1.1, 0.0))
+    drums = loop_fx(song.part("drums"), lambda x: reverb(x, 0.12, 0.7, 0.0))
+    out = [0.33 * g + 0.5 * b + 0.3 * l + 0.75 * d
+           for g, b, l, d in zip(gtr, song.part("bass"), lead_wet, drums)]
     return finish(out, 0.85)
+
+
+# Synthwave: 104.7 NEON FM. A minor, 100 bpm. Octave bass in sixteenths, wide pads, a
+# gated big-room snare and a singing saw lead.
+
+def pad(notes, seconds):
+    raw = saws(notes, seconds, 0.012, 3)
+    return env(biquad(raw, "lowpass", 1800.0, 0.7), attack=0.25, decay=0.3, sustain=0.85, release=0.3)
+
+
+def synth_bass(notes, seconds):
+    raw = osc("saw", [midi(notes[0])] * int(round(seconds * RATE)))
+    return env(biquad(raw, "lowpass", 900.0, 1.4), attack=0.002, decay=0.09, sustain=0.4, release=0.02)
+
+
+def synth_lead(notes, seconds):
+    n = int(round(seconds * RATE))
+    raw = [0.0] * n
+    for d in (0.996, 1.004):
+        add_at(raw, tone("saw", midi(notes[0]) * d, seconds, vibrato=0.01, vib_rate=5.0), 0, 0.5)
+    return env(biquad(raw, "lowpass", 2600.0, 1.0), attack=0.02, decay=0.15, sustain=0.85, release=0.15)
+
+
+def arp_pluck(notes, seconds):
+    raw = osc("square", [midi(notes[0])] * int(round(seconds * RATE)), 0.25)
+    return env(biquad(raw, "lowpass", 3000.0), attack=0.002, decay=0.06, sustain=0.2, release=0.03)
+
+
+def station_synthwave():
+    song = Song(100, 16)
+    chords = [(45, [57, 60, 64]), (41, [57, 60, 65]), (48, [55, 60, 64]), (43, [55, 59, 62])] * 4  # Am F C G
+    for bar, (root, chord) in enumerate(chords):
+        for s16 in range(16):
+            song.add("bass", synth_bass([root - 12 + (12 if s16 % 2 else 0)], song.secs(0.9)), bar * 16 + s16, 0.8)
+        song.add("pad", pad(chord, song.secs(16)), bar * 16)
+        if bar >= 8:
+            for s16 in range(0, 16, 2):
+                note = chord[(s16 // 2) % 3] + 12
+                song.add("arp", arp_pluck([note], song.secs(1.5)), bar * 16 + s16, 0.5)
+    lead = [(0, 76, 4), (4, 74, 2), (6, 72, 2), (8, 69, 8), (16, 72, 4), (20, 74, 4), (24, 72, 4), (28, 69, 4),
+            (32, 67, 4), (36, 69, 2), (38, 72, 2), (40, 76, 8), (48, 74, 12), (60, 71, 4),
+            (64, 76, 4), (68, 79, 4), (72, 81, 8), (80, 79, 4), (84, 77, 4), (88, 76, 8),
+            (96, 72, 4), (100, 74, 4), (104, 76, 8), (112, 74, 8), (120, 71, 8)]
+    play_notes(song, "lead", lead, synth_lead, 1.0, offset=8 * 16)
+    pattern(song, "kick", "x.......x.......", m_kick(1.2), 1.0)
+    pattern(song, "snare", "....x.......x...", m_snare(0.8), 1.0)
+    pattern(song, "hat", "..x...x...x...x.", m_hat(), 0.35)
+    pattern(song, "hat", "x.x.x.x.x.x.x.x.", m_hat(), 0.18, bars=range(8, 16))
+    song.add("hat", m_crash(), 8 * 16, 0.5)
+    snare = loop_fx(song.part("snare"), lambda x: reverb(x, 0.9, 1.6, 0.0))  # the big gated room
+    pad_wet = loop_fx(song.part("pad"), lambda x: reverb(x, 0.4, 1.4, 0.0))
+    lead_wet = loop_fx(song.part("lead"), lambda x: reverb(x, 0.45, 1.3, 0.0))
+    arp_wet = loop_fx(song.part("arp"), lambda x: reverb(x, 0.35, 1.0, 0.0))
+    out = [0.55 * b + 0.18 * p + 0.28 * l + 0.25 * a + 0.9 * k + 0.6 * s + h
+           for b, p, l, a, k, s, h in zip(song.part("bass"), pad_wet, lead_wet, arp_wet, song.part("kick"),
+                                          snare, song.part("hat"))]
+    return finish(out, 0.85)
+
+
+# Funk: 92.1 SOUL STOP. E, 104 bpm. A slap bass vamp on E7 and A7, wah clav chords on the
+# off-sixteenths, ghost-note drums, and horn stabs in the B section.
+
+def slap_bass(notes, seconds):
+    n = int(round(seconds * RATE))
+    raw = mix((osc("saw", [midi(notes[0])] * n), 0.7), (osc("tri", [midi(notes[0])] * n), 0.6))
+    cut = [400.0 + 2600.0 * math.exp(-i / (0.03 * RATE)) for i in range(n)]
+    return env(biquad(raw, "lowpass", cut, 2.0), attack=0.001, decay=0.12, sustain=0.5, release=0.03)
+
+
+def clav(notes, seconds):
+    n = int(round(seconds * RATE))
+    raw = [0.0] * n
+    for note in notes:
+        add_at(raw, osc("square", [midi(note)] * n, 0.3), 0, 0.4)
+    cut = [700.0 + 3200.0 * math.exp(-i / (0.045 * RATE)) for i in range(n)]  # the wah snapping shut
+    return env(biquad(raw, "bandpass", cut, 3.0), attack=0.001, decay=0.06, sustain=0.3, release=0.02)
+
+
+def horns(notes, seconds):
+    out = [0.0] * int(round(seconds * RATE))
+    for note in notes:
+        add_at(out, brass(note, seconds, 0.02), 0, 0.5)
+    return out
+
+
+def station_funk():
+    song = Song(104, 16)
+    riff = [(0, 40, 2), (3, 52, 1), (4, 40, 1), (6, 50, 1), (7, 52, 1), (10, 40, 2), (12, 47, 1), (14, 50, 1), (15, 52, 1)]
+    for bar in range(16):
+        root_shift = 5 if bar % 4 == 2 else 0  # E7 E7 A7 E7
+        if bar >= 8 and bar % 4 == 3:
+            root_shift = 7  # B7 turnaround in the B section
+        play_notes(song, "bass", [(s, n + root_shift, l) for s, n, l in riff], slap_bass, 1.0, offset=bar * 16)
+        chord = [64 + root_shift, 68 + root_shift, 74 + root_shift]  # 3, 5... the 7th on top
+        for s16 in (2, 5, 7, 10, 13, 15):
+            song.add("clav", clav(chord, song.secs(0.8)), bar * 16 + s16, 0.8)
+    stabs = [(0, [71, 75, 78], 2), (3, [71, 75, 78], 1), (6, [74, 78, 81], 2), (12, [76, 80, 83], 4)]
+    for bar in range(8, 16, 2):
+        play_notes(song, "horns", stabs, horns, 1.0, offset=bar * 16)
+    pattern(song, "drums", "x..x..x...x..x..", m_kick(0.9), 1.0)
+    pattern(song, "drums", "....x..o....x.o.", m_snare(0.7), 0.85)
+    pattern(song, "drums", "xxxxxxxxxxxxxxxx", m_hat(), 0.16, accent=(0, 4, 8, 12))
+    pattern(song, "drums", "..............x.", m_hat(True), 0.3)
+    drums = loop_fx(song.part("drums"), lambda x: reverb(x, 0.12, 0.6, 0.0))
+    horns_wet = loop_fx(song.part("horns"), lambda x: reverb(x, 0.3, 1.0, 0.0))
+    out = [0.6 * b + 0.32 * c + 0.4 * h + 0.8 * d
+           for b, c, h, d in zip(song.part("bass"), song.part("clav"), horns_wet, drums)]
+    return finish(out, 0.85)
+
+
+# Techno: 107.9 PULSE. F minor, 128 bpm. Four on the floor, an acid line whose filter
+# opens over the loop, off-beat hats, chord stabs and a riser into the B section.
+
+def acid(notes, seconds, cutoff):
+    n = int(round(seconds * RATE))
+    raw = osc("saw", [midi(notes[0])] * n)
+    cut = [cutoff * (0.35 + 0.65 * math.exp(-i / (0.06 * RATE))) for i in range(n)]
+    out = biquad(raw, "lowpass", cut, 7.0)
+    return env([math.tanh(1.8 * x) for x in out], attack=0.002, decay=0.1, sustain=0.6, release=0.02)
+
+
+def stab(notes, seconds):
+    raw = saws(notes, seconds, 0.01, 2)
+    n = len(raw)
+    cut = [500.0 + 3000.0 * math.exp(-i / (0.05 * RATE)) for i in range(n)]
+    return env(biquad(raw, "lowpass", cut, 1.5), attack=0.002, decay=0.1, sustain=0.3, release=0.05)
+
+
+def station_techno():
+    song = Song(128, 16)
+    line = [41, 41, 53, 41, 44, 41, 51, 41, 41, 53, 41, 48, 41, 46, 41, 56]  # F minor sixteenths
+    accents = {2, 6, 9, 15}
+    for bar in range(16):
+        sweep = 600.0 + 2600.0 * (0.5 - 0.5 * math.cos(TAU * bar / 16.0))  # opens and closes over the loop
+        for k, note in enumerate(line):
+            song.add("acid", acid([note - 12 + (12 if bar >= 8 and k in accents else 0)], song.secs(0.9), sweep),
+                     bar * 16 + k, 1.0 if k in accents else 0.7)
+        if bar >= 8:
+            for s16 in (3, 11):
+                song.add("stab", stab([65, 68, 72], song.secs(1.5)), bar * 16 + s16, 0.8)
+    pattern(song, "drums", "x...x...x...x...", m_kick(1.1), 1.0)
+    pattern(song, "drums", "....x.......x...", m_clap(), 0.7)
+    pattern(song, "drums", "..x...x...x...x.", m_hat(True), 0.3)
+    pattern(song, "drums", "x.x.x.x.x.x.x.x.", m_hat(), 0.14, bars=range(4, 16))
+    riser_n = int(song.secs(32) * RATE)
+    riser = biquad(noise(riser_n), "bandpass", [300.0 * (20.0 ** (i / riser_n)) for i in range(riser_n)], 1.5)
+    riser = [x * (i / riser_n) ** 2 for i, x in enumerate(riser)]
+    song.add("fx", riser, 6 * 16, 0.6)
+    song.add("drums", m_crash(), 8 * 16, 0.5)
+    stab_wet = loop_fx(song.part("stab"), lambda x: reverb(x, 0.5, 1.3, 0.0))
+    acid_wet = loop_fx(song.part("acid"), lambda x: reverb(x, 0.15, 0.9, 0.0))
+    out = [0.4 * a + 0.3 * s + 0.85 * d + f
+           for a, s, d, f in zip(acid_wet, stab_wet, song.part("drums"), song.part("fx"))]
+    return finish(out, 0.85)
+
+
+def radio_tune():
+    """Changing station: a burst of tuning static with a whistle sliding through it."""
+    seconds = 0.35
+    n = int(seconds * RATE)
+    hiss = biquad(noise(n), "bandpass", 2500.0, 0.5)
+    whistle = tone("sine", 2600.0, seconds, to=900.0)
+    chop = [0.6 + 0.4 * math.sin(TAU * 31 * i / RATE) for i in range(n)]
+    out = env([h * c + 0.25 * w for h, c, w in zip(hiss, chop, whistle)], attack=0.01, decay=0.1, sustain=0.8,
+              release=0.12)
+    return shot(finish(out))
+
+
+def at_music_rate(make):
+    """Renders `make` with RATE set to MUSIC_RATE (the helpers all read RATE)."""
+    def run():
+        global RATE
+        saved, RATE = RATE, MUSIC_RATE
+        try:
+            return make(), MUSIC_RATE
+        finally:
+            RATE = saved
+    return run
 
 
 FILES = {
@@ -715,7 +1000,11 @@ FILES = {
     "sfx/pickup_ghost.wav": pickup_ghost,
     "sfx/crowd.wav": crowd,
     "sfx/thunder.wav": thunder,
-    "music/music_race.wav": music_race,
+    "sfx/radio_tune.wav": radio_tune,
+    "music/station_rock.wav": at_music_rate(station_rock),
+    "music/station_synthwave.wav": at_music_rate(station_synthwave),
+    "music/station_funk.wav": at_music_rate(station_funk),
+    "music/station_techno.wav": at_music_rate(station_techno),
 }
 
 
@@ -729,11 +1018,12 @@ def main():
     project = args[0] if args else os.path.join(os.path.dirname(__file__), "..")
     for name, make in FILES.items():
         sig = make()  # every sound, in order, so the shared random stream gives the same files
+        sig, rate = sig if isinstance(sig, tuple) else (sig, RATE)
         if only and not any(o in name for o in only):
             continue
         path = os.path.join(project, "assets", "audio", name)
-        write(path, sig)
-        print("wrote %s (%.2f s, %.1f dB RMS)" % (os.path.relpath(path, project), len(sig) / RATE, rms_db(sig)))
+        write(path, sig, rate)
+        print("wrote %s (%.2f s, %.1f dB RMS)" % (os.path.relpath(path, project), len(sig) / rate, rms_db(sig)))
 
 
 if __name__ == "__main__":

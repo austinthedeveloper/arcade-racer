@@ -72,7 +72,8 @@ func play(cue: String, pitch := 1.0, side := 0) -> void:
 		p.play()
 
 
-func play_music(cue: String) -> void:
+## Starts a music cue, `from` seconds in (wrapped to its length).
+func play_music(cue: String, from := 0.0) -> void:
 	_log(cue)
 	music_cue = cue
 	if music == null:
@@ -81,7 +82,12 @@ func play_music(cue: String) -> void:
 	music.volume_db = SoundBank.volume_db(cue)
 	music.stream_paused = false
 	if music.stream != null and music.is_inside_tree():
-		music.play()
+		music.play(fposmod(from, maxf(music.stream.get_length(), 0.001)))
+
+
+## How far into the music it is, in seconds (0 when none plays).
+func music_position() -> float:
+	return music.get_playback_position() if music != null and music.playing else 0.0
 
 
 func stop_music() -> void:
