@@ -4,6 +4,8 @@
 - The SUNDOWN RUN logo (UI-01), its black backdrop keyed out.
 - A 640x360 title backdrop from the Palm Coast background composite.
 - One postcard per stage (16:9) from each stage's background composite.
+- The 640x360 country map behind stage select (KA-06). It has no text; the stage pins
+  (StageSelect.PINS) sit on its painted route markers.
 - A showroom picture per car, cropped from its approved hero art (the screen mockups' cars
   are layout reference only).
 
@@ -21,6 +23,7 @@ STAGES = ["palm-coast", "redrock", "neon", "timberline", "bayou", "harvest", "th
 # Composite version per stage where the first one was rerolled
 COMPOSITE = {"skyline": "A_v2"}
 POSTCARD = (224, 126)
+MAP = "ka06_map_A_v1.png"
 LOGO_WIDTH = 360
 CAR_SIZE = (304, 141)
 # Showroom pictures: (car, hero art, crop). Most heroes share the Vega's framing; the Hauler
@@ -74,6 +77,11 @@ def main():
     title = quantize(crop_16_9(palm).resize((640, 360), Image.LANCZOS))
     title.save(os.path.join(out, "title_bg.png"))
     print("title_bg", title.size)
+
+    world = Image.open(os.path.join(concept, "key-art", MAP))
+    stage_map = quantize(world.resize((640, 360), Image.LANCZOS), 160)
+    stage_map.save(os.path.join(out, "stage_map.png"))
+    print("stage_map", stage_map.size)
 
     for stage in STAGES:
         src = Image.open(os.path.join(concept, "backgrounds", "%s_composite_%s.png" % (stage, COMPOSITE.get(stage, "A_v1"))))
