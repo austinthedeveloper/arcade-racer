@@ -7,13 +7,14 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-01
+
 ### Added
 
 - Online races (ON-1 to ON-3): ONLINE on mode select. Host a room and share its four letters, or
   join one; up to four players on Windows, macOS, Linux and the Web build, through the same
   relay as Pickleball '94. The host picks the stage; no clock, no AI rivals, first over the line
   wins.
-- `--online=host` and `--online=join:CODE` dev flags: two windows race each other hands-off.
 - Touch controls (ON-4, ON-5): on a phone or tablet's browser, steer, gas, brake, nitro and
   pause on screen while racing, and a D-pad with OK and BACK in the menus.
 - Roads change width: Thunderhead's road works and the Timberline summit narrow to two lanes,
