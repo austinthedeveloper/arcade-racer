@@ -48,7 +48,7 @@ var _joys: Dictionary = {}
 var _parked: Dictionary = {}  # guid -> an unplugged joypad's unsaved profile, for its return
 var _kb_steer := 0.0
 var _pad_steer: Dictionary = {}
-var _prev := {"nitro": false, "pause": false, "restart": false, "confirm": false}
+var _prev := {"nitro": false, "pause": false, "restart": false, "confirm": false, "horn": false}
 var _prev_menu := {"confirm": false, "back": false}
 
 
@@ -69,7 +69,7 @@ func _physics_process(dt: float) -> void:
 	var steer := 0.0
 	var throttle := 0.0
 	var brake := 0.0
-	var down := {"nitro": false, "pause": false, "restart": false, "confirm": false}
+	var down := {"nitro": false, "pause": false, "restart": false, "confirm": false, "horn": false}
 
 	# Keyboard: digital steering ramps in, and snaps back faster than it ramps
 	var kb_target := Input.get_action_strength("steer_right") - Input.get_action_strength("steer_left")
@@ -82,6 +82,7 @@ func _physics_process(dt: float) -> void:
 	down["pause"] = Input.is_action_pressed("pause")
 	down["restart"] = Input.is_action_pressed("restart")
 	down["confirm"] = Input.is_action_pressed("confirm")
+	down["horn"] = Input.is_action_pressed("horn")
 	if kb_target != 0.0 or throttle > 0.0 or brake > 0.0:
 		last_active_device = -1
 	var menu_x := kb_target
@@ -116,6 +117,7 @@ func _physics_process(dt: float) -> void:
 	state.pause_pressed = down["pause"] and not _prev["pause"]
 	state.restart_pressed = down["restart"] and not _prev["restart"]
 	state.confirm_pressed = down["confirm"] and not _prev["confirm"]
+	state.horn = down["horn"]
 	_prev = down
 	menu.step_axis(clampf(menu_x, -1.0, 1.0), dt)
 	menu.step_axis_y(clampf(menu_y, -1.0, 1.0), dt)
@@ -168,6 +170,7 @@ func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
 		"brake": brake if brake > 0.05 else 0.0,
 		"nitro": nitro,
 		"pause": prof.pressed("pause", device),
+		"horn": prof.pressed("horn", device),
 		"restart": Input.is_joy_button_pressed(device, JOY_BUTTON_BACK),
 		"confirm": a_btn,
 		"active": mag > PAD_DEADZONE or throttle > 0.05 or brake > 0.05 or nitro or a_btn,
@@ -202,6 +205,7 @@ func _read_wheel(device: int, prof: DeviceProfile) -> Dictionary:
 		"brake": brake,
 		"nitro": nitro,
 		"pause": prof.pressed("pause", device),
+		"horn": prof.pressed("horn", device),
 		"active": absf(steer) > 0.05 or throttle > 0.05 or brake > 0.05 or nitro,
 		# Any wheel button confirms too, so an uncalibrated wheel (pedals unused) gets through
 		"menu_x": steer,
@@ -430,8 +434,8 @@ func joy_changed(device: int, connected: bool, guid: String, joy_name: String) -
 
 # --- Keyboard actions ----------------------------------------------------------
 
-## The fixed keys (DeviceProfile.KEYBOARD_FIXED); the remappable ones (nitro, pause, and
-## shift_up, shift_down, horn and view, which have no effect in play yet) come from the
+## The fixed keys (DeviceProfile.KEYBOARD_FIXED); the remappable ones (nitro, pause, horn,
+## and shift_up, shift_down and view, which have no effect in play yet) come from the
 ## keyboard's bindings in apply_keyboard_bindings.
 func _register_actions() -> void:
 	for action: String in DeviceProfile.KEYBOARD_FIXED:

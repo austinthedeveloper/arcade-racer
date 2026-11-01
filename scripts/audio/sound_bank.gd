@@ -8,24 +8,35 @@ extends RefCounted
 const ROOT := "res://assets/audio/"
 const EXTENSIONS: Array[String] = ["ogg", "wav", "mp3"]
 
-## cue: [folder, loops, volume in dB]. Level a new pack here.
+## cue: [folder, loops, volume in dB]. Level a new pack here. The levels put each cue's
+## loudness (RMS) where the mix wants it; `make_audio.py` prints every file's.
 const CUES := {
-	"engine_low": ["sfx", true, -8.0],
-	"engine_high": ["sfx", true, -10.0],
-	"skid": ["sfx", true, -12.0],
-	"offroad": ["sfx", true, -10.0],
-	"nitro": ["sfx", false, -6.0],
-	"crash": ["sfx", false, -6.0],
+	"engine_low": ["sfx", true, -9.5],
+	"engine_high": ["sfx", true, -13.5],
+	"rival": ["sfx", true, -16.0],  # the nearest rival's engine, under the player's own
+	"skid": ["sfx", true, -10.0],
+	"offroad": ["sfx", true, -15.0],
+	"wind": ["sfx", true, -15.0],  # rises with speed
+	"draft": ["sfx", true, -12.0],  # in a slipstream
+	"horn": ["sfx", true, -11.0],  # while the horn button is held
+	"nitro": ["sfx", false, -5.0],
+	"crash": ["sfx", false, -5.0],
 	"bump": ["sfx", false, -6.0],
-	"land": ["sfx", false, -6.0],
-	"beep": ["sfx", false, -10.0],
-	"go": ["sfx", false, -10.0],
-	"tick": ["sfx", false, -14.0],
-	"checkpoint": ["sfx", false, -8.0],
-	"finish": ["sfx", false, -8.0],
-	"crowd": ["sfx", false, -2.0],  # the finish-line roar: the loudest cue on purpose
-	"time_up": ["sfx", false, -8.0],
-	"thunder": ["sfx", false, -4.0],  # a beat after a lightning flash (Weather)
+	"land": ["sfx", false, -5.0],
+	"whoosh": ["sfx", false, -7.0],  # passing traffic or a rival, panned to its side
+	"draft_boost": ["sfx", false, -4.0],
+	"pickup_nitro": ["sfx", false, -4.0],
+	"pickup_clock": ["sfx", false, -5.0],
+	"pickup_ram": ["sfx", false, -6.0],
+	"pickup_ghost": ["sfx", false, -5.0],
+	"beep": ["sfx", false, -6.0],
+	"go": ["sfx", false, -6.0],
+	"tick": ["sfx", false, -9.0],
+	"checkpoint": ["sfx", false, -6.0],
+	"finish": ["sfx", false, -6.0],
+	"crowd": ["sfx", false, -1.0],  # the finish-line roar: the loudest cue on purpose
+	"time_up": ["sfx", false, -3.0],
+	"thunder": ["sfx", false, -9.0],  # a beat after a lightning flash (Weather)
 	"music_race": ["music", true, -12.0],
 }
 

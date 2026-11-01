@@ -2,7 +2,10 @@ extends Node
 ## Audio autoload: the Music and SFX buses, the music player and a pool of one-shot
 ## players. Sounds are named by cue (see SoundBank); race sounds are driven by RaceAudio.
 
-const POOL_SIZE := 8
+const POOL_SIZE := 10
+## Buses a one-shot can play on: side -1 left, 0 center, 1 right (traffic whooshes).
+const SIDE_BUSES := {-1: "SFX Left", 0: "SFX", 1: "SFX Right"}
+const SIDE_PAN := 0.7
 const HISTORY_SIZE := 64
 
 var music: AudioStreamPlayer
@@ -24,6 +27,16 @@ func _ready() -> void:
 			var i := AudioServer.bus_count - 1
 			AudioServer.set_bus_name(i, bus)
 			AudioServer.set_bus_send(i, "Master")
+	for side: int in [-1, 1]:
+		var bus: String = SIDE_BUSES[side]
+		if AudioServer.get_bus_index(bus) < 0:
+			AudioServer.add_bus()
+			var i := AudioServer.bus_count - 1
+			AudioServer.set_bus_name(i, bus)
+			AudioServer.set_bus_send(i, "SFX")  # so the effects volume covers them
+			var pan := AudioEffectPanner.new()
+			pan.pan = side * SIDE_PAN
+			AudioServer.add_bus_effect(i, pan)
 	if AudioServer.get_bus_effect_count(0) == 0:
 		AudioServer.add_bus_effect(0, AudioEffectHardLimiter.new())  # crashes over music never clip
 	music = AudioStreamPlayer.new()
@@ -36,8 +49,9 @@ func _ready() -> void:
 		_pool.append(p)
 
 
-## Plays a one-shot cue on the next free pool player (or the oldest).
-func play(cue: String, pitch := 1.0) -> void:
+## Plays a one-shot cue on the next free pool player (or the oldest), panned to `side`
+## (-1 left, 0 center, 1 right).
+func play(cue: String, pitch := 1.0, side := 0) -> void:
 	_log(cue)
 	var s := SoundBank.stream(cue)
 	if s == null or _pool.is_empty():
@@ -52,6 +66,7 @@ func play(cue: String, pitch := 1.0) -> void:
 	p.stream = s
 	p.volume_db = SoundBank.volume_db(cue)
 	p.pitch_scale = pitch
+	p.bus = SIDE_BUSES.get(signi(side), "SFX")
 	p.stream_paused = false
 	if p.is_inside_tree():
 		p.play()
