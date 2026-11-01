@@ -1,7 +1,8 @@
 ## Headless test runner:
-##   godot --headless --path . -s res://tests/run_tests.gd [-- filter]
+##   godot --headless --path . -s res://tests/run_tests.gd [-- filter | --skip=substring]
 ## Runs every tests/test_*.gd suite (methods named test_*), prints a
-## summary, and exits non-zero on any failure.
+## summary, and exits non-zero on any failure. A filter runs only the suite.test
+## names containing it; --skip runs all but those (CI runs test_golden on its own).
 extends SceneTree
 
 var failures := 0
@@ -18,9 +19,13 @@ func _initialize() -> void:
 	SpriteLibrary.load_all()
 	CarSprites.load_all()
 	var filter := ""
+	var skip := ""
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
-		filter = args[0]
+		if args[0].begins_with("--skip="):
+			skip = args[0].trim_prefix("--skip=")
+		else:
+			filter = args[0]
 	var dir := DirAccess.open("res://tests")
 	var files: Array = []
 	for f in dir.get_files():
@@ -44,6 +49,8 @@ func _initialize() -> void:
 		for m in methods:
 			current = f.get_basename() + "." + m
 			if filter != "" and current.find(filter) < 0:
+				continue
+			if skip != "" and current.find(skip) >= 0:
 				continue
 			var before := failures
 			suite.set("asserts", 0)

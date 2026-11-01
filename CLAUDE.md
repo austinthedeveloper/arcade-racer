@@ -7,6 +7,7 @@ Adding a car, prop, traffic vehicle, span or stage: art and Claude prompt templa
 ```sh
 tools/test.sh                                       # all Godot tests, headless (must pass)
 tools/test.sh test_player_car                       # one suite (filter on suite.test names; skips the e2e)
+tools/test.sh --skip=test_golden.                   # everything but the golden traces (their CI job runs them alongside)
 godot --path .                                      # play
 godot --path . -- --autodrive --screenshots=200,700 --shot-dir=/tmp/shots   # hands-off run with screenshots (race flags skip the menus)
 godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screenshots=300 --shot-dir=/tmp/shots   # start partway in, in another car
@@ -48,7 +49,7 @@ No addon. `tests/run_tests.gd` runs every `tests/test_*.gd` (methods named `test
 it through the input map: menus, then the race. The race itself is `scenes/race.tscn`. `tests/golden/` holds per-frame traces of autodriven races
 (Palm Coast with traffic and rivals and on a clear road with neither, every other stage with traffic and rivals, default options so power-ups on); `test_golden` replays them
 and also checks every stage's autodriven race finishes in time and every rival finishes, and that each stage run mirrored (WS-6) gives its trace again once mirrored back (`Golden.snapshot` takes x times `Track.side`), so anything placed across the road must go by `Track.side` / `Traffic.lanes`. `--no-rivals` and `--no-traffic` empty the road for screenshots. `tools/shots.sh` renders five menus (the update screen staged mid-download) and two race frames at a fixed 60 fps and compares them with
-`tests/shots/` (`tools/shots.py`: a difference hash plus a color difference). CI (`.github/workflows/ci.yml`) runs `tools/test.sh`, and `tools/shots.sh` under xvfb. A pushed `v*` tag runs
+`tests/shots/` (`tools/shots.py`: a difference hash plus a color difference). CI (`.github/workflows/ci.yml`) runs `tools/test.sh` in two jobs (the golden traces on their own), and `tools/shots.sh` under xvfb. A pushed `v*` tag runs
 `.github/workflows/release.yml`: tests, `tools/export.sh`, then a GitHub Release with the zips.
 
 - Add or extend tests with every change.

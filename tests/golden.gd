@@ -24,7 +24,9 @@ static func stage_of(scenario: String) -> int:
 
 ## Frame hashes for a scenario: [frames..., final snapshot string]. `mirror` runs it on the
 ## stage mirrored (WS-6) and snapshots it mirrored back, so it gives the same trace.
-static func run(scenario: String, frames: int = FRAMES, mirror := false) -> PackedStringArray:
+## `after`, if given, is called with the race once the frames are run, before it's freed
+## (test_golden checks the finish on it rather than driving the race again).
+static func run(scenario: String, frames: int = FRAMES, mirror := false, after := Callable()) -> PackedStringArray:
 	var busy := scenario.ends_with("_traffic")  # traffic and rivals; the clear road has neither
 	var r := TestSuite.new_race(true, busy, stage_of(scenario), busy, mirror)
 	var out := PackedStringArray()
@@ -38,6 +40,8 @@ static func run(scenario: String, frames: int = FRAMES, mirror := false) -> Pack
 			event = banner
 		out.append("%d %08x %s" % [f, snap.hash(), event])
 	out.append(snapshot(r))
+	if after.is_valid():
+		after.call(r)
 	r.free()
 	return out
 

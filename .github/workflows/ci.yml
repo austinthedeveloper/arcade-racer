@@ -31,8 +31,25 @@ jobs:
         # test.sh imports too, silently; this one shows its log.
         run: godot --headless --path . --import
 
-      - name: Tests (suites + e2e)
-        run: tools/test.sh
+      - name: Tests (suites + e2e, golden traces in their own job)
+        run: tools/test.sh --skip=test_golden.
+
+  # The golden traces (tests/test_golden.gd) drive every stage's whole race several
+  # times over and take most of the suite's time, so they run beside the rest.
+  golden:
+    name: Golden traces
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-godot
+
+      - name: Import the project
+        run: godot --headless --path . --import
+
+      - name: test_golden
+        run: tools/test.sh test_golden.
 
   # The exported Linux build (unsupported platform, kept so the export
   # pipeline and a later Steam Deck test stay working) starts and plays.
