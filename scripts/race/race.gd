@@ -37,6 +37,9 @@ var demo := false
 var time_attack := false
 ## Free Drive: no clock, no rivals, no finish; the road loops on until you quit (pause menu).
 var free_drive := false
+## Mirror mode (WS-6): the stage flipped left for right (Stages.build). It shares the stage's
+## best times and ghost: the same road, the same distances.
+var mirror := false
 var ghost: Ghost  # Time Attack: the best run so far, replayed (null before the first)
 var recording: Ghost  # Time Attack: this run, tick by tick
 var ghost_now := Vector3.ZERO  # the ghost this tick: distance, x, steer (Ghost.at)
@@ -69,7 +72,7 @@ var score := Scoring.new()
 var place := 1  # the player's place in the field (Rivals.standings)
 var player_finish := -1.0  # race time the player finished in, -1 still racing
 var touched_traffic := false  # the player has touched a traffic car this stage (Unlocks secret)
-var new_unlocks: Array[String] = []  # car ids this finish opened, for the HUD
+var new_unlocks: Array[String] = []  # car ids (and a stage's mirror_id) this finish opened, for the HUD
 var finish_distance := 1.0
 var checkpoint_bonus := CHECKPOINT_BONUS  # the next checkpoint's, after the timer option
 var clock: Array[float] = []  # this stage's ARCADE clock: start, then each checkpoint (stage_clock)
@@ -160,10 +163,11 @@ func _ready() -> void:
 func start_race() -> void:
 	InputRouter.speed_factor = 0.0
 	_frame = 0
-	track = Stages.build(stage_index)
+	track = Stages.build(stage_index, mirror)
 	player = PlayerCar.new()
 	var car := Cars.find(car_id)
 	player.setup(car)
+	player.manual = Settings.manual_gears and not demo  # the attract demo shows the automatic
 	CarSprites.load_all()
 	player.reset(_start_segment * Cfg.SEGMENT_LENGTH)
 	player.distance = _start_segment * Cfg.SEGMENT_LENGTH  # that far along the route, so the finish is where it is drawn
@@ -218,7 +222,7 @@ func start_race() -> void:
 	place = rivals.place(player, player_finish)
 	ghost = Ghost.load_best(stage_index, car_id) if time_attack else null
 	recording = Ghost.make(stage_index, car_id) if time_attack else null
-	ghost_now = Vector3.ZERO if ghost == null else ghost.at(0)
+	ghost_now = Vector3.ZERO if ghost == null else Ghost.sided(ghost.at(0), track.side())
 	road.ghost = ghost_now
 	split = NAN
 	new_best = false
@@ -236,6 +240,7 @@ func start_race() -> void:
 	while next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
 	background.set_theme(track.theme, track.next_theme)
+	background.mirrored = track.mirrored
 	road.flow = not free_drive  # (its road loops straight back to its own start)
 	road.flow_share = 0.0
 	road.flow_fade = 0.0
@@ -480,14 +485,14 @@ func _physics_process(dt: float) -> void:
 		score.watch(dt, player, track)
 		_check_pickups()
 		if recording != null:
-			recording.record(player)
+			recording.record(player, track.side())
 		_check_progress()
 		_callouts_after_tick(earned, place_before)
 	if demo and demo_over():
 		quit_requested.emit()
 		return
 	if ghost != null:
-		ghost_now = ghost.at(recording.count() - 1)
+		ghost_now = Ghost.sided(ghost.at(recording.count() - 1), track.side())
 		road.ghost = ghost_now
 
 	background.offset += seg_before.curve * (player.speed * sim / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
@@ -621,7 +626,11 @@ func _check_progress() -> void:
 			prompt = ("NEW BEST!   " if new_best else "") + against + prompt
 		if _saves() and Unlocks.earns_secret(stage_index, touched_traffic, not traffic.cars.is_empty()):
 			SaveData.unlock(Unlocks.SECRET_CAR)
+		if _saves() and Unlocks.earns_mirror(place, not rivals.cars.is_empty()):
+			SaveData.unlock(Unlocks.mirror_id(stage_index))
 		new_unlocks = Unlocks.newly_open(before_furthest, before_unlocks, SaveData.furthest_stage, SaveData.unlocks)
+		if SaveData.is_unlocked(Unlocks.mirror_id(stage_index)) and not before_unlocks.has(Unlocks.mirror_id(stage_index)):
+			new_unlocks.append(Unlocks.mirror_id(stage_index))
 		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
 		if place == 1 and not rivals.cars.is_empty():
 			callouts.push(Callouts.Kind.FIRST_PLACE)
@@ -776,6 +785,8 @@ func _parse_dev_args() -> void:
 			_log_banners = true
 		elif arg.begins_with("--stage="):
 			stage_index = clampi(int(arg.get_slice("=", 1)) - 1, 0, Stages.count() - 1)
+		elif arg == "--mirror":
+			mirror = true
 		elif arg.begins_with("--car="):
 			car_id = Cars.find(arg.get_slice("=", 1))["id"]
 		elif arg.begins_with("--at-segment="):
@@ -807,8 +818,21 @@ func _autodrive_input() -> DriveInput:
 	inp.throttle = 0.0 if state == State.COUNTDOWN and countdown > 0.1 else 1.0
 	var lane := _drive_x if not is_nan(_drive_x) else _autodrive_lane()
 	inp.steer = clampf((seg.curve * 0.25) + (lane - player.x) * 1.5, -1.0, 1.0)
+	# A dab of brake with the lock on throws it into a power slide through a hard bend (RC-8)
+	if autodrive_slides(seg.curve, inp.steer, player):
+		inp.brake = 1.0
 	inp.nitro_pressed = _frame % 600 == 300
+	inp.shift_up_pressed = player.on_limiter()
+	inp.shift_down_pressed = player.manual and player.gear > 1 and player.speed < PlayerCar.gear_limit(player.gear - 1) * 0.8
 	return inp
+
+
+## Whether the autodrive brakes into a power slide: a hard bend ahead (Track.CURVE_HARD), the
+## lock on for it and the speed for a slide, on the road and not sliding already (the brake
+## would only brake).
+static func autodrive_slides(curve_ahead: float, steer: float, car: PlayerCar) -> bool:
+	return car.slide == 0.0 and not car.airborne and not car.offroad and absf(curve_ahead) >= Track.CURVE_HARD \
+		and absf(steer) >= Cfg.SLIDE_STEER and car.speed >= Cfg.SLIDE_SPEED
 
 
 ## The lane with the most open road ahead, keeping the current one on a tie. Anything slower
@@ -817,9 +841,9 @@ func _autodrive_lane() -> float:
 	const LOOKAHEAD := 40  # segments
 	var want := maxf(player.speed, Cfg.MAX_SPEED * 0.8)
 	var here := track.find_segment(player.position + Cfg.PLAYER_Z).index
-	var best: float = Traffic.LANE_OFFSETS[0]
+	var lanes: Array = Traffic.lanes(track, track.narrowest_ahead(player.position + Cfg.PLAYER_Z))
+	var best: float = lanes[0]
 	var best_gap := -1
-	var lanes: Array = Traffic.LANE_OFFSETS.duplicate()
 	lanes.sort_custom(func(a: float, b: float) -> bool: return absf(a - player.x) < absf(b - player.x))
 	for lane: float in lanes:
 		var gap := LOOKAHEAD

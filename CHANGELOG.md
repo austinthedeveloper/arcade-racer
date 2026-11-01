@@ -9,6 +9,19 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
+- Roads change width: Thunderhead's road works and the Timberline summit narrow to two lanes,
+  and Palm Coast's town and Skyline's downtown open out into six-lane boulevards (WS-7).
+- Power slides: brake while steering at speed to slide through a bend, turning tighter for a
+  little speed, with squealing tires and smoke; hold the steering to keep it going (RC-8).
+- Manual gears, in Options > Accessibility: shift up and down yourself (E and Q, Y and LB on a
+  pad, or your wheel's paddles once bound in Remap) for a little more top speed; the engine and
+  the tach follow your gear. Automatic stays the default. Nitro on a pad is now RB only, as Y
+  shifts up (RC-10).
+- Stage select is a map of the country: each stage's postcard pinned where it is, the tour
+  route drawn between them, stages not reached yet dimmed (PR-8).
+- Mirror mode: win a stage and you can race it flipped left for right, from stage select in
+  Single Race, Time Attack and Free Drive (Up switches it). Saves that already won stages
+  have their mirrors open (WS-6).
 - Stage flow: each stage's finish runs into the next stage's colors and scenery, and the
   results fade the sky over to it before you go on (WS-8).
 

@@ -49,6 +49,8 @@ Do this:
      Track pieces (set_ground, straight, curve, hill, low_rolling_hills, s_curves, bumps, jump,
      downhill_to_end with LENGTH_*, CURVE_*, HILL_* constants), more than 1000 segments, ending
      var final_straight := t.segments.size(); t.straight(Track.LENGTH_LONG); t.finish_stage(final_straight).
+     Optionally t.set_width(first, count, half_width, lanes) after it for a narrowing or a
+     wider boulevard (2 to 6 lanes; 1.0 and 4 is the usual road), clear of the start and finish.
      Then _decorate(t, ...) with a seeded RandomNumberGenerator, the span (add_spans_at or
      add_tunnel), t.scatter([... the extras ...], 200, 450, 1.7), t.add_road_signs(),
      t.add_race_furniture(), t.add_finish_crowd(), in that order. Place every sprite the tool built.
@@ -91,7 +93,7 @@ Commit on the branch; don't merge.
 - [ ] `STAGES` (stage tool), `SPANS`, `STAGES` (ui tool) updated; tools run; only new files committed
 - [ ] `scripts/track/stages/<slug>.gd` with `theme()`, `build()`, `_decorate`; every built sprite placed
 - [ ] `Stages.NAMES`, `Stages.POSTCARDS`, `Stages.build` updated, Skyline still last
-- [ ] Stage select thumbnails fit
+- [ ] Stage select thumbnails fit: a pin and postcard side in `StageSelect.PINS` / `CARD_ABOVE` (`test_menus` checks they fit the map)
 - [ ] Tests extended; new golden scenario; old traces unchanged
 - [ ] Clock set from the trace (x1.3), numbers in the commit
 - [ ] Track plot and race screenshots looked at; `tools/shots.sh` updated with a reason

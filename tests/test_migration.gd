@@ -204,6 +204,22 @@ func test_settings_v6_to_v7_adds_subtitles() -> void:
 	_clean()
 
 
+func test_settings_v7_to_v8_adds_manual_gears() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v7.cfg")
+	eq(Settings.migrate(cfg), 7, "from version 7")
+	eq([CfgVersion.of(cfg), cfg.get_value("play", "manual_gears")], [Settings.VERSION, false], "migrated on: automatic")
+	_clean()
+	_load_settings("settings_v7.cfg")
+	eq(Settings.manual_gears, false, "v7 loads with automatic gears")
+	eq([Settings.subtitles, Settings.steer_assist, Settings.radio], [false, true, 2], "the rest as saved")
+	Settings.manual_gears = true
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.manual_gears], [Settings.VERSION, true], "manual saved and loaded back")
+	_clean()
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")
@@ -230,18 +246,42 @@ func test_save_v0_loads_as_before() -> void:
 	_clean()
 	var v0 := _load_save("save_v0.cfg")
 	eq(SaveData.loaded_version, 0, "unversioned is version 0")
-	eq(v0, [3, 250, ["car_mesa"], {"palm_coast/car_vega": {"time": 71.5, "place": 1},
+	# Palm Coast won (1st): migrating to version 2 opens its mirror
+	eq(v0, [3, 250, ["car_mesa", "mirror_palm_coast"], {"palm_coast/car_vega": {"time": 71.5, "place": 1},
 		"neon/car_mesa": {"time": 88.25, "place": 0}}], "everything")
 	eq(_load_save("save_v1.cfg"), v0, "version 1: the same save")
 	eq(SaveData.loaded_version, 1, "version 1")
 	_clean()
 
 
+func test_save_v1_to_v2_opens_the_mirror_of_every_stage_won() -> void:
+	_clean()
+	var v1 := _load_save("save_v1.cfg")
+	check(SaveData.is_unlocked("mirror_palm_coast"), "Palm Coast won: its mirror")
+	check(not SaveData.is_unlocked("mirror_neon"), "Neon Strip finished unplaced: not its mirror")
+	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "version", 1)
+	cfg.set_value("tour", "unlocks", ["mirror_palm_coast"])
+	cfg.set_value("best", "palm_coast/car_mesa", {"time": 70.0, "place": 1})
+	cfg.set_value("best", "palm_coast/car_vega", {"time": 72.0, "place": 1})
+	cfg.set_value("best", "skyline/car_vega", {"time": 90.0, "place": 2})
+	cfg.set_value("best", "atlantis/car_vega", {"time": 90.0, "place": 1})
+	eq(SaveData.migrate(cfg), 1, "from version 1")
+	eq(cfg.get_value("tour", "unlocks"), ["mirror_palm_coast"], "once each; 2nd place and an unknown stage open nothing")
+	var v2 := _load_save("save_v2.cfg")
+	eq(SaveData.loaded_version, 2, "version 2")
+	eq(v2[2], ["car_mesa", "mirror_palm_coast", "mirror_redrock"], "its mirrors as saved")
+	eq([v2[0], v2[1], v2[3]], [v1[0], v1[1], v1[3]], "the rest as before")
+	_clean()
+
+
 func test_save_newer_version_loads_what_it_knows() -> void:
 	_clean()
-	var v2 := _load_save("save_v2.cfg")
-	eq(SaveData.loaded_version, 2, "version 2 read")
-	eq(v2, _load_save("save_v1.cfg"), "the known fields, unknown ones skipped")
+	var future := _load_save("save_future.cfg").duplicate(true)  # (the unlocks are the live array)
+	eq(SaveData.loaded_version, 99, "version 99 read")
+	var v1 := _load_save("save_v1.cfg")
+	v1[2] = ["car_mesa"]  # (a newer file isn't migrated: no mirror added)
+	eq(future, v1, "the known fields, unknown ones skipped")
 	_clean()
 
 
@@ -278,11 +318,11 @@ func test_settings_saved_over_a_newer_file_keep_its_keys() -> void:
 
 func test_save_over_a_newer_file_keeps_its_keys() -> void:
 	_clean()
-	_load_save("save_v2.cfg")
+	_load_save("save_future.cfg")
 	SaveData.record_finish(0, "car_vega", 70.0)
 	var cfg := ConfigFile.new()
 	cfg.load(TestSuite.SCRATCH_SAVE)
-	eq(CfgVersion.of(cfg), 2, "still version 2")
+	eq(CfgVersion.of(cfg), 99, "still version 99")
 	eq(cfg.get_value("medals", "palm_coast"), "gold", "[medals] kept")
 	eq(cfg.get_value("tour", "rivals_beaten"), 4, "unknown tour keys kept")
 	var b: Dictionary = cfg.get_value("best", "palm_coast/car_vega")

@@ -192,8 +192,8 @@ func _project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float) -> 
 	var half_w := Cfg.SCREEN_W * 0.5
 	seg.s1 = Vector2(half_w - seg.scale1 * cx1 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale1 * (seg.w1.y - cam_y) * Cfg.PROJ)
 	seg.s2 = Vector2(half_w - seg.scale2 * cx2 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale2 * (seg.w2.y - cam_y) * Cfg.PROJ)
-	seg.sw1 = seg.scale1 * Cfg.ROAD_WIDTH * Cfg.PROJ
-	seg.sw2 = seg.scale2 * Cfg.ROAD_WIDTH * Cfg.PROJ
+	seg.sw1 = seg.scale1 * Cfg.ROAD_WIDTH * seg.width * Cfg.PROJ
+	seg.sw2 = seg.scale2 * Cfg.ROAD_WIDTH * seg.width_far * Cfg.PROJ
 
 
 ## A segment's road and ground in its colors, from its near edge to `far`'s far edge (itself,
@@ -225,9 +225,11 @@ func _draw_segment(seg: Segment, theme: Dictionary, far: Segment, depth: float) 
 		_quad(Vector2(0, y2), Vector2(x2, y2), Vector2(x1, y1), Vector2(0, y1), left)
 		_quad(Vector2(x2, y2), Vector2(sw, y2), Vector2(sw, y1), Vector2(x1, y1), _ground(theme, seg.ground_right, b, fog))
 
-	# Rumble strips
-	var r1 := w1 / maxf(6.0, 2.0 * Cfg.LANES)
-	var r2 := w2 / maxf(6.0, 2.0 * Cfg.LANES)
+	# Rumble strips, as wide on any road (sizes from the usual road's half-width, u1 and u2)
+	var u1 := w1 / seg.width
+	var u2 := w2 / far.width_far
+	var r1 := u1 / maxf(6.0, 2.0 * Cfg.LANES)
+	var r2 := u2 / maxf(6.0, 2.0 * Cfg.LANES)
 	var rumble := _fogged(theme["rumble"][b], fog)
 	_quad(Vector2(x1 - w1 - r1, y1), Vector2(x1 - w1, y1), Vector2(x2 - w2, y2), Vector2(x2 - w2 - r2, y2), rumble)
 	_quad(Vector2(x1 + w1, y1), Vector2(x1 + w1 + r1, y1), Vector2(x2 + w2 + r2, y2), Vector2(x2 + w2, y2), rumble)
@@ -238,16 +240,16 @@ func _draw_segment(seg: Segment, theme: Dictionary, far: Segment, depth: float) 
 		asphalt = Weather.wet_color(asphalt, _wet_sky, _wet, depth)
 	_quad(Vector2(x1 - w1, y1), Vector2(x1 + w1, y1), Vector2(x2 + w2, y2), Vector2(x2 - w2, y2), _fogged(asphalt, fog))
 
-	# Dashed lane markings on alternate bands
+	# Dashed lane markings on alternate bands, this segment's lanes
 	if b == 0:
 		var lane_col := _fogged(theme["lane"], fog)
-		var l1 := w1 / maxf(32.0, 8.0 * Cfg.LANES)
-		var l2 := w2 / maxf(32.0, 8.0 * Cfg.LANES)
-		var lane_w1 := w1 * 2.0 / Cfg.LANES
-		var lane_w2 := w2 * 2.0 / Cfg.LANES
+		var l1 := u1 / maxf(32.0, 8.0 * Cfg.LANES)
+		var l2 := u2 / maxf(32.0, 8.0 * Cfg.LANES)
+		var lane_w1 := w1 * 2.0 / seg.lanes
+		var lane_w2 := w2 * 2.0 / seg.lanes
 		var lx1 := x1 - w1 + lane_w1
 		var lx2 := x2 - w2 + lane_w2
-		for lane in range(1, Cfg.LANES):
+		for lane in range(1, seg.lanes):
 			_quad(Vector2(lx1 - l1 / 2.0, y1), Vector2(lx1 + l1 / 2.0, y1), Vector2(lx2 + l2 / 2.0, y2), Vector2(lx2 - l2 / 2.0, y2), lane_col)
 			lx1 += lane_w1
 			lx2 += lane_w2
@@ -270,7 +272,7 @@ func _draw_objects(seg: Segment, cars := true) -> void:
 		var w: float = def["world_w"] * s * Cfg.PROJ
 		var h: float = def["world_h"] * s * Cfg.PROJ
 		var offset: float = sp["offset"]
-		var sx := seg.s1.x + s * offset * Cfg.ROAD_WIDTH * Cfg.PROJ
+		var sx := seg.s1.x + s * offset * seg.width * Cfg.ROAD_WIDTH * Cfg.PROJ
 		var rect := sprite_rect(sx, seg.s1.y, w, h, offset, sp["flip"])
 		if h < 0.5 or rect.position.x > Cfg.SCREEN_W or rect.position.x + w < 0.0 or rect.position.y >= seg.clip:
 			continue
@@ -343,19 +345,31 @@ static func gate_label(flags: int) -> String:
 
 
 ## Screen rect of a span whose opening is centered on the road at (road_x, base_y), the
-## road `road_w` half-width on screen there.
-static func span_rect(def: Dictionary, road_x: float, base_y: float, road_w: float) -> Rect2:
+## road `road_w` half-width on screen there. `mirrored` (a mirrored stage, WS-6): for the art
+## drawn flipped, its opening mirrored too.
+static func span_rect(def: Dictionary, road_x: float, base_y: float, road_w: float, mirrored := false) -> Rect2:
 	var w: float = def["world_w"] / Cfg.ROAD_WIDTH * road_w
 	var h: float = w * def["world_h"] / def["world_w"]
 	var o: Vector2 = def["opening"]
-	return Rect2(road_x - w * (o.x + o.y) / 2.0, base_y - h, w, h)
+	var center := (o.x + o.y) / 2.0
+	if mirrored:
+		center = 1.0 - center
+	return Rect2(road_x - w * center, base_y - h, w, h)
+
+
+## Where a span's gate text goes (its "banner", fractions of the sprite) in its screen
+## `rect`; on a mirrored stage the art is flipped, the text not, so the box moves over.
+static func banner_box(rect: Rect2, banner: Rect2, mirrored: bool) -> Rect2:
+	var x := 1.0 - banner.end.x if mirrored else banner.position.x
+	return Rect2(rect.position + Vector2(x, banner.position.y) * rect.size, banner.size * rect.size)
 
 
 func _draw_span(seg: Segment, id: String, label: String, tint: Color) -> void:
 	var def: Dictionary = SpriteLibrary.spans.get(id, {})
 	if def.is_empty():
 		return
-	var rect := span_rect(def, seg.s1.x, seg.s1.y, seg.sw1)
+	var mirrored := track.mirrored
+	var rect := span_rect(def, seg.s1.x, seg.s1.y, seg.sw1 / seg.width * SpriteLibrary.span_scale(seg.width), mirrored)
 	if rect.size.y < 1.0 or rect.position.y >= seg.clip or rect.end.x < 0.0 or rect.position.x > Cfg.SCREEN_W:
 		return
 	var fill: Color = def["fill"]
@@ -366,11 +380,12 @@ func _draw_span(seg: Segment, id: String, label: String, tint: Color) -> void:
 		draw_rect(Rect2(rect.end.x - 1.0, top, Cfg.SCREEN_W - rect.end.x + 9.0, rect.end.y - top), col)
 		if def["ceiling"]:
 			draw_rect(Rect2(rect.position.x, top, rect.size.x, rect.position.y - top + 1.0), col)
-	draw_texture_rect(def["tex"], rect, false, tint)
+	# Mirrored, a negative width flips the art within the same rect (as sprite_rect)
+	draw_texture_rect(def["tex"], Rect2(rect.position, Vector2(-rect.size.x, rect.size.y)) if mirrored else rect, false, tint)
 	var banner: Rect2 = def["banner"]
 	if label == "" or banner.size.x <= 0.0:
 		return
-	var box := Rect2(rect.position + banner.position * rect.size, banner.size * rect.size)
+	var box := banner_box(rect, banner, mirrored)
 	var font_size := mini(int(box.size.y * 0.7), 96)
 	if font_size >= 6:
 		draw_string(_font, Vector2(box.position.x, box.position.y + box.size.y * 0.78), label,
@@ -427,7 +442,7 @@ func _draw_player() -> void:
 	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
 	var y := Cfg.HORIZON_Y + s * Cfg.CAMERA_HEIGHT * Cfg.PROJ
 	var lift := p.air_height * s * Cfg.PROJ
-	var steer := p.steer
+	var steer := p.shown_steer()
 	if p.crash_time > 0.0:
 		var k := p.crash_time / Cfg.CRASH_DURATION
 		steer = sin(p.crash_time * 20.0) * 2.0
@@ -474,7 +489,7 @@ static func covered_colors(theme: Dictionary, depth: float) -> Dictionary:
 ## thin line along the foot of the wall. Drawn with the segment, so nearer frames cover them.
 func _tunnel_lights(seg: Segment, lights: Array) -> void:
 	for k in 2:
-		var side := -1.0 if k == 0 else 1.0
+		var side := (-1.0 if k == 0 else 1.0) * track.side()  # each color on its own wall, mirrored too
 		var col: Color = _fogged(lights[k], seg.fog)
 		var glow := Color(col, 0.35)
 		_quad_pts(wall_strip(seg, side * TUBE_OFFSET, TUBE_HEIGHT - TUBE_THICK, TUBE_THICK * 3.0), glow)

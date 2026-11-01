@@ -28,6 +28,7 @@ var hill := 0.0  # pixels the horizon moved down (hill_shift)
 var next_theme: Dictionary = {}
 var next_textures: Dictionary = {}
 var share := 0.0
+var mirrored := false  # a mirrored stage (WS-6): every strip drawn flipped
 
 
 ## The stage's theme, and the next stage's (empty for none) that its end turns to.
@@ -67,7 +68,8 @@ func _draw() -> void:
 	draw_rect(Rect2(0, ground_y, w, Cfg.SCREEN_H - ground_y), sky_color(theme, next_theme, "below_horizon", k))
 
 
-## One strip, twice across, at `alpha` (none drawn at 0).
+## One strip, twice across, at `alpha` (none drawn at 0). On a mirrored stage each copy is
+## flipped in place (a negative width), where it was: a strip that tiles seamlessly still does.
 func _draw_layer(tex: Texture2D, layer: String, alpha: float) -> void:
 	if tex == null or alpha <= 0.0:
 		return
@@ -75,8 +77,9 @@ func _draw_layer(tex: Texture2D, layer: String, alpha: float) -> void:
 	var y0 := layer_bottom(layer, hill) - tex.get_height()
 	var x0 := layer_x(offset, layer, tw)
 	var tint := Color(1, 1, 1, alpha)
-	draw_texture(tex, Vector2(x0, y0), tint)
-	draw_texture(tex, Vector2(x0 + tw, y0), tint)
+	var size := Vector2(-tw if mirrored else tw, tex.get_height())
+	draw_texture_rect(tex, Rect2(Vector2(x0, y0), size), false, tint)
+	draw_texture_rect(tex, Rect2(Vector2(x0 + tw, y0), size), false, tint)
 
 
 ## A sky color `key` of `of_theme`, `k` of the way to `next`'s (its own with no next).

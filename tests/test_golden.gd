@@ -3,12 +3,16 @@
 extends TestSuite
 
 
-func _check(scenario: String) -> void:
+## Compares a scenario's run with its golden trace; `mirror` runs it on the stage mirrored
+## (WS-6), which has to give the very same trace mirrored back (Golden.snapshot).
+func _check(scenario: String, mirror := false) -> void:
 	var path := Golden.DIR + scenario + ".txt"
 	if not check(FileAccess.file_exists(path), "golden trace %s exists" % scenario):
 		return
 	var want := FileAccess.get_file_as_string(path).strip_edges().split("\n")
-	var got := Golden.run(scenario)
+	var got := Golden.run(scenario, Golden.FRAMES, mirror)
+	if mirror:
+		scenario += " mirrored"
 	eq(got.size(), want.size(), scenario + " length")
 	for i in mini(got.size(), want.size()):
 		if got[i] != want[i]:
@@ -52,6 +56,14 @@ func test_thunder_run_matches_golden() -> void:
 
 func test_skyline_run_matches_golden() -> void:
 	_check("skyline_autodrive_traffic")
+
+
+# WS-6: a mirrored stage is the stage as built flipped left for right, so its autodriven
+# race is the golden one mirrored: every x and curve the other way, the same distances,
+# times, banners and finish. The trace is computed, not stored.
+func test_mirrored_runs_mirror_the_golden_traces() -> void:
+	for sc: String in Golden.SCENARIOS:
+		_check(sc, true)
 
 
 func test_runs_are_reproducible() -> void:

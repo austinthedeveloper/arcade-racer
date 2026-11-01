@@ -28,7 +28,7 @@ static func apply(inp: DriveInput, car: PlayerCar, track: Track, steer_on: bool,
 	var out := inp.copy()
 	var seg := track.find_segment(car.position + Cfg.PLAYER_Z)
 	if steer_on and inp.kind != DriveInput.Kind.WHEEL:
-		out.steer = clampf(inp.steer + steer_help(inp.steer, car.x, car.speed_percent(), seg.curve / seg.grip, car), -1.0, 1.0)
+		out.steer = clampf(inp.steer + steer_help(inp.steer, car.x, car.speed_percent(), seg.curve / seg.grip, car, seg), -1.0, 1.0)
 	if brake_on:
 		var assist := brake_help(car.speed, corner_speed_ahead(car, track, seg.index))
 		out.brake = maxf(inp.brake, assist)
@@ -38,20 +38,23 @@ static func apply(inp: DriveInput, car: PlayerCar, track: Track, steer_on: bool,
 
 ## The steering the assist adds (within +-STEER_CAP): toward the nearest lane's centre plus
 ## the lock that holds the curve, scaled up with speed and down as the player steers.
-## Off the road it leaves the car alone.
-static func steer_help(steer_in: float, x: float, pct: float, curve: float, car: PlayerCar) -> float:
-	if absf(x) > 1.0:
+## Off the road it leaves the car alone. `seg` is the road under the car (its width and lanes,
+## WS-7); null for the usual four lanes.
+static func steer_help(steer_in: float, x: float, pct: float, curve: float, car: PlayerCar, seg: Segment = null) -> float:
+	var lanes: Array = Traffic.LANE_OFFSETS if seg == null else seg.lane_offsets()
+	if absf(x) > (1.0 if seg == null else seg.width):
 		return 0.0
-	var lane := nearest_lane(x)
+	var lane := nearest_lane(x, lanes)
 	var hold := pct * curve * Cfg.CENTRIFUGAL * car.pull_mult / car.steer_mult
 	var want := (lane - x) * STEER_GAIN + hold
 	var strength := smoothstep(STEER_FROM, STEER_FULL, pct) * (1.0 - clampf(absf(steer_in), 0.0, 1.0))
 	return clampf(want, -STEER_CAP, STEER_CAP) * strength
 
 
-static func nearest_lane(x: float) -> float:
-	var best: float = Traffic.LANE_OFFSETS[0]
-	for lane: float in Traffic.LANE_OFFSETS:
+## The middle of the lane nearest `x`, of `lanes` (the usual four by default).
+static func nearest_lane(x: float, lanes: Array = Traffic.LANE_OFFSETS) -> float:
+	var best: float = lanes[0]
+	for lane: float in lanes:
 		if absf(lane - x) < absf(best - x):
 			best = lane
 	return best
