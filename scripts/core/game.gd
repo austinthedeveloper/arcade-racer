@@ -1,7 +1,8 @@
 extends Node
 ## Main scene: the front end (title, mode select, options, stage select, car select) and the
 ## race it starts. An exported desktop game opens on the update screen first (UpdateScreen).
-## Race dev flags (--autodrive, --stage=N, --race) skip the menus and go straight to a race.
+## Race dev flags (--autodrive, --stage=N, --race) skip the menus and go straight to a race;
+## --online=host or --online=join:CODE straight into a room (online_from_flags).
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
 enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE }
@@ -23,6 +24,11 @@ var race: Node  # race.gd, while racing
 var online: OnlineSession
 ## Makes the line HOST and JOIN open: through the relay; tests and screenshots set an in-memory one.
 var make_link: Callable = func() -> NetLink: return RelayLink.new()
+## --online=host / join:CODE (online_from_flags): "host" or "join", or "" from the menus.
+var auto_online := ""
+var auto_players := 2  # --players=N: the host starts once this many are in
+var _auto_started := false
+var _auto_room_said := false
 ## Seconds on the title with no input before a demo starts. --attract-delay=N sets it
 ## (the e2e sets it directly).
 var attract_delay := Attract.IDLE_SECONDS
@@ -80,7 +86,10 @@ func _ready() -> void:
 			_menu_shot = arg.get_slice("=", 1)
 		elif arg.begins_with("--attract-delay="):
 			attract_delay = float(arg.get_slice("=", 1))
-	if quick or pause_shot:
+	var auto := DevArgs.value("--online")
+	if auto != "":
+		online_from_flags(auto, int(DevArgs.value("--players", "2")))
+	elif quick or pause_shot:
 		start_race()
 	elif menu == null and race == null:  # (--screen=demo starts a race)
 		if Updates.state != Updater.State.OFF:
@@ -98,7 +107,9 @@ func _ready() -> void:
 func _physics_process(dt: float) -> void:
 	if online != null:
 		online.poll(dt)
-		if online.started:
+		if auto_online != "":
+			_auto_online_tick()
+		if online != null and online.started:
 			start_online_race()  # the host started (again): everyone into the race
 	var woke := Attract.is_input(InputRouter.state, InputRouter.menu)
 	if is_demo():
@@ -253,6 +264,62 @@ func open_room(link: NetLink) -> void:
 	leave_room()
 	var car: String = Cars.get_car(car_index)["id"]
 	online = OnlineSession.hosting_on(link, car)
+
+
+## --online=host or --online=join:CODE, for racing two windows hands-off: straight into a
+## room on the stage (--stage=N) and car (--car=ID) given, the host starting once `players`
+## are in. The room's code is printed ("online room BXKM") and, with --room-file=PATH,
+## written there; with --autodrive each game drives itself. Once every racer has finished,
+## the finishes are printed and the game quits.
+func online_from_flags(flag: String, players := 2) -> void:
+	mode_index = ModeSelect.Item.ONLINE
+	auto_players = clampi(players, 1, OnlineSession.MAX_PLAYERS)
+	var stage := DevArgs.value("--stage")
+	if stage != "":
+		stage_index = clampi(int(stage) - 1, 0, Stages.count() - 1)
+	show_online()
+	var link: NetLink = make_link.call()
+	open_room(link)
+	if flag == "host":
+		auto_online = "host"
+		link.call("host")
+	elif flag.begins_with("join:"):
+		auto_online = "join"
+		link.call("join", flag.trim_prefix("join:"))
+	else:
+		push_error("--online=host or --online=join:CODE, not %s" % flag)
+
+
+func _auto_online_tick() -> void:
+	if online.phase == OnlineSession.Phase.CLOSED:
+		print("online closed: ", online.error)
+		_quit_auto(1)
+		return
+	if not _auto_room_said and online.phase != OnlineSession.Phase.DIALING:
+		_auto_room_said = true
+		print("online room ", online.link.room, " slot ", online.slot)
+		var path := DevArgs.value("--room-file")
+		if path != "":
+			var f := FileAccess.open(path, FileAccess.WRITE)
+			if f != null:
+				f.store_string(online.link.room)
+	if auto_online == "host" and not _auto_started and online.phase == OnlineSession.Phase.LOBBY \
+			and online.players.size() >= auto_players:
+		_auto_started = true
+		online.choose(stage_index, mirror)
+		online.start()
+	if race != null and online.go and not online.racers.is_empty() \
+			and online.racers.all(func(s: int) -> bool: return online.finishes.has(s) or online.gone.has(s)):
+		print("online finishes ", online.finishes, " gone ", online.gone)
+		_quit_auto(0)
+
+
+func _quit_auto(code: int) -> void:
+	auto_online = ""
+	if on_quit.is_valid():
+		on_quit.call()
+	else:
+		get_tree().quit(code)
 
 
 ## Leaves the room, if in one.

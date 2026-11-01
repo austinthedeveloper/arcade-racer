@@ -55,6 +55,26 @@ func test_a_fifth_player_is_turned_away() -> void:
 	eq(s.error, "THAT ROOM IS FULL", "full")
 
 
+func test_a_guest_says_hello_once_while_the_lobby_is_on_its_way() -> void:
+	# Over the live relay the lobby takes a round trip to come back; a guest polling every
+	# frame meanwhile once sent a HELLO each time, and the relay cut it off (TOO FAST).
+	var relay := LoopLink.Relay.new()
+	var h := LoopLink.new(relay)
+	h.host()
+	var host := OnlineSession.hosting_on(h, "car_vega")
+	host.poll(0.0)
+	var g := LoopLink.new(relay)
+	g.join(h.room)
+	var guest := OnlineSession.joining_on(g, "car_mesa")
+	for i in 50:
+		guest.poll(1.0 / 60.0)
+	var hellos := h._inbox.filter(func(m: Array) -> bool: return m[1][0] == OnlineSession.HELLO)
+	eq(hellos.size(), 1, "one HELLO, not one a frame")
+	settle([host, guest])
+	eq(guest.phase, OnlineSession.Phase.LOBBY, "and the guest is in the lobby")
+	eq(host.players, {0: "car_vega", 1: "car_mesa"}, "with its car")
+
+
 func test_a_wrong_room_and_an_old_version_are_refused() -> void:
 	var relay := LoopLink.Relay.new()
 	var g := LoopLink.new(relay)
@@ -268,6 +288,30 @@ func test_the_game_goes_from_join_to_a_race() -> void:
 	eq(host_room.players.size(), 1, "leaving tells the host")
 
 
+func test_online_flags_put_two_games_in_a_race() -> void:
+	# --online=host and --online=join:CODE (game.online_from_flags), for two windows hands-off
+	var relay := LoopLink.Relay.new()
+	var games: Array = []
+	for i in 2:
+		var g: Node = load("res://scenes/main.tscn").instantiate()
+		g._ready()
+		_nodes.append(g)
+		g.make_link = func() -> NetLink: return LoopLink.new(relay)
+		g.on_quit = func() -> void: pass
+		games.append(g)
+	games[0].stage_index = 2
+	games[0].online_from_flags("host", 2)
+	eq(games[0].auto_online, "host", "hosting")
+	games[1].online_from_flags("join:" + games[0].online.link.room)
+	for i in 6:
+		for g: Node in games:
+			g._physics_process(DT)
+	for g: Node in games:
+		check(g.race != null and g.race.online == g.online, "both games racing online")
+		eq(g.online.stage, 2, "on the host's stage")
+	eq(games[1].online.slot, 1, "the guest second on the grid")
+
+
 func test_the_host_leaving_mid_race_leaves_the_guest_racing_alone() -> void:
 	var r := room(1)
 	var rc := TestSuite.new_race(false, false, 0, false)
@@ -310,3 +354,8 @@ func test_tapping_letters_types_a_room() -> void:
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.device = InputEvent.DEVICE_ID_EMULATION
 	eq(OnlineScreen.tap_at(click), null, "the touch's own emulated click isn't a second tap")
+
+
+func test_no_restart_hint_online() -> void:
+	check(Hud.keys_hint(false).ends_with("R restart"), "offline: R restarts")
+	check(not Hud.keys_hint(true).contains("restart"), "online: restart is off, so no hint")
