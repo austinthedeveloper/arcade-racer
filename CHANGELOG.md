@@ -7,6 +7,11 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Roads change width: Thunderhead's road works and the Timberline summit narrow to two lanes,
+  and Palm Coast's town and Skyline's downtown open out into six-lane boulevards (WS-7).
+
 ## [0.2.0] - 2026-11-01
 
 ### Added
@@ -14,8 +19,6 @@ the release workflow puts that section at the top of the GitHub Release notes
 - The game updates itself: download once, and each start checks GitHub Releases for a newer
   version (EQ-14). 0.1.0 has no updater, so the next version is downloaded by hand once.
 - A game icon on every platform (PR-13).
-- Roads change width: Thunderhead's road works and the Timberline summit narrow to two lanes,
-  and Palm Coast's town and Skyline's downtown open out into six-lane boulevards (WS-7).
 - Steering lock and wheel rotation in Options, for wheels set to 900 degrees or more (WH-1).
 - Plugging a pad or wheel in mid-race pauses and offers it; unplugging one pauses too (WH-7).
 - Grip per surface: wet roads, dirt, sand and snow each hold differently (RC-12).
