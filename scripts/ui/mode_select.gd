@@ -3,20 +3,21 @@ extends MenuScreen
 ## Mode select, after the title: a row of cards to pick along. A mode that isn't
 ## built yet (none, now) stays on the row, marked COMING SOON; picking it shows a short notice.
 
-enum Item { GRAND_TOUR, SINGLE_RACE, TIME_ATTACK, FREE_DRIVE, OPTIONS }
+enum Item { GRAND_TOUR, SINGLE_RACE, TIME_ATTACK, FREE_DRIVE, ONLINE, OPTIONS }
 
-const LABELS := ["GRAND TOUR", "SINGLE RACE", "TIME ATTACK", "FREE DRIVE", "OPTIONS"]
+const LABELS := ["GRAND TOUR", "SINGLE RACE", "TIME ATTACK", "FREE DRIVE", "ONLINE", "OPTIONS"]
 const HELP := [
 	"Race stage to stage, on from the one you pick.",
 	"One stage, one car, one race.",
 	"Solo against the clock and your best run.",
 	"No timer, no rivals: just the road.",
+	"Race up to three friends by room code: PC, Mac, web or phone.",
 	"Driving aids, traffic, sound and wheel setup.",
 ]
 ## Card art: a stage postcard per mode ("" draws the options gear).
-const ART := ["palm_coast", "neon", "redrock", "timberline", ""]
-const CARD := Vector2(104, 120)
-const GAP := 12.0
+const ART := ["palm_coast", "neon", "redrock", "timberline", "skyline", ""]
+const CARD := Vector2(90, 120)
+const GAP := 10.0
 const CARD_Y := 64.0
 const NOTICE_TIME := 2.0
 

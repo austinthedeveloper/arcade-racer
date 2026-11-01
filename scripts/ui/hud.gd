@@ -79,7 +79,7 @@ func _draw() -> void:
 	var p: PlayerCar = race.player
 	var w := float(Cfg.SCREEN_W)
 
-	var lay := layout()
+	var lay := layout(Touch.shown and race.touch_driving())
 	_draw_timer(lay["timer"])
 	if not race.rivals.cars.is_empty():
 		_draw_position(lay["position"], race.place, race.rivals.cars.size() + 1)
@@ -98,8 +98,9 @@ func _draw() -> void:
 	var device: Rect2 = lay["device"]
 	var inp: DriveInput = InputRouter.state
 	var dev: String = ["KEYBOARD", "GAMEPAD", "WHEEL"][inp.kind]
-	_text(device.position + Vector2(4, 10), dev + "  " + inp.device_name.left(28), 8, Color(1, 1, 1, 0.7))
-	_text(device.position + Vector2(4, 22), "F1 input debug   F2 calibrate wheel   R restart", 8, Color(1, 1, 1, 0.45))
+	if device.has_area():  # (not under the touch controls)
+		_text(device.position + Vector2(4, 10), dev + "  " + inp.device_name.left(28), 8, Color(1, 1, 1, 0.7))
+		_text(device.position + Vector2(4, 22), "F1 input debug   F2 calibrate wheel   R restart", 8, Color(1, 1, 1, 0.45))
 	var hint := InputRouter.wheel_hint()
 	if hint != "":
 		_text_centered(Vector2(w / 2.0, 70), hint, 10, Color("#ffd23a"))
@@ -137,10 +138,17 @@ func _draw() -> void:
 ## Where each HUD element goes on the 640x360 screen (the window scales the whole picture):
 ## the clock, the place, the route bar (with its markers) and the stage under it, the nitro
 ## flames, the power-up slot, the bonus feed, the slipstream bar, the speedometer, the
-## input device and the announcer's subtitle.
-static func layout() -> Dictionary:
+## input device and the announcer's subtitle. With the touch controls up (`touch`,
+## TouchControls), the speedometer sits between the thumbs and the device line goes.
+static func layout(touch := false) -> Dictionary:
 	var w := float(Cfg.SCREEN_W)
 	var h := float(Cfg.SCREEN_H)
+	if touch:
+		var lay := layout()
+		lay["speedo"] = Rect2(w / 2.0 - 53, h - 98, 106, 92)
+		lay["slipstream"] = Rect2(w / 2.0 - 53, h - 112, 106, 10)
+		lay["device"] = Rect2()
+		return lay
 	return {
 		"timer": Rect2(6, 6, 92, 58),
 		"position": Rect2(6, 68, 92, 46),
@@ -212,9 +220,10 @@ func _draw_timer(r: Rect2) -> void:
 	var beat := (timer_pulse(t) - 1.0) * 4.0 if race.timed() else 0.0
 	_panel(r, Color(0.04, 0.03, 0.1, 0.5).lerp(Color(0.6, 0.0, 0.0, 0.6), beat * Settings.flash_amount(1.0)))
 	_text(r.position + Vector2(6, 13), "TIME", 10, GOLD)
-	if race.free_drive:
+	if race.free_drive or race.online != null:
 		_text(r.position + Vector2(6, 36), clock_text(race.race_time), 20, Color.WHITE)
-		_text(r.position + Vector2(6, 52), "FREE DRIVE", 9, Color(1, 1, 1, 0.8))
+		var tag: String = "FREE DRIVE" if race.free_drive else "ONLINE  " + race.online.link.room
+		_text(r.position + Vector2(6, 52), tag, 9, Color(1, 1, 1, 0.8))
 	elif race.time_attack:
 		_text(r.position + Vector2(6, 34), clock_text(race.race_time), 20, Color.WHITE)
 		var best: Ghost = race.ghost

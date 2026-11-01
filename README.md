@@ -87,6 +87,31 @@ Until the wheel is calibrated, only its steering is used. **F1** shows every raw
 
 Steering lock defaults to using 360 of the wheel's 900 degrees. Change it, the wheel's range, the deadzone and the linearity in **Options > Controls > Wheel settings**.
 
+### Online
+
+Pick **ONLINE** on mode select, then your car, then **HOST** or **JOIN**. HOST opens a room on the
+relay and shows its four letters (no vowels, so no I or O to mix up); friends pick ONLINE, their
+car, JOIN, and type or pick the letters. Up to four players, on Windows, macOS, Linux or the Web
+build (desktop or a phone's browser), all together. The host picks the stage (and MIRROR where
+the host has it open) and starts. Online races have no clock and no AI rivals: first over the
+line wins, and the results show everyone. Each game drives its own traffic; the pause menu
+doesn't stop the race. Nothing from an online race is saved.
+
+Rooms go through the same relay as Pickleball '94
+([pickleball-relay](https://github.com/austinthedeveloper/pickleball-relay), game `sundown-run`).
+If nobody has played for a while, the first room takes about 20 seconds while the server wakes.
+`--relay=ws://127.0.0.1:8080` points the game at a local relay (`npm start` in that repo), and
+`godot --headless --path . -s res://tools/online_probe.gd -- --relay=ws://127.0.0.1:8080` runs a
+host and a guest through it: the lobby, the start, cars both ways, a finish and leaving.
+
+### Touch
+
+On a touchscreen (a phone or tablet's browser, or a touch laptop) the controls show at the first
+touch, and from the start in a phone's browser: steer left and right under the left thumb, gas,
+brake and nitro under the right, pause at the top left. In the menus they're a D-pad, OK and
+BACK, and the online letter grid can be tapped directly. A key or a pad button hides them;
+`--touch` shows them for screenshots.
+
 ## Project layout
 
 ```
