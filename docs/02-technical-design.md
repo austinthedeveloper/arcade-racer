@@ -243,6 +243,17 @@ Throttle/brake: triggers and pedals are analog; keyboard and face buttons are di
 - **Input debug overlay** (F1): every connected joypad, name, GUID, all raw axes as bars, buttons lit when pressed, and the resulting `DriveInput`.
 - This screen is the first thing we build in the input milestone. It makes every "my wheel doesn't work" report diagnosable.
 
+### 4.8 Touch (ON-4, ON-5, added 2026-11-01)
+
+The `Touch` autoload (`TouchControls`, a CanvasLayer over everything) draws on-screen buttons and
+holds InputMap actions down with `Input.action_press`, as their keys would, so InputRouter, the
+menus and the race read touch like a keyboard. Two layouts: driving (`steer_left`,
+`steer_right`, `accelerate`, `brake`, `nitro`, `pause`) while the race is on screen
+(`race.touch_driving()`: not paused, no results), and a D-pad with OK and BACK everywhere else.
+Every finger holds the button under it and moves with a drag. They show at the first touch (from
+the start where `OS.has_feature("web_android")` or `"web_ios"`), hide on a key or pad button,
+and `Hud.layout(true)` moves the speedometer between the thumbs while they're up.
+
 ## 5. Audio
 
 - Engine: 2 to 3 looping samples (idle, mid, high) crossfaded and pitch-shifted by RPM.
@@ -327,3 +338,30 @@ Notes where the prototype differs from or adds detail to the plan above:
 - **Finish spectacle (added 2026-10-31, PR-9):** crossing the line starts `FxLayer.celebrate`: confetti and streamers fall over the whole screen for 4 s, and on a stage whose theme sets `"fireworks"` (Skyline) bursts go off over the skyline for as long as the finish screen stays. The `crowd` cue (a synthesized roar with clapping and whistles from `tools/make_audio.py`, the loudest cue in `SoundBank`) plays with the fanfare. Past the line the world runs in slow motion (0.35x for 0.8 s, easing back over 1.2 s; `finish_time_scale`), nitro cuts out and the car brakes itself to a stop (`FINISH_BRAKING`). That changes play after the finish, so the golden traces were regenerated for it. `--at-segment=N` now counts the road behind as driven (distance and checkpoints), so a screenshot run started near the end can finish.
 - **Not built yet:** AI rivals, positions, results screen, force feedback, steering lock and remapping options.
 - **Audio (placeholder):** every sound is synthesized by `tools/make_audio.py` until sound packs replace them (see `assets/audio/README.md`). `SoundBank` maps cue names to files (`.ogg` beats `.wav` beats `.mp3`, so a pack file with the cue's name wins) and sets looping in code. The `Audio` autoload owns the Music and SFX buses (Master has a hard limiter), the music player and a pool of one-shot players. `RaceAudio` is a child of the race that only reads it each tick, after the race updates, and turns changes into cues: countdown beeps, GO, checkpoint, nitro, crash, bump, landing, low-time ticks, finish and time up. The engine is two loops crossfaded and pitched by a simulated five-gear rev curve (`RaceAudio.engine_rpm` over `PlayerCar.GEARS`; with manual gears on, in the gear the player picked, with a rev limiter per gear); tire squeal and offroad rumble are loops with levels from the car's state. Not built yet: the music "radio", wind, panned traffic whooshes, announcer.
+
+## 11. Online (ON-1 to ON-3, added 2026-11-01)
+
+Online races go through Pickleball '94's relay (`github.com/austinthedeveloper/pickleball-relay`,
+game `sundown-run`, three guests): a WebSocket server on Azure Container Apps that pairs games in
+rooms by four consonants. `scripts/net/`:
+
+- `NetLink`: a game's line into a room. `RelayLink` is the relay (`WebSocketPeer`, binary frames
+  of `var_to_bytes` Arrays; the host's carry the relay's one-byte guest number, 255 for all);
+  `LoopLink` an in-memory relay with the same rooms, numbers and refusals, for tests and
+  screenshots. `--relay=ws://...` points `RelayLink` at another relay.
+- `OnlineSession`: the room from the lobby on. Slots: the host 0, guest n is n + 1. The host
+  keeps the players (slot -> car), the stage and mirror, and the start: START, every game's
+  READY once its race has loaded (or `READY_WAIT`), then GO, from which every countdown runs.
+  Each game sends its car (`CarState`: distance, x, steering, speed, air, nitro, braking) every
+  `SEND_EVERY` ticks; guests send to the host, which passes each car to the other guests.
+  Finishes (FIN) go to everyone. Versions must match (the relay passes each side's).
+  The game polls it every physics tick, in the menus and the race.
+- In the race, the other players are `RivalCar`s with `remote` set: `Rivals.update` doesn't drive
+  them, and `race._online_tick` puts each where its last message said, moved on at its speed
+  (`OnlineSession.shown_at`, at most `EXTRAPOLATE_MAX`) and eased, or jumped from further than
+  `SNAP`. Contact with them is settled on each screen (`Rivals.resolve_contacts`); a remote car
+  pushed aside goes back where its game has it on the next message. Online races have no clock
+  (`timed()`), no AI rivals, nothing saved (`_saves()`), no restart, and the pause menu doesn't
+  stop the race. Traffic and power-ups are each game's own.
+- `OnlineScreen`: HOST or JOIN, the letter grid (keyboard, pad, wheel D-pad or tap), the lobby,
+  and errors. `--screen=online:menu|code|lobby|guest|error` stages each on a `LoopLink`.

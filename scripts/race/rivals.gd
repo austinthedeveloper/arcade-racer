@@ -72,13 +72,18 @@ func update(dt: float, track: Track, player: PlayerCar, racing: bool, finish_dis
 		clock += dt
 	var racers := everyone(player)
 	for r in cars:
+		if r.remote:
+			continue  # another player online: its own game drives it (CarState)
 		var gap := r.distance - player.distance
 		r.top_speed = r.base_top * (1.0 if r.finished else band(gap, band_ease, band_boost))
 		var inp := r.driver.drive(r, track, racers, dt) if racing else DriveInput.new()
 		r.update(dt, inp, track, racing)
 	for r in cars:
-		Draft.update(r, dt, racing and Draft.in_wake(r, track, racers))
+		if not r.remote:
+			Draft.update(r, dt, racing and Draft.in_wake(r, track, racers))
 	for r in cars:
+		if r.remote:
+			continue
 		r.collide(track)
 		if not r.finished and r.distance >= finish_distance:
 			r.finished = true

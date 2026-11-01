@@ -32,10 +32,11 @@ func _ready() -> void:
 
 ## Shows the results for the finish just made: what's on offer follows the race's `after`.
 func open() -> void:
-	items = choices(race.tour, race.time_attack)
+	var online: bool = race.online != null
+	items = choices(race.tour, race.time_attack, online)
 	labels.clear()
 	for c in items:
-		labels.append(choice_label(c, race.after))
+		labels.append("LOBBY" if online and c == Choice.CONTINUE else choice_label(c, race.after))
 	index = 0
 	_latched = true
 	visible = true
@@ -46,9 +47,9 @@ func close() -> void:
 
 
 ## What the results offer: always on and quit; retry outside a Grand Tour (where a stage that
-## went wrong offers the continue as its "on").
-static func choices(tour: bool, _time_attack: bool) -> Array[int]:
-	if tour:
+## went wrong offers the continue as its "on") and online (where "on" is the room's lobby).
+static func choices(tour: bool, _time_attack: bool, online := false) -> Array[int]:
+	if tour or online:
 		return [Choice.CONTINUE, Choice.QUIT]
 	return [Choice.CONTINUE, Choice.RETRY, Choice.QUIT]
 

@@ -2,7 +2,7 @@
 
 Written 2026-10-31 from the design docs (`docs/01` to `04`), the concept reviews (`05` to `08`),
 the known-bugs doc (`09`), the README and the code. This folder is the feature list for the next
-six months, split into eight groups so each area can be planned and ticked off on its own.
+six months, split into nine groups (the ninth, online and mobile, added 2026-11-01) so each area can be planned and ticked off on its own.
 
 | Group | Doc | Covers |
 |---|---|---|
@@ -14,6 +14,7 @@ six months, split into eight groups so each area can be planned and ticked off o
 | MP | [06-modes-and-progression.md](06-modes-and-progression.md) | Save data, Grand Tour rules, unlocks, Time Attack, Free Drive |
 | AC | [07-options-and-accessibility.md](07-options-and-accessibility.md) | Display, assists, sliders, colorblind HUD, subtitles, units |
 | EQ | [08-engineering-and-quality.md](08-engineering-and-quality.md) | Cleanup phases, tests, performance, releases, doc sync |
+| ON | [09-online-and-mobile.md](09-online-and-mobile.md) | Online races through the relay, touch controls, phones (added 2026-11-01, top of the board) |
 
 ## Where the game stands (2026-10-31, after v0.1.0)
 
@@ -127,7 +128,7 @@ notes. Feature IDs are the group code plus a number (RC-1). Columns:
 
 ## Out of these six months
 
-Split-screen two player, road forks and route choice, online play, car customization beyond paint,
+Split-screen two player, road forks and route choice, car customization beyond paint,
 Steam Deck and Linux as supported platforms (EQ-13 only checks the build), and polygon anything.
 Open questions 3 (which wheel) and 10 (which image generator) in `docs/04-open-questions.md`
 still need answers from Austin; 11 and 12 are decided by what was built.

@@ -11,6 +11,22 @@ var strips: Dictionary = {}  # CarSprites.strips for its car
 var driver: AIDriver
 var finished := false
 var finish_time := 0.0  # race seconds when it crossed the line
+## Another player in an online race (ON-3): moved by what its game sends (CarState), not
+## driven here. `slot` is its place in the room.
+var remote := false
+var slot := -1
+
+
+## Another player's car in an online race, in slot `s` of the room.
+static func remote_player(car: Dictionary, s: int) -> RivalCar:
+	var r := RivalCar.new(car)
+	r.remote = true
+	r.slot = s
+	# "P2": OnlineSession.player_name, not called here, as the test runner compiles this
+	# script before the autoloads exist and OnlineSession needs them.
+	r.profile = RivalProfile.make("P%d" % (s + 1), car["id"], RivalProfile.Style.CLEAN, 1.0, 0.0)
+	r.strips = CarSprites.strips(car["strip"])
+	return r
 
 
 func _init(car: Dictionary = Cars.find("car_vega"), ai: AIDriver = AIDriver.new()) -> void:

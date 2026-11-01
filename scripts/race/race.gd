@@ -40,6 +40,11 @@ var free_drive := false
 ## Mirror mode (WS-6): the stage flipped left for right (Stages.build). It shares the stage's
 ## best times and ghost: the same road, the same distances.
 var mirror := false
+## An online race (ON-3): the room, or null. The other players are rivals moved by what their
+## games send (RivalCar.remote); no AI rivals, no clock, nothing saved. The countdown waits on
+## the host's GO, and the pause menu doesn't stop the race.
+var online: OnlineSession
+var _shown := {}  # online: slot -> where its car was shown last tick (OnlineSession.shown_at)
 var ghost: Ghost  # Time Attack: the best run so far, replayed (null before the first)
 var recording: Ghost  # Time Attack: this run, tick by tick
 var ghost_now := Vector3.ZERO  # the ghost this tick: distance, x, steer (Ghost.at)
@@ -157,6 +162,7 @@ func _ready() -> void:
 	if not _dev_args_read:
 		_dev_args_read = true
 		_parse_dev_args()
+	Touch.race = self
 	start_race()
 
 
@@ -173,6 +179,8 @@ func start_race() -> void:
 	player.distance = _start_segment * Cfg.SEGMENT_LENGTH  # that far along the route, so the finish is where it is drawn
 	if not is_nan(_drive_x):
 		player.x = _drive_x  # already on that line, past any roadside railing
+	elif online != null:
+		player.x = OnlineSession.grid_x(online.slot) * track.side()  # four abreast, by slot
 	player.road_y = track.height_at(player.position + Cfg.PLAYER_Z)
 	power_ups = PowerUps.new()
 	if Settings.power_ups:
@@ -194,8 +202,20 @@ func start_race() -> void:
 		tour_state = Tour.new()
 		tour_state.start_stage = stage_index
 	rivals = Rivals.new()
-	rivals.spawn(track, player, car_id, 0 if _no_rivals or time_attack or free_drive else Rivals.COUNT, Rivals.SEED + stage_index,
-		Difficulty.of(Settings.difficulty), tour_state.drivers if tour else [])
+	rivals.spawn(track, player, car_id, 0 if _no_rivals or time_attack or free_drive or online != null else Rivals.COUNT,
+		Rivals.SEED + stage_index, Difficulty.of(Settings.difficulty), tour_state.drivers if tour else [])
+	_shown.clear()
+	if online != null:
+		for s: int in online.racers:
+			if s != online.slot and online.players.has(s):
+				var r := RivalCar.remote_player(Cars.find(String(online.players[s])), s)
+				r.reset(player.position)
+				r.distance = player.distance
+				r.x = OnlineSession.grid_x(s) * track.side()
+				r.road_y = player.road_y
+				rivals.cars.append(r)
+				_shown[s] = Vector3(r.distance, r.x, 0.0)
+		online.loaded()
 	if tour and tour_state.drivers.is_empty():
 		tour_state.drivers = rivals.driver_names()
 	state = State.RACING if demo else State.COUNTDOWN
@@ -270,6 +290,9 @@ func continue_tour() -> void:
 ## would (after_race), and one still running costs the continue; with none left it can't be
 ## restarted. Returns false when it wasn't.
 func restart() -> bool:
+	if online != null:
+		resume()
+		return false  # an online race goes on for everyone
 	if not tour:
 		start_race()
 		return true
@@ -373,6 +396,12 @@ func counting_down() -> bool:
 	return state == State.COUNTDOWN
 
 
+## Whether the touch controls (TouchControls) show the driving layout: the race is on screen,
+## not under the pause menu, the results or the calibration wizard.
+func touch_driving() -> bool:
+	return not demo and not paused and not results.visible and not calibration.visible
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("debug_input"):
 		debug_overlay.visible = not debug_overlay.visible
@@ -393,10 +422,12 @@ func _physics_process(dt: float) -> void:
 	if paused:
 		if pause_menu.visible:  # (hidden while the options are up)
 			pause_action(pause_menu.choose(InputRouter.menu, inp.pause_pressed))
-		_redraw()
-		return
+		if online == null or not paused:
+			_redraw()
+			return
+		inp = DriveInput.new()  # online the race runs on under the menu, the car coasting
 	if results.visible:
-		if inp.restart_pressed:  # R: in a tour, on as ever; otherwise the stage again
+		if inp.restart_pressed and online == null:  # R: in a tour, on as ever; otherwise the stage again
 			if tour:
 				after_race()
 			else:
@@ -420,10 +451,10 @@ func _physics_process(dt: float) -> void:
 	if over and not results.visible and inp.confirm_pressed:
 		after_race()
 		return
-	if inp.restart_pressed:
+	if inp.restart_pressed and online == null:
 		restart()
 		return
-	if inp.pause_pressed:
+	if inp.pause_pressed and not paused:
 		pause()
 		_redraw()
 		return
@@ -435,7 +466,8 @@ func _physics_process(dt: float) -> void:
 	_watch_launch(inp)
 	match state:
 		State.COUNTDOWN:
-			countdown -= dt
+			if online == null or online.go:  # online, the countdown runs from the host's GO
+				countdown -= dt
 			if countdown <= Launch.ROLL_TIME:
 				for car: PlayerCar in rivals.everyone(player):
 					car.speed = Launch.ROLL_SPEED
@@ -467,6 +499,8 @@ func _physics_process(dt: float) -> void:
 	player.update(sim, inp, track, state == State.RACING)
 	traffic.update(sim, track)
 	rivals.update(sim, track, player, state != State.COUNTDOWN, finish_distance)
+	if online != null:
+		_online_tick(sim)
 	player.collide(track)
 	if state == State.FINISHED:
 		player.speed = move_toward(player.speed, 0.0, FINISH_BRAKING * sim)
@@ -605,6 +639,8 @@ func _check_progress() -> void:
 	if player.distance >= finish_distance:
 		state = State.FINISHED
 		finish_age = 0.0
+		if online != null:
+			online.finish(race_time)
 		player.nitro_time = 0.0  # it brakes from here (see FINISH_BRAKING)
 		fx.celebrate(FxLayer.fireworks_for(track.theme))
 		player_finish = race_time
@@ -619,7 +655,9 @@ func _check_progress() -> void:
 		var secs := fmod(race_time, 60.0)
 		var prompt := "Enter: menu   R: race again"
 		after = After.MENU
-		if tour:
+		if online != null:
+			prompt = "Enter: back to the lobby"
+		elif tour:
 			prompt = _tour_finish()
 		elif time_attack:
 			var against := "" if ghost == null else split_text(race_time - ghost.time) + " vs best   "
@@ -699,15 +737,45 @@ static func stage_clock(theme: Dictionary, checkpoints: int) -> Array[float]:
 	return out
 
 
-## Whether the clock runs down to TIME UP (not in Time Attack or Free Drive).
+## Whether the clock runs down to TIME UP (not in Time Attack, Free Drive or online).
 func timed() -> bool:
-	return not time_attack and not free_drive
+	return not time_attack and not free_drive and online == null
+
+
+## Online (ON-3): the other players where their games last said, moved on since; their
+## finishes; those who left taken off the road; this car sent on.
+func _online_tick(dt: float) -> void:
+	var closed := online.phase == OnlineSession.Phase.CLOSED  # the host left, or the line went
+	if closed and not _shown.is_empty():
+		_banner(online.error, "Racing on alone", 2.0)
+	for r: RivalCar in rivals.cars.duplicate():
+		if not r.remote:
+			continue
+		if closed:
+			rivals.cars.erase(r)
+			_shown.erase(r.slot)
+			continue
+		if online.gone.has(r.slot):
+			rivals.cars.erase(r)
+			_shown.erase(r.slot)
+			if state == State.RACING:
+				_banner("%s LEFT" % OnlineSession.player_name(r.slot), "", 1.5)
+			continue
+		if online.cars.has(r.slot):
+			var got: Array = online.cars[r.slot]
+			_shown[r.slot] = OnlineSession.shown_at(got[0], got[1], _shown[r.slot], dt)
+			CarState.apply(r, got[0], _shown[r.slot], track)
+		if not r.finished and online.finishes.has(r.slot):
+			r.finished = true
+			r.finish_time = online.finishes[r.slot]
+	if state != State.COUNTDOWN:
+		online.send_car(player)
 
 
 ## Whether this race is the player's own, to save from: not autodriven, not started partway
 ## or with a made-up clock, not staged for a screenshot.
 func _saves() -> bool:
-	return not _autodrive and not demo and _start_segment == 0 and not _staged and is_nan(_time_left_shot)
+	return not _autodrive and not demo and _start_segment == 0 and not _staged and is_nan(_time_left_shot) and online == null
 
 
 func _show_results() -> void:

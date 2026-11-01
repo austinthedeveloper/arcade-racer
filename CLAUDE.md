@@ -17,6 +17,8 @@ godot --path . -- --save-file=/tmp/save.cfg --mode=single_race --mirror --screen
 python3 tools/colorblind.py /tmp/shots/frame_00300.png --all   # the shot as seen with protanopia, deuteranopia, tritanopia (+ a sheet)
 godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, modes, options, stages, cars, pause, unplugged, results, demo, update (update:failed etc.); options:audio etc. for an options page; --car=car_mesa opens car select on it)
 godot --path . --resolution 1600x900 -- --settings-file=/tmp/opts.cfg --profiles-file=/tmp/prof.cfg --screen=options:display --shot-as-window --menu-shot=/tmp/d.png   # other options and binding files; the shot laid out as the window shows it (also --screen=remap, --screen=wheel, and race --screenshots)
+godot --path . -- --screen=online:lobby --touch --menu-shot=/tmp/o.png   # the online lobby (online:menu, code, guest, error) on an in-memory relay, touch controls up
+godot --headless --path . -s res://tools/online_probe.gd -- --relay=ws://127.0.0.1:8080   # host + guest through a relay (npm start in ../snes/pickleball-relay); no --relay: the live one
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
 godot --headless --path . -s res://tools/track_preview.gd -- --out=/tmp/plots   # plot every stage top-down and side-on to PNG (--stage=N for one)
 tools/shots.sh                                      # screenshot regression vs tests/shots/ (needs a display, PIL; SHOTS_PYTHON=...)

@@ -25,6 +25,7 @@ Audio="*res://scripts/audio/audio.gd"
 Settings="*res://scripts/core/settings.gd"
 SaveData="*res://scripts/core/save_data.gd"
 Updates="*res://scripts/core/updater.gd"
+Touch="*res://scripts/input/touch_controls.gd"
 
 [display]
 

@@ -32,7 +32,7 @@ func handle(m: MenuInput) -> void:
 		game.car_index = index
 		game.start_race()
 	elif m.back_pressed:
-		game.show_stage_select()
+		game.car_select_back()
 	elif m.radio_pressed:
 		Settings.radio = Radio.next_setting(Settings.radio)
 		Settings.save()

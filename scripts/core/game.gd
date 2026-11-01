@@ -4,7 +4,7 @@ extends Node
 ## Race dev flags (--autodrive, --stage=N, --race) skip the menus and go straight to a race.
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -19,6 +19,10 @@ var car_index := 0  # into Cars
 var mirror := false
 var menu: MenuScreen
 var race: Node  # race.gd, while racing
+## The online room (ON-2), from HOST or JOIN until it's left; polled every tick, menus or race.
+var online: OnlineSession
+## Makes the line HOST and JOIN open: through the relay; tests and screenshots set an in-memory one.
+var make_link: Callable = func() -> NetLink: return RelayLink.new()
 ## Seconds on the title with no input before a demo starts. --attract-delay=N sets it
 ## (the e2e sets it directly).
 var attract_delay := Attract.IDLE_SECONDS
@@ -92,6 +96,10 @@ func _ready() -> void:
 
 
 func _physics_process(dt: float) -> void:
+	if online != null:
+		online.poll(dt)
+		if online.started:
+			start_online_race()  # the host started (again): everyone into the race
 	var woke := Attract.is_input(InputRouter.state, InputRouter.menu)
 	if is_demo():
 		if woke:
@@ -217,10 +225,62 @@ func close_options() -> void:
 		show_title(1)
 
 
-## A playable mode picked on mode select.
+## A playable mode picked on mode select. ONLINE picks the car first; the host picks the
+## stage in the lobby.
 func choose_mode(item: int) -> void:
 	mode_index = item
-	show_stage_select()
+	if item == ModeSelect.Item.ONLINE:
+		show_car_select()
+	else:
+		show_stage_select()
+
+
+## Back from car select: stage select, or mode select for ONLINE (which has none).
+func car_select_back() -> void:
+	if mode_index == ModeSelect.Item.ONLINE:
+		show_mode_select()
+	else:
+		show_stage_select()
+
+
+## ONLINE after car select: host or join, then the room's lobby (when in one).
+func show_online() -> void:
+	_set_menu(OnlineScreen.new(), Screen.ONLINE)
+
+
+## HOST or JOIN on the online screen: a room on `link` (RelayLink, or LoopLink in tests).
+func open_room(link: NetLink) -> void:
+	leave_room()
+	var car: String = Cars.get_car(car_index)["id"]
+	online = OnlineSession.hosting_on(link, car)
+
+
+## Leaves the room, if in one.
+func leave_room() -> void:
+	if online != null:
+		online.leave()
+		online = null
+
+
+## The host started: the race on its stage, with everyone in the room.
+func start_online_race() -> void:
+	if race != null:
+		_drop_race()
+	online.started = false
+	stage_index = online.stage
+	_set_menu(null, Screen.RACE)
+	race = RACE_SCENE.instantiate()
+	race.stage_index = online.stage
+	race.car_id = online.car_id
+	race.mirror = online.mirror
+	race.tour = false
+	race.online = online
+	race.debug_overlay = debug_overlay
+	race.calibration = calibration
+	race.quit_requested.connect(_on_race_quit)
+	race.race_over.connect(_on_race_over)
+	race.options_requested.connect(_on_race_options)
+	add_child(race)
 
 
 func show_stage_select() -> void:
@@ -235,8 +295,11 @@ func show_car_select() -> void:
 	_set_menu(c, Screen.CARS)
 
 
-## Leaves the menus for a race on the chosen stage and car.
+## Leaves the menus for a race on the chosen stage and car (ONLINE: for the room).
 func start_race() -> void:
+	if mode_index == ModeSelect.Item.ONLINE:
+		show_online()
+		return
 	_spawn_race(stage_index, car_index, false)
 
 
@@ -296,12 +359,18 @@ func _on_race_quit() -> void:
 		end_demo()
 		return
 	_drop_race()
+	leave_room()
 	show_title()
 
 
-## A Single Race or Time Attack run finished: back to stage select for the next one.
+## A Single Race or Time Attack run finished: back to stage select for the next one. Online,
+## back to the room's lobby (or what ended it).
 func _on_race_over() -> void:
 	_drop_race()
+	if online != null:
+		online.to_lobby()
+		show_online()
+		return
 	show_stage_select()
 
 
@@ -358,6 +427,9 @@ func _open(which: String) -> void:
 			show_wheel()
 		"modes":
 			show_mode_select()
+		_ when which.begins_with("online"):
+			show_online()
+			(menu as OnlineScreen).stage_shot(which.get_slice(":", 1) if which.contains(":") else "menu")
 		"demo":
 			start_demo()
 		_ when which.begins_with("update"):
