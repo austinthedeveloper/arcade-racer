@@ -16,14 +16,13 @@ Usage:
 """
 import os
 import random
-import sys
 
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy import ndimage
 
 import manifest
-from spritelib import key_out, pixelate_down
+from spritelib import cli_args, key_out, pixelate_down, sprite_dir
 
 WIDTH = 640  # texture width; a span fills the screen when the car is under it
 
@@ -210,11 +209,8 @@ def add_facade(sprite, facade):
 
 
 def main():
-    if len(sys.argv) != 3:
-        sys.exit(__doc__)
-    concept_dir, project_dir = sys.argv[1], sys.argv[2]
-    out_dir = os.path.join(project_dir, "assets", "sprites", "spans")
-    os.makedirs(out_dir, exist_ok=True)
+    concept_dir, project_dir = cli_args(__doc__, 2)
+    out_dir = sprite_dir(project_dir, "spans")
     for name, (src, look) in SPANS.items():
         sprite = make_span(os.path.join(concept_dir, "roadside", src))
         if "facade" in look:

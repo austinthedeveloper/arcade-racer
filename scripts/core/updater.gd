@@ -49,9 +49,7 @@ var _stalled := 0.0  # seconds since then
 func _ready() -> void:
 	if not supported():
 		return
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--update-api="):
-			api = arg.trim_prefix("--update-api=")
+	api = DevArgs.value("--update-api", api)
 	state = State.IDLE
 	_http = HTTPRequest.new()
 	_http.request_completed.connect(_on_done)

@@ -26,6 +26,12 @@ func _draw() -> void:
 		return
 	var tw := float(texture.get_width())
 	var y0 := Cfg.HORIZON_Y + 4.0 - texture.get_height()
-	var x0 := -fposmod(offset * tw, tw)
-	draw_texture(texture, Vector2(roundf(x0), y0))
-	draw_texture(texture, Vector2(roundf(x0) + tw, y0))
+	var x0 := strip_x(offset, tw)
+	draw_texture(texture, Vector2(x0, y0))
+	draw_texture(texture, Vector2(x0 + tw, y0))
+
+
+## Where the first of the two strip copies starts (a whole pixel, at or left of 0) for an
+## `offset` of 0..1 round a strip `width` wide; the second follows it.
+static func strip_x(offset: float, width: float) -> float:
+	return roundf(-fposmod(offset * width, width))

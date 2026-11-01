@@ -9,9 +9,8 @@ Usage:
     python3 tools/make_powerup_sprites.py <concept_dir> <project_dir>
 """
 import os
-import sys
 
-from spritelib import slice_objects
+from spritelib import cli_args, slice_objects, sprite_dir
 
 # (sheet, texture height of its tallest piece, names in reading order; None skips a piece)
 SHEETS = [
@@ -24,11 +23,8 @@ SHEETS = [
 
 
 def main():
-    if len(sys.argv) != 3:
-        sys.exit(__doc__)
-    concept_dir, project_dir = sys.argv[1], sys.argv[2]
-    out_dir = os.path.join(project_dir, "assets", "sprites", "powerups")
-    os.makedirs(out_dir, exist_ok=True)
+    concept_dir, project_dir = cli_args(__doc__, 2)
+    out_dir = sprite_dir(project_dir, "powerups")
     for sheet, height, names in SHEETS:
         for name, sprite in slice_objects(os.path.join(concept_dir, "powerups", sheet), names, height):
             if name is None:

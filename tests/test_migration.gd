@@ -78,6 +78,25 @@ func test_version_helper() -> void:
 	eq(CfgVersion.of(cfg), 0, "nonsense counts as 0")
 
 
+func test_to_write_keeps_only_a_newer_file() -> void:
+	var path := "user://test_cfg_version.cfg"
+	var missing := CfgVersion.to_write(path + ".none", 3)
+	eq([CfgVersion.of(missing), missing.get_sections()], [3, PackedStringArray(["meta"])], "no file: empty, stamped current")
+	for version in [1, 3, 7]:
+		var disk := ConfigFile.new()
+		CfgVersion.stamp(disk, version)
+		disk.set_value("future", "key", "kept")
+		disk.save(path)
+		var cfg := CfgVersion.to_write(path, 3)
+		if version > 3:
+			eq([CfgVersion.of(cfg), cfg.get_value("future", "key", "")], [7, "kept"], "a newer file: written into, its keys kept")
+			var fresh := CfgVersion.to_write(path, 3, true)
+			eq([CfgVersion.of(fresh), fresh.has_section("future")], [3, false], "but a reset starts empty")
+		else:
+			eq([CfgVersion.of(cfg), cfg.has_section("future")], [3, false], "version %d: a fresh file" % version)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
 func test_settings_v0_loads_as_before() -> void:
 	_clean()
 	var v0 := _load_settings("settings_v0.cfg")

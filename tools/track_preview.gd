@@ -7,13 +7,8 @@ extends SceneTree
 
 
 func _init() -> void:
-	var out := "user://track_preview"
-	var only := -1
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--out="):
-			out = arg.get_slice("=", 1)
-		elif arg.begins_with("--stage="):
-			only = int(arg.get_slice("=", 1)) - 1
+	var out := DevArgs.value("--out", "user://track_preview")
+	var only := int(DevArgs.value("--stage", "0")) - 1
 	DirAccess.make_dir_recursive_absolute(out)
 	var status := 0
 	for i in Stages.count():

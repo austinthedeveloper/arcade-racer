@@ -19,7 +19,7 @@ import sys
 from PIL import Image
 
 import manifest
-from spritelib import key_sheet, pixelate_down, slice_row
+from spritelib import cli_args, key_sheet, pixelate_down, slice_row, sprite_dir
 
 PLAYER_BODY_WIDTH = 180  # straight-ahead frame, in texture pixels (about its on-screen width)
 TRAFFIC_CAR_WIDTH = 150  # widest vehicle on each sheet
@@ -127,10 +127,8 @@ def make_traffic(concept_dir, out_dir):
 
 
 def main():
-    if len(sys.argv) != 3:
-        sys.exit(__doc__)
-    concept_dir, project_dir = sys.argv[1], sys.argv[2]
-    sprites = os.path.join(project_dir, "assets", "sprites")
+    concept_dir, project_dir = cli_args(__doc__, 2)
+    sprites = sprite_dir(project_dir)
     level_h = None
     for sheet, strip, required, max_ratio in PLAYER_SHEETS:
         path = os.path.join(concept_dir, "cars", sheet)

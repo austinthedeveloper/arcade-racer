@@ -7,11 +7,11 @@ Usage:
     python3 tools/make_drawn_props.py <project_dir>
 """
 import os
-import sys
 
 from PIL import Image, ImageDraw
 
 import manifest
+from spritelib import cli_args, sprite_dir
 
 
 def canvas(w, h):
@@ -123,13 +123,11 @@ DRAWN = {
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.exit(__doc__)
-    roadside = os.path.join(sys.argv[1], "assets", "sprites", "roadside", "palm_coast")
-    os.makedirs(roadside, exist_ok=True)
+    (project_dir,) = cli_args(__doc__, 1)
+    roadside = sprite_dir(project_dir, "roadside", "palm_coast")
     for name, (draw, _, _) in DRAWN.items():
         draw(os.path.join(roadside, name + ".png"))
-    manifest.write(sys.argv[1])
+    manifest.write(project_dir)
 
 
 if __name__ == "__main__":

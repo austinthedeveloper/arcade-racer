@@ -8,7 +8,6 @@ const THUMB := Vector2(72, 40)
 const THUMB_GAP := 80.0
 const THUMB_Y := 284.0
 
-var index := 0
 var _cards: Array[Texture2D] = []
 
 
@@ -18,10 +17,8 @@ func _ready() -> void:
 		_cards.append(load(Stages.postcard(i)))
 
 
-## Moves the selection by `dir`, wrapping around; returns the new index.
-func move(dir: int) -> int:
-	index = posmod(index + dir, Stages.count())
-	return index
+func choice_count() -> int:
+	return Stages.count()
 
 
 func handle(m: MenuInput) -> void:

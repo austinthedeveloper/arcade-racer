@@ -68,9 +68,12 @@ const TOP := 56.0
 var back_name := "the title screen"  # where BACK goes, for its help line
 var in_race := false  # opened from the pause menu: some rows only change the next race
 var page := 0  # a Page
-var index := 1  # into rows(): 0 is the page bar; opens on the first option
 var confirming := false  # RESET SAVE DATA was selected once; selecting it again erases
 var done_row := -1  # a reset row that has just run, shown as DONE until the cursor moves
+
+
+func _init() -> void:
+	index = 1  # into rows(): 0 is the page bar; opens on the first option
 
 
 ## The page called `page_name` (as in PAGE_NAMES, any case), or -1.
@@ -98,9 +101,13 @@ func go_to(r: int) -> void:
 	done_row = -1
 
 
+func choice_count() -> int:
+	return rows().size()
+
+
 ## Moves the cursor by `dir`, wrapping around; returns the new Row.
 func move(dir: int) -> int:
-	index = posmod(index + dir, rows().size())
+	super.move(dir)
 	confirming = false
 	done_row = -1
 	return row()
@@ -320,8 +327,7 @@ func _draw() -> void:
 	_backdrop(0.8)
 	_header("OPTIONS")
 	var panel := Rect2(110, TOP - 6, 420, ROW_H * SLOTS + 12)
-	_frame(panel)
-	draw_rect(panel, Color(0.04, 0.03, 0.1, 0.85))
+	_panel(panel, 0.85)
 	var wheel := wheel_driven()
 	var mid := ROW_H / 2.0 - 2.0  # the row's vertical centre, above the gap
 	var list := rows()

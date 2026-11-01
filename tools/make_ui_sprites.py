@@ -11,11 +11,10 @@ Usage:
     python3 tools/make_ui_sprites.py <concept_dir> <project_dir>
 """
 import os
-import sys
 
 from PIL import Image
 
-from spritelib import hard_alpha, rgba
+from spritelib import cli_args, hard_alpha, rgba, sprite_dir
 
 # Stage order matches Stages.NAMES
 STAGES = ["palm-coast", "redrock", "neon", "timberline", "bayou", "harvest", "thunder", "skyline"]
@@ -66,12 +65,8 @@ def make_logo(src, out_path):
 
 
 def main():
-    if len(sys.argv) != 3:
-        print(__doc__)
-        sys.exit(2)
-    concept, project = sys.argv[1], sys.argv[2]
-    out = os.path.join(project, "assets", "sprites", "ui")
-    os.makedirs(out, exist_ok=True)
+    concept, project = cli_args(__doc__, 2)
+    out = sprite_dir(project, "ui")
 
     make_logo(Image.open(os.path.join(concept, "ui", "ui01_logo_A_v1.png")), os.path.join(out, "logo.png"))
 

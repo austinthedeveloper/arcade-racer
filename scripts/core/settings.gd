@@ -56,9 +56,7 @@ var loaded_version := VERSION
 
 func _ready() -> void:
 	# Dev flag: --settings-file=PATH reads (and saves) another options file, for screenshots.
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--settings-file="):
-			path = arg.get_slice("=", 1)
+	path = DevArgs.value("--settings-file", path)
 	load_settings()
 
 

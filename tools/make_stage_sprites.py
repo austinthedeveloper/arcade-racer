@@ -12,10 +12,9 @@ Usage:
     python3 tools/make_stage_sprites.py <concept_dir> <project_dir> [stage ...]
 """
 import os
-import sys
 
 import manifest
-from spritelib import make_background, slice_objects
+from spritelib import cli_args, make_background, slice_objects
 
 # Per stage: background (composite file, horizon row in it) and roadside sheets.
 # Each sheet lists its objects in reading order (rows top to bottom, left to right) and the
@@ -260,8 +259,8 @@ def build(stage, concept_dir, project_dir):
 
 
 def main():
-    concept_dir, project_dir = sys.argv[1], sys.argv[2]
-    for stage in sys.argv[3:] or list(STAGES):
+    concept_dir, project_dir, *stages = cli_args(__doc__, 2, more=True)
+    for stage in stages or list(STAGES):
         build(stage, concept_dir, project_dir)
     manifest.write(project_dir)
 

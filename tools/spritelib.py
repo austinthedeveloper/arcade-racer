@@ -5,6 +5,7 @@ turning a background composite into a seamless parallax strip.
 Needs Pillow, numpy and scipy (tools/requirements.txt).
 """
 import os
+import sys
 
 import numpy as np
 from PIL import Image
@@ -12,6 +13,22 @@ from scipy import ndimage
 
 # 4-connected neighbourhood for labelling
 FOUR = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
+
+
+def cli_args(usage, count, more=False, argv=None):
+    """A tool's arguments: exactly `count` of them (at least `count` with `more`), else exit
+    with the usage."""
+    args = list(sys.argv[1:] if argv is None else argv)
+    if len(args) < count or (len(args) > count and not more):
+        sys.exit(usage)
+    return args
+
+
+def sprite_dir(project_dir, *parts):
+    """assets/sprites/<parts> under the project, made if it isn't there."""
+    path = os.path.join(project_dir, "assets", "sprites", *parts)
+    os.makedirs(path, exist_ok=True)
+    return path
 
 
 def rgba(img):

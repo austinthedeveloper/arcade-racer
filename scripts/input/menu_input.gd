@@ -49,6 +49,11 @@ func step_y() -> int:
 	return -1 if up_pressed else (1 if down_pressed else 0)
 
 
+## Whether both axes are back under RELEASE (a held stick or pedal let go).
+func centred() -> bool:
+	return absf(x) < RELEASE and absf(y) < RELEASE
+
+
 ## The direction that fires this tick (0 for none), with hysteresis and auto-repeat.
 static func _repeat(axis: float, dt: float, rep: Array) -> int:
 	var dir: int = rep[0]

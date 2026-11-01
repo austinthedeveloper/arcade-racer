@@ -47,9 +47,9 @@ func _ready() -> void:
 	top.add_child(calibration)
 	var quick := false
 	var pause_shot := false
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--car="):
-			car_index = maxi(0, Cars.LIST.find(Cars.find(arg.get_slice("=", 1))))
+	var car := DevArgs.value("--car")
+	if car != "":
+		car_index = maxi(0, Cars.LIST.find(Cars.find(car)))
 	for arg in OS.get_cmdline_user_args():
 		for flag: String in RACE_FLAGS:
 			quick = quick or arg.begins_with(flag)
@@ -334,7 +334,7 @@ func _save_menu_shot(frames: int) -> void:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
-	if OS.get_cmdline_user_args().has("--shot-as-window"):
+	if DevArgs.has("--shot-as-window"):
 		img = _as_window(img)
 	DirAccess.make_dir_recursive_absolute(_menu_shot.get_base_dir())
 	img.save_png(_menu_shot)

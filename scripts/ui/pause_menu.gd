@@ -10,7 +10,6 @@ const ITEMS := [Action.RESUME, Action.RESTART, Action.OPTIONS, Action.QUIT]
 const LABELS := ["RESUME", "RESTART", "OPTIONS", "QUIT TO TITLE"]
 const ROW_H := 30.0
 
-var index := 0  # into ITEMS
 var has_options := true  # false when nothing can show the options (a race on its own)
 var _hold := 0  # ticks to ignore input for, after coming back from the options
 ## Gas or steering held when the menu opened would auto-repeat through it, so it doesn't
@@ -45,10 +44,14 @@ func close() -> void:
 ## Moves the selection by `dir`, wrapping round and skipping OPTIONS without options;
 ## returns the new index.
 func move(dir: int) -> int:
-	index = posmod(index + dir, ITEMS.size())
+	super.move(dir)
 	if ITEMS[index] == Action.OPTIONS and not has_options:
-		index = posmod(index + dir, ITEMS.size())
+		super.move(dir)
 	return index
+
+
+func choice_count() -> int:
+	return ITEMS.size()
 
 
 ## One tick of menu input (and whether pause was pressed): the action picked, or NONE.
@@ -58,7 +61,7 @@ func choose(m: MenuInput, pause_pressed := false) -> int:
 		return Action.NONE
 	if pause_pressed or m.back_pressed:
 		return Action.RESUME
-	if _latched and absf(m.x) < MenuInput.RELEASE and absf(m.y) < MenuInput.RELEASE:
+	if _latched and m.centred():
 		_latched = false
 	var dir := 0 if _latched else (m.step_y() if m.step_y() != 0 else m.step())
 	if dir != 0:
@@ -85,8 +88,7 @@ func _draw() -> void:
 	var w := float(Cfg.SCREEN_W)
 	draw_rect(Rect2(0, 0, w, Cfg.SCREEN_H), Color(NIGHT, 0.6))
 	var panel := Rect2(w / 2.0 - 140, 84, 280, 76 + ROW_H * ITEMS.size())
-	_frame(panel)
-	draw_rect(panel, Color(0.04, 0.03, 0.1, 0.9))
+	_panel(panel, 0.9)
 	_text_centered(Vector2(w / 2.0, panel.position.y + 32), "PAUSED", 24, GOLD)
 	draw_rect(Rect2(panel.position.x + 20, panel.position.y + 42, panel.size.x - 40, 2), GOLD)
 	for i in ITEMS.size():
