@@ -424,7 +424,7 @@ func _draw_rival(seg: Segment, r: RivalCar, tint: Color) -> void:
 	var lift := r.air_height * s * Cfg.PROJ
 	if r.crash_time > 0.0:
 		steer = sin(r.crash_time * 20.0) * 2.0
-		lift += sin(r.crash_time / Cfg.CRASH_DURATION * PI) * w * 0.3
+		lift += sin(r.crash_time / r.crash_length * PI) * w * 0.3
 	CarSprites.draw_player(self, r.strips, Vector2(roundf(cx), roundf(cy)), w, steer, r.braking,
 		roundf(lift), r.pitch, 1.0, tint)
 
@@ -455,7 +455,7 @@ func _draw_player() -> void:
 	var lift := p.air_height * s * Cfg.PROJ
 	var steer := p.shown_steer()
 	if p.crash_time > 0.0:
-		var k := p.crash_time / Cfg.CRASH_DURATION
+		var k := p.crash_time / p.crash_length
 		steer = sin(p.crash_time * 20.0) * 2.0
 		lift += sin(k * PI) * w * 0.3
 	elif p.speed > 50.0 and not p.airborne:

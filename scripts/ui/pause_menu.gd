@@ -1,7 +1,7 @@
 class_name PauseMenu
 extends MenuScreen
 ## The in-race pause menu: Resume, Restart, Options, Quit to title over the frozen race.
-## Up/down or left/right (a wheel steers) moves, confirm picks, back or pause resumes.
+## Up/down or left/right (a D-pad, a wheel's too) moves, confirm picks, back or pause resumes.
 ## `choose` turns a tick of input into an Action; the race carries it out. A notice above it
 ## says why the race paused when it wasn't the player (the wheel unplugged, WH-7).
 
@@ -92,9 +92,7 @@ static func unplugged_notice(joy_name: String, wheel: bool) -> Array[String]:
 ## Control hints, worded for the device in use.
 static func pause_hints() -> String:
 	match InputRouter.state.kind:
-		DriveInput.Kind.WHEEL:
-			return "Steer: choose    Gas: select    Brake: resume"
-		DriveInput.Kind.GAMEPAD:
+		DriveInput.Kind.GAMEPAD, DriveInput.Kind.WHEEL:
 			return "D-pad: choose    A: select    B / Start: resume"
 	return "Up / Down: choose    Enter: select    Esc: resume"
 

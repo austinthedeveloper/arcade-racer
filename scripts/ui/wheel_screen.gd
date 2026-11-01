@@ -5,7 +5,7 @@ extends MenuScreen
 ## change. The top row picks the wheel: the connected ones, then saved ones not plugged in.
 ## Beside the rows, the steering curve those four make, with the wheel's live position.
 ## Controls as on the Options screen: up/down picks a row, left/right changes it, confirm
-## cycles it; on a wheel, steering picks the row and gas changes it.
+## cycles it; a wheel uses its D-pad and A button, as a pad does.
 
 enum Row { DEVICE, RANGE, LOCK, DEADZONE, LINEARITY, RESET, BACK }
 
@@ -118,7 +118,7 @@ static func curve(p: DeviceProfile, samples := CURVE_SAMPLES) -> PackedVector2Ar
 
 
 func handle(m: MenuInput) -> void:
-	var wheel := OptionsScreen.wheel_driven()
+	var wheel := OptionsScreen.steer_driven()
 	var pick := m.step() if wheel else m.step_y()
 	if pick != 0:
 		move(pick)
@@ -154,7 +154,7 @@ func _draw() -> void:
 	var panel := Rect2(40, TOP - 6, 340, ROW_H * Row.size() + 12)
 	_panel(panel, 0.85)
 	var p := profile()
-	var wheel := OptionsScreen.wheel_driven()
+	var wheel := OptionsScreen.steer_driven()
 	var mid := ROW_H / 2.0 - 2.0
 	var right := panel.end.x - 20
 	for r in Row.size():

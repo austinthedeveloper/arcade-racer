@@ -3,8 +3,9 @@ extends MenuScreen
 ## Options: pages of rows, saved through the Settings autoload on every change.
 ## The first row is the page bar; every page ends with BACK.
 ## Keyboard and gamepad: up/down picks a row, left/right changes it (on the page bar, flips
-## the page), confirm toggles or runs it (on the page bar, the next page). A wheel has no
-## up/down, so steering picks the row and gas changes it (on the page bar, the next page).
+## the page), confirm toggles or runs it (on the page bar, the next page); a wheel's D-pad and
+## A button work as a pad's. An unmapped pad has no up/down, so left/right picks the row and
+## button 1 changes it (on the page bar, the next page).
 ## The two reset rows leave the wheel profiles alone; resetting the save asks first.
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
@@ -272,21 +273,20 @@ static func options_hints() -> String:
 	if InputRouter.state.kind == DriveInput.Kind.GAMEPAD and not InputRouter.state.mapped:
 		return "Steer: choose    Button 1: change    Esc: back"
 	match InputRouter.state.kind:
-		DriveInput.Kind.WHEEL:
-			return "Steer: choose    Gas: change    Brake: back"
-		DriveInput.Kind.GAMEPAD:
+		DriveInput.Kind.GAMEPAD, DriveInput.Kind.WHEEL:
 			return "D-pad Up / Down: choose    Left / Right: change    A: select    B: back"
 	return "Up / Down: choose    Left / Right: change    Enter: select    Esc: back"
 
 
-## True when steering picks the rows: a wheel, or a pad with no stick for up and down.
-static func wheel_driven() -> bool:
+## True when left/right picks the rows: a pad with no standard mapping, so no stick or D-pad
+## for up and down. A wheel's D-pad does (InputRouter.wheel_menu).
+static func steer_driven() -> bool:
 	var s: DriveInput = InputRouter.state
-	return s.kind == DriveInput.Kind.WHEEL or (s.kind == DriveInput.Kind.GAMEPAD and not s.mapped)
+	return s.kind == DriveInput.Kind.GAMEPAD and not s.mapped
 
 
 func handle(m: MenuInput) -> void:
-	var wheel := wheel_driven()
+	var wheel := steer_driven()
 	var pick := m.step() if wheel else m.step_y()
 	if confirming and not m.confirm_pressed and (pick != 0 or m.step() != 0 or m.back_pressed):
 		confirming = false  # anything but selecting again cancels the save reset
@@ -347,7 +347,7 @@ func _draw() -> void:
 	_header("OPTIONS")
 	var panel := Rect2(110, TOP - 6, 420, ROW_H * SLOTS + 12)
 	_panel(panel, 0.85)
-	var wheel := wheel_driven()
+	var wheel := steer_driven()
 	var mid := ROW_H / 2.0 - 2.0  # the row's vertical centre, above the gap
 	var list := rows()
 	if PAGE_EMPTY[page] != "":

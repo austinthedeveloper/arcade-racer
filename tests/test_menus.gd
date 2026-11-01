@@ -118,8 +118,8 @@ func test_prompts_follow_the_device() -> void:
 	eq(TitleScreen.start_prompt(), "PRESS START", "gamepad")
 	check(MenuScreen.hints(true).contains("A: select"), "gamepad hints")
 	inp.kind = DriveInput.Kind.WHEEL
-	check(TitleScreen.start_prompt().contains("GAS"), "wheel")
-	check(MenuScreen.hints(true).begins_with("Steer: choose"), "wheel hints")
+	eq(TitleScreen.start_prompt(), "PRESS A", "wheel: its buttons, not the gas")
+	check(MenuScreen.hints(true).begins_with("D-pad: choose"), "a wheel's hints are a pad's")
 	check(not MenuScreen.hints(false).contains("choose"), "no choose hint with nothing to choose")
 	InputRouter.state = keep
 
@@ -210,6 +210,20 @@ func test_mode_select_leads_on_and_back() -> void:
 	check(not g.menu.help_text().contains("next race"), "no race to wait for")
 	g.menu.handle(menu_input(false, true))
 	eq(g.screen, g.Screen.TITLE, "and those go back to the title")
+
+
+func test_quit_on_the_title_closes_the_game() -> void:
+	eq(TitleScreen.items(false), ["START", "OPTIONS", "QUIT"], "START, OPTIONS, QUIT")
+	eq(TitleScreen.items(true), ["START", "OPTIONS"], "no QUIT in a browser")
+	var g := _game()
+	var quits := [0]
+	g.on_quit = func() -> void: quits[0] += 1
+	g.menu.handle(menu_input(false, false, -1))
+	if not OS.has_feature("web"):
+		eq(TitleScreen.items()[g.menu.index], "QUIT", "left from START wraps to QUIT")
+		g.menu.handle(menu_input(true))
+		eq(quits[0], 1, "QUIT quits")
+	eq(g.screen, g.Screen.TITLE, "nothing else happens")
 
 
 func test_quitting_needs_the_pause_menu() -> void:

@@ -29,6 +29,14 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 - Distant roadside scenery no longer shimmers: palms, buildings and signs far down the road
   are drawn from smaller, smoothed copies, all on the same pixel grid (CP-9).
+- A wheel works the menus like a gamepad: its D-pad moves, A selects, B goes back. Steering
+  and the pedals no longer move through menus, and only A (or your pause button) selects.
+- QUIT on the title screen closes the game (not in the browser build).
+- Running into the back of traffic is a short spin that drops you in behind the car, not a
+  full stop: about a second lost instead of nearly three. A gentle bump keeps more speed too.
+- Rubbing doors with a rival scrubs speed once when you touch, not every frame you stay
+  side by side (that used to hold you at a crawl).
+- The starting grid is spaced out: more room between the rivals and in front of you.
 
 ## [0.2.0] - 2026-11-01
 

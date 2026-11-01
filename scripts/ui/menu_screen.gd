@@ -50,11 +50,7 @@ static func hints(choose: bool) -> String:
 	var kind: int = InputRouter.state.kind
 	var parts: Array[String] = []
 	match kind:
-		DriveInput.Kind.WHEEL:
-			if choose:
-				parts.append("Steer: choose")
-			parts.append_array(["Gas: select", "Brake: back"])
-		DriveInput.Kind.GAMEPAD:
+		DriveInput.Kind.GAMEPAD, DriveInput.Kind.WHEEL:
 			if choose:
 				parts.append("D-pad: choose")
 			parts.append_array(["A: select", "B: back"])

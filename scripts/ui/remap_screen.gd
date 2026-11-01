@@ -3,7 +3,7 @@ extends MenuScreen
 ## Controls > REMAP BUTTONS: binds nitro, shift up and down, horn, pause and view on each
 ## device (the keyboard, then every connected pad and wheel). Bindings save to that device's
 ## profile (InputRouter.save_bindings) as soon as they're set; clashes show in red.
-## The top row picks the device (left/right; on a wheel, gas cycles it). Selecting an
+## The top row picks the device (left/right, or confirm cycles it). Selecting an
 ## action waits for the new key or button: Backspace cancels, Delete leaves it unbound.
 
 enum Row { DEVICE, ACTION, RESET, BACK }
@@ -135,7 +135,7 @@ func _process(dt: float) -> void:
 func handle(m: MenuInput) -> void:
 	if listening != "" or _settle > 0.0:
 		return
-	var wheel := OptionsScreen.wheel_driven()
+	var wheel := OptionsScreen.steer_driven()
 	var pick := m.step() if wheel else m.step_y()
 	if pick != 0:
 		move(pick)
@@ -164,9 +164,7 @@ func _leave() -> void:
 
 static func remap_hints() -> String:
 	match InputRouter.state.kind:
-		DriveInput.Kind.WHEEL:
-			return "Steer: choose    Gas: select    Brake: back"
-		DriveInput.Kind.GAMEPAD:
+		DriveInput.Kind.GAMEPAD, DriveInput.Kind.WHEEL:
 			return "D-pad Up / Down: choose    Left / Right: device    A: select    B: back"
 	return "Up / Down: choose    Left / Right: device    Enter: select    Esc: back"
 
@@ -195,7 +193,7 @@ func _draw() -> void:
 				_text(Vector2(panel.position.x + 16, y + mid + 5), "DEVICE", 12, col)
 				var n := device_name()
 				_text_centered(Vector2(right - 110, y + mid + 5), n.substr(0, 26), 12, SKY)
-				if on and not OptionsScreen.wheel_driven():
+				if on and not OptionsScreen.steer_driven():
 					_small_arrow(Vector2(right - 220, y + mid), -1)
 					_small_arrow(Vector2(right, y + mid), 1)
 			Row.ACTION:

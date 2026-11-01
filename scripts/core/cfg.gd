@@ -69,6 +69,9 @@ const SLIDE_DECEL := MAX_SPEED * 0.1  # per second sliding, in place of braking 
 const HIT_OVERLAP := 0.8  # cars hit when they overlap this much of their combined half-widths
 const CRASH_CLOSING_SPEED := MAX_SPEED * 0.5  # closing faster than this crashes; slower bumps
 const BUMP_GAP := 50.0  # world units a bump leaves between you and the car you hit
+const BUMP_KEEP := 0.85  # a bump leaves you at least this share of the car's speed
+const TRAFFIC_CRASH_DURATION := 0.6  # a crash into traffic is a short spin...
+const TRAFFIC_CRASH_KEEP := 0.7  # ...at this share of the car's speed, not a stop
 const CAR_LENGTH := 400.0  # world units along the road a car counts as beside you
 const SIDESWIPE_SPEED_LOSS := 0.05  # share of your speed a side-swipe scrubs off
 

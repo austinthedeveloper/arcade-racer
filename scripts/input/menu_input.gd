@@ -1,9 +1,9 @@
 class_name MenuInput
 extends RefCounted
-## Menu controls, whatever device produced them. Most menus only go left and right, so a
-## wheel steers through them and its pedals confirm (gas) and go back (brake). The Options
-## list also reads up and down (arrows, stick, D-pad); a wheel has none, so there the wheel
-## picks the row and gas changes it (see OptionsScreen).
+## Menu controls, whatever device produced them. A wheel works the menus as a gamepad does,
+## with its D-pad and face buttons (InputRouter.wheel_menu); its steering and pedals only
+## drive. The Options list also reads up and down; an unmapped pad has none, so there
+## left/right picks the row (see OptionsScreen).
 
 const PUSH := 0.5  # axis past this is a press
 const RELEASE := 0.3  # and back under this lets go
