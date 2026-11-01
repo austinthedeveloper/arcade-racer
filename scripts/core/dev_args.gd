@@ -25,3 +25,16 @@ static func value_in(args: PackedStringArray, flag: String, default := "") -> St
 
 static func has_in(args: PackedStringArray, flag: String) -> bool:
 	return args.has(flag)
+
+
+## A 640x360 shot laid out as `win` shows it (`--shot-as-window`): scaled and bordered by
+## the window's own size and stretch, for checking the display options and the HUD.
+static func as_window(view: Image, win: Window) -> Image:
+	var integer := win.content_scale_stretch == Window.CONTENT_SCALE_STRETCH_INTEGER
+	var r := Settings.view_rect(win.size, view.get_size(), integer)
+	print("window %s, %s stretch, picture at %s" % [win.size, "integer" if integer else "fractional", r])
+	var out := Image.create(win.size.x, win.size.y, false, view.get_format())
+	out.fill(Color.BLACK)
+	view.resize(r.size.x, r.size.y, Image.INTERPOLATE_NEAREST)
+	out.blit_rect(view, Rect2i(Vector2i.ZERO, r.size), r.position)
+	return out

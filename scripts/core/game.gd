@@ -335,21 +335,7 @@ func _save_menu_shot(frames: int) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	if DevArgs.has("--shot-as-window"):
-		img = _as_window(img)
+		img = DevArgs.as_window(img, get_window())
 	DirAccess.make_dir_recursive_absolute(_menu_shot.get_base_dir())
 	img.save_png(_menu_shot)
 	get_tree().quit()
-
-
-## The 640x360 shot laid out as the window shows it (`--shot-as-window`): scaled and
-## bordered by the window's own size and stretch, for checking the display options.
-func _as_window(view: Image) -> Image:
-	var win := get_window()
-	var integer := win.content_scale_stretch == Window.CONTENT_SCALE_STRETCH_INTEGER
-	var r := Settings.view_rect(win.size, view.get_size(), integer)
-	print("window %s, %s stretch, picture at %s" % [win.size, "integer" if integer else "fractional", r])
-	var out := Image.create(win.size.x, win.size.y, false, view.get_format())
-	out.fill(Color.BLACK)
-	view.resize(r.size.x, r.size.y, Image.INTERPOLATE_NEAREST)
-	out.blit_rect(view, Rect2i(Vector2i.ZERO, r.size), r.position)
-	return out

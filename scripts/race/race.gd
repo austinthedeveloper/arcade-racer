@@ -791,6 +791,8 @@ func _stage_results_shot() -> void:
 func _save_screenshot(frame: int) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
+	if DevArgs.has("--shot-as-window"):
+		img = DevArgs.as_window(img, get_window())
 	var dir := _screenshot_dir if _screenshot_dir != "" else "user://screenshots"
 	DirAccess.make_dir_recursive_absolute(dir)
 	img.save_png("%s/frame_%05d.png" % [dir, frame])
