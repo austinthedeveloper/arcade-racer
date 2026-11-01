@@ -4,7 +4,7 @@ extends Node
 ## Race dev flags (--autodrive, --stage=N, --race) skip the menus and go straight to a race.
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -168,6 +168,17 @@ func close_remap() -> void:
 	menu.in_race = race != null
 
 
+## Controls > WHEEL SETTINGS.
+func show_wheel() -> void:
+	_set_menu(WheelScreen.new(), Screen.WHEEL)
+
+
+## Back from the wheel settings: the options again, on WHEEL SETTINGS.
+func close_wheel() -> void:
+	show_options(_options_back, _options_back_name, OptionsScreen.Page.CONTROLS, OptionsScreen.Row.WHEEL)
+	menu.in_race = race != null
+
+
 ## Options opened from mode select come back to it.
 func show_options_from_modes() -> void:
 	show_options(show_mode_select.bind(ModeSelect.Item.OPTIONS), "mode select")
@@ -304,6 +315,8 @@ func _open(which: String) -> void:
 			show_options()
 		"remap":
 			show_remap()
+		"wheel":
+			show_wheel()
 		"modes":
 			show_mode_select()
 		"demo":
