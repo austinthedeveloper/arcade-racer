@@ -32,7 +32,7 @@ seamless; the engine loops are pitch-shifted, so a steady single-note recording 
 |---|---|---|---|
 | `engine_low` | sfx | yes | Always; low-revs engine, pitch follows the gears. Fades out at high revs |
 | `engine_high` | sfx | yes | Fades in at high revs, pitch follows the gears |
-| `skid` | sfx | yes | Hard braking at speed, full lock at speed, sliding after a crash |
+| `skid` | sfx | yes | Hard braking at speed, full lock at speed, a power slide, sliding after a crash |
 | `rival` | sfx | yes | The nearest rival's engine, louder the closer it is (either side), pitch from its revs |
 | `offroad` | sfx | yes | Driving on the dirt/grass, louder with speed |
 | `wind` | sfx | yes | Wind over the car, from about 15% speed up to full at top speed; quieter in the air |
@@ -85,4 +85,4 @@ The engine loops are about 56 Hz (`engine_low`) and 112 Hz (`engine_high`) at a 
 
 Music and effects play on their own `Music` and `SFX` buses; the Master bus has a hard limiter.
 Whooshes play on `SFX Left` or `SFX Right`, panned buses that feed `SFX`, so the effects volume
-covers them. There is no power-slide sound yet: power slides (RC-8) aren't built.
+covers them. A power slide (RC-8) squeals on the `skid` loop, from 60% at low speed to full at top speed.

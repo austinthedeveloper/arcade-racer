@@ -14,7 +14,7 @@ Download the latest build from [Releases](https://github.com/austinthedeveloper/
 2. Open Godot, choose **Import**, and pick `project.godot` in this folder.
 3. Press **F5** (or the Play button).
 
-The game opens on the title screen, then mode select, stage select and car select.
+The game opens on the title screen, then mode select, stage select (postcards pinned on a map of the country) and car select.
 
 ## Controls
 
