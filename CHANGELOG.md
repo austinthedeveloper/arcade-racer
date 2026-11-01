@@ -7,6 +7,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-01
+
 ### Added
 
 - The game updates itself: download once, and each start checks GitHub Releases for a newer
