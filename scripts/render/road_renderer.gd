@@ -22,6 +22,7 @@ const TUBE_THICK := 70.0
 const TUBE_EVERY := 4
 
 const BEHIND_SEGMENTS := 1  # segments behind the player whose cars are drawn (over it)
+const THIN_RUN := 1.0  # pixels: far segments thinner than this together are drawn as one band (EQ-7)
 
 var track: Track
 var player: PlayerCar
@@ -79,13 +80,14 @@ func _draw() -> void:
 			_rivals_in[i] = []
 		_rivals_in[i].append(r)
 
-	for n in Cfg.DRAW_DISTANCE:
+	var reach := draw_distance(theme)
+	for n in reach:
 		var seg := segs[(base.index + n) % count]
 		var cz := camera_z - (track.length if seg.index < base.index else 0.0)
 		_project(seg, cam_x - x, cam_x - x - dx, cam_y, cz)
 		x += dx
 		dx += seg.curve
-		var d := float(n) / Cfg.DRAW_DISTANCE
+		var d := float(n) / reach
 		seg.fog = 1.0 - exp(-d * d * fog_density)
 		seg.clip = max_y
 		var in_front := seg.cam_z1 > camera_depth
@@ -96,10 +98,19 @@ func _draw() -> void:
 			drawn.append(seg)
 
 	var at := player_slot(drawn, player_seg)
+	# Far off, a segment is a sliver of a pixel: a run of them with nothing standing on them
+	# is drawn as one band, from the run's far edge to its nearest segment (thin_run). The
+	# next segment is visible whenever one is held back, so it always gets drawn.
+	var run_far: Segment = null  # the farthest segment of the run not drawn yet
 	for i in range(drawn.size() - 1, -1, -1):
 		var seg := drawn[i]
 		if seg.visible:
-			_draw_segment(seg, theme)
+			var far := seg if run_far == null else run_far
+			if i > 0 and drawn[i - 1].visible and thin_run(far, seg) and not _stands_on(seg, i == at):
+				run_far = far
+			else:
+				_draw_segment(seg, theme, far)
+				run_far = null
 		_draw_objects(seg, i >= at)
 		if i == at:
 			_draw_player()
@@ -112,6 +123,27 @@ func _draw() -> void:
 			_draw_rival(drawn[at], r, Color.WHITE.lerp(_fog_color, drawn[at].fog))
 		for i in range(at - 1, behind_from(at) - 1, -1):
 			_draw_cars(drawn[i])
+
+
+## Segments drawn ahead of the camera on a stage: its theme's "draw_distance" (a busy stage
+## can trade horizon for frame time, EQ-7), else Cfg.DRAW_DISTANCE. Display only: fog
+## thickens to match, and nothing in play reads it.
+static func draw_distance(theme: Dictionary) -> int:
+	return int(theme.get("draw_distance", Cfg.DRAW_DISTANCE))
+
+
+## Whether the road from `far`'s far edge to `near`'s near edge is under THIN_RUN pixels
+## tall, so it can be drawn as one band.
+static func thin_run(far: Segment, near: Segment) -> bool:
+	return near.s1.y - far.s2.y < THIN_RUN
+
+
+## Whether anything is drawn on a segment after its road (sprites, pickups, cars, spans, a
+## gate, tunnel walls, the player), so its road can't wait to be drawn with a nearer one.
+func _stands_on(seg: Segment, player_here: bool) -> bool:
+	return player_here or seg.covered or not seg.sprites.is_empty() or not seg.pickups.is_empty() \
+		or not seg.cars.is_empty() or not seg.spans.is_empty() or gate_for(seg.flags) != "" \
+		or _rivals_in.has(seg.index) or seg.index == _ghost_seg
 
 
 ## The nearest slot in `drawn` whose cars are still drawn when the player is at slot `at`:
@@ -145,7 +177,9 @@ func _project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float) -> 
 	seg.sw2 = seg.scale2 * Cfg.ROAD_WIDTH * Cfg.PROJ
 
 
-func _draw_segment(seg: Segment, theme: Dictionary) -> void:
+## A segment's road and ground in its colors, from its near edge to `far`'s far edge (itself,
+## or the far end of a thin run of segments behind it).
+func _draw_segment(seg: Segment, theme: Dictionary, far: Segment) -> void:
 	var b := seg.band
 	var fog := seg.fog
 	var lights: Array = theme.get("tunnel_lights", []) if seg.covered else []
@@ -154,17 +188,22 @@ func _draw_segment(seg: Segment, theme: Dictionary) -> void:
 	var x1 := seg.s1.x
 	var y1 := seg.s1.y
 	var w1 := seg.sw1
-	var x2 := seg.s2.x
-	var y2 := seg.s2.y
-	var w2 := seg.sw2
+	var x2 := far.s2.x
+	var y2 := far.s2.y
+	var w2 := far.sw2
 	var sw := float(Cfg.SCREEN_W)
 	_pts.clear()
 	_cols.clear()
 	_idx.clear()
 
-	# Ground on each side of the road center
-	_quad(Vector2(0, y2), Vector2(x2, y2), Vector2(x1, y1), Vector2(0, y1), _ground(theme, seg.ground_left, b, fog))
-	_quad(Vector2(x2, y2), Vector2(sw, y2), Vector2(sw, y1), Vector2(x1, y1), _ground(theme, seg.ground_right, b, fog))
+	# Ground on each side of the road center (one band when both sides match: the road
+	# covers the middle)
+	var left := _ground(theme, seg.ground_left, b, fog)
+	if seg.ground_left == seg.ground_right:
+		_quad(Vector2(0, y2), Vector2(sw, y2), Vector2(sw, y1), Vector2(0, y1), left)
+	else:
+		_quad(Vector2(0, y2), Vector2(x2, y2), Vector2(x1, y1), Vector2(0, y1), left)
+		_quad(Vector2(x2, y2), Vector2(sw, y2), Vector2(sw, y1), Vector2(x1, y1), _ground(theme, seg.ground_right, b, fog))
 
 	# Rumble strips
 	var r1 := w1 / maxf(6.0, 2.0 * Cfg.LANES)
