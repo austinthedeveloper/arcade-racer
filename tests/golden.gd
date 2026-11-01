@@ -22,10 +22,11 @@ static func stage_of(scenario: String) -> int:
 	return 0
 
 
-## Frame hashes for a scenario: [frames..., final snapshot string].
-static func run(scenario: String, frames: int = FRAMES) -> PackedStringArray:
+## Frame hashes for a scenario: [frames..., final snapshot string]. `mirror` runs it on the
+## stage mirrored (WS-6) and snapshots it mirrored back, so it gives the same trace.
+static func run(scenario: String, frames: int = FRAMES, mirror := false) -> PackedStringArray:
 	var busy := scenario.ends_with("_traffic")  # traffic and rivals; the clear road has neither
-	var r := TestSuite.new_race(true, busy, stage_of(scenario), busy)
+	var r := TestSuite.new_race(true, busy, stage_of(scenario), busy, mirror)
 	var out := PackedStringArray()
 	var banner := ""
 	for f in frames:
@@ -42,9 +43,11 @@ static func run(scenario: String, frames: int = FRAMES) -> PackedStringArray:
 
 
 ## The state that matters for play, rounded so tiny float differences between
-## machines don't count.
+## machines don't count. Every x across the road is taken times Track.side: a mirrored
+## stage's snapshot is the one of the stage as built that it mirrors.
 static func snapshot(r: Node) -> String:
 	var p: PlayerCar = r.player
+	var side: float = r.track.side()
 	var cars := 0.0
 	var lanes := 0.0
 	var flung := 0
@@ -61,15 +64,23 @@ static func snapshot(r: Node) -> String:
 		rival_crashes += int(rv.crash_time > 0.0)
 	# Rival columns only with rivals, so a race without them keeps its trace
 	var rival_cols := "" if r.rivals.cars.is_empty() else " rivals=%.1f rx=%.3f rcrash=%d rdone=%d" % [
-		rival_z, rival_x, rival_crashes, r.rivals.finished_count()]
+		rival_z, sided(rival_x, side), rival_crashes, r.rivals.finished_count()]
 	var taken := ""
 	for pu: PowerUps.Pickup in r.power_ups.pickups:
 		taken += str(pu.kind) if pu.taken else "-"
 	return ("state=%d t=%.2f left=%.2f cp=%d z=%.1f x=%.3f v=%.1f air=%.1f crash=%.2f nitro=%d/%.2f cars=%.0f"
 		+ " lanes=%.2f flung=%d ram=%.2f ghost=%.2f taken=%s%s") % [
-		r.state, r.race_time, r.time_left, r.next_checkpoint, p.distance, p.x, p.speed,
-		p.air_height, p.crash_time, p.nitro_charges, p.nitro_time, cars, lanes, flung, p.ram_time,
+		r.state, r.race_time, r.time_left, r.next_checkpoint, p.distance, sided(p.x, side), p.speed,
+		p.air_height, p.crash_time, p.nitro_charges, p.nitro_time, cars, sided(lanes, side), flung, p.ram_time,
 		p.ghost_time, taken, rival_cols]
+
+
+## `x` across a stage mirrored or not (`side`, Track.side) as it is across the stage as built.
+## A mirrored zero is a plain 0 (a car starting dead center is +0 both ways, not -0).
+static func sided(x: float, side: float) -> float:
+	if side > 0.0:
+		return x
+	return 0.0 if x == 0.0 else -x
 
 
 func _initialize() -> void:

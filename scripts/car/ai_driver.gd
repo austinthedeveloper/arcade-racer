@@ -34,6 +34,7 @@ const SWERVE_BIAS := 0.5
 
 var rng := RandomNumberGenerator.new()
 var lane_bias := 0.0  # this driver's own spot across the road, added to the racing line
+var side := 1.0  # -1 on a mirrored stage (Track.side): its spot and swerves go the other way
 var style: RivalProfile.Style = RivalProfile.Style.CLEAN
 var target := 0.0  # where across the road it is heading, after avoiding traffic
 var _gap := LOOKAHEAD  # room in segments ahead in `target`'s lane, as last looked
@@ -42,9 +43,10 @@ var _blocking := 0.0  # aggressive: seconds spent blocking the car behind...
 var _resting := 0.0  # ...and seconds left letting it by afterwards
 
 
-func _init(seed_value: int = 0, bias: float = 0.0, s: RivalProfile.Style = RivalProfile.Style.CLEAN) -> void:
+func _init(seed_value: int = 0, bias: float = 0.0, s: RivalProfile.Style = RivalProfile.Style.CLEAN, mirror_side := 1.0) -> void:
 	rng.seed = seed_value
-	lane_bias = bias
+	side = mirror_side
+	lane_bias = bias * side
 	style = s
 
 
@@ -54,7 +56,7 @@ func drive(me: PlayerCar, track: Track, racers: Array, dt: float) -> DriveInput:
 	var z := me.position + Cfg.PLAYER_Z
 	var edge: float = Traffic.LANE_OFFSETS[-1]
 	if style == RivalProfile.Style.ERRATIC and rng.randf() < SWERVE_RATE * dt:
-		lane_bias = rng.randf_range(-SWERVE_BIAS, SWERVE_BIAS)
+		lane_bias = rng.randf_range(-SWERVE_BIAS, SWERVE_BIAS) * side
 	var want := clampf(racing_line(track, z) + lane_bias, -edge, edge)
 	if style == RivalProfile.Style.AGGRESSIVE:
 		var chaser := blocking_target(me, track, racers) if _resting <= 0.0 else null
@@ -145,7 +147,7 @@ static func straight_ahead(track: Track, z: float) -> bool:
 static func open_lane(track: Track, z: float, want: float, me: PlayerCar, racers: Array,
 		lookahead: int = LOOKAHEAD) -> Dictionary:
 	var lanes: Array = [want]
-	var by_distance: Array = Traffic.LANE_OFFSETS.duplicate()
+	var by_distance: Array = Traffic.lanes(track)
 	by_distance.sort_custom(func(a: float, b: float) -> bool: return absf(a - want) < absf(b - want))
 	lanes.append_array(by_distance)
 	var best := {"x": want, "gap": -1}

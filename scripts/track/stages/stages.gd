@@ -12,7 +12,15 @@ static func count() -> int:
 	return NAMES.size()
 
 
-static func build(index: int) -> Track:
+## Stage `index` as built, or flipped left for right with `mirror` (WS-6, Track.mirror).
+static func build(index: int, mirror := false) -> Track:
+	var t := _build(index)
+	if mirror:
+		t.mirror()
+	return t
+
+
+static func _build(index: int) -> Track:
 	match index:
 		1:
 			return Redrock.build()

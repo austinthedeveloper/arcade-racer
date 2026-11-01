@@ -51,13 +51,14 @@ static func layout(track: Track, seed_value: int) -> Array[Pickup]:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var out: Array[Pickup] = []
+	var lanes := Traffic.lanes(track)
 	for f: float in SPOTS:
 		var i := track.free_spot(int(track.segments.size() * f), 6)
 		if i < 0:
 			continue
 		var p := Pickup.new()
 		p.segment = i
-		p.offset = Traffic.LANE_OFFSETS[rng.randi() % Traffic.LANE_OFFSETS.size()]
+		p.offset = lanes[rng.randi() % lanes.size()]
 		p.kind = pick(ROAD_WEIGHTS, rng.randf())
 		out.append(p)
 	return out

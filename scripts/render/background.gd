@@ -24,6 +24,7 @@ var theme: Dictionary = {}
 var textures: Dictionary = {}  # layer name -> Texture2D, for the layers this stage has
 var offset := 0.0  # scroll, in turns of the far strip
 var hill := 0.0  # pixels the horizon moved down (hill_shift)
+var mirrored := false  # a mirrored stage (WS-6): every strip drawn flipped
 
 
 func set_theme(new_theme: Dictionary) -> void:
@@ -53,8 +54,15 @@ func _draw() -> void:
 		var tw := float(tex.get_width())
 		var y0 := layer_bottom(layer, hill) - tex.get_height()
 		var x0 := layer_x(offset, layer, tw)
-		draw_texture(tex, Vector2(x0, y0))
-		draw_texture(tex, Vector2(x0 + tw, y0))
+		if mirrored:
+			# Flipped in place (a negative width), each copy where it was: a strip that tiles
+			# seamlessly still does
+			var flipped := Vector2(-tw, tex.get_height())
+			draw_texture_rect(tex, Rect2(Vector2(x0, y0), flipped), false)
+			draw_texture_rect(tex, Rect2(Vector2(x0 + tw, y0), flipped), false)
+		else:
+			draw_texture(tex, Vector2(x0, y0))
+			draw_texture(tex, Vector2(x0 + tw, y0))
 	draw_rect(Rect2(0, ground_y, w, Cfg.SCREEN_H - ground_y), theme["below_horizon"])
 
 

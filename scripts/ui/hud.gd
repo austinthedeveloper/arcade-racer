@@ -427,12 +427,21 @@ static func clock_text(seconds: float) -> String:
 	return "%d:%05.2f" % [int(seconds) / 60, fmod(seconds, 60.0)]
 
 
-## The finish's notice of cars it opened (Unlocks.newly_open).
+## The finish's notice of cars it opened (Unlocks.newly_open) and a stage mirror it won
+## (Unlocks.mirror_id).
 static func unlock_line(ids: Array[String]) -> String:
 	var names: Array[String] = []
+	var parts: Array[String] = []
 	for id in ids:
+		if id.begins_with("mirror_"):
+			continue
 		names.append(String(Cars.find(id)["name"]).to_upper())
-	return ("NEW CAR: " if ids.size() == 1 else "NEW CARS: ") + ", ".join(names)
+	if not names.is_empty():
+		parts.append(("NEW CAR: " if names.size() == 1 else "NEW CARS: ") + ", ".join(names))
+	for i in Stages.count():
+		if ids.has(Unlocks.mirror_id(i)):
+			parts.append("MIRROR MODE: " + Stages.stage_name(i).to_upper())
+	return "   ".join(parts)
 
 
 ## Where a racer `distance` along the stage sits on the progress bar.

@@ -328,19 +328,31 @@ static func gate_label(flags: int) -> String:
 
 
 ## Screen rect of a span whose opening is centered on the road at (road_x, base_y), the
-## road `road_w` half-width on screen there.
-static func span_rect(def: Dictionary, road_x: float, base_y: float, road_w: float) -> Rect2:
+## road `road_w` half-width on screen there. `mirrored` (a mirrored stage, WS-6): for the art
+## drawn flipped, its opening mirrored too.
+static func span_rect(def: Dictionary, road_x: float, base_y: float, road_w: float, mirrored := false) -> Rect2:
 	var w: float = def["world_w"] / Cfg.ROAD_WIDTH * road_w
 	var h: float = w * def["world_h"] / def["world_w"]
 	var o: Vector2 = def["opening"]
-	return Rect2(road_x - w * (o.x + o.y) / 2.0, base_y - h, w, h)
+	var center := (o.x + o.y) / 2.0
+	if mirrored:
+		center = 1.0 - center
+	return Rect2(road_x - w * center, base_y - h, w, h)
+
+
+## Where a span's gate text goes (its "banner", fractions of the sprite) in its screen
+## `rect`; on a mirrored stage the art is flipped, the text not, so the box moves over.
+static func banner_box(rect: Rect2, banner: Rect2, mirrored: bool) -> Rect2:
+	var x := 1.0 - banner.end.x if mirrored else banner.position.x
+	return Rect2(rect.position + Vector2(x, banner.position.y) * rect.size, banner.size * rect.size)
 
 
 func _draw_span(seg: Segment, id: String, label: String, tint: Color) -> void:
 	var def: Dictionary = SpriteLibrary.spans.get(id, {})
 	if def.is_empty():
 		return
-	var rect := span_rect(def, seg.s1.x, seg.s1.y, seg.sw1)
+	var mirrored := track.mirrored
+	var rect := span_rect(def, seg.s1.x, seg.s1.y, seg.sw1, mirrored)
 	if rect.size.y < 1.0 or rect.position.y >= seg.clip or rect.end.x < 0.0 or rect.position.x > Cfg.SCREEN_W:
 		return
 	var fill: Color = def["fill"]
@@ -351,11 +363,12 @@ func _draw_span(seg: Segment, id: String, label: String, tint: Color) -> void:
 		draw_rect(Rect2(rect.end.x - 1.0, top, Cfg.SCREEN_W - rect.end.x + 9.0, rect.end.y - top), col)
 		if def["ceiling"]:
 			draw_rect(Rect2(rect.position.x, top, rect.size.x, rect.position.y - top + 1.0), col)
-	draw_texture_rect(def["tex"], rect, false, tint)
+	# Mirrored, a negative width flips the art within the same rect (as sprite_rect)
+	draw_texture_rect(def["tex"], Rect2(rect.position, Vector2(-rect.size.x, rect.size.y)) if mirrored else rect, false, tint)
 	var banner: Rect2 = def["banner"]
 	if label == "" or banner.size.x <= 0.0:
 		return
-	var box := Rect2(rect.position + banner.position * rect.size, banner.size * rect.size)
+	var box := banner_box(rect, banner, mirrored)
 	var font_size := mini(int(box.size.y * 0.7), 96)
 	if font_size >= 6:
 		draw_string(_font, Vector2(box.position.x, box.position.y + box.size.y * 0.78), label,
@@ -459,7 +472,7 @@ static func covered_colors(theme: Dictionary, depth: float) -> Dictionary:
 ## thin line along the foot of the wall. Drawn with the segment, so nearer frames cover them.
 func _tunnel_lights(seg: Segment, lights: Array) -> void:
 	for k in 2:
-		var side := -1.0 if k == 0 else 1.0
+		var side := (-1.0 if k == 0 else 1.0) * track.side()  # each color on its own wall, mirrored too
 		var col: Color = _fogged(lights[k], seg.fog)
 		var glow := Color(col, 0.35)
 		_quad_pts(wall_strip(seg, side * TUBE_OFFSET, TUBE_HEIGHT - TUBE_THICK, TUBE_THICK * 3.0), glow)

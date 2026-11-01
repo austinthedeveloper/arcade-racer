@@ -28,6 +28,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 - An announcer calls the countdown, GO, checkpoints, near misses, big air, the final stretch
   and your finish, with the music dipping under it (PR-4).
 - Subtitles for the announcer, on by default (Options > Accessibility) (AC-5).
+- Mirror mode: win a stage and you can race it flipped left for right, from stage select in
+  Single Race, Time Attack and Free Drive (Up switches it). Saves that already won stages
+  have their mirrors open (WS-6).
 
 ### Changed
 
