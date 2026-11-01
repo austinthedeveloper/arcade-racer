@@ -72,3 +72,20 @@ func test_every_build_has_the_game_icon() -> void:
 	check(cfg.get_value(section(cfg, "Web") + ".options", "html/export_icon") == true, "Web favicon")
 	for f in ["res://icon.png", "res://icon.ico", "res://icon.icns"]:
 		check(FileAccess.file_exists(f), f + " exists")
+
+
+## The release workflow takes its notes from CHANGELOG.md (tools/changelog.py) and refuses a
+## tag without them, so the version being released must already have its section.
+func test_changelog_describes_this_version() -> void:
+	var text := FileAccess.get_file_as_string("res://CHANGELOG.md")
+	check(text != "", "CHANGELOG.md is readable")
+	var headings: Array[String] = []
+	for line in text.split("\n"):
+		if line.begins_with("## ["):
+			headings.append(line.get_slice("[", 1).get_slice("]", 0))
+	check(not headings.is_empty() and headings[0] == "Unreleased", "Unreleased is the first section")
+	var version: String = ProjectSettings.get_setting("application/config/version", "")
+	check(version in headings, "CHANGELOG.md has a section for config/version " + version)
+	for i in range(1, headings.size()):
+		var line := "## [%s] - " % headings[i]
+		check(text.contains(line), headings[i] + " has a date")

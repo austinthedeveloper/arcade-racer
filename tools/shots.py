@@ -29,8 +29,11 @@ COLOR_W, COLOR_H = 32, 18
 # color: the renders are repeatable. The slack is for another GPU or driver's rounding;
 # a deliberate tint of the menu backdrop and the road failed five of six shots at 2-21
 # bits / 3.2-15 color (the hash alone missed the road: 2 bits); the dark Neon Strip road
-# changed least, 1.7, and passed.
-MAX_HASH_BITS = 12  # of 256
+# changed least, 1.7, and passed. CI renders on Linux (xvfb) against these macOS references:
+# unchanged menus come out at 8-11 bits (color 0.1-0.4), from font rasterizing alone, and
+# car select with its radio line at 13. The color check caught every tinted shot above on its
+# own, so the hash allows 16 bits of that platform noise.
+MAX_HASH_BITS = 16  # of 256
 MAX_COLOR_DIFF = 2.0  # mean, 0..255
 
 
