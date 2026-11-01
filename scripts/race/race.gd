@@ -110,6 +110,7 @@ var _frame := 0  # physics ticks since this race (re)started
 var _final_stretch := false  # FINAL STRETCH has come up this race
 var _led_at := -INF  # race time of the last 1ST PLACE callout
 var _callout_shot := Callouts.Kind.NONE  # --callout=ID: that starburst held up after GO (screenshots)
+var _time_left_shot := NAN  # --time-left=S: start with this much on the clock (low-time screenshots)
 ## The dev flags are for the race the game starts with; later races come from the menus.
 static var _dev_args_read := false
 
@@ -187,6 +188,8 @@ func start_race() -> void:
 	countdown = 0.0 if demo else 3.0
 	clock = stage_clock(track.theme, track.checkpoints.size())
 	time_left = Settings.race_time(clock[0]) + (tour_state.carried if tour else 0.0)
+	if not is_nan(_time_left_shot):
+		time_left = _time_left_shot
 	after = After.RETRY
 	checkpoint_bonus = Settings.race_time(clock[1]) if clock.size() > 1 else 0.0
 	race_time = 0.0
@@ -642,10 +645,10 @@ func timed() -> bool:
 	return not time_attack and not free_drive
 
 
-## Whether this race is the player's own, to save from: not autodriven, not started partway,
-## not staged for a screenshot.
+## Whether this race is the player's own, to save from: not autodriven, not started partway
+## or with a made-up clock, not staged for a screenshot.
 func _saves() -> bool:
-	return not _autodrive and not demo and _start_segment == 0 and not _staged
+	return not _autodrive and not demo and _start_segment == 0 and not _staged and is_nan(_time_left_shot)
 
 
 func _show_results() -> void:
@@ -725,6 +728,8 @@ func _parse_dev_args() -> void:
 				_screenshot_frames.append(int(f))
 		elif arg.begins_with("--callout="):
 			_callout_shot = Callouts.IDS.get(arg.get_slice("=", 1), Callouts.Kind.NONE)
+		elif arg.begins_with("--time-left="):
+			_time_left_shot = float(arg.get_slice("=", 1))
 		elif arg.begins_with("--shot-dir="):
 			_screenshot_dir = arg.get_slice("=", 1)
 

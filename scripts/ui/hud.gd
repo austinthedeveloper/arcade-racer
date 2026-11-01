@@ -11,6 +11,36 @@ const GOLD := Color("#ffd23a")
 const DIAL_START := PI * 0.75  # the speedometer's zero, bottom left...
 const DIAL_SWEEP := PI * 1.5  # ...round to top speed at the bottom right
 const REDLINE := 0.9  # engine revs (RaceAudio.engine_rpm) where the tach turns red
+## The HUD colors that carry meaning. Each state also differs in shape (the low clock beats
+## and shows a warning sign, the leader's panel has a crown, spent flames are hollow, the
+## ghost's dot is a ring, the slipstream boost says BOOST); MUST_DIFFER pairs also differ
+## in brightness for the common color deficiencies (ColorVision, AC-4).
+const PALETTE := {
+	"panel": Color("#0a0818"),
+	"lead_panel": Color("#ffd23a"),
+	"lead_text": Color("#2a1400"),
+	"clock": Color.WHITE,
+	"clock_low": Color("#ff4040"),
+	"you": Color.WHITE,
+	"rival": Color("#ff4f8b"),
+	"ghost": Color("#9ad8ff"),
+	"nitro_lit": Color("#ff7a1a"),
+	"nitro_spent": Color("#5a5a5a"),
+	"ahead": Color("#5dff8a"),
+	"behind": Color("#ff6a6a"),
+	"slip_meter": Color("#2a7ad8"),
+	"slip_boost": Color("#fff2a8"),
+	"tach": Color("#5dff8a"),
+	"tach_red": Color("#ff3a3a"),
+}
+const MUST_DIFFER := [
+	["clock", "clock_low"], ["panel", "lead_panel"], ["lead_panel", "lead_text"], ["you", "rival"],
+	["rival", "ghost"], ["nitro_lit", "nitro_spent"], ["ahead", "behind"], ["slip_meter", "slip_boost"],
+	["tach", "tach_red"],
+]
+## Simulated luminance contrast every MUST_DIFFER pair keeps (1 is none; text on a page
+## asks 4.5, a pair of states on one gauge much less).
+const MIN_STATE_CONTRAST := 1.5
 ## Each starburst's look (Callouts.Kind): the rim, the fill, the lighter core, the text, its
 ## size and how many spikes.
 const BURSTS := {
@@ -190,24 +220,56 @@ func _draw_timer(r: Rect2) -> void:
 		_text(r.position + Vector2(6, 45), "BEST " + (clock_text(best.time) if best != null else "--:--.--"), 9, Color(1, 1, 1, 0.8))
 		if not is_nan(race.split) and race.banner_time <= 0.0 and race.state == race.State.RACING:
 			var ahead: bool = race.split < 0.0
-			_text(r.position + Vector2(6, 55), race.split_text(race.split), 9, Color("#5dff8a") if ahead else Color("#ff6a6a"))
+			_text(r.position + Vector2(6, 55), race.split_text(race.split), 9, PALETTE["ahead"] if ahead else PALETTE["behind"])
 	else:
 		var size := roundi(36.0 * timer_pulse(t))
 		_text_centered(Vector2(r.get_center().x, r.end.y - 8), str(ceili(t)), size, clock_color(t))
+		if t < Cfg.LOW_TIME and t > 0.0:  # a warning sign by TIME, not just the color
+			var sign := warning_sign(Vector2(r.end.x - 13, r.position.y + 15), 14.0)
+			draw_colored_polygon(warning_sign(Vector2(r.end.x - 13, r.position.y + 16), 17.0), Color(0, 0, 0, 0.8))
+			draw_colored_polygon(sign, PALETTE["clock_low"])
+			draw_rect(Rect2(r.end.x - 14, r.position.y + 12, 2, 4), Color.BLACK)
+			draw_rect(Rect2(r.end.x - 14, r.position.y + 17, 2, 2), Color.BLACK)
 
 
 ## The place, under the time: a chunky numeral with a hard shadow, its suffix and the field.
+## In the lead the panel turns gold, the figures dark, with a crown: not the color alone.
 func _draw_position(r: Rect2, place: int, field: int) -> void:
-	_panel(r)
-	_text(r.position + Vector2(6, 13), "POS", 10, GOLD)
+	var lead := place == 1
+	if lead:
+		draw_rect(r.grow(1), Color(0, 0, 0, 0.7), false, 1.0)  # (apart from sand and sunsets)
+		draw_rect(r, PALETTE["lead_panel"])
+		draw_rect(Rect2(r.position, Vector2(r.size.x, 2)), Color.WHITE)
+	else:
+		_panel(r)
+	var ink: Color = PALETTE["lead_text"] if lead else Color.WHITE
+	_text(r.position + Vector2(6, 13), "POS", 10, ink if lead else GOLD)
 	var num := str(place)
-	var col := GOLD if place == 1 else Color.WHITE
 	var at := Vector2(r.position.x + 8, r.end.y - 5)
-	_text(at + Vector2(2, 2), num, 38, Color(0, 0, 0, 0.8))
-	_text(at, num, 38, col)
+	if not lead:
+		_text(at + Vector2(2, 2), num, 38, Color(0, 0, 0, 0.8))
+	_text(at, num, 38, ink)
 	var nx := at.x + UiText.width(num, 38) + 3
-	_text(Vector2(nx, at.y - 16), Rivals.ordinal(place).trim_prefix(num), 12, col)
-	_text(Vector2(nx, at.y), "/%d" % field, 12, Color(1, 1, 1, 0.8))
+	_text(Vector2(nx, at.y - 16), Rivals.ordinal(place).trim_prefix(num), 12, ink)
+	_text(Vector2(nx, at.y), "/%d" % field, 12, ink if lead else Color(1, 1, 1, 0.8))
+	if lead:
+		draw_colored_polygon(crown(Vector2(r.end.x - 16, r.position.y + 17), 18.0, 11.0), PALETTE["lead_text"])
+
+
+## A warning triangle, point up, `size` across, its middle at `center`.
+static func warning_sign(center: Vector2, size: float) -> PackedVector2Array:
+	var h := size * 0.87
+	return PackedVector2Array([center + Vector2(0, -h / 2.0), center + Vector2(size / 2.0, h / 2.0), center + Vector2(-size / 2.0, h / 2.0)])
+
+
+## A three-pointed crown standing on `base` (the middle of its bottom edge), `w` by `h`.
+static func crown(base: Vector2, w: float, h: float) -> PackedVector2Array:
+	var l := base.x - w / 2.0
+	return PackedVector2Array([
+		Vector2(l, base.y), Vector2(l, base.y - h), Vector2(l + w * 0.25, base.y - h * 0.45),
+		Vector2(base.x, base.y - h), Vector2(l + w * 0.75, base.y - h * 0.45), Vector2(l + w, base.y - h),
+		Vector2(l + w, base.y),
+	])
 
 
 ## The route, top center: the run so far, the checkpoints, a checkered finish, a dot for
@@ -228,29 +290,33 @@ func _draw_progress(r: Rect2, p: PlayerCar) -> void:
 	for rc: RivalCar in race.rivals.cars:
 		var rx := progress_x(bar, rc.distance, race.finish_distance)
 		draw_circle(Vector2(rx, mid), 3.0, Color(0, 0, 0, 0.8))
-		draw_circle(Vector2(rx, mid), 2.0, Color("#ff4f8b"))
-	if race.ghost != null:
+		draw_circle(Vector2(rx, mid), 2.0, PALETTE["rival"])
+	if race.ghost != null:  # a ring, not a dot
 		var gx := progress_x(bar, race.ghost_now.x, race.finish_distance)
-		draw_circle(Vector2(gx, mid), 3.0, Color(0, 0, 0, 0.8))
-		draw_circle(Vector2(gx, mid), 2.0, Color("#9ad8ff"))
+		draw_circle(Vector2(gx, mid), 4.0, Color(0, 0, 0, 0.8))
+		draw_arc(Vector2(gx, mid), 2.5, 0, TAU, 12, PALETTE["ghost"], 1.5)
 	var you := bar.position.x + bar.size.x * minf(progress, 1.0)
-	draw_rect(Rect2(you - 1, bar.position.y - 1, 2, bar.size.y + 2), Color.WHITE)
-	draw_colored_polygon(PackedVector2Array([Vector2(you, bar.end.y + 1), Vector2(you + 4, bar.end.y + 6), Vector2(you - 4, bar.end.y + 6)]), Color.WHITE)
+	draw_rect(Rect2(you - 1, bar.position.y - 1, 2, bar.size.y + 2), PALETTE["you"])
+	draw_colored_polygon(PackedVector2Array([Vector2(you, bar.end.y + 1), Vector2(you + 4, bar.end.y + 6), Vector2(you - 4, bar.end.y + 6)]), PALETTE["you"])
 
 
-## Nitro, top right: a flame for each charge, lit or spent, and the burn running down.
+## Nitro, top right: a flame for each charge, lit (filled) or spent (hollow), and the burn
+## running down.
 func _draw_nitro(r: Rect2, p: PlayerCar) -> void:
 	_text(r.position + Vector2(4, 12), "NITRO", 10, GOLD)
 	var slots := maxi(p.nitro_max, p.nitro_charges)
 	var gap := minf(18.0, (r.size.x - 12.0) / slots)
 	for i in slots:
 		var base := Vector2(r.position.x + 10 + i * gap, r.end.y - 4)
-		draw_colored_polygon(flame(base + Vector2(0, 1), 14, 23), Color(0, 0, 0, 0.7))
 		if i < p.nitro_charges:
-			draw_colored_polygon(flame(base, 12, 21), Color("#ff7a1a"))
+			draw_colored_polygon(flame(base + Vector2(0, 1), 14, 23), Color(0, 0, 0, 0.7))
+			draw_colored_polygon(flame(base, 12, 21), PALETTE["nitro_lit"])
 			draw_colored_polygon(flame(base, 6, 12), Color("#ffe36a"))
 		else:
-			draw_colored_polygon(flame(base, 12, 21), Color(1, 1, 1, 0.18))
+			var outline := flame(base, 11, 20)
+			outline.append(outline[0])
+			draw_polyline(outline, Color(0, 0, 0, 0.6), 3.0)
+			draw_polyline(outline, PALETTE["nitro_spent"], 1.0)
 	if p.nitro_time > 0.0:
 		draw_rect(Rect2(r.position.x + 4, r.end.y - 1, (r.size.x - 8) * p.nitro_time / p.nitro_duration, 2), Color("#7ad8ff"))
 
@@ -269,7 +335,7 @@ func _draw_speedo(r: Rect2, p: PlayerCar) -> void:
 	draw_arc(c, tach, DIAL_START, DIAL_START + DIAL_SWEEP, 32, Color(1, 1, 1, 0.12), 4)
 	var revs := clampf(rpm / 1.2, 0.0, 1.0)
 	if revs > 0.0:
-		draw_arc(c, tach, DIAL_START, dial_angle(revs), 32, Color("#ff3a3a") if rpm > REDLINE else Color("#5dff8a"), 4)
+		draw_arc(c, tach, DIAL_START, dial_angle(revs), 32, PALETTE["tach_red"] if rpm > REDLINE else PALETTE["tach"], 4)
 	for i in 13:
 		var dir := Vector2.from_angle(dial_angle(i / 12.0))
 		var major := i % 3 == 0
@@ -287,17 +353,25 @@ func _draw_speedo(r: Rect2, p: PlayerCar) -> void:
 	_text_centered(c + Vector2(0, 43), shown[1], 7, GOLD)
 
 
-## Slipstream, over the speedometer: the meter filling, then the boost running down; dim
-## while there's no one to draft.
+## Slipstream, over the speedometer: the meter filling, then the boost (BOOST, a bright bar
+## with chevrons) running down; dim while there's no one to draft.
 func _draw_slipstream(r: Rect2, p: PlayerCar) -> void:
 	var on := p.draft > 0.0 or p.draft_time > 0.0
-	_text(r.position + Vector2(0, 8), "SLIPSTREAM", 8, Color("#7ad8ff", 1.0 if on else 0.4))
+	var boost := p.draft_time > 0.0
+	_text(r.position + Vector2(0, 8), "BOOST" if boost else "SLIPSTREAM", 8,
+		PALETTE["slip_boost"] if boost else Color("#7ad8ff", 1.0 if on else 0.4))
 	var bar := Rect2(r.position.x + 54, r.position.y + 3, r.size.x - 56, 5)
 	draw_rect(bar.grow(1), Color(0, 0, 0, 0.55))
-	if on:
-		var fill := p.draft_time / Draft.BOOST_TIME if p.draft_time > 0.0 else p.draft
-		var col := Color("#ffe36a") if p.draft_time > 0.0 else Color("#7ad8ff")
-		draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(fill, 0.0, 1.0), bar.size.y)), col)
+	if not on:
+		return
+	var fill := clampf(p.draft_time / Draft.BOOST_TIME if boost else p.draft, 0.0, 1.0)
+	var filled := Rect2(bar.position, Vector2(bar.size.x * fill, bar.size.y))
+	draw_rect(filled, PALETTE["slip_boost"] if boost else PALETTE["slip_meter"])
+	if boost:
+		var x := filled.position.x + 2
+		while x + 3 <= filled.end.x:
+			draw_polyline(PackedVector2Array([Vector2(x, bar.position.y), Vector2(x + 2, bar.get_center().y), Vector2(x, bar.end.y)]), Color(0, 0, 0, 0.5), 1.0)
+			x += 5
 
 
 ## A callout (Callouts.current) centered on `center`: a plain message as gold text, or a
@@ -389,9 +463,9 @@ func _score_tally(top: Vector2) -> float:
 ## the blink: at 0 the clock turns steady red instead.
 static func clock_color(t: float) -> Color:
 	if t >= Cfg.LOW_TIME:
-		return Color.WHITE
-	var red := Color("#ff4040")
-	return red if int(t * 4.0) % 2 == 0 else red.lerp(Color.WHITE, Settings.flash_amount(1.0))
+		return PALETTE["clock"]
+	var red: Color = PALETTE["clock_low"]
+	return red if int(t * 4.0) % 2 == 0 else red.lerp(PALETTE["clock"], Settings.flash_amount(1.0))
 
 
 ## The ram plate's impact flash (0.3 s when it hits) as an alpha, after the flash option.
