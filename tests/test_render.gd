@@ -119,25 +119,95 @@ func test_player_cars_are_solid() -> void:
 		check(frac > OPEN_FRAME.get(id, 0.98), "%s rear is solid (%.0f%%)" % [id, frac * 100.0])
 
 
+## The player's straight-ahead frame of a car strip.
+static func _straight_frame(id: String) -> Image:
+	var strip: Dictionary = CarSprites.strips(id)[0]
+	var cell: Vector2i = Vector2i(strip["cell"])
+	return strip["tex"].get_image().get_region(Rect2i(Vector2i(cell.x * (CarSprites.PLAYER_FRAMES / 2), 0), cell))
+
+
+## Opaque pixels of `img` close to the sheets' magenta key color.
+static func _key_magenta(img: Image) -> int:
+	var key := Color8(248, 5, 250)
+	var n := 0
+	for y in img.get_height():
+		for x in img.get_width():
+			var c := img.get_pixel(x, y)
+			var d := absf(c.r - key.r) + absf(c.g - key.g) + absf(c.b - key.b)
+			n += int(c.a > 0.5 and d < 60.0 / 255.0)
+	return n
+
+
+## Outline pixels of `img` (opaque, next to a clear pixel or the edge) that lean magenta:
+## red and blue both well above green, the key blended into the vehicle's edge.
+static func _pink_outline(img: Image) -> int:
+	var w := img.get_width()
+	var h := img.get_height()
+	var n := 0
+	for y in h:
+		for x in w:
+			var c := img.get_pixel(x, y)
+			if c.a <= 0.5 or minf(c.r, c.b) - c.g < 50.0 / 255.0:
+				continue
+			for o: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var p := Vector2i(x, y) + o
+				if p.x < 0 or p.y < 0 or p.x >= w or p.y >= h or img.get_pixelv(p).a <= 0.5:
+					n += 1
+					break
+	return n
+
+
 func test_player_cars_show_no_key_magenta() -> void:
 	# Regression: small background gaps (under the Mesa's axle and light bar) were kept as
 	# paint, so the sheet's magenta showed under the truck. The Zenith's paint really is purple.
-	var key := Color8(248, 5, 250)
 	for i in Cars.count():
 		var id: String = Cars.get_car(i)["strip"]
 		if id == "zenith":
 			continue
-		var strip: Dictionary = CarSprites.strips(id)[0]
-		var cell: Vector2 = strip["cell"]
-		var img: Image = strip["tex"].get_image()
-		var x0 := int(cell.x) * (CarSprites.PLAYER_FRAMES / 2)
-		var magenta := 0
-		for y in int(cell.y):
-			for x in range(x0, x0 + int(cell.x)):
-				var c := img.get_pixel(x, y)
-				var d := absf(c.r - key.r) + absf(c.g - key.g) + absf(c.b - key.b)
-				magenta += int(c.a > 0.5 and d < 60.0 / 255.0)
+		var magenta := _key_magenta(_straight_frame(id))
 		check(magenta <= 20, "%s straight frame has %d key-magenta pixels" % [id, magenta])
+
+
+func test_traffic_shows_no_key_magenta() -> void:
+	# docs/09 A1: magenta painted into the glass of seven vehicles, recolored by the tool. The
+	# trolley's neon trim really is that pink.
+	const NEON := {"trolley": 40}
+	CarSprites.load_all()
+	for id: String in CarSprites.traffic:
+		var magenta := _key_magenta(CarSprites.traffic[id]["tex"].get_image())
+		check(magenta <= NEON.get(id, 20), "%s has %d key-magenta pixels" % [id, magenta])
+
+
+func test_recolored_glass_is_not_purple() -> void:
+	# docs/09 A1: the generator reflected the magenta background into these vehicles' window
+	# glass; make_car_sprites.GLASS turns it blue. Counted over the top half, where the glass
+	# is. (The trolley's one streak sits among its pink neon, so the key check covers it.)
+	CarSprites.load_all()
+	for id: String in ["taxi", "tractor", "roadster_yellow", "van_navy", "suv_green", "dump_truck", "tuk_tuk"]:
+		var img: Image = CarSprites.traffic[id]["tex"].get_image()
+		var purple := 0
+		for y in img.get_height() / 2:
+			for x in img.get_width():
+				var c := img.get_pixel(x, y)
+				purple += int(c.a > 0.5 and c.h >= 260.0 / 360.0 and c.h <= 325.0 / 360.0 and c.s > 0.4 and c.v > 0.3)
+		check(purple <= 10, "%s has %d purple pixels in its top half" % [id, purple])
+
+
+func test_vehicle_outlines_carry_no_magenta_spill() -> void:
+	# docs/09 A2 and A3: a pink halo around the sweeper's beacons, a purple line under the
+	# double-decker, dump truck and jeep, a purple tinge on every car's outline. The Cyclone
+	# and the Zenith are painted pink and purple to the edge.
+	const PAINTED := ["cyclone", "zenith"]
+	CarSprites.load_all()
+	for id: String in CarSprites.traffic:
+		var pink := _pink_outline(CarSprites.traffic[id]["tex"].get_image())
+		check(pink <= 4, "traffic %s has %d magenta outline pixels" % [id, pink])
+	for i in Cars.count():
+		var id: String = Cars.get_car(i)["strip"]
+		if id in PAINTED:
+			continue
+		var pink := _pink_outline(_straight_frame(id))
+		check(pink <= 4, "%s straight frame has %d magenta outline pixels" % [id, pink])
 
 
 func test_every_manifest_sprite_loads() -> void:

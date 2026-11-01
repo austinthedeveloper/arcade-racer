@@ -47,6 +47,19 @@ const PAD_BUTTON_NAMES := {
 	JOY_BUTTON_DPAD_DOWN: "D-PAD DOWN", JOY_BUTTON_DPAD_LEFT: "D-PAD LEFT", JOY_BUTTON_DPAD_RIGHT: "D-PAD RIGHT",
 }
 const UNBOUND := -1
+## The steering settings (WheelScreen): their defaults, and the steps the screen moves by.
+## RANGE_STEPS are common wheels' rotations, lock to lock; the lock moves in LOCK_STEP
+## degrees up to the range.
+const STEERING_KEYS := ["hardware_range_deg", "lock_deg", "steer_deadzone", "steer_gamma"]
+const STEERING_DEFAULTS := {"hardware_range_deg": 900.0, "lock_deg": 360.0, "steer_deadzone": 0.015, "steer_gamma": 1.0}
+const RANGE_STEPS := [180.0, 270.0, 360.0, 450.0, 540.0, 720.0, 900.0, 1080.0, 1440.0, 1800.0, 2520.0]
+const LOCK_MIN := 90.0
+const LOCK_STEP := 30.0
+const DEADZONE_MAX := 0.2
+const DEADZONE_STEP := 0.01
+const GAMMA_MIN := 0.5
+const GAMMA_MAX := 3.0
+const GAMMA_STEP := 0.1
 
 const SAVED_KEYS := [
 	"name", "kind", "calibrated",
@@ -77,7 +90,7 @@ var combined_pedals := false  # gas and brake share one axis, moving in opposite
 var nitro_button := -1
 
 var steer_deadzone := 0.015
-var steer_gamma := 1.0
+var steer_gamma := 1.0  # linearity: 1 is linear, more is gentler near center
 ## Full rotation of the wheel hardware, and how much of it the game uses for full lock.
 ## A 900 degree wheel with a 360 degree lock reaches full steering at 180 degrees each way.
 var hardware_range_deg := 900.0
@@ -88,13 +101,28 @@ var bindings := {}
 
 
 func normalize_steer(raw: float) -> float:
+	return shape_steer(wheel_turn(raw))
+
+
+## How far a raw steering axis has the wheel turned: -1 and 1 at the hardware's ends.
+func wheel_turn(raw: float) -> float:
 	var d := raw - steer_center
 	var to_left := steer_left - steer_center
 	var to_right := steer_right - steer_center
 	var v := d
 	if absf(to_left) > 0.001 and absf(to_right) > 0.001:
 		v = -d / to_left if signf(d) == signf(to_left) else d / to_right
-	v = clampf(v * hardware_range_deg / maxf(lock_deg, 1.0), -1.0, 1.0)
+	return v
+
+
+## The steering for the wheel `deg` degrees from center (minus is left).
+func steer_at(deg: float) -> float:
+	return shape_steer(deg / maxf(hardware_range_deg / 2.0, 1.0))
+
+
+## Steering from a wheel turn (wheel_turn): the lock, then the deadzone and linearity.
+func shape_steer(turn: float) -> float:
+	var v := clampf(turn * hardware_range_deg / maxf(lock_deg, 1.0), -1.0, 1.0)
 	var mag := absf(v)
 	if mag < steer_deadzone:
 		return 0.0
@@ -121,6 +149,67 @@ static func load_from(cfg: ConfigFile, section: String) -> DeviceProfile:
 		if cfg.has_section_key(section, key):
 			p.set(key, cfg.get_value(section, key))
 	return p
+
+
+# --- Steering settings (WheelScreen) --------------------------------------------
+
+## The hardware range one step up or down RANGE_STEPS (wrapping round, or stopping at the
+## ends). A range between steps goes to the next one that way. The lock stays inside it.
+func step_range(dir: int, wrap: bool) -> void:
+	var i := -1
+	if dir > 0:
+		i = RANGE_STEPS.size()
+		for k in RANGE_STEPS.size():
+			if RANGE_STEPS[k] > hardware_range_deg + 0.5:
+				i = k
+				break
+		if i == RANGE_STEPS.size():
+			i = 0 if wrap else i - 1
+	else:
+		for k in RANGE_STEPS.size():
+			if RANGE_STEPS[k] < hardware_range_deg - 0.5:
+				i = k
+		if i < 0:
+			i = RANGE_STEPS.size() - 1 if wrap else 0
+	hardware_range_deg = RANGE_STEPS[i]
+	lock_deg = minf(lock_deg, hardware_range_deg)
+
+
+func step_lock(dir: int, wrap: bool) -> void:
+	lock_deg = _stepped(lock_deg, dir, LOCK_STEP, LOCK_MIN, hardware_range_deg, wrap)
+
+
+func step_deadzone(dir: int, wrap: bool) -> void:
+	steer_deadzone = _stepped(steer_deadzone, dir, DEADZONE_STEP, 0.0, DEADZONE_MAX, wrap)
+
+
+func step_gamma(dir: int, wrap: bool) -> void:
+	steer_gamma = _stepped(steer_gamma, dir, GAMMA_STEP, GAMMA_MIN, GAMMA_MAX, wrap)
+
+
+## Range, lock, deadzone and linearity back to their defaults.
+func reset_steering() -> void:
+	for key: String in STEERING_KEYS:
+		set(key, STEERING_DEFAULTS[key])
+
+
+## Takes `other`'s range, lock, deadzone and linearity (a recalibration keeps them).
+func copy_steering(other: DeviceProfile) -> void:
+	for key: String in STEERING_KEYS:
+		set(key, other.get(key))
+
+
+## `v` moved by `dir` to the next multiple of `step` inside lo..hi. A value off the grid (a
+## default, or an older file's) goes to the nearest multiple that way.
+static func _stepped(v: float, dir: int, step: float, lo: float, hi: float, wrap: bool) -> float:
+	var n := floori(v / step + 0.001) + 1 if dir > 0 else ceili(v / step - 0.001) - 1
+	var lo_n := ceili(lo / step - 0.001)
+	var hi_n := floori(hi / step + 0.001)
+	if wrap and n > hi_n:
+		n = lo_n
+	elif wrap and n < lo_n:
+		n = hi_n
+	return snappedf(clampi(n, lo_n, hi_n) * step, 0.0001)
 
 
 # --- Bindings (RemapScreen) -------------------------------------------------------

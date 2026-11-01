@@ -19,7 +19,7 @@ import sys
 from PIL import Image
 
 import manifest
-from spritelib import cli_args, key_sheet, pixelate_down, slice_row, sprite_dir
+from spritelib import cli_args, key_sheet, pixelate_down, recolor_hue, slice_row, sprite_dir
 
 PLAYER_BODY_WIDTH = 180  # straight-ahead frame, in texture pixels (about its on-screen width)
 TRAFFIC_CAR_WIDTH = 150  # widest vehicle on each sheet
@@ -32,6 +32,10 @@ BIG_SCALE = 8.2
 # player cars keep one pixel, since the Zenith's purple paint would go too.
 PLAYER_FRINGE = 1
 TRAFFIC_FRINGE = 16
+# Pixels of the vehicle next to the background that get despilled (spritelib.despill). The
+# beacon glow on the traffic sheets reaches further in than the player cars' outline spill.
+PLAYER_DESPILL = 3
+TRAFFIC_DESPILL = 8
 
 TRAFFIC = [
     ("trf01_cars_A_v1.png", TRAFFIC_CAR_WIDTH, CAR_SCALE, ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow"]),
@@ -48,15 +52,34 @@ TRAFFIC = [
         "double_decker"]),
     ("trf09_combine_A_v2.png", 220, BIG_SCALE, ["combine"]),
 ]
+# The generator reflected the magenta background into the window glass of these vehicles
+# (docs/09 A1). The glass is opaque, so keying can't reach it: the purple inside each box
+# (fractions of the sprite: left, top, right, bottom) is turned to blue glass instead.
+GLASS = {
+    "taxi": (0.15, 0.20, 0.87, 0.42),
+    "tractor": (0.24, 0.15, 0.78, 0.40),
+    "roadster_yellow": (0.15, 0.02, 0.85, 0.28),
+    "van_navy": (0.18, 0.15, 0.83, 0.38),
+    "suv_green": (0.18, 0.13, 0.83, 0.37),
+    "dump_truck": (0.30, 0.33, 0.70, 0.47),
+    "trolley": (0.42, 0.13, 0.58, 0.21),  # one streak on the windscreen; the neon trim stays
+    "tuk_tuk": (0.25, 0.15, 0.75, 0.33),  # not in docs/09's list, same fault
+}
+GLASS_HUES = (240, 340)  # violet through magenta
+GLASS_HUE = 212  # the blue of the other vehicles' glass
+GLASS_SAT = 0.75
 
 
-def slice_sheet(path, fringe=PLAYER_FRINGE):
+def slice_sheet(path, fringe=PLAYER_FRINGE, spill=PLAYER_DESPILL):
     """Keyed, trimmed sprites left to right. Pixels of other sprites inside a box are cleared.
-    Sprites are found on the sheet keyed with a one-pixel fringe, so the wide fringe can't
-    cut a part off its vehicle."""
+    Sprites are found on the sheet keyed with a one-pixel fringe and nothing more, so the
+    wider fringes can't cut a part (a mirror on a thin stalk) off its vehicle. Each is trimmed
+    to its box before the key-hue fringe: that fringe only clears outline pixels, and a
+    traffic vehicle's width is its collision width (CarSprites.traffic)."""
     sheet = Image.open(path)
-    shape = key_sheet(sheet, PLAYER_FRINGE)
-    return slice_row(shape if fringe == PLAYER_FRINGE else key_sheet(sheet, fringe), shape)
+    shape = key_sheet(sheet, PLAYER_FRINGE, hue_fringe=0, spill=0)
+    trim = shape if fringe == PLAYER_FRINGE else key_sheet(sheet, fringe, hue_fringe=0, spill=0)
+    return slice_row(key_sheet(sheet, fringe, spill=spill), shape, trim)
 
 
 # (concept sheet, output strip, required, tallest cell as a multiple of the level strip's)
@@ -113,7 +136,7 @@ def make_player(sheet_path, out_path, level_h=None, max_ratio=None):
 def make_traffic(concept_dir, out_dir):
     os.makedirs(out_dir, exist_ok=True)
     for sheet, width, _, names in TRAFFIC:
-        crops = slice_sheet(os.path.join(concept_dir, "traffic", sheet), TRAFFIC_FRINGE)
+        crops = slice_sheet(os.path.join(concept_dir, "traffic", sheet), TRAFFIC_FRINGE, TRAFFIC_DESPILL)
         if len(crops) != len(names):
             print("warning: %s has %d sprites, expected %d" % (sheet, len(crops), len(names)))
         # One scale per sheet keeps the vehicles' sizes relative to each other
@@ -121,6 +144,8 @@ def make_traffic(concept_dir, out_dir):
         for name, crop in zip(names, crops):
             if name is None:
                 continue
+            if name in GLASS:
+                crop = recolor_hue(crop, GLASS[name], GLASS_HUES, GLASS_HUE, GLASS_SAT)
             sprite = pixelate_down(crop, scale)
             sprite.save(os.path.join(out_dir, name + ".png"))
             print("traffic", name, sprite.size)

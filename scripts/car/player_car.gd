@@ -122,12 +122,13 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	position = fposmod(position + step, track.length)
 	distance += step
 
-	# Steering and the outward pull of curves
+	# Steering and the outward pull of curves. Less grip steers less against the same pull,
+	# so the car slides wider through a bend
 	var rate := dt * Cfg.STEER_RATE * steer_mult * pct
 	last_x = x
 	if airborne:
 		rate *= Cfg.AIR_STEER
-	x += steer_in * rate
+	x += steer_in * rate * (1.0 if airborne else grip_for(seg.grip, offroad))
 	if not airborne:
 		x -= rate / steer_mult * pct * seg.curve * Cfg.CENTRIFUGAL * pull_mult
 	steer = lerpf(steer, steer_in, minf(1.0, dt * Cfg.STEER_SMOOTHING))
@@ -160,6 +161,12 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 
 	_update_air(dt, track.height_at(position + Cfg.PLAYER_Z))
 	_update_pitch(dt, track)
+
+
+## The share of its steering a car keeps on road of `grip` (Segment.grip), `off` it or not:
+## off the road the wet or snow takes it away twice over. 1 on a dry road, on it or off.
+static func grip_for(grip: float, off: bool) -> float:
+	return grip * grip if off else grip
 
 
 ## Leaves the road when it drops away faster than gravity can pull the car down.

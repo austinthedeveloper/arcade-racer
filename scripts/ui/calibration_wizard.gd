@@ -115,6 +115,7 @@ func capture(axes: PackedFloat32Array) -> void:
 			if Input.get_connected_joypads().has(device):  # it may have been unplugged mid-way
 				profile.guid = Input.get_joy_guid(device)
 				profile.name = Input.get_joy_name(device)
+				profile.copy_steering(InputRouter.get_profile(device))  # the range and lock set before
 			profile.kind = DeviceProfile.Kind.WHEEL
 			profile.steer_axis = a
 			profile.steer_left = _left[a]

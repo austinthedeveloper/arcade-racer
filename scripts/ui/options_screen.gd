@@ -9,7 +9,7 @@ extends MenuScreen
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
 	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP,
-	BACK }
+	WHEEL, BACK }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -19,7 +19,7 @@ const PAGE_ROWS := [
 		Row.RESET_SAVE],
 	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
 	[Row.MUSIC, Row.SFX],
-	[Row.CALIBRATE, Row.REMAP],
+	[Row.CALIBRATE, Row.WHEEL, Row.REMAP],
 	[Row.SCREEN_SHAKE, Row.FLASH, Row.STEER_ASSIST, Row.BRAKE_ASSIST],
 ]
 ## Shown on a page with no rows yet.
@@ -29,7 +29,7 @@ const SLOTS := 11
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
-	"BACK"]
+	"WHEEL SETTINGS", "BACK"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -54,6 +54,7 @@ const HELP := [
 	"Keys and pad: at speed, a gentle pull to the middle of your lane.",
 	"Brakes for you into corners you're taking too fast.",
 	"Choose the keys and buttons for nitro, pause and more, on each device.",
+	"Wheel range, steering lock, deadzone and linearity, for each wheel.",
 	"Back to %s.",
 ]
 ## The rows that show ON or OFF.
@@ -297,6 +298,9 @@ func handle(m: MenuInput) -> void:
 			Row.REMAP:
 				Audio.play("beep")
 				game.show_remap()
+			Row.WHEEL:
+				Audio.play("beep")
+				game.show_wheel()
 			Row.RESET_OPTIONS:
 				reset_options()
 				Audio.play("beep")
@@ -354,7 +358,7 @@ func _draw() -> void:
 					var seg := Rect2(right - 150 + k * 13, y + mid - 6, 10, 12)
 					draw_rect(seg, (SKY if on else Color(SKY, 0.7)) if k < v else Color(1, 1, 1, 0.12))
 				_text(Vector2(right - 178, y + mid + 5), value_text(row), 10, col)
-			Row.CALIBRATE, Row.REMAP, Row.BACK:
+			Row.CALIBRATE, Row.WHEEL, Row.REMAP, Row.BACK:
 				pass
 			Row.RESET_OPTIONS, Row.RESET_SAVE:
 				var t := row_text(row)

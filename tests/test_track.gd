@@ -232,6 +232,31 @@ func test_thunderhead_has_its_landmarks() -> void:
 	eq(poles_left, 0, "the power line stays on the right")
 
 
+func test_grip_per_surface() -> void:
+	var thunder := Thunderhead.build()
+	for seg in thunder.segments:
+		if not near(seg.grip, Thunderhead.theme()["grip"], 0.0001, "Thunderhead's wet road, all of it"):
+			break
+	var timber := Timberline.build()
+	var snowy := 0
+	var first := -1
+	var last := -1
+	for seg in timber.segments:
+		if seg.grip < 1.0:
+			snowy += 1
+			first = seg.index if first < 0 else first
+			last = seg.index
+			eq(seg.ground_left, Track.GROUND_SAND, "low grip only in the snow")
+	check(snowy > 100, "the summit's road is snowy (%d segments)" % snowy)
+	eq(last - first + 1, snowy, "in one stretch")
+	near(timber.segments[first].grip, Timberline.theme()["snow_grip"], 0.0001, "the summit's grip")
+	check(Timberline.theme()["snow_grip"] > Thunderhead.theme()["grip"], "slightly lower: not as slippery as the storm")
+	for i in [0, 2, 4, 5, 7]:
+		for seg in Stages.build(i).segments:
+			if not eq(seg.grip, 1.0, Stages.stage_name(i) + " is dry"):
+				break
+
+
 func test_road_work_cones_never_crash_the_car() -> void:
 	for id in ["cone", "cone_tall", "drum"]:
 		eq(SpriteLibrary.defs[id]["collide"], 0.0, id + " gets knocked aside, not crashed into")
