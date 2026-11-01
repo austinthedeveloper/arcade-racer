@@ -29,6 +29,14 @@ const CHEVRONS := ["chevron_a", "chevron_b", "chevron_c"]
 ## to the other side but keeps its art the right way round.
 const MIRROR_KEEPS_ART := ["slot_machine"]
 
+## Road width (WS-7): a narrowing or widening eases in over WIDTH_EASE segments either side,
+## its lanes changing halfway through; MIN_LANES to MAX_LANES lanes. Drivers pick their lane
+## from the narrowest road LANES_AHEAD segments ahead, so they move over before it narrows.
+const WIDTH_EASE := 40
+const MIN_LANES := 2
+const MAX_LANES := 6
+const LANES_AHEAD := 20
+
 const GROUND_GRASS := 0
 const GROUND_SAND := 1
 
@@ -98,6 +106,23 @@ func height_at(z: float) -> float:
 	return lerpf(seg.w1.y, seg.w2.y, t)
 
 
+## The road's half-width (in Cfg.ROAD_WIDTH) at `z`: past it, a car is off the road.
+func width_at(z: float) -> float:
+	return find_segment(z).width_at(fposmod(z, Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH)
+
+
+## The narrowest segment from `z` to `ahead` segments on (the fewer lanes on a tie): the
+## lanes a driver there should be choosing between.
+func narrowest_ahead(z: float, ahead := LANES_AHEAD) -> Segment:
+	var here := find_segment(z)
+	var best := here
+	for k in range(1, ahead + 1):
+		var seg := segments[(here.index + k) % segments.size()]
+		if seg.width < best.width or (seg.width == best.width and seg.lanes < best.lanes):
+			best = seg
+	return best
+
+
 # --- Builder -----------------------------------------------------------------
 
 func set_ground(left: int, right: int) -> void:
@@ -109,6 +134,40 @@ func set_ground(left: int, right: int) -> void:
 ## "grip" (1, dry, without one).
 func set_grip(grip: float) -> void:
 	_grip = grip
+
+
+## Makes the road `width` half-widths (Cfg.ROAD_WIDTH; 1 is usual) with `lanes` lanes for
+## segments `first` to `first + count`, easing from the width either side over `ease`
+## segments before and after, its lanes changing halfway through each ease. Call after the
+## road is laid; sprites already placed follow the new edge.
+func set_width(first: int, count: int, width: float, lanes: int, ease := WIDTH_EASE) -> void:
+	assert(lanes >= MIN_LANES and lanes <= MAX_LANES, "2 to 6 lanes")
+	var n := segments.size()
+	var from := segments[clampi(first - ease, 0, n - 1)]
+	var back := segments[clampi(first + count + ease - 1, 0, n - 1)]
+	var ends: Array[float] = []  # the width at the near end of each segment, then the last far end
+	for i in range(first - ease, first + count + ease + 1):
+		ends.append(width_ease_at(i, first, count, ease, from.width, width, back.width_far))
+	for i in range(maxi(0, first - ease), mini(n, first + count + ease)):
+		var seg := segments[i]
+		seg.width = ends[i - (first - ease)]
+		seg.width_far = ends[i - (first - ease) + 1]
+		if i < first - ease / 2:
+			seg.lanes = from.lanes
+		elif i >= first + count + ease / 2:
+			seg.lanes = back.lanes
+		else:
+			seg.lanes = lanes
+
+
+## The width at the near end of segment `i` of a set_width from `first` for `count`
+## segments: `before` easing (in and out, over `ease` segments) to `width`, then back to `after`.
+static func width_ease_at(i: int, first: int, count: int, ease: int, before: float, width: float, after: float) -> float:
+	if i < first:
+		return _ease_in_out(before, width, clampf(float(i - (first - ease)) / ease, 0.0, 1.0))
+	if i > first + count:
+		return _ease_in_out(width, after, clampf(float(i - (first + count)) / ease, 0.0, 1.0))
+	return width
 
 
 func last_y() -> float:

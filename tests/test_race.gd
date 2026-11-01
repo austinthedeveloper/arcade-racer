@@ -220,6 +220,16 @@ func test_a_restart_starts_the_clocks_over() -> void:
 	eq(InputRouter.speed_factor, 0.0, "pad steering back at rest")
 
 
+func test_autodrive_shifts_with_manual_gears() -> void:
+	TestSuite.use_scratch_settings(Settings)
+	Settings.manual_gears = true
+	var r := race(true, false, 0, false)
+	var top := run_until(r, func() -> bool: return r.player.gear == PlayerCar.TOP_GEAR, 1500)
+	check(top > 0, "up through the gears to the top one (%d ticks)" % top)
+	check(r.player.speed > Cfg.MAX_SPEED * 0.7, "at speed")
+	TestSuite.use_scratch_settings(Settings)
+
+
 func test_launch_window_edges() -> void:
 	var G := Launch.Grade
 	eq(Launch.grade(-Launch.WINDOW_BEFORE - 0.01, 0.0), G.BOG, "just too early bogs")
@@ -533,3 +543,32 @@ func test_the_results_wait_for_the_finish_spectacle() -> void:
 	c.confirm_pressed = true
 	drive(r, 1, c)
 	check(r.results.visible and r.state == r.State.FINISHED, "Enter brings them sooner, and only that")
+
+
+func test_the_autodrive_power_slides_into_hard_bends() -> void:
+	var p := PlayerCar.new()
+	p.speed = Cfg.MAX_SPEED * 0.8
+	var race: GDScript = load("res://scripts/race/race.gd")
+	check(race.autodrive_slides(Track.CURVE_HARD, 1.0, p), "a hard bend at speed")
+	check(not race.autodrive_slides(Track.CURVE_MEDIUM, 1.0, p), "not a medium one")
+	check(not race.autodrive_slides(-Track.CURVE_HARD, 0.2, p), "not without the lock on")
+	p.slide = 1.0
+	check(not race.autodrive_slides(Track.CURVE_HARD, 1.0, p), "not when sliding already")
+	p.slide = 0.0
+	p.speed = Cfg.SLIDE_SPEED * 0.9
+	check(not race.autodrive_slides(Track.CURVE_HARD, 1.0, p), "not too slow")
+	p.speed = Cfg.MAX_SPEED
+	p.offroad = true
+	check(not race.autodrive_slides(Track.CURVE_HARD, 1.0, p), "not off the road")
+
+
+func test_an_autodriven_race_power_slides() -> void:
+	# Palm Coast's town has a hard bend; the autodrive slides through it
+	var r := race(true, false, 0, false)
+	var slid := 0
+	for i in 60 * 120:
+		r._physics_process(DT)
+		slid += int(r.player.slide != 0.0)
+		if slid > 10:
+			break
+	check(slid > 10, "slid (%d ticks)" % slid)

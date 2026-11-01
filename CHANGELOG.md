@@ -9,6 +9,24 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
+- Roads change width: Thunderhead's road works and the Timberline summit narrow to two lanes,
+  and Palm Coast's town and Skyline's downtown open out into six-lane boulevards (WS-7).
+- Power slides: brake while steering at speed to slide through a bend, turning tighter for a
+  little speed, with squealing tires and smoke; hold the steering to keep it going (RC-8).
+- Manual gears, in Options > Accessibility: shift up and down yourself (E and Q, Y and LB on a
+  pad, or your wheel's paddles once bound in Remap) for a little more top speed; the engine and
+  the tach follow your gear. Automatic stays the default. Nitro on a pad is now RB only, as Y
+  shifts up (RC-10).
+- Stage select is a map of the country: each stage's postcard pinned where it is, the tour
+  route drawn between them, stages not reached yet dimmed (PR-8).
+- Mirror mode: win a stage and you can race it flipped left for right, from stage select in
+  Single Race, Time Attack and Free Drive (Up switches it). Saves that already won stages
+  have their mirrors open (WS-6).
+
+## [0.2.0] - 2026-11-01
+
+### Added
+
 - The game updates itself: download once, and each start checks GitHub Releases for a newer
   version (EQ-14). 0.1.0 has no updater, so the next version is downloaded by hand once.
 - A game icon on every platform (PR-13).
@@ -28,9 +46,6 @@ the release workflow puts that section at the top of the GitHub Release notes
 - An announcer calls the countdown, GO, checkpoints, near misses, big air, the final stretch
   and your finish, with the music dipping under it (PR-4).
 - Subtitles for the announcer, on by default (Options > Accessibility) (AC-5).
-- Mirror mode: win a stage and you can race it flipped left for right, from stage select in
-  Single Race, Time Attack and Free Drive (Up switches it). Saves that already won stages
-  have their mirrors open (WS-6).
 
 ### Changed
 

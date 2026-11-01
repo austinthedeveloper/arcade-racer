@@ -13,7 +13,10 @@ class TrafficCar:
 	var segment: Segment
 	var flung := 0.0  # seconds left in the air after a ram plate hit
 	var fling_dir := 0.0
-	var lane := 0.0  # the lane a rammed car was knocked out of, and drives back to
+	var lane := 0.0  # the middle of its lane here: where it drives, and a rammed car drives back to
+	## Its lane as a share of the way across the road (0 left edge, 1 right edge), kept through
+	## a narrowing or widening (Segment.lane_at); NAN for a car that keeps to `lane` as it is.
+	var lane_frac := NAN
 	var returning := false  # rammed and landed, drifting back to its lane; not solid yet
 	var last_z := NAN  # z before this tick's move (NAN until it has moved)
 
@@ -22,7 +25,9 @@ class TrafficCar:
 	func solid() -> bool:
 		return flung <= 0.0 and not returning
 
+## The usual four-lane road's lanes (Segment.lane_offsets for a road of any width, WS-7).
 const LANE_OFFSETS := [-0.75, -0.25, 0.25, 0.75]
+const MERGE_SPEED := 0.8  # road half-widths per second, moving over where lanes merge or split
 const FLING_TIME := 0.8  # how long a rammed car flies
 const FLING_SPEED := 4.0  # road half-widths per second sideways
 const RETURN_SPEED := 1.2  # road half-widths per second, drifting back to its lane after landing
@@ -42,12 +47,13 @@ const CAR_SPEED := [0.3, 0.6]
 var cars: Array[TrafficCar] = []
 
 
-## The lanes across `track`, left to right as built: on a mirrored stage (Track.side) each is
-## on the other side, so whatever picks a lane by its place in the list picks the mirror of
-## the lane it would pick on the stage as built.
-static func lanes(track: Track) -> Array:
+## The middle of every lane on `seg` (the usual four when none), left to right as built: on a
+## mirrored stage (Track.side) each is on the other side, so whatever picks a lane by its place
+## in the list picks the mirror of the lane it would pick on the stage as built.
+static func lanes(track: Track, seg: Segment = null) -> Array:
 	var side := track.side()
-	return LANE_OFFSETS.map(func(l: float) -> float: return l * side)
+	var offsets: Array = LANE_OFFSETS if seg == null else seg.lane_offsets()
+	return offsets.map(func(l: float) -> float: return l * side)
 
 
 func spawn(track: Track, count: int, seed_value: int = 7) -> void:
@@ -63,7 +69,11 @@ func spawn(track: Track, count: int, seed_value: int = 7) -> void:
 		var car := TrafficCar.new()
 		car.z = rng.randf_range(40.0, track.segments.size() - 10.0) * Cfg.SEGMENT_LENGTH
 		car.last_z = car.z
-		car.offset = lane_xs[rng.randi() % lane_xs.size()]
+		var at := track.find_segment(car.z)
+		var k := rng.randi() % at.lanes
+		car.lane_frac = (k + 0.5) / at.lanes
+		car.offset = at.lane_x(k) * track.side()
+		car.lane = car.offset
 		var roll := rng.randf()
 		if roll < BIG_SHARE:
 			car.sprite = BIG[rng.randi() % BIG.size()]
@@ -82,13 +92,6 @@ func spawn(track: Track, count: int, seed_value: int = 7) -> void:
 
 func update(dt: float, track: Track) -> void:
 	for car in cars:
-		if car.flung > 0.0:
-			car.flung = maxf(0.0, car.flung - dt)
-			car.offset = clampf(car.offset + car.fling_dir * FLING_SPEED * dt, -4.0, 4.0)
-			car.returning = car.flung <= 0.0
-		elif car.returning:
-			car.offset = move_toward(car.offset, car.lane, RETURN_SPEED * dt)
-			car.returning = car.offset != car.lane
 		car.last_z = car.z
 		car.z = fposmod(car.z + car.speed * dt, track.length)
 		car.percent = fposmod(car.z, Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH
@@ -97,6 +100,26 @@ func update(dt: float, track: Track) -> void:
 			car.segment.cars.erase(car)
 			seg.cars.append(car)
 			car.segment = seg
+		var follows := not is_nan(car.lane_frac)
+		if follows:
+			car.lane = seg.lane_at(car.lane_frac) * track.side()
+		if car.flung > 0.0:
+			car.flung = maxf(0.0, car.flung - dt)
+			car.offset = clampf(car.offset + car.fling_dir * FLING_SPEED * dt, -4.0, 4.0)
+			car.returning = car.flung <= 0.0
+		elif car.returning:
+			car.offset = move_toward(car.offset, car.lane, RETURN_SPEED * dt)
+			car.returning = car.offset != car.lane
+		elif follows:
+			# Lanes merge or split here: it moves over, and never runs off a narrowing road
+			car.offset = keep_on_road(move_toward(car.offset, car.lane, MERGE_SPEED * dt), track.width_at(car.z))
+
+
+## A traffic car's `offset` held on a road `width` half-widths wide: its middle no nearer the
+## edge than a car's half-width, so it stays on the road through a narrowing.
+static func keep_on_road(offset: float, width: float) -> float:
+	var edge := maxf(0.0, width - Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH)
+	return clampf(offset, -edge, edge)
 
 
 ## Knocks a car flying off the road, away from `from_x`. It lands, then drives back to its lane.

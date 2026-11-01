@@ -177,8 +177,8 @@ func _project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float) -> 
 	var half_w := Cfg.SCREEN_W * 0.5
 	seg.s1 = Vector2(half_w - seg.scale1 * cx1 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale1 * (seg.w1.y - cam_y) * Cfg.PROJ)
 	seg.s2 = Vector2(half_w - seg.scale2 * cx2 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale2 * (seg.w2.y - cam_y) * Cfg.PROJ)
-	seg.sw1 = seg.scale1 * Cfg.ROAD_WIDTH * Cfg.PROJ
-	seg.sw2 = seg.scale2 * Cfg.ROAD_WIDTH * Cfg.PROJ
+	seg.sw1 = seg.scale1 * Cfg.ROAD_WIDTH * seg.width * Cfg.PROJ
+	seg.sw2 = seg.scale2 * Cfg.ROAD_WIDTH * seg.width_far * Cfg.PROJ
 
 
 ## A segment's road and ground in its colors, from its near edge to `far`'s far edge (itself,
@@ -210,9 +210,11 @@ func _draw_segment(seg: Segment, theme: Dictionary, far: Segment, depth: float) 
 		_quad(Vector2(0, y2), Vector2(x2, y2), Vector2(x1, y1), Vector2(0, y1), left)
 		_quad(Vector2(x2, y2), Vector2(sw, y2), Vector2(sw, y1), Vector2(x1, y1), _ground(theme, seg.ground_right, b, fog))
 
-	# Rumble strips
-	var r1 := w1 / maxf(6.0, 2.0 * Cfg.LANES)
-	var r2 := w2 / maxf(6.0, 2.0 * Cfg.LANES)
+	# Rumble strips, as wide on any road (sizes from the usual road's half-width, u1 and u2)
+	var u1 := w1 / seg.width
+	var u2 := w2 / far.width_far
+	var r1 := u1 / maxf(6.0, 2.0 * Cfg.LANES)
+	var r2 := u2 / maxf(6.0, 2.0 * Cfg.LANES)
 	var rumble := _fogged(theme["rumble"][b], fog)
 	_quad(Vector2(x1 - w1 - r1, y1), Vector2(x1 - w1, y1), Vector2(x2 - w2, y2), Vector2(x2 - w2 - r2, y2), rumble)
 	_quad(Vector2(x1 + w1, y1), Vector2(x1 + w1 + r1, y1), Vector2(x2 + w2 + r2, y2), Vector2(x2 + w2, y2), rumble)
@@ -223,16 +225,16 @@ func _draw_segment(seg: Segment, theme: Dictionary, far: Segment, depth: float) 
 		asphalt = Weather.wet_color(asphalt, _wet_sky, _wet, depth)
 	_quad(Vector2(x1 - w1, y1), Vector2(x1 + w1, y1), Vector2(x2 + w2, y2), Vector2(x2 - w2, y2), _fogged(asphalt, fog))
 
-	# Dashed lane markings on alternate bands
+	# Dashed lane markings on alternate bands, this segment's lanes
 	if b == 0:
 		var lane_col := _fogged(theme["lane"], fog)
-		var l1 := w1 / maxf(32.0, 8.0 * Cfg.LANES)
-		var l2 := w2 / maxf(32.0, 8.0 * Cfg.LANES)
-		var lane_w1 := w1 * 2.0 / Cfg.LANES
-		var lane_w2 := w2 * 2.0 / Cfg.LANES
+		var l1 := u1 / maxf(32.0, 8.0 * Cfg.LANES)
+		var l2 := u2 / maxf(32.0, 8.0 * Cfg.LANES)
+		var lane_w1 := w1 * 2.0 / seg.lanes
+		var lane_w2 := w2 * 2.0 / seg.lanes
 		var lx1 := x1 - w1 + lane_w1
 		var lx2 := x2 - w2 + lane_w2
-		for lane in range(1, Cfg.LANES):
+		for lane in range(1, seg.lanes):
 			_quad(Vector2(lx1 - l1 / 2.0, y1), Vector2(lx1 + l1 / 2.0, y1), Vector2(lx2 + l2 / 2.0, y2), Vector2(lx2 - l2 / 2.0, y2), lane_col)
 			lx1 += lane_w1
 			lx2 += lane_w2
@@ -255,7 +257,7 @@ func _draw_objects(seg: Segment, cars := true) -> void:
 		var w: float = def["world_w"] * s * Cfg.PROJ
 		var h: float = def["world_h"] * s * Cfg.PROJ
 		var offset: float = sp["offset"]
-		var sx := seg.s1.x + s * offset * Cfg.ROAD_WIDTH * Cfg.PROJ
+		var sx := seg.s1.x + s * offset * seg.width * Cfg.ROAD_WIDTH * Cfg.PROJ
 		var rect := sprite_rect(sx, seg.s1.y, w, h, offset, sp["flip"])
 		if h < 0.5 or rect.position.x > Cfg.SCREEN_W or rect.position.x + w < 0.0 or rect.position.y >= seg.clip:
 			continue
@@ -352,7 +354,7 @@ func _draw_span(seg: Segment, id: String, label: String, tint: Color) -> void:
 	if def.is_empty():
 		return
 	var mirrored := track.mirrored
-	var rect := span_rect(def, seg.s1.x, seg.s1.y, seg.sw1, mirrored)
+	var rect := span_rect(def, seg.s1.x, seg.s1.y, seg.sw1 / seg.width * SpriteLibrary.span_scale(seg.width), mirrored)
 	if rect.size.y < 1.0 or rect.position.y >= seg.clip or rect.end.x < 0.0 or rect.position.x > Cfg.SCREEN_W:
 		return
 	var fill: Color = def["fill"]
@@ -425,7 +427,7 @@ func _draw_player() -> void:
 	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
 	var y := Cfg.HORIZON_Y + s * Cfg.CAMERA_HEIGHT * Cfg.PROJ
 	var lift := p.air_height * s * Cfg.PROJ
-	var steer := p.steer
+	var steer := p.shown_steer()
 	if p.crash_time > 0.0:
 		var k := p.crash_time / Cfg.CRASH_DURATION
 		steer = sin(p.crash_time * 20.0) * 2.0

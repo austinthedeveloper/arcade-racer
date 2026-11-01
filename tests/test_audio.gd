@@ -241,6 +241,34 @@ func test_each_pickup_has_its_own_sound() -> void:
 	eq(count("draft_boost"), 1, "the slipstream boost")
 
 
+func test_engine_revs_in_a_manual_gear() -> void:
+	for pct in [0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0, 1.15]:
+		near(RaceAudio.engine_rpm(pct, PlayerCar.auto_gear(pct)), RaceAudio.engine_rpm(pct), 0.0001,
+			"in the automatic's gear: the same revs (%.2f)" % pct)
+	near(RaceAudio.engine_rpm(0.3, 1), 1.0, 0.0001, "past 1st's band: on the limiter")
+	check(RaceAudio.engine_rpm(0.2, 4) < RaceAudio.engine_rpm(0.2), "too tall a gear: low revs")
+	near(RaceAudio.engine_rpm(0.0, 3), 0.0, 0.0001, "and none at rest")
+	check(RaceAudio.engine_rpm(1.1, 5) > 1.0, "the top gear still over-revs on nitro")
+
+
+func test_the_engine_follows_the_manual_gear() -> void:
+	var saved: bool = Settings.manual_gears
+	Settings.manual_gears = true
+	var r := fresh_race()
+	check(r.player.manual, "the option reaches the race")
+	step(r, 185 + 240, input(1.0))
+	eq(r.player.gear, 1, "never shifted")
+	near(r.audio.pitches["engine_low"], 1.8, 0.001, "screaming on 1st's limiter")
+	var n := input(1.0)
+	n.shift_up_pressed = true
+	step(r, 1, n)
+	eq(r.player.gear, 2, "the shift button")
+	check(r.audio.pitches["engine_low"] < 1.6, "the revs drop with the shift (%.2f)" % r.audio.pitches["engine_low"])
+	Settings.manual_gears = saved
+	r = fresh_race()
+	check(not r.player.manual, "automatic by default")
+
+
 func test_horn_sounds_while_held() -> void:
 	var r := fresh_race()
 	step(r, 185)
@@ -302,3 +330,18 @@ func test_radio_button_switches_without_a_gap() -> void:
 	step(r, 3)
 	r.audio.next_station()
 	eq(audio_node().music_cue, "", "no music back after the finish")
+
+
+func test_a_power_slide_squeals() -> void:
+	# RC-8: the skid loop follows the slide, braked into or not
+	var p := PlayerCar.new()
+	p.speed = Cfg.MAX_SPEED * 0.6
+	eq(RaceAudio.skid_level(p), 0.0, "quiet cruising")
+	p.slide = -1.0
+	check(RaceAudio.skid_level(p) >= RaceAudio.SLIDE_SQUEAL, "sliding, off the brake, gentle lock: squeals")
+	var faster := PlayerCar.new()
+	faster.speed = Cfg.MAX_SPEED
+	faster.slide = 1.0
+	check(RaceAudio.skid_level(faster) > RaceAudio.skid_level(p), "louder faster")
+	p.airborne = true
+	eq(RaceAudio.skid_level(p), 0.0, "not in the air")

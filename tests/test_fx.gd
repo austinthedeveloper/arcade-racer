@@ -240,3 +240,12 @@ func test_finish_celebrations() -> void:
 	r.start_race()
 	check(not r.fx.celebrating, "a new race clears it")
 	eq(r.fx.alive_count(), 0, "and every particle")
+
+
+func test_a_power_slide_smokes() -> void:
+	# RC-8: smoke off the tires all through a slide, brake off and only a little lock
+	var p := _car(0.6)
+	p.steer = 0.4
+	check(not _has(p, "smoke"), "steering gently, no slide: no smoke")
+	p.slide = 1.0
+	check(_has(p, "smoke"), "sliding")
