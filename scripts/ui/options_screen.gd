@@ -246,6 +246,8 @@ func row_text(row: int) -> String:
 
 ## Control hints for this screen, worded for the device in use.
 static func options_hints() -> String:
+	if InputRouter.state.kind == DriveInput.Kind.GAMEPAD and not InputRouter.state.mapped:
+		return "Steer: choose    Button 1: change    Esc: back"
 	match InputRouter.state.kind:
 		DriveInput.Kind.WHEEL:
 			return "Steer: choose    Gas: change    Brake: back"
@@ -254,8 +256,10 @@ static func options_hints() -> String:
 	return "Up / Down: choose    Left / Right: change    Enter: select    Esc: back"
 
 
+## True when steering picks the rows: a wheel, or a pad with no stick for up and down.
 static func wheel_driven() -> bool:
-	return InputRouter.state.kind == DriveInput.Kind.WHEEL
+	var s: DriveInput = InputRouter.state
+	return s.kind == DriveInput.Kind.WHEEL or (s.kind == DriveInput.Kind.GAMEPAD and not s.mapped)
 
 
 func handle(m: MenuInput) -> void:

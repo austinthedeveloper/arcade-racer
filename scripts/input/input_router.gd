@@ -115,9 +115,11 @@ func _physics_process(dt: float) -> void:
 		var p := get_profile(last_active_device)
 		state.kind = DriveInput.Kind.WHEEL if p.kind == DeviceProfile.Kind.WHEEL else DriveInput.Kind.GAMEPAD
 		state.device_name = Input.get_joy_name(last_active_device)
+		state.mapped = p.kind == DeviceProfile.Kind.WHEEL or Input.is_joy_known(last_active_device)
 	else:
 		state.kind = DriveInput.Kind.KEYBOARD
 		state.device_name = "Keyboard"
+		state.mapped = true
 
 
 func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
@@ -144,7 +146,7 @@ func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
 		menu_x = -1.0
 	elif Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_RIGHT):
 		menu_x = 1.0
-	var menu_y := Input.get_joy_axis(device, JOY_AXIS_LEFT_Y)
+	var menu_y := stick_menu_y(Input.get_joy_axis(device, JOY_AXIS_LEFT_Y), Input.is_joy_known(device))
 	if Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_UP):
 		menu_y = -1.0
 	elif Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_DOWN):
@@ -163,6 +165,14 @@ func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
 		"menu_confirm": a_btn or prof.pressed("pause", device),
 		"menu_back": Input.is_joy_button_pressed(device, JOY_BUTTON_B) or Input.is_joy_button_pressed(device, JOY_BUTTON_BACK),
 	}
+
+
+## The up/down a pad's left stick gives the menus. Only a device with a standard gamepad
+## mapping has a stick on axis 1: on an unmapped one (a wheel or a pedal set that isn't
+## recognized by name, so it's read as a pad) axis 1 is often a pedal resting at full travel,
+## which held the Options list scrolling down with nothing to stop it.
+static func stick_menu_y(axis: float, known: bool) -> float:
+	return axis if known else 0.0
 
 
 func _read_wheel(device: int, prof: DeviceProfile) -> Dictionary:
