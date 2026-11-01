@@ -130,12 +130,14 @@ func _draw() -> void:
 		_text_centered(Vector2(w / 2.0, 130), str(ceili(race.countdown)), 64, Color("#ffd23a"))
 	if not race.callouts.current.is_empty() and not race.results.visible:
 		_draw_callout(race.callouts.current, Vector2(w / 2.0, CALLOUT_Y))
+	if Settings.subtitles:
+		_draw_subtitle(lay["subtitle"], race.audio.announcer.subtitle())
 
 
 ## Where each HUD element goes on the 640x360 screen (the window scales the whole picture):
 ## the clock, the place, the route bar (with its markers) and the stage under it, the nitro
-## flames, the power-up slot, the bonus feed, the slipstream bar, the speedometer and the
-## input device.
+## flames, the power-up slot, the bonus feed, the slipstream bar, the speedometer, the
+## input device and the announcer's subtitle.
 static func layout() -> Dictionary:
 	var w := float(Cfg.SCREEN_W)
 	var h := float(Cfg.SCREEN_H)
@@ -150,6 +152,7 @@ static func layout() -> Dictionary:
 		"slipstream": Rect2(w - 112, h - 112, 106, 10),
 		"speedo": Rect2(w - 112, h - 98, 106, 92),
 		"device": Rect2(6, h - 30, 280, 26),
+		"subtitle": Rect2(w / 2.0 - 160, 46, 320, 18),
 	}
 
 
@@ -405,6 +408,15 @@ func _draw_callout(c: Dictionary, center: Vector2) -> void:
 
 ## A starburst's half-size for `text` at `size`: room round the text, and never so flat
 ## it stops looking like a burst.
+## The announcer's words (AC-5), on a dark strip sized to the line.
+func _draw_subtitle(r: Rect2, line: String) -> void:
+	if line == "":
+		return
+	var tw := minf(UiText.width(line, 11) + 16.0, r.size.x)
+	_panel(Rect2(r.get_center().x - tw / 2.0, r.position.y, tw, r.size.y), Color(0, 0, 0, 0.6))
+	_text_centered(Vector2(r.get_center().x, r.position.y + 13), line, 11, Color.WHITE)
+
+
 static func burst_radius(text: String, size: int) -> Vector2:
 	var tw := UiText.width(text, size)
 	return Vector2(maxf(tw / 2.0 + 30.0, 70.0), maxf(size * 1.25, 34.0))

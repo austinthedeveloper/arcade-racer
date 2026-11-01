@@ -193,6 +193,17 @@ func test_settings_v5_to_v6_adds_the_radio() -> void:
 	_clean()
 
 
+func test_settings_v6_to_v7_adds_subtitles() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v6.cfg")
+	eq(Settings.migrate(cfg), 6, "from version 6")
+	eq([CfgVersion.of(cfg), cfg.get_value("accessibility", "subtitles")], [Settings.VERSION, true], "migrated on: subtitles on")
+	_clean()
+	_load_settings("settings_v6.cfg")
+	eq([Settings.subtitles, Settings.radio], [true, 2], "v6 loads with subtitles on and its station")
+	_clean()
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")

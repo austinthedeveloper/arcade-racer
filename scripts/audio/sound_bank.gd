@@ -44,26 +44,41 @@ const CUES := {
 	"station_techno": ["music", true, -10.5],
 }
 
+## The announcer's lines (Announcer.LINES) are cues too: vo_<id>, one-shots at this level.
+const VOICE_DB := -2.0
+
 static var _streams: Dictionary = {}
+
+
+## [folder, loops, volume in dB] for a cue, or [] if there is no such cue.
+static func entry(cue: String) -> Array:
+	if CUES.has(cue):
+		return CUES[cue]
+	if cue.begins_with("vo_") and Announcer.LINES.has(cue.substr(3)):
+		return ["sfx", false, VOICE_DB]
+	return []
 
 
 ## The file a cue plays, or "" if none of its files exist.
 static func path_for(cue: String) -> String:
-	if not CUES.has(cue):
+	var e := entry(cue)
+	if e.is_empty():
 		return ""
 	for ext in EXTENSIONS:
-		var path := "%s%s/%s.%s" % [ROOT, CUES[cue][0], cue, ext]
+		var path := "%s%s/%s.%s" % [ROOT, e[0], cue, ext]
 		if ResourceLoader.exists(path):
 			return path
 	return ""
 
 
 static func loops(cue: String) -> bool:
-	return CUES.has(cue) and CUES[cue][1]
+	var e := entry(cue)
+	return not e.is_empty() and e[1]
 
 
 static func volume_db(cue: String) -> float:
-	return CUES[cue][2] if CUES.has(cue) else 0.0
+	var e := entry(cue)
+	return e[2] if not e.is_empty() else 0.0
 
 
 ## The cue's stream, loaded once, with looping set; null (and a warning) if it has no file.

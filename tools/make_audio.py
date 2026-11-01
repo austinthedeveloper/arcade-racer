@@ -961,6 +961,90 @@ def radio_tune():
     return shot(finish(out))
 
 
+# --- The announcer (Announcer.LINES, read from scripts/audio/announcer.gd) ---
+#
+# Not words: patter in each line's rhythm, the way a cartoon character talks. Each
+# syllable is a glottal buzz through two vowel formants, led by a consonant burst; the
+# pitch climbs through the line and jumps on a "!". The subtitle carries the words.
+
+VOWELS = {"a": (780.0, 1250.0), "e": (520.0, 1850.0), "i": (320.0, 2300.0), "o": (520.0, 900.0),
+          "u": (360.0, 820.0), "y": (340.0, 2150.0)}
+PLOSIVES = "pbtdkgcq"
+FRICATIVES = {"s": 6200.0, "z": 5200.0, "f": 3800.0, "v": 3000.0, "h": 1600.0, "x": 5000.0, "j": 3200.0}
+
+
+def announcer_lines(project):
+    """{id: text} from Announcer.LINES."""
+    import re
+    src = open(os.path.join(project, "scripts", "audio", "announcer.gd"), encoding="utf-8").read()
+    block = src[src.index("const LINES := {"):]
+    block = block[:block.index("}")]
+    return dict(re.findall(r'"(\w+)": "([^"]*)"', block))
+
+
+def syllables(text):
+    """[(onset consonants, vowel letters, pause after in seconds, excited)] for the line."""
+    out = []
+    for word in text.lower().replace(",", " , ").replace(".", " . ").replace("!", " ! ").replace("?", " ? ").split():
+        if word in ",.!?":
+            if out:
+                c, v, _, ex = out[-1]
+                out[-1] = (c, v, 0.16 if word in ".!?" else 0.1, ex or word == "!")
+            continue
+        onset, vowels, parts = "", "", []
+        for ch in word:
+            if ch in VOWELS:
+                vowels += ch
+            else:
+                if vowels:
+                    parts.append((onset, vowels))
+                    onset, vowels = "", ""
+                onset += ch
+        if vowels:
+            parts.append((onset, vowels))
+        elif parts:
+            parts[-1] = (parts[-1][0], parts[-1][1])  # a trailing consonant folds into the last syllable
+        for k, (c, v) in enumerate(parts):
+            out.append((c, v, 0.04 if k == len(parts) - 1 else 0.0, False))
+    return out
+
+
+def voice(text, base=150.0):
+    sylls = syllables(text)
+    out = silence(0.05)
+    count = max(1, len(sylls))
+    for k, (onset, vowels, pause, excited) in enumerate(sylls):
+        lead = onset[:1]
+        if lead and lead in PLOSIVES:
+            out += decay(biquad(noise(int(0.018 * RATE)), "bandpass", 2800.0, 0.8), 0.005)
+        elif lead in FRICATIVES:
+            n = int(0.055 * RATE)
+            out += env(biquad(noise(n), "bandpass", FRICATIVES[lead], 1.2), attack=0.01, decay=0.02, sustain=0.6,
+                       release=0.015)
+        length = 0.12 + (0.06 if excited else 0.0) + 0.015 * (len(vowels) - 1)
+        n = int(length * RATE)
+        rise = 1.0 + 0.25 * k / count  # climbing through the line
+        f0 = base * rise * (1.35 if excited else 1.0) * rng.uniform(0.95, 1.06)
+        contour = [f0 * (1.0 + (0.15 if excited else 0.05) * math.sin(math.pi * i / n)) for i in range(n)]
+        buzz = osc("saw", contour)
+        if lead and lead in "mnlrw":
+            buzz = env(buzz, attack=0.02, decay=0.02, sustain=1.0, release=0.0)
+        f1, f2 = VOWELS[vowels[0]]
+        if len(vowels) > 1:  # a glide toward the second vowel
+            g1, g2 = VOWELS[vowels[-1]]
+            f1s = [f1 + (g1 - f1) * i / n for i in range(n)]
+            f2s = [f2 + (g2 - f2) * i / n for i in range(n)]
+        else:
+            f1s, f2s = f1, f2
+        vowel = mix((biquad(buzz, "bandpass", f1s, 5.0), 1.0), (biquad(buzz, "bandpass", f2s, 8.0), 0.7),
+                    (biquad(buzz, "bandpass", 2700.0, 6.0), 0.25))
+        out += env(vowel, attack=0.012, decay=0.04, sustain=0.85, release=0.035)
+        out += silence(pause)
+    pa = biquad(biquad(out, "highpass", 280.0), "lowpass", 3800.0)  # the stadium speakers
+    pa = biquad(pa, "peak", 1800.0, 1.0, 5.0)
+    return shot(finish(trim(reverb(pa, 0.35, 1.5, 0.6))), fade_out=0.03)
+
+
 def at_music_rate(make):
     """Renders `make` with RATE set to MUSIC_RATE (the helpers all read RATE)."""
     def run():
@@ -1016,7 +1100,10 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     only = [a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--only=")]
     project = args[0] if args else os.path.join(os.path.dirname(__file__), "..")
-    for name, make in FILES.items():
+    files = dict(FILES)
+    for line_id, text in announcer_lines(project).items():  # last, so the others don't move
+        files["sfx/vo_%s.wav" % line_id] = (lambda t: lambda: voice(t))(text)
+    for name, make in files.items():
         sig = make()  # every sound, in order, so the shared random stream gives the same files
         sig, rate = sig if isinstance(sig, tuple) else (sig, RATE)
         if only and not any(o in name for o in only):

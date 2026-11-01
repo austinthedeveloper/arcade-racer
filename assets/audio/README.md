@@ -62,6 +62,16 @@ seamless; the engine loops are pitch-shifted, so a steady single-note recording 
 | `station_funk` | music | yes | 92.1 SOUL STOP: funk, E, 104 bpm |
 | `station_techno` | music | yes | 107.9 PULSE: techno, F minor, 128 bpm |
 
+## The announcer
+
+`scripts/audio/announcer.gd` holds the lines (`Announcer.LINES`), and `tools/make_audio.py`
+reads them from there to make each `vo_<id>` cue: not words, but synthesized patter in the
+line's rhythm (formant-filtered syllables through a stadium PA), the way a cartoon character
+talks. The subtitle carries the words (Options > Accessibility > Subtitles, on by default).
+Lines play one at a time: the finish and time up jump the queue, a near miss or big air whose
+moment has passed (2 s) is dropped. The music ducks 9 dB under each line. A recorded
+`sfx/vo_<id>.ogg` replaces a line; edit its words in `LINES` to match.
+
 ## The radio
 
 `scripts/audio/radio.gd` lists the four stations. A race starts on the station chosen in

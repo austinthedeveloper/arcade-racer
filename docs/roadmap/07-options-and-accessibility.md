@@ -21,7 +21,7 @@ for rows; a wheel steers through rows and presses gas to change a value.
 | AC-2 ✓ | **Shake and flash sliders.** Screen shake 0 to 10 and flash intensity 0 to 10. Lightning (WS-2) and camera shake (PR-10) read them; both default to the designed level and never exceed it. | S | 3 | | At 0 no shake and no flash; test through the functions that compute them |
 | AC-3 ✓ | **Assists.** Steering assist and braking assist toggles (WH-6). Off by default. | S | 6 | WH-6 | Settings tests; golden traces unchanged |
 | AC-4 ✓ | **Colorblind-safe HUD.** Position, timer state and power-up icons distinguished by shape and brightness, not hue alone; a palette check against the common deficiencies. | S | 3 | PR-6 | HUD screenshots passed through a deuteranopia filter still read; icons differ in silhouette |
-| AC-5 | **Subtitles.** Announcer lines (PR-4) as text in the banner area, on by default. | S | 6 | PR-4 | Every line has a string; test that subtitles follow the cue |
+| AC-5 ✓ | **Subtitles.** Announcer lines (PR-4) as text in the banner area, on by default. | S | 6 | PR-4 | Every line has a string; test that subtitles follow the cue |
 | AC-6 ✓ | **Units.** MPH or KPH on the speedometer. | S | 3 | | A conversion test; the HUD label changes |
 | AC-7 | **Controls.** Steering lock and range (WH-1), remapping (WH-2), FFB strength (WH-3). Cross-referenced; the Options screen gets a Controls sub-screen when WH-2 lands. | | 1, 5 | | |
 | AC-8 | **Game.** Difficulty (MP-7) and the unlock-everything toggle (MP-4). | | 2, 3 | | |
