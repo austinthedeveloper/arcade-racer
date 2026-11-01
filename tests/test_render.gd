@@ -278,3 +278,57 @@ func test_only_cars_close_behind_are_drawn_over_the_player() -> void:
 	# Cars nearer the camera than that filled the screen at a grid start.
 	eq(RoadRenderer.behind_from(7), 7 - RoadRenderer.BEHIND_SEGMENTS, "one segment behind the player's")
 	eq(RoadRenderer.behind_from(1), 0, "no further than the camera's own")
+
+
+func test_sprite_lod_picks_the_smallest_level_at_least_as_tall() -> void:
+	var heights := [190, 95, 48]
+	eq(SpriteLibrary.lod_level(heights, 250.0), 0, "drawn larger than the texture: the texture")
+	eq(SpriteLibrary.lod_level(heights, 190.0), 0, "drawn at its own size: the texture")
+	eq(SpriteLibrary.lod_level(heights, 120.0), 0, "under the texture but over half: still the texture")
+	eq(SpriteLibrary.lod_level(heights, 95.0), 1, "half size: the half copy")
+	eq(SpriteLibrary.lod_level(heights, 60.0), 1, "between a half and a quarter: the half")
+	eq(SpriteLibrary.lod_level(heights, 48.0), 2, "a quarter: the quarter copy")
+	eq(SpriteLibrary.lod_level(heights, 6.0), 2, "far off: the smallest there is")
+	eq(SpriteLibrary.lod_level([40], 6.0), 0, "a sprite with no copies")
+	for h in range(1, 300):
+		var level := SpriteLibrary.lod_level(heights, float(h))
+		check(float(heights[level]) < 2.0 * h or level == heights.size() - 1,
+			"never sampled down by half or more at %d px (level %d)" % [h, level])
+
+
+func test_tall_sprites_load_their_reduced_copies() -> void:
+	SpriteLibrary.load_all()
+	var palm: Dictionary = SpriteLibrary.defs["palm_tall_a"]
+	eq(palm["levels"].size(), 3, "a tall palm: itself, a half and a quarter")
+	var h: int = palm["tex"].get_height()
+	eq(palm["heights"], [h, roundi(h / 2.0), roundi(h / 4.0)] as Array[int], "each a power of two smaller")
+	eq(SpriteLibrary.defs["bush"]["levels"].size(), 1, "a low bush has none")
+	eq(SpriteLibrary.texture_for(palm, 400.0), palm["tex"], "close up: the texture")
+	eq(SpriteLibrary.texture_for(palm, 10.0), palm["levels"][2], "far off: the quarter")
+	eq(SpriteLibrary.lod_path("res://a/b/palm.png", 4), "res://a/b/lod/palm_4.png", "beside it in lod/")
+	var with := 0
+	for id: String in SpriteLibrary.defs:
+		var def: Dictionary = SpriteLibrary.defs[id]
+		if def["levels"].size() > 1:
+			with += 1
+		eq(def["levels"].size(), SpriteLibrary.manifest()["roadside"][id].get("lod", []).size() + 1, id + " loads every copy listed")
+	check(with > 150, "most roadside sprites have copies (%d)" % with)
+
+
+func test_sprite_rects_sit_on_the_pixel_grid() -> void:
+	# The right side: starts at the road edge, 10.4 to 40.7 across, 20.6 down to 60.8
+	eq(RoadRenderer.pixel_sprite_rect(10.4, 60.8, 30.3, 40.2, 1.2, false), Rect2(10, 21, 31, 40), "edges rounded")
+	eq(RoadRenderer.pixel_sprite_rect(200.0, 300.0, 50.0, 80.0, -1.2, false),
+		RoadRenderer.sprite_rect(200.0, 300.0, 50.0, 80.0, -1.2, false), "already on the grid: as sprite_rect")
+	for offset in [-1.3, 1.3]:
+		var plain := RoadRenderer.pixel_sprite_rect(200.3, 300.4, 50.4, 80.2, offset, false)
+		var flipped := RoadRenderer.pixel_sprite_rect(200.3, 300.4, 50.4, 80.2, offset, true)
+		eq(flipped.position, plain.position, "a mirrored sprite covers the same pixels at %s" % offset)
+		eq(flipped.size, Vector2(-plain.size.x, plain.size.y), "still mirrored at %s" % offset)
+		var exact := RoadRenderer.sprite_rect(200.3, 300.4, 50.4, 80.2, offset, false)
+		check(absf(plain.position.x - exact.position.x) <= 0.5 and absf(plain.end.x - exact.end.x) <= 0.5,
+			"within half a pixel of where it was at %s" % offset)
+	eq(RoadRenderer.pixel_sprite_rect(5.2, 5.4, 0.2, 0.3, 1.2, false).size, Vector2(1, 1), "at least a pixel")
+	var r := RoadRenderer.pixel_sprite_rect(3.7, 9.0, 12.9, 7.7, -1.5, true)
+	eq(r.position, r.position.round(), "whole-pixel corner")
+	eq(r.size, r.size.round(), "whole-pixel size")

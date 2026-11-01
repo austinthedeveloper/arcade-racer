@@ -159,5 +159,41 @@ class Cli(unittest.TestCase):
             self.assertEqual(sl.sprite_dir(project, "roadside", "neon"), path, "already there is fine")
 
 
+class LevelOfDetail(unittest.TestCase):
+    def test_lod_steps_for_tall_sprites_only(self):
+        self.assertEqual(sl.lod_steps(40), [], "short: none")
+        self.assertEqual(sl.lod_steps(64), [2, 4], "tall: a half and a quarter")
+        self.assertEqual(sl.lod_steps(200), [2, 4])
+
+    def test_reduce_averages_with_alpha_weighting(self):
+        # A red square on a transparent black surround: halved, its edge pixels mix only red
+        img = Image.new("RGBA", (8, 8), (0, 0, 0, 0))
+        img.paste((255, 0, 0, 255), (1, 1, 7, 7))
+        small = np.array(sl.reduce_sprite(img, 2))
+        self.assertEqual(small.shape[:2], (4, 4))
+        solid = small[..., 3] == 255
+        self.assertFalse(solid[0, 0], "a quarter-covered corner (alpha 64, under LOD_ALPHA) drops")
+        self.assertTrue((small[solid][:, :3] == [255, 0, 0]).all(), "no darkening from the transparent surround")
+        self.assertTrue(((small[..., 3] == 0) | (small[..., 3] == 255)).all(), "hard alpha")
+        self.assertTrue(solid[1:3, 1:3].all(), "the middle stays solid")
+
+    def test_reduce_averages_colors(self):
+        img = Image.new("RGBA", (2, 2), (0, 0, 0, 255))
+        img.paste((200, 100, 0, 255), (0, 0, 1, 2))
+        self.assertEqual(tuple(np.array(sl.reduce_sprite(img, 2))[0, 0]), (100, 50, 0, 255), "a box average")
+
+    def test_write_lods_beside_the_sprite_and_clears_stale_ones(self):
+        with tempfile.TemporaryDirectory() as d:
+            tall = os.path.join(d, "palm.png")
+            Image.new("RGBA", (30, 100), (0, 200, 0, 255)).save(tall)
+            self.assertEqual(sl.write_lods(tall), [2, 4])
+            self.assertEqual(Image.open(sl.lod_path(tall, 2)).size, (15, 50))
+            self.assertEqual(Image.open(sl.lod_path(tall, 4)).size, (8, 25))
+            self.assertEqual(sl.lod_path(tall, 4), os.path.join(d, "lod", "palm_4.png"))
+            Image.new("RGBA", (30, 40), (0, 200, 0, 255)).save(tall)  # rebuilt short
+            self.assertEqual(sl.write_lods(tall), [])
+            self.assertFalse(os.path.exists(sl.lod_path(tall, 2)), "stale copies removed")
+
+
 if __name__ == "__main__":
     unittest.main()

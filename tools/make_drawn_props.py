@@ -11,7 +11,7 @@ import os
 from PIL import Image, ImageDraw
 
 import manifest
-from spritelib import cli_args, sprite_dir
+from spritelib import cli_args, sprite_dir, write_lods
 
 
 def canvas(w, h):
@@ -127,6 +127,7 @@ def main():
     roadside = sprite_dir(project_dir, "roadside", "palm_coast")
     for name, (draw, _, _) in DRAWN.items():
         draw(os.path.join(roadside, name + ".png"))
+        write_lods(os.path.join(roadside, name + ".png"))
     manifest.write(project_dir)
 
 

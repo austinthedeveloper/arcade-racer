@@ -21,7 +21,7 @@ static func load_all() -> void:
 	var m := manifest()
 	for id: String in m["roadside"]:
 		var e: Dictionary = m["roadside"][id]
-		_add(id, SPRITES + e["file"], e["world_h"], e["collide"])
+		_add(id, SPRITES + e["file"], e["world_h"], e["collide"], e.get("lod", []))
 	for id: String in m["spans"]:
 		var e: Dictionary = m["spans"][id]
 		var fill: Color = Color(e["fill"]) if e["fill"] != null else Color.TRANSPARENT
@@ -98,14 +98,53 @@ static func span_scale(width: float) -> float:
 	return maxf(width, 1.0)
 
 
-static func _add(id: String, path: String, world_h: float, collide: float) -> void:
+## Adds a roadside sprite, with its reduced copies (`lod`: the steps, 2 for half size...).
+static func _add(id: String, path: String, world_h: float, collide: float, lod: Array = []) -> void:
 	var tex: Texture2D = load(path)
 	if tex == null:
 		push_warning("Missing sprite: " + path)
 		return
+	var levels: Array[Texture2D] = [tex]
+	var heights: Array[int] = [tex.get_height()]
+	for step in lod:
+		var small: Texture2D = load(lod_path(path, int(step)))
+		if small == null:
+			push_warning("Missing reduced sprite: " + lod_path(path, int(step)))
+			break
+		levels.append(small)
+		heights.append(small.get_height())
 	defs[id] = {
 		"tex": tex,
+		"levels": levels,  # the texture, then its reduced copies, largest first (lod_level)
+		"heights": heights,  # and their heights in pixels
 		"world_h": world_h,
 		"world_w": world_h * tex.get_width() / float(tex.get_height()),
 		"collide": collide,
 	}
+
+
+## Where the 1/`step` copy of the sprite at `path` is (tools/spritelib.py lod_path): a lod/
+## folder beside it.
+static func lod_path(path: String, step: int) -> String:
+	return "%s/lod/%s_%d.png" % [path.get_base_dir(), path.get_file().get_basename(), step]
+
+
+## Sprite LOD (CP-9): which of a sprite's `heights` (its texture's, then each reduced copy's,
+## largest first) to draw it from when it stands `screen_h` pixels tall: the smallest still
+## at least that tall, so it is never sampled down by more than half (nearest-neighbour
+## skips the rest, and the sprite shimmers as it moves). The full texture when it is drawn
+## larger than that.
+static func lod_level(heights: Array, screen_h: float) -> int:
+	var level := 0
+	for i in range(1, heights.size()):
+		if float(heights[i]) >= screen_h:
+			level = i
+	return level
+
+
+## The texture to draw a roadside sprite `def` from at `screen_h` pixels tall (lod_level).
+static func texture_for(def: Dictionary, screen_h: float) -> Texture2D:
+	var heights: Array = def["heights"]
+	if heights.size() == 1 or screen_h > heights[1]:
+		return def["tex"]  # no copies, or bigger than the half one
+	return def["levels"][lod_level(heights, screen_h)]

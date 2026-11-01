@@ -386,6 +386,61 @@ def pixelate_down(img, scale):
     return hard_alpha(img.convert("RGBA").resize((nw, nh), Image.BOX), 140)
 
 
+# --- Level of detail (CP-9) ----------------------------------------------------------------
+# A tall roadside sprite is drawn far smaller than its texture most of the time; the game
+# samples it nearest-neighbour, so at a distance it would skip most of its pixels and shimmer
+# as it moves. Each one gets reduced copies, 1/2 and 1/4 the size, filtered properly, and the
+# game draws the smallest that is still at least as tall as the sprite on screen
+# (SpriteLibrary.lod_level).
+LOD_STEPS = (2, 4)
+LOD_MIN_HEIGHT = 64  # pixels: shorter sprites are small on screen anyway, and get none
+LOD_MIN_LEVEL = 12  # pixels: no level shorter than this (too few pixels to hold the shape)
+LOD_ALPHA = 96  # alpha a reduced pixel needs to stay (lower than pixelate_down's: thin poles)
+
+
+def lod_steps(height):
+    """The reductions a sprite `height` pixels tall gets (each a divisor of its size)."""
+    if height < LOD_MIN_HEIGHT:
+        return []
+    return [s for s in LOD_STEPS if height / s >= LOD_MIN_LEVEL]
+
+
+def reduce_sprite(img, step):
+    """`img` at 1/`step` of its size: each new pixel the average of the old ones it covers,
+    weighted by their alpha (premultiplied, so the transparent surround doesn't darken the
+    edges), then hard alpha edges again for the pixel grid."""
+    w, h = img.size
+    small = img.convert("RGBA").convert("RGBa").resize((max(1, round(w / step)), max(1, round(h / step))), Image.BOX)
+    return hard_alpha(small.convert("RGBA"), LOD_ALPHA)
+
+
+def lod_path(path, step):
+    """Where the 1/`step` copy of the sprite at `path` goes: a lod/ folder beside it."""
+    folder, name = os.path.split(path)
+    return os.path.join(folder, "lod", "%s_%d.png" % (os.path.splitext(name)[0], step))
+
+
+def write_lods(path):
+    """Writes the reduced copies of the sprite at `path` (lod_steps), and removes any it
+    no longer gets. Returns the steps written."""
+    img = Image.open(path)
+    steps = lod_steps(img.height)
+    for step in LOD_STEPS:
+        out = lod_path(path, step)
+        if step in steps:
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            reduce_sprite(img, step).save(out)
+        elif os.path.exists(out):
+            os.remove(out)
+    return steps
+
+
+def save_sprite(img, path):
+    """Saves a roadside sprite and its reduced copies (write_lods)."""
+    img.save(path)
+    write_lods(path)
+
+
 def make_background(path, horizon, out_path, width=1280, colors=96):
     """The composite above its horizon row as a seamless strip: scaled to `width`, then
     followed by its mirror image so the ends meet."""

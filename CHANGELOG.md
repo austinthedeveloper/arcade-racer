@@ -25,6 +25,11 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Stage flow: each stage's finish runs into the next stage's colors and scenery, and the
   results fade the sky over to it before you go on (WS-8).
 
+### Changed
+
+- Distant roadside scenery no longer shimmers: palms, buildings and signs far down the road
+  are drawn from smaller, smoothed copies, all on the same pixel grid (CP-9).
+
 ## [0.2.0] - 2026-11-01
 
 ### Added
