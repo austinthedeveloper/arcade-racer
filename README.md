@@ -17,7 +17,8 @@ An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports
 | Steer | Left / Right or A / D | Left stick or D-pad | Wheel |
 | Gas | Up or W | Right trigger or A | Gas pedal |
 | Brake | Down or S | Left trigger, B or X | Brake pedal |
-| Nitro (3 per race; 4 in the Halo EV) | Space or Shift | RB or Y | Button picked during calibration |
+| Nitro (3 per race; 4 in the Halo EV) | Space or Shift | RB | Button picked during calibration |
+| Shift up / down (manual gears only) | E / Q | Y / LB | Bind the paddles in Options > Controls > Remap buttons |
 | Pause menu (resume, restart, options, quit to title) | Esc or P | Start | |
 | Restart the stage | R | Back | |
 | Next stage (after a finish; Single Race: back to the menus), retry (after TIME UP) | Enter | A | |
@@ -47,6 +48,7 @@ Pick **OPTIONS** on the title screen. Options are saved to `user://settings.cfg`
 | Power-ups | On or off: the nitro cans, clocks, ram plates, ghosts and mystery hubcaps on the road. |
 | Music / sound FX volume | 0 to 10. |
 | Calibrate wheel | Opens the wheel calibration (same as F2). |
+| Gears (Accessibility) | Automatic (the default) or manual: you shift through five gears, each with a rev limiter, for about 3% more top speed. |
 
 On the keyboard and gamepad, Up / Down picks a row and Left / Right changes it; Enter / A also toggles or cycles it. A wheel has no up and down, so there you turn the wheel to pick a row and press the gas to change it. Brake goes back.
 

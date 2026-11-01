@@ -48,8 +48,9 @@ func test_defaults_on_every_device() -> void:
 		check(kb.conflicts(a).is_empty(), "keyboard %s: no clash by default" % a)
 		check(_pad().conflicts(a).is_empty(), "pad %s: no clash by default" % a)
 	eq(kb.binding_text("nitro"), "SPACE / SHIFT", "two keys")
-	eq(_pad().binding_text("nitro"), "RB / Y", "pad names")
-	eq(_pad().binding_text("shift_up"), "---", "unbound")
+	eq(_pad().binding_text("nitro"), "RB", "pad names")
+	eq([_pad().binding_text("shift_up"), _pad().binding_text("shift_down")], ["Y", "LB"], "a pad shifts on Y and LB")
+	eq(_pad().binding_text("radio"), "---", "unbound")
 	var wheel := DeviceProfile.new()
 	wheel.kind = DeviceProfile.Kind.WHEEL
 	eq(wheel.binding("nitro"), [], "an uncalibrated wheel: nothing")
@@ -65,7 +66,7 @@ func test_bind_replaces_and_unbinds() -> void:
 	p.bind("horn", DeviceProfile.UNBOUND)
 	eq(p.binding("horn"), [], "unbound")
 	p.reset_bindings()
-	eq([p.binding("nitro"), p.binding("horn")], [[JOY_BUTTON_RIGHT_SHOULDER, JOY_BUTTON_Y], [JOY_BUTTON_LEFT_STICK]], "reset")
+	eq([p.binding("nitro"), p.binding("horn")], [[JOY_BUTTON_RIGHT_SHOULDER], [JOY_BUTTON_LEFT_STICK]], "reset")
 	var wheel := DeviceProfile.new()
 	wheel.kind = DeviceProfile.Kind.WHEEL
 	wheel.bind("nitro", 7)
@@ -111,7 +112,7 @@ func test_bindings_persist_per_device() -> void:
 	var pad_back: DeviceProfile = InputRouter._saved[PAD]
 	eq([pad_back.binding("nitro"), pad_back.binding("horn")], [[JOY_BUTTON_X], [JOY_BUTTON_LEFT_STICK]], "this pad's own")
 	var other_back: DeviceProfile = InputRouter._saved[other.guid]
-	eq([other_back.binding("nitro"), other_back.binding("horn")], [[JOY_BUTTON_RIGHT_SHOULDER, JOY_BUTTON_Y], [JOY_BUTTON_B]],
+	eq([other_back.binding("nitro"), other_back.binding("horn")], [[JOY_BUTTON_RIGHT_SHOULDER], [JOY_BUTTON_B]],
 		"and the other pad's")
 	_clean()
 	eq(_keys("nitro"), [KEY_SPACE, KEY_SHIFT], "a fresh profile file: defaults")

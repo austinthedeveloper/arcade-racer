@@ -23,6 +23,10 @@ the release workflow puts that section at the top of the GitHub Release notes
 - New sounds: passing cars whoosh by on their side, wind rises with speed, rivals' engines
   close by, the slipstream buffets, each power-up has its own pickup sound, and the horn
   button honks (PR-1, PR-3).
+- Manual gears, in Options > Accessibility: shift up and down yourself (E and Q, Y and LB on a
+  pad, or your wheel's paddles once bound in Remap) for a little more top speed; the engine and
+  the tach follow your gear. Automatic stays the default. Nitro on a pad is now RB only, as Y
+  shifts up (RC-10).
 - A radio with four stations of original music: rock, synthwave, funk and techno. Pick one
   on car select or in Options, or leave it on shuffle; M changes station mid-race (PR-2).
 - An announcer calls the countdown, GO, checkpoints, near misses, big air, the final stretch
