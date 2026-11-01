@@ -8,8 +8,8 @@ signal changed
 
 ## The save.cfg format (CfgVersion). A file with another number still loads: older ones are
 ## migrated, newer ones are read as far as the keys this build knows go.
-## 0: no version field. 1: the same keys, versioned.
-const VERSION := 1
+## 0: no version field. 1: the same keys, versioned. 2: stage mirrors (WS-6) in the unlocks.
+const VERSION := 2
 
 ## Where progress is saved. Tests point this at a scratch file.
 var path := "user://save.cfg"
@@ -25,6 +25,8 @@ var loaded_version := VERSION
 
 
 func _ready() -> void:
+	# Dev flag: --save-file=PATH reads (and saves) another save, for screenshots.
+	path = DevArgs.value("--save-file", path)
 	load_save()
 
 
@@ -67,12 +69,26 @@ func load_save() -> void:
 
 ## Brings a loaded save.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2])
 
 
 ## Version 1 only added the version field: the keys are as they were.
 static func _v0_to_v1(_cfg: ConfigFile) -> void:
 	pass
+
+
+## Version 2 opens a stage's mirror on a win (Unlocks.mirror_id): a stage already won (a best
+## placing of 1st, with any car) gets its mirror.
+static func _v1_to_v2(cfg: ConfigFile) -> void:
+	var u = cfg.get_value("tour", "unlocks", [])
+	var unlocked: Array = u if u is Array else []
+	if cfg.has_section("best"):
+		for key: String in cfg.get_section_keys("best"):
+			var b = cfg.get_value("best", key)
+			var stage := Stages.POSTCARDS.find(key.get_slice("/", 0))
+			if stage >= 0 and b is Dictionary and int(b.get("place", 0)) == 1 and not unlocked.has(Unlocks.mirror_id(stage)):
+				unlocked.append(Unlocks.mirror_id(stage))
+	cfg.set_value("tour", "unlocks", unlocked)
 
 
 ## Writes the save. Over a file from a newer build, its other keys are kept (CfgVersion.to_write);

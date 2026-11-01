@@ -119,7 +119,7 @@ func test_touching_traffic_spoils_the_secret() -> void:
 	r.player.distance = r.finish_distance + 1.0
 	r._check_progress()
 	check(not runner.root.get_node("SaveData").is_unlocked("car_hauler"), "no Hauler")
-	eq(r.new_unlocks, ["car_skipper"] as Array[String], "just the Skipper")
+	eq(r.new_unlocks, ["car_skipper", "mirror_palm_coast"] as Array[String], "just the Skipper (and the mirror: over the line first)")
 	_clean()
 
 

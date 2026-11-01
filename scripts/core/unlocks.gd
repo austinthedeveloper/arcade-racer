@@ -5,8 +5,9 @@ extends RefCounted
 ## read the SaveData and Settings autoloads for the menus. Dev flags (--car, --stage) and
 ## tests pass straight by them.
 ##
-## Paint colors by placing (CP-4) and mirror mode per stage won (WS-6) hook in here once
-## those exist.
+## A stage's mirror (WS-6) opens when you win it: first past the line against rivals, in the
+## Grand Tour or a Single Race (SaveData unlock id mirror_id). Paint colors by placing (CP-4)
+## hook in here once they exist.
 
 ## Open from the start.
 const STARTERS := ["car_vega", "car_bruiser", "car_kestrel", "car_sol"]
@@ -51,6 +52,25 @@ static func stage_condition(index: int) -> String:
 	return "Reach stage %d in the Grand Tour" % (index + 1)
 
 
+## The SaveData unlock id of stage `index`'s mirror: "mirror_" and the stage's id.
+static func mirror_id(index: int) -> String:
+	return "mirror_" + Stages.POSTCARDS[index]
+
+
+## Whether stage `index` can be raced mirrored, given the save's unlock ids.
+static func mirror_open(index: int, unlocked: Array, everything: bool) -> bool:
+	return everything or unlocked.has(mirror_id(index))
+
+
+static func mirror_condition(_index: int) -> String:
+	return "Win this stage to race it mirrored"
+
+
+## Whether a finish earns the stage's mirror: a win, against rivals.
+static func earns_mirror(place: int, had_rivals: bool) -> bool:
+	return had_rivals and place == 1
+
+
 ## Whether a finish earns the secret car: Palm Coast, with traffic on the road, without a
 ## single touch of it.
 static func earns_secret(stage: int, touched_traffic: bool, had_traffic: bool) -> bool:
@@ -74,3 +94,7 @@ static func car_unlocked(id: String) -> bool:
 
 static func stage_unlocked(index: int) -> bool:
 	return stage_open(index, SaveData.furthest_stage, Settings.unlock_all)
+
+
+static func mirror_unlocked(index: int) -> bool:
+	return mirror_open(index, SaveData.unlocks, Settings.unlock_all)

@@ -5,6 +5,8 @@ extends MenuScreen
 ## stage's postcard shows big in the bay; left and right step along the route. A Grand Tour
 ## runs on from the chosen stage; a Single Race is just that stage. Stages the tour hasn't
 ## reached yet (Unlocks) show dimmed with a lock and can't be picked.
+## Outside the Grand Tour a MIRROR toggle (WS-6, Up; game.mirror) races the stage flipped,
+## once it's won; Time Attack and Free Drive also switch traffic (Down).
 
 const MAP := "res://assets/sprites/ui/stage_map.png"
 ## Each stage's pin on the map, in tour order: the route markers painted on the concept.
@@ -45,10 +47,13 @@ static func card_rect(i: int) -> Rect2:
 
 
 func handle(m: MenuInput) -> void:
-	if solo() and m.step_y() != 0:
+	var y := m.step_y()
+	if y > 0 and solo():
 		Settings.attack_traffic = not Settings.attack_traffic
 		Settings.save()
 		Audio.play("tick")
+	elif y != 0 and mirror_offered():
+		toggle_mirror()
 	elif m.step() != 0:
 		move(m.step())
 		Audio.play("tick")
@@ -122,10 +127,14 @@ func _big() -> void:
 	var open := Unlocks.stage_unlocked(index)
 	_frame(BIG, Color(GOLD, 0.35 + 0.15 * sin(time * 4.0)) if open else Color.TRANSPARENT)
 	if index < _cards.size() and _cards[index] != null:
-		draw_texture_rect(_cards[index], BIG, false, Color.WHITE if open else LOCKED_TINT)
+		# Mirrored, flipped: a negative width mirrors the picture within the same rect
+		var card := Rect2(BIG.position, Vector2(-BIG.size.x, BIG.size.y)) if mirrored() else BIG
+		draw_texture_rect(_cards[index], card, false, Color.WHITE if open else LOCKED_TINT)
 	if not open:
 		_lock(BIG.get_center() + Vector2(0, -10), 1.3)
 		_text_centered(BIG.get_center() + Vector2(0, 22), "LOCKED", 12, GOLD)
+	elif mirror_offered():
+		_mirror_badge(BIG.end.x - 2, BIG.end.y - 3)
 
 
 func _band() -> void:
@@ -145,6 +154,40 @@ func _band() -> void:
 	_arrow(Vector2(BAND.end.x - 22 + pulse, BAND.get_center().y), 1, GOLD)
 
 
+## Up (or Down, with no traffic to switch): MIRROR on or off. Off always goes; on only where
+## the stage's mirror is open, or the stage itself is locked.
+func toggle_mirror() -> void:
+	if not game.mirror and not (Unlocks.stage_unlocked(index) and Unlocks.mirror_unlocked(index)):
+		Audio.play("bump")
+		return
+	game.mirror = not game.mirror
+	Audio.play("tick")
+
+
+func mirror_offered() -> bool:
+	return game != null and game.mirror_offered()
+
+
+## Whether the stage shown would be raced mirrored (the postcard is drawn flipped).
+func mirrored() -> bool:
+	return game != null and game.mirror_for(index)
+
+
+## The MIRROR badge in the big postcard's corner, right-aligned to `right` on `baseline`:
+## ON or OFF, or a lock while the stage's mirror isn't won.
+func _mirror_badge(right: float, baseline: float) -> void:
+	var open := Unlocks.mirror_unlocked(index)
+	var on: bool = open and game.mirror
+	var label := ("MIRROR " + ("ON" if on else "OFF")) if open else "MIRROR"
+	var w := UiText.width(label, 10) + (0.0 if open else 14.0)
+	var box := Rect2(right - w - 10, baseline - 11, w + 8, 14)
+	draw_rect(box, Color(GOLD, 0.9) if on else Color(0, 0, 0, 0.6))
+	var col := NIGHT if on else (Color.WHITE if open else Color(1, 1, 1, 0.5))
+	if not open:
+		_lock(Vector2(box.position.x + 8, box.get_center().y - 1), 0.45)
+	_text(Vector2(box.position.x + 4 + (0.0 if open else 12.0), baseline - 1), label, 10, col)
+
+
 func time_attack() -> bool:
 	return game != null and game.mode_index == ModeSelect.Item.TIME_ATTACK
 
@@ -155,9 +198,10 @@ func solo() -> bool:
 
 
 func _tour_line() -> String:
+	var mirror := "   " + mirror_line() if mirror_offered() else ""
 	if game != null and game.mode_index == ModeSelect.Item.SINGLE_RACE:
-		return "Single Race: one run on this stage"
-	var traffic := "Traffic %s  (Up / Down)" % ("ON" if Settings.attack_traffic else "OFF")
+		return "Single Race: one run on this stage." + mirror
+	var traffic := "Traffic %s (Down)%s" % ["ON" if Settings.attack_traffic else "OFF", mirror]
 	if time_attack():
 		return "Time Attack: you and your best run.   " + traffic
 	if solo():
@@ -166,3 +210,10 @@ func _tour_line() -> String:
 	if index == last:
 		return "The final stage"
 	return "Tour from here on to %s  (%d stages)" % [Stages.stage_name(last), Stages.count() - index]
+
+
+## What the MIRROR toggle says under the stage name: how to switch it, or how to open it.
+func mirror_line() -> String:
+	if not Unlocks.mirror_unlocked(index):
+		return Unlocks.mirror_condition(index)
+	return "Mirror %s (Up)" % ("ON" if game.mirror else "OFF")

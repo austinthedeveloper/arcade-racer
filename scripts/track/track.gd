@@ -25,6 +25,9 @@ const SIGN_AHEAD := 30  # segments before a sharp curve, jump or bumps that its 
 const CHEVRON_EVERY := 8
 const RAIL_REACH := 10  # segments: rails stand every 10 (Bayou, Timberline), so a run has one this close
 const CHEVRONS := ["chevron_a", "chevron_b", "chevron_c"]
+## Roadside art that reads wrong mirrored (lettering, numbers): on a mirrored stage it moves
+## to the other side but keeps its art the right way round.
+const MIRROR_KEEPS_ART := ["slot_machine"]
 
 ## Road width (WS-7): a narrowing or widening eases in over WIDTH_EASE segments either side,
 ## its lanes changing halfway through; MIN_LANES to MAX_LANES lanes. Drivers pick their lane
@@ -45,10 +48,37 @@ var checkpoints: Array[int] = []
 var finish_index := 0
 ## First segment of every jump and bumpy stretch, for the bump signs (add_road_signs).
 var hazards: Array[int] = []
+## Mirror mode (WS-6): the stage flipped left for right (mirror). Spans and the background
+## are drawn flipped, and whatever is placed across the road (traffic, pickups, rivals'
+## lines) goes by side().
+var mirrored := false
 
 var _ground_left := GROUND_GRASS
 var _ground_right := GROUND_GRASS
 var _grip := NAN  # set_grip: NAN for the theme's
+
+
+## Flips the built stage left for right (mirror mode, WS-6): every curve bends the other way,
+## roadside sprites stand on the other side with their art mirrored, the ground either side
+## swaps. Distances, heights and everything along the road stay as they are. Spans keep
+## their ids; the renderer and PlayerCar.hits_span read them mirrored (side()).
+func mirror() -> void:
+	mirrored = not mirrored
+	for seg in segments:
+		seg.curve = -seg.curve
+		var left := seg.ground_left
+		seg.ground_left = seg.ground_right
+		seg.ground_right = left
+		for sp: Dictionary in seg.sprites:
+			sp["offset"] = -float(sp["offset"])
+			if not MIRROR_KEEPS_ART.has(sp["id"]):
+				sp["flip"] = not sp["flip"]
+
+
+## 1 for a stage as built, -1 mirrored: what an x across the road is multiplied by to place
+## it on the mirrored stage.
+func side() -> float:
+	return -1.0 if mirrored else 1.0
 
 
 func find_segment(z: float) -> Segment:
