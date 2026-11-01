@@ -11,6 +11,8 @@ combined pedals. The F1 overlay shows raw axes and the resulting `DriveInput`. M
 wheel-drivable, and an unmapped pad no longer scrolls them (WH-10). Remapping of every action on
 every device (WH-2). Steering and braking assists (WH-6). Auto gas. Each wheel's range, steering
 lock, deadzone and linearity on Controls > WHEEL SETTINGS, with the curve they make (WH-1).
+Unplugging the wheel or pad that's driving pauses the race and says so; plugging it back in
+carries on with the same profile (WH-7).
 
 ## Features
 
@@ -22,7 +24,7 @@ lock, deadzone and linearity on Controls > WHEEL SETTINGS, with the curve they m
 | WH-4 | **Known-wheel profiles.** A table of starting profiles by device name or GUID for common wheels (Logitech G29, G920, G923; Thrustmaster T150, T300, TMX; Fanatec; Moza), so a known wheel skips the wizard and only confirms. | S | 5 | WH-9 | `test_device_profile` checks each entry round-trips; the wizard offers "use the known profile" |
 | WH-5 | **Windows wheel pass.** Test the wheel, pedals, FFB and the web build on Windows; document Steam Input interference and the vendor centering-spring setting. | S | 5 | WH-3 | A short compatibility table in the README |
 | WH-6 ✓ | **Assists.** Gamepad steering assist (pulls toward the lane center at speed) and a beginner braking assist (brakes into sharp curves). Options in AC-3. | S | 6 | | Tests that the assists never exceed their caps; traces unchanged because they are off by default |
-| WH-7 | **Hot-plug during a race.** A disconnected device pauses the race with a message; reconnecting resumes with the same profile. | S | 2 | | Test through `Input.joy_connection_changed` with a fake device |
+| WH-7 ✓ | **Hot-plug during a race.** A disconnected device pauses the race with a message; reconnecting resumes with the same profile. | S | 2 | | Test through `Input.joy_connection_changed` with a fake device |
 | WH-8 | **Web gamepad check.** Verify browser axis mapping for common pads; calibration profile in browser storage survives a reload. | S | 6 | EQ-10 | Manual check noted in the README |
 | WH-9 | **Answer open question 3.** Which wheel and pedals Austin owns becomes the first known profile and the FFB test rig. | S | 1 | | `docs/04-open-questions.md` updated |
 | WH-10 ✓ | **Options scroll forever with a wheel.** Played with a wheel: Options scrolled down forever, every visit. A device read as a pad (no name match) took its up/down from axis 1, which on a wheel or pedal set without a gamepad mapping is often a pedal resting at full travel. Unmapped pads no longer move the menus up and down, and steer through Options like a wheel. | S | 1 | | A resting pedal on axis 1 doesn't move the list; an unmapped pad steers through Options |
