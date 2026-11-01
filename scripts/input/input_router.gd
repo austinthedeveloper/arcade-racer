@@ -247,6 +247,29 @@ func reset_profile(device: int) -> void:
 	devices_changed.emit()
 
 
+## The wheels whose steering can be set (WheelScreen): each connected wheel, then every
+## saved wheel profile that isn't plugged in.
+func wheel_profiles() -> Array[DeviceProfile]:
+	var out: Array[DeviceProfile] = []
+	for d in Input.get_connected_joypads():
+		var p := get_profile(d)
+		if p.kind == DeviceProfile.Kind.WHEEL and not out.has(p):
+			out.append(p)
+	for guid in _saved:
+		var p: DeviceProfile = _saved[guid]
+		if p.kind == DeviceProfile.Kind.WHEEL and not out.has(p):
+			out.append(p)
+	return out
+
+
+## The connected joypad with `guid`, or -1.
+func device_for(guid: String) -> int:
+	for d in Input.get_connected_joypads():
+		if Input.get_joy_guid(d) == guid:
+			return d
+	return -1
+
+
 func raw_axes(device: int) -> PackedFloat32Array:
 	var out := PackedFloat32Array()
 	for a in AXIS_COUNT:
