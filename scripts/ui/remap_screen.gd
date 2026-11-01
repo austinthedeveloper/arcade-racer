@@ -18,10 +18,13 @@ const HELP_RESET := "This device's buttons back to their defaults."
 const HELP_BACK := "Back to the options."
 
 var device_index := 0  # into InputRouter.binding_devices()
-var index := 1  # into rows(): 0 is the device row; opens on the first action
 var listening := ""  # the action waiting for a key or button, or ""
 var listen_left := 0.0
 var _settle := 0.0
+
+
+func _init() -> void:
+	index = 1  # into rows(): 0 is the device row; opens on the first action
 
 
 ## The rows: the device, one per REMAP_ACTIONS, reset, back. Actions are [Row.ACTION, name].
@@ -63,8 +66,8 @@ func go_to(action: String) -> void:
 	index = 1 + DeviceProfile.REMAP_ACTIONS.find(action)
 
 
-func move(dir: int) -> void:
-	index = posmod(index + dir, rows().size())
+func choice_count() -> int:
+	return rows().size()
 
 
 func flip_device(dir: int) -> void:
@@ -173,8 +176,7 @@ func _draw() -> void:
 	_header("CONTROLS")
 	var list := rows()
 	var panel := Rect2(90, TOP - 6, 460, ROW_H * list.size() + 12)
-	_frame(panel)
-	draw_rect(panel, Color(0.04, 0.03, 0.1, 0.85))
+	_panel(panel, 0.85)
 	var p := profile()
 	var mid := ROW_H / 2.0 - 2.0
 	var right := panel.end.x - 20

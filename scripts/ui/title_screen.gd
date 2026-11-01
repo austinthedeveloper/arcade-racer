@@ -6,7 +6,6 @@ extends MenuScreen
 const LOGO := "res://assets/sprites/ui/logo.png"
 const ITEMS := ["START", "OPTIONS"]
 
-var index := 0  # into ITEMS
 var _logo: Texture2D
 
 
@@ -25,10 +24,8 @@ static func start_prompt() -> String:
 	return "PRESS ENTER"
 
 
-## Moves the selection by `dir`, wrapping around; returns the new index.
-func move(dir: int) -> int:
-	index = posmod(index + dir, ITEMS.size())
-	return index
+func choice_count() -> int:
+	return ITEMS.size()
 
 
 func handle(m: MenuInput) -> void:

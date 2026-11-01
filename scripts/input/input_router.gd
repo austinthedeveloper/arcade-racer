@@ -46,9 +46,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	process_physics_priority = -100
 	# Dev flag: --profiles-file=PATH reads (and saves) another profile file, for screenshots.
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--profiles-file="):
-			profile_path = arg.get_slice("=", 1)
+	profile_path = DevArgs.value("--profiles-file", profile_path)
 	_register_actions()
 	load_profiles()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)

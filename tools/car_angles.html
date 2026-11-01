@@ -1,0 +1,255 @@
+<title>Car Angle Sheet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a light-table workbench. Sticky control strip, then a contact sheet of car x steering frame. */
+:root {
+  --bg: #16151b;          /* asphalt at dusk */
+  --panel: #201e27;
+  --line: #34303f;
+  --fg: #ece6dc;
+  --muted: #9a92a6;
+  --accent: #ff8a3d;      /* sundown orange */
+  --flag: #ff4f6d;
+  --ok: #6fd3a8;
+  --display: "Silkscreen", "Courier New", monospace;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--body); }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
+header h1 { font: 400 26px/1.1 var(--display); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+header h1 span { color: var(--accent); }
+header p { color: var(--muted); margin: 6px 0 0; max-width: 70ch; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); margin-top: 16px; padding-block: 10px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.group { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.group > .lbl { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 4px; }
+button.chip { font: 500 12px var(--mono); color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; cursor: pointer; }
+button.chip:hover { border-color: var(--muted); }
+button.chip[aria-pressed="true"] { background: var(--accent); color: #1a1208; border-color: var(--accent); }
+button:focus-visible, .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select { font: 12px var(--mono); background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 6px; }
+.flags { margin-left: auto; display: flex; gap: 8px; align-items: center; font: 12px var(--mono); color: var(--muted); }
+.flags b { color: var(--flag); font-weight: 500; }
+.sheet { overflow-x: auto; margin-top: 18px; }
+table { border-collapse: separate; border-spacing: 6px; }
+th { font: 500 11px var(--mono); color: var(--muted); text-align: left; vertical-align: bottom; white-space: nowrap; letter-spacing: .04em; }
+th.row { vertical-align: middle; padding-right: 6px; min-width: 120px; }
+th.row .name { font: 600 13px var(--body); color: var(--fg); display: block; }
+th.row .note { font: 11px var(--mono); color: var(--muted); display: block; }
+.tag { display: inline-block; font: 500 10px var(--mono); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--line); margin-top: 3px; }
+.tag.real { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+.tag.warp { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.cell { position: relative; display: block; padding: 0; border: 1px solid var(--line); border-radius: 3px; background: #000; cursor: zoom-in; line-height: 0; }
+.cell img { image-rendering: pixelated; display: block; width: calc(var(--w) * var(--z)); height: auto; max-width: none; }
+.cell.flagged { border-color: var(--flag); box-shadow: 0 0 0 2px var(--flag); }
+.cell .pin { position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--flag); display: none; }
+.cell.flagged .pin { display: block; }
+.legend { margin-top: 22px; color: var(--muted); max-width: 80ch; font-size: 13px; }
+.legend code { font: 12px var(--mono); color: var(--fg); }
+dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 14px; max-width: min(96vw, 1320px); }
+dialog::backdrop { background: rgb(0 0 0 / .75); }
+.lb { display: flex; gap: 16px; flex-wrap: wrap; }
+.lb img { image-rendering: pixelated; width: min(90vw, 960px); height: auto; border-radius: 3px; display: block; }
+.lb .meta { min-width: 0; flex: 1 1 220px; display: flex; flex-direction: column; gap: 8px; font: 12px var(--mono); }
+.lb .meta h2 { font: 400 18px var(--display); margin: 0; }
+.lb textarea { width: 100%; min-height: 80px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; font: 12px var(--mono); padding: 6px; box-sizing: border-box; }
+.lb .row { display: flex; gap: 6px; flex-wrap: wrap; }
+.kbd { color: var(--muted); }
+#report { width: 100%; min-height: 160px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); font: 12px var(--mono); box-sizing: border-box; padding: 8px; }
+@media (max-width: 600px) { .flags { margin-left: 0; } th.row { min-width: 90px; } }
+@media (prefers-reduced-motion: no-preference) { .cell { transition: border-color .12s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Car Angle <span>Sheet</span></h1>
+    <p id="intro"></p>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="View">
+    <div class="group" id="modeGroup"><span class="lbl">Rows</span></div>
+    <div class="group" id="pickGroup"><span class="lbl" id="pickLbl">Slope</span></div>
+    <div class="group" id="zoomGroup"><span class="lbl">Zoom</span></div>
+    <div class="flags"><span><b id="flagCount">0</b> flagged</span><button class="chip" id="reportBtn" type="button">Copy notes</button></div>
+  </div>
+
+  <div class="sheet"><table id="sheet"></table></div>
+
+  <p class="legend">
+    Click a shot to open it large; <code>&larr;</code> <code>&rarr;</code> step through steering frames, <code>&uarr;</code> <code>&darr;</code> through rows,
+    <code>F</code> flags it. Flags and notes stay in this browser. <b>Copy notes</b> gives a list to paste back to Claude.
+    <span class="tag real">pitched strip</span> means the car has its own uphill or downhill art for that slope;
+    <span class="tag warp">stretched</span> means the level art is squashed and stretched to fake the pitch (<code>CarSprites.pitch_warp</code>).
+  </p>
+</div>
+
+<dialog id="lb" aria-label="Shot">
+  <div class="lb">
+    <img id="lbImg" alt="">
+    <div class="meta">
+      <h2 id="lbTitle"></h2>
+      <div id="lbMeta"></div>
+      <div class="row">
+        <button class="chip" id="lbFlag" type="button">Flag (F)</button>
+        <button class="chip" id="lbClose" type="button">Close (Esc)</button>
+      </div>
+      <label for="lbNote">Note</label>
+      <textarea id="lbNote" placeholder="What looks off? e.g. wheels float, roof too tall"></textarea>
+      <span class="kbd">&larr; &rarr; frame &middot; &uarr; &darr; row</span>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="rep" aria-label="Notes">
+  <p style="margin-top:0">Flagged shots and notes. Copied to the clipboard if the browser allowed it; otherwise select and copy.</p>
+  <textarea id="report" readonly></textarea>
+  <div class="row" style="margin-top:8px"><button class="chip" id="repClose" type="button">Close</button></div>
+</dialog>
+
+<script>
+const DATA = /*DATA*/null;
+const SLOPE_NAMES = {level: "Level", gentle_up: "Gentle uphill", steep_up: "Steep uphill", gentle_down: "Gentle downhill", steep_down: "Steep downhill"};
+const STEER_NAMES = ["Hard left", "Left", "Slight left", "Straight", "Slight right", "Right", "Hard right"];
+const KEY = "car-angle-sheet:" + DATA.made;
+const store = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })();
+store.flags ||= {}; store.notes ||= {};
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} };
+const view = {mode: store.mode || "slope", slope: store.slope || DATA.slopes[0].id, car: store.car || DATA.cars[0].id, zoom: store.zoom || 1};
+
+const id = (car, slope, f) => `${car}|${slope}|${f}`;
+const slopeOf = s => DATA.slopes.find(x => x.id === s);
+const carOf = c => DATA.cars.find(x => x.id === c);
+function stripKind(car, slope) {
+  const p = slopeOf(slope).pitch;
+  if (Math.abs(p) < DATA.pitch_switch) return p === 0 ? "" : "warp";
+  return car.pitched_strips.includes(p < 0 ? "up" : "down") ? "real" : "warp";
+}
+const tagHtml = k => k === "real" ? '<span class="tag real">pitched strip</span>' : k === "warp" ? '<span class="tag warp">stretched</span>' : "";
+
+document.getElementById("intro").textContent =
+  `${DATA.cars.length} cars, ${DATA.steer.length} steering frames, ${DATA.slopes.length} slopes, posed on the road in the race scene. ` +
+  `Shots crop the bottom middle of the 640\u00d7360 screen, where the player's car sits. Rendered ${DATA.made}.`;
+
+function chips(groupId, items, current, onPick) {
+  const g = document.getElementById(groupId);
+  g.querySelectorAll("button, select").forEach(b => b.remove());
+  for (const [value, label] of items) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = label;
+    b.setAttribute("aria-pressed", String(value === current));
+    b.onclick = () => onPick(value);
+    g.append(b);
+  }
+}
+
+// Rows of the sheet: [rowKey, car, slope] for the current mode
+function rows() {
+  return view.mode === "slope"
+    ? DATA.cars.map(c => [c.id, c, view.slope])
+    : DATA.slopes.map(s => [s.id, carOf(view.car), s.id]);
+}
+
+function render() {
+  store.mode = view.mode; store.slope = view.slope; store.car = view.car; store.zoom = view.zoom; save();
+  chips("modeGroup", [["slope", "Cars"], ["car", "Slopes"]], view.mode, v => { view.mode = v; render(); });
+  document.getElementById("pickLbl").textContent = view.mode === "slope" ? "Slope" : "Car";
+  if (view.mode === "slope") {
+    chips("pickGroup", DATA.slopes.map(s => [s.id, SLOPE_NAMES[s.id] || s.id]), view.slope, v => { view.slope = v; render(); });
+  } else {
+    chips("pickGroup", [], null, null);
+    const sel = document.createElement("select"); sel.id = "carPick"; sel.setAttribute("aria-label", "Car");
+    for (const c of DATA.cars) sel.add(new Option(c.name, c.id, false, c.id === view.car));
+    sel.onchange = () => { view.car = sel.value; render(); };
+    document.getElementById("pickGroup").append(sel);
+  }
+  chips("zoomGroup", [[1, "1\u00d7"], [2, "2\u00d7"], [3, "3\u00d7"]], view.zoom, v => { view.zoom = v; render(); });
+
+  const t = document.getElementById("sheet");
+  t.style.setProperty("--w", DATA.crop[2] - DATA.crop[0] + "px");
+  t.style.setProperty("--z", view.zoom);
+  let html = "<thead><tr><th></th>" + DATA.steer.map((s, f) => `<th>${STEER_NAMES[f] || ""}<br>steer ${s.toFixed(2)}</th>`).join("") + "</tr></thead><tbody>";
+  for (const [key, car, slope] of rows()) {
+    const s = slopeOf(slope);
+    const head = view.mode === "slope"
+      ? `<span class="name">${car.name}</span><span class="note">${car.strip}</span>`
+      : `<span class="name">${SLOPE_NAMES[slope] || slope}</span><span class="note">pitch ${s.pitch.toFixed(2)}</span>`;
+    html += `<tr><th class="row" scope="row">${head}${tagHtml(stripKind(car, slope))}</th>`;
+    DATA.steer.forEach((_, f) => {
+      const k = id(car.id, slope, f);
+      html += `<td><button class="cell${store.flags[k] ? " flagged" : ""}" data-k="${k}" type="button" aria-label="${car.name}, ${SLOPE_NAMES[slope]}, ${STEER_NAMES[f]}">` +
+        `<img loading="lazy" src="${DATA.shots[k]}" alt=""><span class="pin"></span></button></td>`;
+    });
+    html += "</tr>";
+  }
+  t.innerHTML = html + "</tbody>";
+  document.getElementById("flagCount").textContent = Object.keys(store.flags).length;
+}
+
+// Lightbox
+const lb = document.getElementById("lb");
+let cur = null;  // [car, slope, frame]
+function open(k) {
+  const [car, slope, f] = k.split("|");
+  cur = [car, slope, +f];
+  const c = carOf(car), s = slopeOf(slope);
+  document.getElementById("lbImg").src = DATA.shots[k];
+  document.getElementById("lbTitle").textContent = `${c.name}`;
+  document.getElementById("lbMeta").innerHTML =
+    `${SLOPE_NAMES[slope]} \u00b7 pitch ${s.pitch.toFixed(2)}<br>${STEER_NAMES[f]} \u00b7 steer ${DATA.steer[f].toFixed(2)} \u00b7 frame ${f}<br>` +
+    `${s.stage_name}, segment ${s.segment}<br>${tagHtml(stripKind(c, slope))}<br><code>${c.strip}_${slope}_${f}.png</code>`;
+  document.getElementById("lbFlag").setAttribute("aria-pressed", String(!!store.flags[k]));
+  document.getElementById("lbNote").value = store.notes[k] || "";
+  if (!lb.open) lb.showModal();
+}
+const curKey = () => id(...cur);
+function step(df, dr) {
+  const rs = rows();
+  let ri = rs.findIndex(([, c, s]) => c.id === cur[0] && s === cur[1]);
+  if (ri < 0) ri = 0;
+  ri = (ri + dr + rs.length) % rs.length;
+  const f = (cur[2] + df + DATA.steer.length) % DATA.steer.length;
+  open(id(rs[ri][1].id, rs[ri][2], f));
+}
+function toggleFlag() {
+  const k = curKey();
+  if (store.flags[k]) delete store.flags[k]; else store.flags[k] = true;
+  save(); render(); open(k);
+}
+document.getElementById("sheet").addEventListener("click", e => { const b = e.target.closest(".cell"); if (b) open(b.dataset.k); });
+document.getElementById("lbClose").onclick = () => lb.close();
+document.getElementById("lbFlag").onclick = toggleFlag;
+document.getElementById("lbNote").addEventListener("input", e => {
+  const k = curKey(), v = e.target.value.trim();
+  if (v) { store.notes[k] = v; store.flags[k] = true; } else delete store.notes[k];
+  save(); document.getElementById("flagCount").textContent = Object.keys(store.flags).length;
+});
+lb.addEventListener("close", render);
+lb.addEventListener("keydown", e => {
+  if (e.target.tagName === "TEXTAREA") return;
+  const m = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]}[e.key];
+  if (m) { e.preventDefault(); step(...m); }
+  else if (e.key === "f" || e.key === "F") { e.preventDefault(); toggleFlag(); }
+});
+
+// Notes report
+document.getElementById("reportBtn").onclick = () => {
+  const keys = [...new Set([...Object.keys(store.flags), ...Object.keys(store.notes)])].sort();
+  const lines = keys.map(k => {
+    const [car, slope, f] = k.split("|");
+    const c = carOf(car);
+    return `- ${c.name} (${c.strip}), ${SLOPE_NAMES[slope]}, ${STEER_NAMES[f]} (frame ${f})${store.notes[k] ? ": " + store.notes[k] : ""}`;
+  });
+  const text = lines.length ? "Car angle notes:\n" + lines.join("\n") : "Nothing flagged yet.";
+  const ta = document.getElementById("report");
+  ta.value = text;
+  document.getElementById("rep").showModal();
+  navigator.clipboard?.writeText(text).catch(() => ta.select());
+};
+document.getElementById("repClose").onclick = () => document.getElementById("rep").close();
+
+render();
+</script>

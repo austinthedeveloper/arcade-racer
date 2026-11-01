@@ -20,7 +20,6 @@ const GAP := 12.0
 const CARD_Y := 64.0
 const NOTICE_TIME := 2.0
 
-var index := 0  # into Item
 var notice := ""  # the coming-soon line, while notice_time runs
 var notice_time := 0.0
 var _art: Array[Texture2D] = []
@@ -37,10 +36,8 @@ static func available(item: int) -> bool:
 	return item >= 0 and item < Item.size()
 
 
-## Moves the selection by `dir`, wrapping around; returns the new index.
-func move(dir: int) -> int:
-	index = posmod(index + dir, Item.size())
-	return index
+func choice_count() -> int:
+	return Item.size()
 
 
 ## Confirms the selected mode: returns it, or -1 (with a notice) when it isn't built yet.

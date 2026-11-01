@@ -6,7 +6,6 @@ extends MenuScreen
 const STATS := [["ACCELERATION", "accel"], ["TOP SPEED", "top_speed"], ["HANDLING", "handling"]]
 const STAT_COLORS := [Color("#ff7a1a"), Color("#ff3d6e"), Color("#3ad0ff")]
 
-var index := 0
 var _pictures: Array[Texture2D] = []
 
 
@@ -16,10 +15,8 @@ func _ready() -> void:
 		_pictures.append(load(Cars.picture(Cars.get_car(i))))
 
 
-## Moves the selection by `dir`, wrapping around; returns the new index.
-func move(dir: int) -> int:
-	index = posmod(index + dir, Cars.count())
-	return index
+func choice_count() -> int:
+	return Cars.count()
 
 
 func handle(m: MenuInput) -> void:
@@ -66,8 +63,7 @@ func _draw() -> void:
 
 	# Spec panel
 	var panel := Rect2(392, 62, 232, 196)
-	_frame(panel)
-	draw_rect(panel, Color(0.04, 0.03, 0.1, 0.85))
+	_panel(panel, 0.85)
 	_text(Vector2(panel.position.x + 12, panel.position.y + 30), String(car["name"]).to_upper(), 22, GOLD if open else Color(1, 1, 1, 0.5))
 	if not open:
 		_text(Vector2(panel.position.x + 12, panel.position.y + 48), "LOCKED", 10, GOLD)

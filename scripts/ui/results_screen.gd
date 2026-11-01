@@ -21,7 +21,6 @@ const BANDS := [Color("#d9a400"), Color("#3a6fe0"), Color("#d97a1a"), Color("#9a
 var race: Node  # race.gd
 var items: Array[int] = []  # the Choices on offer, left to right
 var labels: Array[String] = []
-var index := 0
 var _latched := false  # gas or steering held over the line doesn't move the cursor
 
 
@@ -67,14 +66,13 @@ static func choice_label(c: int, after: int) -> String:
 	return "CONTINUE"
 
 
-func move(dir: int) -> int:
-	index = posmod(index + dir, items.size())
-	return index
+func choice_count() -> int:
+	return items.size()
 
 
 ## One tick of menu input (and the race's own confirm press): the choice picked, or NONE.
 func choose(m: MenuInput, confirm: bool) -> int:
-	if _latched and absf(m.x) < MenuInput.RELEASE and absf(m.y) < MenuInput.RELEASE:
+	if _latched and m.centred():
 		_latched = false
 	var dir := 0 if _latched else m.step()
 	if dir != 0:

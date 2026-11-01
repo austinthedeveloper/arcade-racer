@@ -17,13 +17,12 @@ Usage:
     python3 tools/make_fx_sprites.py <concept_dir> <project_dir>
 """
 import os
-import sys
 
 import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-from spritelib import hard_alpha, key_out, pixelate_down, rgba
+from spritelib import cli_args, hard_alpha, key_out, pixelate_down, rgba, sprite_dir
 
 SCREEN = (640, 360)
 SNAP = 40  # how far (sheet pixels) a cut may move to find an emptier column
@@ -130,11 +129,8 @@ def make_speed_lines(concept_dir, out_dir):
 
 
 def main():
-    if len(sys.argv) != 3:
-        sys.exit(__doc__)
-    concept_dir, project_dir = sys.argv[1], sys.argv[2]
-    out_dir = os.path.join(project_dir, "assets", "sprites", "fx")
-    os.makedirs(out_dir, exist_ok=True)
+    concept_dir, project_dir = cli_args(__doc__, 2)
+    out_dir = sprite_dir(project_dir, "fx")
     make_anims(concept_dir, out_dir)
     make_confetti(concept_dir, out_dir)
     make_speed_lines(concept_dir, out_dir)

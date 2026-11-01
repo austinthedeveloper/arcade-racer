@@ -11,6 +11,7 @@ const LOCKED_TINT := Color(0.18, 0.16, 0.26)  # a locked car or stage's picture
 
 var game: Node  # game.gd
 var time := 0.0  # seconds on this screen, for blinking and bobbing
+var index := 0  # the selection, into the screen's choices (choice_count)
 
 var _font: Font
 var _bg: Texture2D
@@ -31,6 +32,17 @@ func _process(dt: float) -> void:
 ## One tick of menu input. Screens override this.
 func handle(_m: MenuInput) -> void:
 	pass
+
+
+## How many choices `index` runs over. Screens with a selection override this.
+func choice_count() -> int:
+	return 1
+
+
+## Moves the selection by `dir`, wrapping around; returns the new index.
+func move(dir: int) -> int:
+	index = posmod(index + dir, choice_count())
+	return index
 
 
 ## The bottom line of control hints, worded for the device in use.
@@ -77,6 +89,12 @@ func _frame(r: Rect2, glow: Color = Color.TRANSPARENT) -> void:
 	draw_rect(r.grow(3), Color("#1b2a6b"))
 	draw_rect(r.grow(2), Color("#c9d4ff"))
 	draw_rect(r.grow(1), Color("#4058b8"))
+
+
+## A framed dark panel over `r`, `alpha` opaque.
+func _panel(r: Rect2, alpha: float) -> void:
+	_frame(r)
+	draw_rect(r, Color(0.04, 0.03, 0.1, alpha))
 
 
 ## A left or right arrowhead centred on `c`, pointing by `dir`.

@@ -2,6 +2,7 @@
 
 Original sprite-based pseudo-3D arcade racer in Godot 4.7 (GL Compatibility, 640x360).
 Design docs are in `docs/`, the six-month roadmap in `docs/roadmap/` (feature IDs like RC-1), concept art prompts in `assets/prompts/`.
+Adding a car, prop, traffic vehicle, span or stage: art and Claude prompt templates in `docs/templates/`.
 
 ```sh
 tools/test.sh                                       # all Godot tests, headless (must pass)
@@ -15,6 +16,8 @@ godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (
 godot --headless --path . -s res://tools/track_preview.gd -- --out=/tmp/plots   # plot every stage top-down and side-on to PNG (--stage=N for one)
 tools/shots.sh                                      # screenshot regression vs tests/shots/ (needs a display, PIL; SHOTS_PYTHON=...)
 tools/shots.sh --update                             # rewrite tests/shots/ after a deliberate visual change
+tools/car_angles.sh [--car=car_mesa]                # every car x steering frame x slope on the road -> build/car_angles/car_angles.html (needs a display, PIL)
+python3 tools/roadmap_sync.py [--fix-board --write-docs]   # docs/roadmap vs GitHub issues and project 4; fixes board status, ticks rows
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
 python3 tools/make_stage_sprites.py assets/concept . neon      # rebuild a stage's background + roadside sprites (shared: race furniture)
 python3 tools/make_ui_sprites.py assets/concept .   # rebuild the logo, title backdrop, stage postcards, car pictures
