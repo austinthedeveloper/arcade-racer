@@ -37,6 +37,10 @@ var checkpoints: Array[int] = []
 var finish_index := 0
 ## First segment of every jump and bumpy stretch, for the bump signs (add_road_signs).
 var hazards: Array[int] = []
+## Stage flow (StageFlow.dress): the next stage's theme, and this stage's palette mixed toward
+## it in StageFlow.STEPS steps. Empty on the last stage, which keeps its own end.
+var next_theme: Dictionary = {}
+var flow: Array[Dictionary] = []
 
 var _ground_left := GROUND_GRASS
 var _ground_right := GROUND_GRASS

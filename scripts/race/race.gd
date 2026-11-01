@@ -63,6 +63,7 @@ var time_left := START_TIME
 var race_time := 0.0
 var finish_age := 0.0  # seconds since the finish line (real time, not slowed)
 var _results_shown := false  # the results have come up for this finish (closed again or not)
+var results_age := -1.0  # seconds since the results came up, -1 before (StageFlow.crossfade)
 var launch: Launch.Grade = Launch.Grade.PENDING  # how the player's start went
 var score := Scoring.new()
 var place := 1  # the player's place in the field (Rivals.standings)
@@ -204,6 +205,7 @@ func start_race() -> void:
 	race_time = 0.0
 	finish_age = 0.0
 	_results_shown = false
+	results_age = -1.0
 	player_finish = -1.0
 	touched_traffic = false
 	new_unlocks.clear()
@@ -233,7 +235,10 @@ func start_race() -> void:
 	# Started partway in (--at-segment): past the checkpoints behind it
 	while next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
-	background.set_theme(track.theme)
+	background.set_theme(track.theme, track.next_theme)
+	road.flow = not free_drive  # (its road loops straight back to its own start)
+	road.flow_share = 0.0
+	road.flow_fade = 0.0
 	background.offset = 0.0
 	road.track = track
 	road.player = player
@@ -504,6 +509,7 @@ func _physics_process(dt: float) -> void:
 	road.camera_z = player.position
 	var rise := track.height_at(player.position + Background.HILL_AHEAD) - player.road_y
 	background.hill = Background.hill_shift(rise, road.camera_depth)
+	_flow(dt)
 	if _results_shot and state == State.RACING and race_time > 1.0:
 		_stage_results_shot()
 	_redraw()
@@ -697,7 +703,22 @@ func _saves() -> bool:
 
 func _show_results() -> void:
 	_results_shown = true
+	results_age = 0.0
 	results.open()
+
+
+## Stage flow (StageFlow), display only: the sky and fog turn to the next stage's as the car
+## runs into its end, and the results fade the rest of the way when the tour goes on to it.
+func _flow(dt: float) -> void:
+	if results_age >= 0.0:
+		results_age += dt
+	var age := results_age if after == After.NEXT_STAGE else -1.0
+	var here := track.find_segment(player.position + Cfg.PLAYER_Z)
+	var k := StageFlow.share(here.handover, age) if road.flow else 0.0
+	road.flow_share = k
+	road.flow_fade = StageFlow.crossfade(age) if road.flow else 0.0
+	background.share = k
+	results.flow_share = k
 
 
 ## How fast the world runs `age` seconds after the finish line: FINISH_SLOWMO for a moment,

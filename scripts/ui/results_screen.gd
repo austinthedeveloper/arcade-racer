@@ -21,6 +21,7 @@ const BANDS := [Color("#d9a400"), Color("#3a6fe0"), Color("#d97a1a"), Color("#9a
 var race: Node  # race.gd
 var items: Array[int] = []  # the Choices on offer, left to right
 var labels: Array[String] = []
+var flow_share := 0.0  # the race's share of the next stage's palette (StageFlow): the backdrop follows
 var _latched := false  # gas or steering held over the line doesn't move the cursor
 
 
@@ -124,9 +125,12 @@ func _draw() -> void:
 	if race == null:
 		return
 	var w := float(Cfg.SCREEN_W)
-	draw_rect(Rect2(0, 0, w, Cfg.SCREEN_H), Color(NIGHT, 0.72))
+	draw_rect(Rect2(0, 0, w, Cfg.SCREEN_H), backdrop(race.track.theme, race.track.next_theme, flow_share))
 	_header("RESULTS")
 	_text(Vector2(16, 52), ("STAGE %d  " % (race.stage_index + 1)) + race.track.name.to_upper(), 10, Color(1, 1, 1, 0.8))
+	if race.after == race.After.NEXT_STAGE:
+		var next := Stages.next(race.stage_index)
+		_text(Vector2(16, 64), "NEXT  " + Stages.stage_name(next).to_upper(), 9, Color(GOLD, 0.35 + 0.65 * flow_share))
 	var order: Array = race.rivals.standings(race.player, race.player_finish)
 	var field := rows(order, race.player, race.player_finish, race.car_id)
 	_summary(field)
@@ -138,6 +142,13 @@ func _draw() -> void:
 		_field_panel(field)
 	_choices()
 	_footer(results_hints())
+
+
+## The dimming over the race: night, tinged with the sky, which crossfades from this stage's
+## (`theme`) to the next stage's (`next`, empty for none) by `k` (StageFlow).
+static func backdrop(theme: Dictionary, next: Dictionary, k: float) -> Color:
+	var sky := Background.sky_color(theme, next, "sky_top", k)
+	return Color(NIGHT.lerp(sky.darkened(0.5), 0.35), 0.72)
 
 
 ## Place, time, best mark and bonuses, top left.
