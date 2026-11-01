@@ -21,6 +21,7 @@ static func theme() -> Dictionary:
 		"background": "res://assets/sprites/backgrounds/thunder_far.png",
 		"specials": ["tanker", "cement_mixer", "dump_truck"],
 		"weather": Weather.STORM,  # rain, a wet road, lightning and thunder (WS-2)
+		"grip": 0.85,  # the wet road: wider slides, and slipperier still off it (RC-12)
 	}
 
 

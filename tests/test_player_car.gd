@@ -79,6 +79,55 @@ func test_curves_pull_outward() -> void:
 	check(p.x < 0.0, "a right-hand curve pushes the car left (%.3f)" % p.x)
 
 
+## A straight `grip` track (Segment.grip), for steering tests.
+func _grip_track(grip: float) -> Track:
+	var t := Track.new()
+	t.set_grip(grip)
+	for i in 600:
+		t.add_segment(0.0, 0.0)
+	t.finish_building(590)
+	return t
+
+
+func test_steer_rate_scales_with_grip() -> void:
+	var moved := {}
+	for grip in [1.0, 0.85, 0.5]:
+		var p := _car(Cfg.MAX_SPEED * 0.6)
+		p.update(DT, input(0.0, 1.0), _grip_track(grip), true)
+		moved[grip] = p.x
+	check(moved[1.0] > 0.0, "steers on a dry road")
+	near(moved[0.85] / moved[1.0], 0.85, 0.001, "85% grip, 85% of the steering")
+	near(moved[0.5] / moved[1.0], 0.5, 0.001, "half the grip, half the steering")
+	# Off the road the wet or snow takes it away twice over; a dry verge is as before
+	eq(PlayerCar.grip_for(1.0, true), 1.0, "dry, off the road")
+	near(PlayerCar.grip_for(0.85, false), 0.85, 0.001, "wet road")
+	near(PlayerCar.grip_for(0.85, true), 0.7225, 0.001, "wet grass")
+	var off := _car(Cfg.MAX_SPEED * 0.3)
+	off.x = 1.5
+	off.offroad = true
+	off.update(DT, input(0.0, 1.0), _grip_track(0.85), true)
+	var dry_off := _car(Cfg.MAX_SPEED * 0.3)
+	dry_off.x = 1.5
+	dry_off.offroad = true
+	dry_off.update(DT, input(0.0, 1.0), _grip_track(1.0), true)
+	near((off.x - 1.5) / (dry_off.x - 1.5), 0.7225, 0.001, "wet grass steers less again")
+
+
+func test_low_grip_slides_wider_through_a_bend() -> void:
+	var dry := Track.new()
+	var wet := Track.new()
+	wet.set_grip(0.85)
+	for t in [dry, wet]:
+		for i in 600:
+			t.add_segment(4.0, 0.0)
+		t.finish_building(590)
+	var a := _car(Cfg.MAX_SPEED)
+	var b := _car(Cfg.MAX_SPEED)
+	_drive(a, dry, 0.5, input(1.0, 0.5))
+	_drive(b, wet, 0.5, input(1.0, 0.5))
+	check(b.x < a.x, "the same lock holds less of the bend in the wet (%.3f vs %.3f)" % [b.x, a.x])
+
+
 func test_nitro_uses_one_charge_and_boosts() -> void:
 	var t := flat_track(5000)
 	var p := _car(Cfg.MAX_SPEED)

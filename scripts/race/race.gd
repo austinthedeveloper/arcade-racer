@@ -77,6 +77,9 @@ var banner_sub := ""
 var banner_time := 0.0
 var paused := false
 var pause_menu: PauseMenu
+## The GUID of the joypad driving while it's unplugged (WH-7), or "". The pause menu says so.
+var unplugged := ""
+var _unplug_paused := false  # the unplugging paused the race, so plugging back in resumes it
 var results: ResultsScreen  # after the finish (RC-5)
 var new_best_time := false  # this finish set the best time for the stage and car
 var best_before := {}  # SaveData.best for the stage and car before this finish
@@ -137,6 +140,9 @@ func _ready() -> void:
 		layer.add_child(calibration)
 	audio = RaceAudio.new(self)
 	add_child(audio)
+	if not InputRouter.driver_unplugged.is_connected(driver_unplugged):
+		InputRouter.driver_unplugged.connect(driver_unplugged)
+		InputRouter.driver_replugged.connect(driver_replugged)
 	if not _dev_args_read:
 		_dev_args_read = true
 		_parse_dev_args()
@@ -288,6 +294,33 @@ func pause() -> void:
 func resume() -> void:
 	paused = false
 	pause_menu.close()
+	unplugged = ""  # resumed without it (the keyboard, or a restart): no waiting for it
+	_unplug_paused = false
+	pause_menu.notice = []
+
+
+## The joypad driving was unplugged (InputRouter.driver_unplugged): a race under way pauses,
+## saying which to plug back in. Already paused, it only says so.
+func driver_unplugged(guid: String, joy_name: String, wheel: bool) -> void:
+	if demo or _autodrive or not (state == State.COUNTDOWN or state == State.RACING):
+		return
+	if not paused:
+		pause()
+		_unplug_paused = true
+	unplugged = guid
+	pause_menu.notice = PauseMenu.unplugged_notice(joy_name, wheel)
+
+
+## It's back (InputRouter.driver_replugged), with the same profile: the race carries on if
+## the unplugging paused it and the pause menu is still up (not the options over it).
+func driver_replugged(guid: String) -> void:
+	if guid != unplugged:
+		return
+	if _unplug_paused and paused and pause_menu.visible:
+		resume()
+	else:
+		unplugged = ""
+		pause_menu.notice = []
 
 
 ## Back from the options the pause menu opened: the menu again, still paused.

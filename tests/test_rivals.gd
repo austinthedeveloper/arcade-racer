@@ -139,6 +139,21 @@ func test_rivals_avoid_heavy_traffic() -> void:
 	check(crashes <= 8, "rarely crash in double traffic (%d crashes in 40 s, 7 cars)" % crashes)
 
 
+func test_rivals_take_a_slippery_bend_slower() -> void:
+	var dry := Track.new()
+	var wet := Track.new()
+	wet.set_grip(0.85)
+	for t in [dry, wet]:
+		t.straight(Track.LENGTH_SHORT)
+		t.curve(Track.LENGTH_MEDIUM, Track.CURVE_HARD)
+		t.finish_building(t.segments.size() - 5)
+	var me := RivalCar.new()
+	var z := (Track.LENGTH_SHORT * 3 + Track.LENGTH_MEDIUM + 10) * Cfg.SEGMENT_LENGTH  # into the bend
+	var fast := AIDriver.corner_speed(me, dry, z)
+	check(fast < INF, "a hard bend has a limit")
+	near(AIDriver.corner_speed(me, wet, z) / fast, 0.85, 0.001, "in proportion to the grip")
+
+
 func test_nitro_only_on_straights() -> void:
 	var t := _curved_track(Track.CURVE_HARD)
 	check(not AIDriver.straight_ahead(t, 90 * Cfg.SEGMENT_LENGTH), "a bend ahead")

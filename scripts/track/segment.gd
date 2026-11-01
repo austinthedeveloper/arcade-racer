@@ -13,6 +13,7 @@ var curve := 0.0
 var band := 0  # alternating color band for stripes
 var ground_left := 0
 var ground_right := 0
+var grip := 1.0  # the road's grip (RC-12): 1 dry; lower when wet or snowy (Track.set_grip)
 var flags := 0
 var sprites: Array = []  # [{"id": String, "offset": float, "flip": bool}]
 var cars: Array = []  # traffic cars currently in this segment
