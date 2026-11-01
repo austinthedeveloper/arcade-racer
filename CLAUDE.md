@@ -18,6 +18,7 @@ tools/shots.sh --update                             # rewrite tests/shots/ after
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
 python3 tools/make_stage_sprites.py assets/concept . neon      # rebuild a stage's background + roadside sprites (shared: race furniture)
 python3 tools/make_ui_sprites.py assets/concept .   # rebuild the logo, title backdrop, stage postcards, car pictures
+python3 tools/make_icon.py assets/concept .         # rebuild the game icon (icon.png, icon.ico, icon.icns)
 python3 tools/make_span_sprites.py assets/concept . # rebuild tunnels, bridges, arches and race gates
 python3 tools/make_powerup_sprites.py assets/concept .   # rebuild the power-up pickups, icons and effects
 python3 tools/make_fx_sprites.py assets/concept .      # rebuild the FX layer's smoke, kick-up, sparks, nitro, speed lines, fireworks
