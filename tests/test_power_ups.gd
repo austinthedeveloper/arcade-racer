@@ -17,7 +17,7 @@ func test_every_stage_gets_its_pickups_in_lanes() -> void:
 		pu.place(t)
 		eq(pu.pickups.size(), PowerUps.SPOTS.size(), t.name + " pickups")
 		for p in pu.pickups:
-			check(Traffic.LANE_OFFSETS.has(p.offset), "%s pickup in a lane" % t.name)
+			check(t.segments[p.segment].lane_offsets().has(p.offset), "%s pickup in a lane" % t.name)
 			check(t.segments[p.segment].flags == 0, "%s pickup not on a gate" % t.name)
 			check(t.segments[p.segment].pickups.has(p), "listed in its segment")
 
