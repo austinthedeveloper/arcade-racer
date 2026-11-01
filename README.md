@@ -2,13 +2,19 @@
 
 An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports keyboard, gamepads, and steering wheels with pedals.
 
-**Status:** Milestone 1 prototype. Eight stages are drivable back to back (Palm Coast Boulevard, Redrock Canyon, Neon Strip, Timberline Pass, Bayou Causeway, Harvest Valley, Thunderhead Highway, Skyline Finale), with traffic, checkpoints, a timer, nitro, power-ups on the road, tunnels and bridges to drive through, jumps and crashes, with generated placeholder sound and music. The game opens on a title screen, then stage select (pick where the tour starts) and car select (twelve cars, each with its own stats). Finish a stage and press Enter to go on to the next; after the last one the tour starts over. The art is placeholder: the backgrounds, roadside sprites and cars are cut from the concept art. Not built yet: AI rivals, positions, a results screen and force feedback.
+**Status:** pre-release (v0.2.0; the roadmap aims at a 1.0 candidate in April 2027). Eight stages (Palm Coast Boulevard, Redrock Canyon, Neon Strip, Timberline Pass, Bayou Causeway, Harvest Valley, Thunderhead Highway, Skyline Finale) and twelve cars, each with its own stats. Seven AI rivals with personalities, traffic with each stage's local vehicles, checkpoints against the clock, nitro, drafting, power slides, jumps, crashes and power-ups on the road. Grand Tour, Single Race, Time Attack against your ghost and Free Drive, on three difficulties, with a results screen, standings, saved best times and unlocks. Thunderhead has rain and lightning; every stage has parallax backgrounds and an FX layer. All the sound is synthesized: engines, a four-station radio and an announcer with subtitles. Wheels are calibrated in the game, and every button can be rebound. The art is cut from generated concept art; production car sprites (from 3D renders) and force feedback are still to come ([roadmap](docs/roadmap/00-overview.md)).
+
+A player and developer guide is on the [wiki](https://github.com/austinthedeveloper/arcade-racer/wiki); the docs in this repository are the source of truth.
 
 ## Running it
+
+Download the latest build from [Releases](https://github.com/austinthedeveloper/arcade-racer/releases) (Windows, macOS, Web), or run it from source:
 
 1. Install **Godot 4.7** (standard build, not .NET).
 2. Open Godot, choose **Import**, and pick `project.godot` in this folder.
 3. Press **F5** (or the Play button).
+
+The game opens on the title screen, then mode select, stage select and car select.
 
 ## Controls
 
@@ -19,6 +25,8 @@ An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports
 | Brake | Down or S | Left trigger, B or X | Brake pedal |
 | Nitro (3 per race; 4 in the Halo EV) | Space or Shift | RB | Button picked during calibration |
 | Shift up / down (manual gears only) | E / Q | Y / LB | Bind the paddles in Options > Controls > Remap buttons |
+| Horn | H | L3 | Bind in Remap buttons |
+| Change radio station | M | Bind in Remap buttons | Bind in Remap buttons |
 | Pause menu (resume, restart, options, quit to title) | Esc or P | Start | |
 | Restart the stage | R | Back | |
 | Next stage (after a finish; Single Race: back to the menus), retry (after TIME UP) | Enter | A | |
@@ -28,6 +36,10 @@ An original sprite-based, pseudo-3D arcade road racer built in Godot 4. Supports
 
 Power slide: brake while steering at speed, then keep the steering on. The car slides round
 tighter for a little speed; it ends when you straighten up.
+
+Nitro, shift up and down, horn, radio, pause and view can be rebound on every device in
+**Options > Controls > Remap buttons**. Unplugging the pad or wheel you're driving with pauses the
+race; plugging it back in carries on.
 
 ### Menus
 
@@ -41,17 +53,29 @@ Menus go left and right only, so every device can drive them:
 
 ### Options
 
-Pick **OPTIONS** on the title screen. Options are saved to `user://settings.cfg` as soon as they change.
+Pick **OPTIONS** on the title screen or in the pause menu. Options are saved to `user://settings.cfg` as soon as they change. They're on five pages; the first row flips the page.
 
-| Option | What it does |
-|---|---|
-| Auto gas | The car keeps the gas down, so a young player only has to steer. The brake still works (and lifts the gas while held). |
-| Traffic | Light, normal or heavy traffic. |
-| Timer | Relaxed (more time per checkpoint), Arcade (as tuned) or Tight. |
-| Power-ups | On or off: the nitro cans, clocks, ram plates, ghosts and mystery hubcaps on the road. |
-| Music / sound FX volume | 0 to 10. |
-| Calibrate wheel | Opens the wheel calibration (same as F2). |
-| Gears (Accessibility) | Automatic (the default) or manual: you shift through five gears, each with a rev limiter, for about 3% more top speed. |
+| Page | Option | What it does |
+|---|---|---|
+| Game | Auto gas | The car keeps the gas down, so a young player only has to steer. The brake still works (and lifts the gas while held). |
+| Game | Traffic | Light, normal or heavy traffic. |
+| Game | Difficulty | Easy, normal or hard: the rivals' pace and rubber band. Sets the timer to match. |
+| Game | Timer | Relaxed (more time per checkpoint), Arcade (as tuned) or Tight. |
+| Game | Carry time | Grand Tour: time left at a finish carries into the next stage. |
+| Game | Power-ups | On or off: the nitro cans, clocks, ram plates, ghosts and mystery hubcaps on the road. |
+| Game | Unlock everything | Every car and stage open now; progress is kept. |
+| Game | Reset options / Reset save data | Options back to defaults, or erase progress (asks first). Wheel setups are kept either way. |
+| Display | Fullscreen, integer scaling, V-Sync, scanlines | |
+| Display | Speed units | MPH or KPH. |
+| Audio | Music / sound FX volume | 0 to 10. |
+| Audio | Radio station | The station races start on, or shuffle. M changes it mid-race. |
+| Controls | Calibrate wheel | Opens the wheel calibration (same as F2). |
+| Controls | Wheel settings | Each wheel's range, steering lock, deadzone and linearity. |
+| Controls | Remap buttons | Keys and buttons for nitro, gears, horn, radio, pause and view, per device. |
+| Accessibility | Screen shake, flashing | 0 to 10; 0 turns them off. |
+| Accessibility | Subtitles | The announcer's words on screen; on by default. |
+| Accessibility | Steering assist, braking assist | Off by default. |
+| Accessibility | Gears | Automatic (the default) or manual: you shift through five gears, each with a rev limiter, for about 3% more top speed. |
 
 On the keyboard and gamepad, Up / Down picks a row and Left / Right changes it; Enter / A also toggles or cycles it. A wheel has no up and down, so there you turn the wheel to pick a row and press the gas to change it. Brake goes back.
 
@@ -61,7 +85,7 @@ The game spots most wheels by name and asks you to calibrate. Press **F2** and f
 
 Until the wheel is calibrated, only its steering is used. **F1** shows every raw axis and button, which helps when something doesn't respond. There is no force feedback yet, so turn on your wheel software's centering spring for games without FFB (for example in Logitech G HUB or the Thrustmaster Control Panel).
 
-Steering lock defaults to using 360 of the wheel's 900 degrees. You can change `hardware_range_deg` and `lock_deg` in the profile file (they aren't on the Options screen yet).
+Steering lock defaults to using 360 of the wheel's 900 degrees. Change it, the wheel's range, the deadzone and the linearity in **Options > Controls > Wheel settings**.
 
 ## Project layout
 
@@ -69,7 +93,7 @@ Steering lock defaults to using 360 of the wheel's 900 degrees. You can change `
 scripts/
   core/cfg.gd               tuning constants (camera, speeds, physics)
   track/                    segment + track builder, sprite library, stages/
-  render/                   road renderer, background, car sprites, FX layer
+  render/                   road renderer, background, car sprites, FX layer, weather
   car/                      player driving model, rivals and their AI, traffic, the garage (cars.gd)
   input/                    InputRouter autoload, device profiles, DriveInput
   core/game.gd              main scene: title, mode select, options, stage and car select, then the race
@@ -77,15 +101,15 @@ scripts/
   core/settings.gd          Settings autoload: the options, saved to user://settings.cfg
   race/                     race flow (race.gd), rivals, scoring, drafting, launch, tour, ghosts, power-ups
   ui/                       menu screens, HUD, results, pause, remap, input debug overlay, calibration wizard
-  audio/                    Audio autoload, SoundBank (cue -> file), RaceAudio (race -> cues)
+  audio/                    Audio autoload, SoundBank (cue -> file), RaceAudio (race -> cues), Radio, Announcer
 assets/sprites/             in-game sprites (placeholders for now)
-assets/audio/               generated placeholder sounds and music (how to swap: its README)
+assets/audio/               synthesized sounds, radio and announcer (how to swap in recordings: its README)
 tests/                      test runner, suites, golden traces, end-to-end smoke
 tools/                      test.sh, shots.sh, sprite-cutting scripts, make_audio.py, export.sh,
                             car_angles.sh (car review page), roadmap_sync.py (docs vs GitHub)
 ```
 
-For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--car=car_mesa` picks a car by id (the ids are in `scripts/car/cars.gd`), `--at-segment=N` starts N segments into the stage, `--no-traffic` removes traffic, `--no-rivals` removes the rivals, `--drive-x=1.8` starts the car on that line (past 1 is off the road) and keeps autodrive on it, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|modes|options|stages|cars|pause|results|update|remap --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits. Left on the title for 20 seconds, the game plays an autodriven demo race (attract mode) until any key or button; `--attract-delay=N` changes the wait and `--screen=demo` starts one straight away.
+For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--car=car_mesa` picks a car by id (the ids are in `scripts/car/cars.gd`), `--at-segment=N` starts N segments into the stage, `--no-traffic` removes traffic, `--no-rivals` removes the rivals, `--drive-x=1.8` starts the car on that line (past 1 is off the road) and keeps autodrive on it, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|modes|options|stages|cars|pause|unplugged|results|update|remap|wheel --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits (`options:audio` opens an options page, `update:failed` an update state). `--callout=near_miss` holds a callout up after GO, `--time-left=9` starts on a low clock, and `--lightning-at=5` forces a lightning strike on Thunderhead. `CLAUDE.md` lists more examples. Left on the title for 20 seconds, the game plays an autodriven demo race (attract mode) until any key or button; `--attract-delay=N` changes the wait and `--screen=demo` starts one straight away.
 
 ## Tests
 
