@@ -4,6 +4,9 @@ extends RefCounted
 ## boulevard, a downtown run between glass towers, a long cable-stayed bridge over
 ## the harbor, and a finish lined with crowds, flags and fireworks barges.
 
+const BOULEVARD_WIDTH := 1.5  # the road's half-width downtown (Track.set_width)
+
+
 static func theme() -> Dictionary:
 	return {
 		"sky_top": Color("#24124a"),
@@ -81,6 +84,8 @@ static func build() -> Track:
 	t.straight(Track.LENGTH_LONG)
 
 	t.finish_stage(final_straight)
+	# Downtown is a six-lane boulevard between the towers (WS-7)
+	t.set_width(downtown.x, downtown.y - downtown.x, BOULEVARD_WIDTH, 6)
 
 	_decorate(t, downtown, bridges, port)
 	for b in bridges:

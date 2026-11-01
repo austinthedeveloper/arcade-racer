@@ -4,6 +4,9 @@ extends RefCounted
 ## switchback S-curves, over a snowy summit with a fire lookout, down past a waterfall
 ## to the ski lodge.
 
+const SUMMIT_WIDTH := 0.65  # the road's half-width over the summit (Track.set_width)
+
+
 static func theme() -> Dictionary:
 	return {
 		"sky_top": Color("#1f6fe0"),
@@ -55,6 +58,7 @@ static func build() -> Track:
 	var lookout_at := t.segments.size() - 30
 	t.jump()
 	t.curve(Track.LENGTH_MEDIUM, -Track.CURVE_MEDIUM)
+	var summit_end := t.segments.size()
 	t.s_curves()
 	var snow_end := t.segments.size()
 
@@ -74,6 +78,8 @@ static func build() -> Track:
 	t.straight(Track.LENGTH_LONG)
 
 	t.finish_stage(final_straight)
+	# Over the top the pass is two lanes: the summit straight, the crest and the bend after it (WS-7)
+	t.set_width(snow_start, summit_end - snow_start, SUMMIT_WIDTH, 2)
 
 	_decorate(t, snow_start, snow_end)
 	t.add_tunnel(t.free_spot(snow_start - 120, 35), 30, "covered_bridge", "covered_bridge_truss", 2)

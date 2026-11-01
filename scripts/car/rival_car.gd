@@ -16,5 +16,6 @@ var finish_time := 0.0  # race seconds when it crossed the line
 func _init(car: Dictionary = Cars.find("car_vega"), ai: AIDriver = AIDriver.new()) -> void:
 	car_id = car["id"]
 	driver = ai
+	slides = false
 	setup(car)
 	base_top = top_speed

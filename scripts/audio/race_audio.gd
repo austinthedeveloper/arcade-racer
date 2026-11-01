@@ -11,6 +11,7 @@ const HORN_FADE := 30.0  # the horn is on or off at once
 const RIVAL_HEAR := 2500.0  # world units along the road a rival's engine carries
 const WHOOSH_REACH := 1.0  # road half-widths to the side a passed car whooshes within
 const PASS_WINDOW := 1000.0  # world units: a gap jump bigger than this is a wrap, not a pass
+const SLIDE_SQUEAL := 0.6  # a power slide's squeal at a standstill, up to full at top speed
 ## The announcer's line for each callout kind (Callouts.Kind).
 const CALLOUT_LINES := {
 	Callouts.Kind.GO: "go", Callouts.Kind.LAUNCH: "launch", Callouts.Kind.CHECKPOINT: "checkpoint",
@@ -216,7 +217,8 @@ static func engine_rpm(pct: float, gear := 0) -> float:
 	return minf(lerpf(floor_rpm, 1.0, t), 1.2)
 
 
-## Tire squeal: braking hard, cornering at full lock at speed, or sliding after a crash.
+## Tire squeal: braking hard, cornering at full lock at speed, a power slide, or sliding
+## after a crash.
 static func skid_level(p: PlayerCar) -> float:
 	if p.airborne or p.offroad:
 		return 0.0
@@ -228,6 +230,8 @@ static func skid_level(p: PlayerCar) -> float:
 		level = pct
 	if absf(p.steer) > 0.75 and pct > 0.6:
 		level = maxf(level, (absf(p.steer) - 0.75) * 4.0 * pct)
+	if p.slide != 0.0:
+		level = maxf(level, SLIDE_SQUEAL + (1.0 - SLIDE_SQUEAL) * pct)
 	return clampf(level, 0.0, 1.0)
 
 

@@ -614,3 +614,125 @@ func test_shift_buttons_do_nothing_with_the_automatic() -> void:
 	inp.shift_up_pressed = true
 	m.update(DT, inp, t, false)
 	eq(m.gear, 2, "no shifting without controls (the countdown)")
+
+func test_off_road_is_past_the_edge_where_the_car_is() -> void:
+	# WS-7: the road's width changes; off the road is past its edge where the car is
+	var t := flat_track(1000)
+	t.set_width(300, 200, 0.6, 2)
+	t.set_width(600, 200, 1.5, 6)
+	var p := _car(Cfg.MAX_SPEED * 0.5)
+	p.x = 0.8
+	p.update(DT, input(1.0), t, true)
+	check(not p.offroad, "on the usual road at 0.8")
+	p.move_to(400.0 * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z, t)
+	p.update(DT, input(1.0), t, true)
+	check(p.offroad, "off the narrowed road at 0.8")
+	p.x = 1.3
+	p.move_to(700.0 * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z, t)
+	p.update(DT, input(1.0), t, true)
+	check(not p.offroad, "on the boulevard at 1.3")
+
+
+func test_roadside_sprites_stand_at_the_edge_where_they_are() -> void:
+	SpriteLibrary.load_all()
+	var t := flat_track(400)
+	t.set_width(100, 200, 0.6, 2)
+	t.add_sprite(200, "barrier_red", 2.5)
+	var def: Dictionary = SpriteLibrary.defs["barrier_red"]
+	var w: float = def["world_w"] / Cfg.ROAD_WIDTH
+	var p := _car(Cfg.MAX_SPEED * 0.5)
+	p.offroad = true
+	var at := 200.0 * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z
+	p.x = 2.5 + w / 2.0
+	p.last_position = at - 20.0
+	p.position = at + 20.0
+	p.collide(t)
+	check(p.crash_time <= 0.0, "not where it would stand on the usual road")
+	p.x = 2.5 * 0.6 + w / 2.0
+	p.collide(t)
+	check(p.crash_time > 0.0, "it stands at the narrowed edge")
+
+
+# --- Power slide (RC-8) -----------------------------------------------------------
+
+## Drives `p` for `seconds`, kept in the middle of the road as if the lock held it round a
+## bend (on the flat test track it would steer off the road).
+func _round_a_bend(p: PlayerCar, track: Track, seconds: float, inp: DriveInput) -> void:
+	for i in roundi(seconds / DT):
+		p.x = 0.0
+		p.update(DT, inp, track, true)
+
+
+func test_slide_after() -> void:
+	var fast := Cfg.SLIDE_SPEED + 100.0
+	eq(PlayerCar.slide_after(0.0, fast, 0.8, 1.0, true), 1.0, "brake with right lock at speed: slides right")
+	eq(PlayerCar.slide_after(0.0, fast, -0.8, 1.0, true), -1.0, "and left")
+	eq(PlayerCar.slide_after(0.0, fast, 0.8, 0.2, true), 0.0, "not on a touch of brake")
+	eq(PlayerCar.slide_after(0.0, fast, 0.2, 1.0, true), 0.0, "not braking near straight")
+	eq(PlayerCar.slide_after(0.0, Cfg.SLIDE_SPEED - 100.0, 0.8, 1.0, true), 0.0, "not too slow")
+	eq(PlayerCar.slide_after(0.0, fast, 0.8, 1.0, false), 0.0, "not in the air, off the road or crashed")
+	eq(PlayerCar.slide_after(1.0, fast, 0.5, 0.0, true), 1.0, "lasts with the lock on, brake off")
+	eq(PlayerCar.slide_after(1.0, Cfg.SLIDE_EXIT_SPEED + 100.0, 0.5, 0.0, true), 1.0, "below the entry speed too")
+	eq(PlayerCar.slide_after(1.0, fast, 0.1, 0.0, true), 0.0, "ends when the lock comes off")
+	eq(PlayerCar.slide_after(1.0, fast, -0.8, 0.0, true), 0.0, "ends steering the other way")
+	eq(PlayerCar.slide_after(1.0, Cfg.SLIDE_EXIT_SPEED - 100.0, 0.8, 0.0, true), 0.0, "ends slowed right down")
+	eq(PlayerCar.slide_after(1.0, fast, 0.8, 1.0, false), 0.0, "ends leaving the road")
+
+
+func test_braking_into_a_bend_at_speed_power_slides() -> void:
+	var t := flat_track(3000)
+	var p := _car(Cfg.MAX_SPEED * 0.8)
+	p.update(DT, input(1.0, 1.0, 1.0), t, true)
+	eq(p.slide, 1.0, "entered, sliding right")
+	check(p.braking, "brake lights on")
+	_round_a_bend(p, t, 0.5, input(1.0, 1.0, 0.0))
+	eq(p.slide, 1.0, "still sliding, brake off, lock held")
+	eq(p.shown_steer(), 1.0, "the strip's last frame the way it slides")
+	p.update(DT, input(1.0, 0.0, 0.0), t, true)
+	eq(p.slide, 0.0, "the lock off ends it")
+	eq(p.shown_steer(), p.steer, "the steering frames again")
+
+
+func test_a_slide_only_scrubs_a_little_speed() -> void:
+	var t := flat_track(3000)
+	var slid := _car(Cfg.MAX_SPEED * 0.8)
+	var braked := _car(Cfg.MAX_SPEED * 0.8)
+	_round_a_bend(slid, t, 1.0, input(1.0, 1.0, 1.0))
+	_drive(braked, t, 1.0, input(0.0, 0.0, 1.0))
+	near(slid.speed, Cfg.MAX_SPEED * 0.8 - Cfg.SLIDE_DECEL, 1.0, "lost SLIDE_DECEL in a second")
+	check(slid.speed < Cfg.MAX_SPEED * 0.8, "slower than it went in")
+	check(slid.speed > Cfg.MAX_SPEED * 0.8 * 0.85, "but only a little (%.0f)" % slid.speed)
+	check(braked.speed < slid.speed * 0.5, "far less than braking (%.0f)" % braked.speed)
+
+
+func test_a_slide_turns_tighter() -> void:
+	var t := flat_track(3000)
+	var slid := _car(Cfg.MAX_SPEED * 0.8)
+	var steered := _car(Cfg.MAX_SPEED * 0.8)
+	slid.update(DT, input(1.0, 1.0, 1.0), t, true)
+	steered.update(DT, input(1.0, 1.0, 0.0), t, true)
+	near(slid.x / steered.x, Cfg.SLIDE_TURN, 0.001, "SLIDE_TURN times the steering")
+
+
+func test_no_slide_slow_off_road_or_for_rivals() -> void:
+	var t := flat_track(3000)
+	var slow := _car(Cfg.SLIDE_SPEED * 0.8)
+	slow.update(DT, input(1.0, 1.0, 1.0), t, true)
+	eq(slow.slide, 0.0, "too slow: just brakes")
+	var off := _car(Cfg.MAX_SPEED * 0.8)
+	off.x = 1.5
+	off.offroad = true
+	off.update(DT, input(1.0, 1.0, 1.0), t, true)
+	eq(off.slide, 0.0, "off the road")
+	var rival := RivalCar.new()
+	rival.reset()
+	rival.speed = Cfg.MAX_SPEED * 0.8
+	rival.update(DT, input(1.0, 1.0, 1.0), t, true)
+	eq(rival.slide, 0.0, "a rival brakes")
+	var p := _car(Cfg.MAX_SPEED * 0.8)
+	p.update(DT, input(1.0, 1.0, 1.0), t, true)
+	p.crash()
+	p.update(DT, input(1.0, 1.0, 1.0), t, true)
+	eq(p.slide, 0.0, "a crash ends it")
+	p.reset()
+	eq(p.slide, 0.0, "and a restart")

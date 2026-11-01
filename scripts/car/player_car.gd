@@ -1,6 +1,7 @@
 class_name PlayerCar
 extends RefCounted
-## Arcade driving model in track space: z along the road, x across it (-1..1 is the road).
+## Arcade driving model in track space: z along the road, x across it in Cfg.ROAD_WIDTH
+## (-1..1 is the usual road; Segment.width says how wide it is here, WS-7).
 
 const PITCH_SPAN := 400.0  # world units of road the car's pitch is measured over (about its length)
 const PITCH_FULL_DEG := 30.0
@@ -29,6 +30,8 @@ var offroad := false
 var manual := false  # manual gears: the player shifts (shift); otherwise the gear follows the speed
 var gear := 1  # the manual gear, 1..TOP_GEAR
 var shifted := 0  # +1 or -1 for the tick a manual shift happens, else 0
+var slide := 0.0  # power slide (RC-8): -1 sliding left, 1 right, 0 not sliding
+var slides := true  # whether this car power slides (rivals don't: they brake to stay clear)
 
 var nitro_charges := Cfg.NITRO_CHARGES
 var nitro_time := 0.0
@@ -89,6 +92,7 @@ func reset(start_position: float = 0.0) -> void:
 	bog_time = 0.0
 	draft = 0.0
 	draft_time = 0.0
+	slide = 0.0
 	ram_time = 0.0
 	ghost_time = 0.0
 	crash_time = 0.0
@@ -186,6 +190,8 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	ram_time = maxf(0.0, ram_time - dt)
 	ghost_time = maxf(0.0, ghost_time - dt)
 
+	slide = slide_after(slide, speed, steer_in, brake, slides and not airborne and not offroad and crash_time <= 0.0)
+
 	var step := speed * dt
 	last_position = position
 	position = fposmod(position + step, track.length)
@@ -197,7 +203,7 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	last_x = x
 	if airborne:
 		rate *= Cfg.AIR_STEER
-	x += steer_in * rate * (1.0 if airborne else grip_for(seg.grip, offroad))
+	x += steer_in * rate * (1.0 if airborne else grip_for(seg.grip, offroad)) * (Cfg.SLIDE_TURN if slide != 0.0 else 1.0)
 	if not airborne:
 		x -= rate / steer_mult * pct * seg.curve * Cfg.CENTRIFUGAL * pull_mult
 	steer = lerpf(steer, steer_in, minf(1.0, dt * Cfg.STEER_SMOOTHING))
@@ -207,7 +213,11 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	if crash_time > 0.0:
 		crash_time -= dt
 		speed = move_toward(speed, 0.0, Cfg.CRASH_BRAKING * dt)
-		x = move_toward(x, clampf(x, -Cfg.CRASH_RECOVER_X, Cfg.CRASH_RECOVER_X), dt * Cfg.CRASH_RECOVER_RATE)
+		var recover := Cfg.CRASH_RECOVER_X * seg.width
+		x = move_toward(x, clampf(x, -recover, recover), dt * Cfg.CRASH_RECOVER_RATE)
+	elif slide != 0.0:
+		# Sliding: neither the throttle nor the brake bites, the tires scrub a little speed off
+		speed -= Cfg.SLIDE_DECEL * dt
 	elif not airborne:
 		if throttle > 0.01:
 			var boost := Cfg.NITRO_ACCEL_MULT if nitro_time > 0.0 else 1.0
@@ -222,7 +232,7 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 			speed -= Cfg.BRAKING * brake * dt
 		if throttle <= 0.01 and brake <= 0.01:
 			speed -= Cfg.DECEL * dt
-	offroad = absf(x) > 1.0
+	offroad = absf(x) > track.width_at(position + Cfg.PLAYER_Z)
 	if offroad and not airborne and offroad_mult > 0.0 and speed > Cfg.OFFROAD_LIMIT / offroad_mult:
 		speed = maxf(Cfg.OFFROAD_LIMIT / offroad_mult, speed - Cfg.OFFROAD_DECEL * offroad_mult * dt)
 	if speed > top:
@@ -235,6 +245,26 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 
 	_update_air(dt, track.height_at(position + Cfg.PLAYER_Z))
 	_update_pitch(dt, track)
+
+
+## The power slide (RC-8) after this tick, from `slide` before it (-1 left, 1 right, 0 none):
+## braking at least SLIDE_BRAKE with SLIDE_STEER lock at SLIDE_SPEED or faster starts one the
+## way the car is steering; it lasts while the lock stays at least SLIDE_HOLD that way and the
+## car faster than SLIDE_EXIT_SPEED. `can` is false in the air, off the road or crashed: no slide.
+static func slide_after(slide: float, speed: float, steer_in: float, brake: float, can: bool) -> float:
+	if not can:
+		return 0.0
+	if slide != 0.0:
+		return slide if steer_in * slide >= Cfg.SLIDE_HOLD and speed > Cfg.SLIDE_EXIT_SPEED else 0.0
+	if brake >= Cfg.SLIDE_BRAKE and absf(steer_in) >= Cfg.SLIDE_STEER and speed >= Cfg.SLIDE_SPEED:
+		return signf(steer_in)
+	return 0.0
+
+
+## The steering the car's sprite shows: its smoothed steering, or the strip's last frame the
+## way it slides (the slide frames until CP-3 draws its own).
+func shown_steer() -> float:
+	return slide if slide != 0.0 else steer
 
 
 ## The share of its steering a car keeps on road of `grip` (Segment.grip), `off` it or not:
@@ -313,7 +343,7 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 			if def.is_empty() or def["collide"] <= 0.0:
 				continue
 			var w_units: float = def["world_w"] / Cfg.ROAD_WIDTH
-			var offset: float = sp["offset"]
+			var offset: float = sp["offset"] * seg.width
 			var center := offset - w_units / 2.0 if offset < 0.0 else offset + w_units / 2.0
 			if absf(x - center) < w_units * def["collide"] / 2.0 + half_car:
 				crash()
@@ -372,7 +402,7 @@ func move_to(z: float, track: Track) -> void:
 
 
 ## Whether a car at `car_x` (half-width `half_car`, both in road half-widths) hits the
-## legs or walls of a span or race gate in `seg`.
+## legs or walls of a span or race gate in `seg` (sized for its road, span_scale).
 static func hits_span(seg: Segment, car_x: float, half_car: float) -> bool:
 	var ids: Array[String] = seg.spans.duplicate()
 	var gate := RoadRenderer.gate_for(seg.flags)
@@ -382,8 +412,9 @@ static func hits_span(seg: Segment, car_x: float, half_car: float) -> bool:
 		if not SpriteLibrary.spans.has(id):
 			continue
 		var e := SpriteLibrary.span_edges(id)
-		var inner: Vector2 = e["inner"]
-		var outer: Vector2 = e["outer"]
+		var k := SpriteLibrary.span_scale(seg.width)
+		var inner: Vector2 = e["inner"] * k
+		var outer: Vector2 = e["outer"] * k
 		if (car_x - half_car < inner.x and car_x + half_car > outer.x) or (car_x + half_car > inner.y and car_x - half_car < outer.y):
 			return true
 	return false
