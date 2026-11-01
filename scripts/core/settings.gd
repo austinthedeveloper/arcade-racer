@@ -22,7 +22,7 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 4: [display] fullscreen, integer_scale, vsync, scanlines (missing: windowed, fractional,
 ## V-Sync on, no scanlines).
 ## 5: [play] steer_assist, brake_assist (missing: off).
-const VERSION := 5
+const VERSION := 6
 ## The scanline overlay's CanvasLayer: above the race, the menus and the debug overlay.
 const SCANLINE_LAYER := 100
 const SCANLINE_SHADER := preload("res://scripts/render/scanlines.gdshader")
@@ -41,6 +41,7 @@ var attack_traffic := false  # Time Attack and Free Drive with traffic (picked o
 var unlock_all := false  # every car and stage open (Unlocks), for testing and accessibility
 var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
 var sfx_volume := 10
+var radio: int = Radio.SHUFFLE  # the station races start on (Radio)
 var screen_shake := 10  # 0..EFFECT_STEPS; scales camera shake and the nitro FOV stretch
 var flash := 10  # 0..EFFECT_STEPS; scales flashes and blinking warnings
 var units: int = Units.MPH  # the speedometer's
@@ -74,6 +75,7 @@ func reset() -> void:
 	attack_traffic = false
 	music_volume = 10
 	sfx_volume = 10
+	radio = Radio.SHUFFLE
 	screen_shake = EFFECT_STEPS
 	flash = EFFECT_STEPS
 	units = Units.MPH
@@ -103,6 +105,7 @@ func load_settings() -> void:
 		attack_traffic = bool(cfg.get_value("play", "attack_traffic", attack_traffic))
 		music_volume = clampi(int(cfg.get_value("audio", "music", music_volume)), 0, VOLUME_STEPS)
 		sfx_volume = clampi(int(cfg.get_value("audio", "sfx", sfx_volume)), 0, VOLUME_STEPS)
+		radio = clampi(int(cfg.get_value("audio", "radio", radio)), Radio.SHUFFLE, Radio.count() - 1)
 		screen_shake = clampi(int(cfg.get_value("accessibility", "screen_shake", screen_shake)), 0, EFFECT_STEPS)
 		flash = clampi(int(cfg.get_value("accessibility", "flash", flash)), 0, EFFECT_STEPS)
 		units = clampi(int(cfg.get_value("display", "units", units)), 0, Units.size() - 1)
@@ -116,7 +119,7 @@ func load_settings() -> void:
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -150,6 +153,11 @@ static func _v4_to_v5(cfg: ConfigFile) -> void:
 	cfg.set_value("play", "brake_assist", false)
 
 
+## Version 6 added the radio station, on shuffle (every earlier build had one music loop).
+static func _v5_to_v6(cfg: ConfigFile) -> void:
+	cfg.set_value("audio", "radio", Radio.SHUFFLE)
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -166,6 +174,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("play", "attack_traffic", attack_traffic)
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
+	cfg.set_value("audio", "radio", radio)
 	cfg.set_value("accessibility", "screen_shake", screen_shake)
 	cfg.set_value("accessibility", "flash", flash)
 	cfg.set_value("display", "units", units)

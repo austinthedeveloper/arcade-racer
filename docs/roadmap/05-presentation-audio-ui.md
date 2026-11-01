@@ -5,10 +5,11 @@ section 7: sound, music, the announcer, the HUD and the screens around the race.
 
 ## Built today
 
-Placeholder sounds synthesized by `tools/make_audio.py`, mapped by cue name in `SoundBank` so a
-pack can replace them file by file. A two-loop engine pitched by a five-gear rev model, skid and
-off-road loops, countdown, checkpoint, nitro, crash, bump, landing, low-time ticks, finish and
-time-up cues. HUD with speed, time, place, nitro, draft meter, progress bar with rival dots,
+Original sounds synthesized by `tools/make_audio.py`, mapped by cue name in `SoundBank` so a
+recorded file can replace any of them. A two-loop engine pitched by a five-gear rev model, skid,
+off-road, wind, slipstream, nearest-rival and horn loops, panned whooshes past traffic and
+rivals, a pickup sound per power-up, countdown, checkpoint, nitro, crash, bump, landing,
+low-time ticks, finish, crowd, thunder and time-up cues. A four-station radio (`Radio`). HUD with speed, time, place, nitro, draft meter, progress bar with rival dots,
 power-up slot and banners. Title, mode select, Options pages, stage select with postcards, car
 select with showroom pictures, a pause menu, the results and standings screen, the finish
 spectacle, an attract-mode demo, camera shake and the nitro view stretch. A game icon.
@@ -17,9 +18,9 @@ spectacle, an attract-mode demo, camera shake and the nitro view stretch. A game
 
 | ID | Feature | Size | Month | Needs | Done when |
 |---|---|---|---|---|---|
-| PR-1 | **Sound pack.** Replace every placeholder cue with a real sound (recorded or license-safe library), add cues for rivals, drafting, slides and power-ups, then a mix pass on the three buses. | M | 5 | | No synthesized file is still the first match for any cue; `test_audio` lists the pack |
+| PR-1 ✓ | **Sound pack.** Replace every placeholder cue with a real sound, add cues for rivals, drafting, slides and power-ups, then a mix pass on the three buses. Decided 2026-11-01: original synthesized sounds (`tools/make_audio.py`), not a library or recordings; a recorded file still replaces any cue. The slide cue waits for RC-8. | M | 5 | | Every cue remade; `test_audio` lists the pack and checks every level |
 | PR-2 | **Music radio.** Four original stations (rock, synthwave, funk, techno), a station pick before the race, a button to switch mid-race, ducking under the announcer. Sourcing starts in month 3. | M | 5 | | Streams per station in `assets/audio/music/`; the race switches stations without a gap; e2e smoke switches once |
-| PR-3 | **Wind, whooshes and horn.** Wind volume by speed, traffic whooshes panned by side, a horn button. | S | 5 | | `test_audio` checks the pan sign and wind curve |
+| PR-3 ✓ | **Wind, whooshes and horn.** Wind volume by speed, traffic whooshes panned by side, a horn button. | S | 5 | | `test_audio` checks the pan sign and wind curve |
 | PR-4 | **Announcer.** Original lines for countdown, GO, checkpoint, time extended, final stretch, near miss, big air, finish positions. Subtitles (AC-5). Voice sourcing with the music. | M | 5, 6 | PR-1 | Each line has a cue and a subtitle string; a test that no two lines overlap |
 | PR-5 ✓ | **Callouts.** Starburst banners: GO, CHECKPOINT, TIME EXTENDED, NEAR MISS, BIG AIR, FINAL STRETCH, LAUNCH, 1ST PLACE. Driven by RC-6 events. | S | 2 | RC-6 | Banner queue test; screenshots of two callouts |
 | PR-6 ✓ | **HUD v2.** Analog speedo with digital readout and tach, chunky position numeral, timer that pulses red under ten seconds, flame icons for nitro, slipstream bar, progress bar with rival dots. One low-time threshold shared with audio and power-ups (`docs/09` phase 3). | M | 3 | RC-2, CP-11 | Layout in a plain function with a test per element's rect; screenshots at 640x360 and 1920x1080 |

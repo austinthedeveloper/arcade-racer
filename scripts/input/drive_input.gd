@@ -12,6 +12,7 @@ var pause_pressed := false
 var restart_pressed := false
 var confirm_pressed := false
 var horn := false  # held (only RaceAudio listens)
+var radio_pressed := false  # edge: the next station (RaceAudio)
 var kind := Kind.KEYBOARD
 var device_name := "Keyboard"
 ## False for a pad without a standard gamepad layout (most likely a wheel or pedals not

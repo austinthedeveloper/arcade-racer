@@ -270,6 +270,31 @@ func test_title_reaches_options_and_back() -> void:
 	_clean()
 
 
+func test_radio_station_option_and_car_select_pick() -> void:
+	_clean()
+	var o := OptionsScreen.new()
+	eq(OptionsScreen.value_text(OptionsScreen.Row.RADIO), "SHUFFLE", "shuffle by default")
+	o.change(OptionsScreen.Row.RADIO, 1, true)
+	eq(OptionsScreen.value_text(OptionsScreen.Row.RADIO), "ROCK", "then each station")
+	o.change(OptionsScreen.Row.RADIO, -1, true)
+	o.change(OptionsScreen.Row.RADIO, -1, true)
+	eq(Settings.radio, Radio.count() - 1, "left from shuffle wraps to the last")
+	Settings.load_settings()
+	eq(Settings.radio, Radio.count() - 1, "saved")
+	o.free()
+	var c := CarSelect.new()
+	var m := MenuInput.new()
+	m.radio_pressed = true
+	c.handle(m)
+	eq(Settings.radio, Radio.SHUFFLE, "the radio button on car select steps the station")
+	c.handle(m)
+	eq(Settings.radio, 0, "and on")
+	Settings.load_settings()
+	eq(Settings.radio, 0, "saved there too")
+	c.free()
+	_clean()
+
+
 func test_power_ups_option_saves() -> void:
 	var o := OptionsScreen.new()
 	eq(OptionsScreen.value_text(OptionsScreen.Row.POWER_UPS), "ON", "on by default")
@@ -444,7 +469,8 @@ func test_option_pages() -> void:
 	eq(o.row(), OptionsScreen.Row.PAGE, "still on the page bar")
 	eq(Settings.auto_gas, false, "no option changed")
 	o.handle(right)
-	eq(o.rows(), [OptionsScreen.Row.PAGE, OptionsScreen.Row.MUSIC, OptionsScreen.Row.SFX, OptionsScreen.Row.BACK], "Audio rows")
+	eq(o.rows(), [OptionsScreen.Row.PAGE, OptionsScreen.Row.MUSIC, OptionsScreen.Row.SFX, OptionsScreen.Row.RADIO,
+		OptionsScreen.Row.BACK], "Audio rows")
 	var down := MenuInput.new()
 	down.down_pressed = true
 	o.handle(down)

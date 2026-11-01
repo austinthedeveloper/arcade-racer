@@ -1,7 +1,8 @@
 class_name CarSelect
 extends MenuScreen
 ## Car select: the showroom picture, name and 1..5 stat bars. Confirm starts the race.
-## Cars not yet earned (Unlocks) show darkened, with a lock and what opens them.
+## Cars not yet earned (Unlocks) show darkened, with a lock and what opens them. The
+## radio button picks the station the race starts on (Radio), saved as the option.
 
 const STATS := [["ACCELERATION", "accel"], ["TOP SPEED", "top_speed"], ["HANDLING", "handling"]]
 const STAT_COLORS := [Color("#ff7a1a"), Color("#ff3d6e"), Color("#3ad0ff")]
@@ -32,6 +33,10 @@ func handle(m: MenuInput) -> void:
 		game.start_race()
 	elif m.back_pressed:
 		game.show_stage_select()
+	elif m.radio_pressed:
+		Settings.radio = Radio.next_setting(Settings.radio)
+		Settings.save()
+		Audio.play("radio_tune")
 
 
 func _draw() -> void:
@@ -64,6 +69,7 @@ func _draw() -> void:
 	# Spec panel
 	var panel := Rect2(392, 62, 232, 196)
 	_panel(panel, 0.85)
+	_radio(Rect2(392, 270, 232, 40))
 	_text(Vector2(panel.position.x + 12, panel.position.y + 30), String(car["name"]).to_upper(), 22, GOLD if open else Color(1, 1, 1, 0.5))
 	if not open:
 		_text(Vector2(panel.position.x + 12, panel.position.y + 48), "LOCKED", 10, GOLD)
@@ -79,6 +85,18 @@ func _draw() -> void:
 			var seg := Rect2(panel.position.x + 12 + s * 42, y + 6, 38, 12)
 			draw_rect(seg, STAT_COLORS[i] if s < value else Color(1, 1, 1, 0.12))
 	_footer(hints(not single))
+
+
+## The station line under the spec panel.
+func _radio(r: Rect2) -> void:
+	_panel(r, 0.6)
+	var setting: int = Settings.radio
+	var station := "A different station each race" if setting == Radio.SHUFFLE else Radio.station_name(setting)
+	_text(Vector2(r.position.x + 12, r.position.y + 15), "RADIO  " + Radio.setting_name(setting), 10, GOLD)
+	_text(Vector2(r.position.x + 12, r.position.y + 31), station, 10, Color(1, 1, 1, 0.85))
+	var key := "%s: change" % InputRouter.keyboard.binding_text("radio")
+	var kw := _font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+	_text(Vector2(r.end.x - 10 - kw, r.position.y + 15), key, 9, Color(1, 1, 1, 0.6))
 
 
 func _ellipse(center: Vector2, radius: Vector2, col: Color) -> void:

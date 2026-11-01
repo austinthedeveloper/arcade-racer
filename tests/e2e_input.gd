@@ -12,6 +12,7 @@ var _step := 0
 var _wait := 0
 var _fails := 0
 var _mark := 0.0
+var _station := 0
 var _stage_before := -1  # the player's stage pick, which a demo leaves alone
 var _settings: Node
 var _router: Node
@@ -227,10 +228,14 @@ func _tick() -> void:
 			_send("brake", false)
 			_send("accelerate", true)
 			_send_key(KEY_N, true)  # nitro, rebound to N in the remap screen
+			_station = _race.audio.station
+			_send("radio", true)
 			_next(2)
 		5:
 			_send_key(KEY_N, false)
+			_send("radio", false)
 			_check(p.nitro_charges == Cfg.NITRO_CHARGES - 1 and p.nitro_time > 0.0, "the rebound N fires nitro once")
+			_check(_race.audio.station == Radio.next(_station), "the radio button (M) changes station once")
 			_send("pause", true)
 			_next(2)
 		6:
