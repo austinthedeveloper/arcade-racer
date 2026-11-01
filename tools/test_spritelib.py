@@ -34,6 +34,41 @@ class Keying(unittest.TestCase):
         self.assertEqual(a[0, 0].tolist(), [0, 0, 0, 0])
         self.assertEqual(a[0, 2].tolist(), [10, 200, 40, 255])
 
+    def test_near_key_hue_wants_the_hue_and_some_color(self):
+        # shadowed magenta, violet paint, dark grey, red
+        px = np.array([[[90, 20, 92], [120, 60, 220], [40, 30, 40], [200, 20, 20]]])
+        self.assertEqual(sl.near_key_hue(px, MAGENTA).tolist(), [[True, False, False, False]])
+
+    def test_key_sheet_peels_a_shadowed_key_line_two_pixels_deep(self):
+        # A green car with a two-pixel line of dark magenta under it, then a third row of it
+        rows = [((4, 4, 12, 8), (20, 160, 40, 255)), ((4, 8, 12, 11), (90, 20, 92, 255))]
+        a = sl.rgba(sl.key_sheet(sheet((16, 16), rows), fringe=0, spill=0))
+        self.assertEqual(a[9:11, 6, 3].tolist(), [0, 0], "two pixels in from the background")
+        self.assertEqual(a[8, 6, 3], 255, "the third stays")
+        self.assertEqual(a[6, 6].tolist(), [20, 160, 40, 255], "the car stays")
+
+    def test_despill_neutralises_a_pink_outline_only_near_the_background(self):
+        # A grey car whose outline pixel and next one in carry magenta spill
+        rows = [((2, 2, 14, 14), (120, 120, 120, 255)), ((2, 2, 14, 3), (150, 100, 140, 255)),
+                ((2, 6, 14, 7), (150, 100, 140, 255))]
+        a = sl.rgba(sl.key_sheet(sheet((16, 16), rows), fringe=0, hue_fringe=0, spill=2))
+        self.assertEqual(a[2, 8].tolist(), [110, 100, 100, 255], "red and blue drop to green's level")
+        self.assertEqual(a[6, 8].tolist(), [150, 100, 140, 255], "further in it is paint")
+
+    def test_despill_leaves_blue_and_red(self):
+        a = np.array([[[60, 90, 200, 255], [200, 30, 30, 255]]], dtype=np.uint8)
+        sl.despill(a, np.ones((1, 2), dtype=bool))
+        self.assertEqual(a[0, :, :3].tolist(), [[60, 90, 200], [200, 30, 30]])
+
+    def test_recolor_hue_turns_purple_in_the_box_only(self):
+        img = sheet((4, 2), [((0, 0, 4, 2), (160, 40, 220, 255)), ((3, 0, 4, 2), (230, 200, 30, 255))])
+        a = sl.rgba(sl.recolor_hue(img, (0.0, 0.0, 1.0, 0.5), (240, 340), 212))
+        h, c = sl.hue(a)
+        self.assertAlmostEqual(h[0, 0], 212, delta=2)
+        self.assertEqual(a[0, 0, :3].max(), 220, "brightness kept")
+        self.assertEqual(a[1, 0].tolist(), [160, 40, 220, 255], "outside the box")
+        self.assertEqual(a[0, 3].tolist(), [230, 200, 30, 255], "yellow is not in the hue range")
+
     def test_hard_alpha_is_all_or_nothing(self):
         img = Image.new("RGBA", (3, 1))
         img.putdata([(9, 9, 9, 10), (9, 9, 9, 140), (9, 9, 9, 255)])
