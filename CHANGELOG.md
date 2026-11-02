@@ -28,6 +28,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Stage intro card (PR-16): during the countdown a card slides in with the stage's name, its
   weather, its length (in miles or kilometres, after the units option), and your best time and
   medal there, and slides away before GO.
+- Stats page (MP-11): STATS on the title shows your races, wins, crashes, near misses and
+  distance driven, with your favourite car and stage. Kept in your save; a save from an earlier
+  version starts with the races and wins its best times show.
 
 ### Changed
 

@@ -17,7 +17,7 @@ godot --path . -- --autodrive --stage=7 --at-segment=300 --lightning-at=5 --scre
 godot --path . -- --autodrive --stage=2 --mirror --screenshots=300 --shot-dir=/tmp/shots   # race the stage mirrored (WS-6), locked or not
 godot --path . -- --save-file=/tmp/save.cfg --mode=single_race --mirror --screen=stages --menu-shot=/tmp/s.png   # stage select on another save, in a mode (ModeSelect.Item), MIRROR on
 python3 tools/colorblind.py /tmp/shots/frame_00300.png --all   # the shot as seen with protanopia, deuteranopia, tritanopia (+ a sheet)
-godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, modes, options, stages, cars, pause, unplugged, results, demo, update (update:failed etc.); options:audio etc. for an options page; --car=car_mesa opens car select on it)
+godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, modes, options, stages, cars, stats, pause, unplugged, results, demo, update (update:failed etc.); options:audio etc. for an options page; --car=car_mesa opens car select on it)
 godot --path . --resolution 1600x900 -- --settings-file=/tmp/opts.cfg --profiles-file=/tmp/prof.cfg --screen=options:display --shot-as-window --menu-shot=/tmp/d.png   # other options and binding files; the shot laid out as the window shows it (also --screen=remap, --screen=wheel, and race --screenshots)
 godot --path . -- --screen=online:lobby --touch --menu-shot=/tmp/o.png   # the online lobby (online:menu, code, guest, error) on an in-memory relay, touch controls up
 godot --headless --path . -s res://tools/online_probe.gd -- --relay=ws://127.0.0.1:8080   # host + guest through a relay (npm start in ../snes/pickleball-relay); no --relay: the live one
