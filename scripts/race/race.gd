@@ -203,7 +203,7 @@ func start_race() -> void:
 	var traffic_count := cars if demo else Settings.traffic_count(cars)
 	if _no_traffic or ((time_attack or free_drive) and not Settings.attack_traffic):
 		traffic_count = 0
-	traffic.spawn(track, traffic_count)
+	traffic.spawn(track, traffic_count, 7, player.position + Cfg.PLAYER_Z)  # none just ahead of the start (RC-14)
 	if tour and tour_state == null:
 		tour_state = Tour.new()
 		tour_state.start_stage = stage_index

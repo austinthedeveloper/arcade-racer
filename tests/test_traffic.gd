@@ -297,3 +297,158 @@ func test_signal_frames_differ_only_on_their_side() -> void:
 							wrong_side += 1
 			check(changed > 2, "%s %s: some lamp lit" % [id, side])
 			eq(wrong_side, 0, "%s %s: only that side" % [id, side])
+
+
+# --- Fair traffic (RC-14) ----------------------------------------------------------
+
+## The first of `tr`'s cars within traffic/spawn_clear segments past segment `from`, or null.
+func _car_past(t: Track, tr: Traffic, from: int) -> Traffic.TrafficCar:
+	var n := t.segments.size()
+	for c in tr.cars:
+		if posmod(c.segment.index - from, n) < Tuning.i("traffic/spawn_clear"):
+			return c
+	return null
+
+
+func test_jumps_are_blind_crests_but_rolls_and_bumps_are_not() -> void:
+	var t := flat_track(100)
+	t.jump()
+	var jump_end := t.segments.size()
+	t.straight(50)
+	var rolls := t.segments.size()
+	t.low_rolling_hills()
+	t.bumps()
+	t.straight(50)
+	var crests := t.blind_crests()
+	eq(crests.size(), 1, "one blind crest: %s" % [crests])
+	check(not crests.is_empty() and crests[0] > 100 and crests[0] < jump_end, "the jump's top")
+	check(crests.all(func(i: int) -> bool: return i < rolls), "none over the rolls or the bumps")
+	for s in Stages.count():
+		check(not Stages.build(s).blind_crests().is_empty(), "stage %d has a blind crest" % s)
+
+
+func test_no_traffic_spawns_past_a_blind_crest() -> void:
+	for s in Stages.count():
+		var t := Stages.build(s)
+		var tr := Traffic.new()
+		tr.spawn(t, 300)
+		for crest in t.blind_crests():
+			var c := _car_past(t, tr, crest)
+			check(c == null, "%s: no car spawned just past the crest at %d (one at %d)" % [t.name, crest, c.segment.index if c else -1])
+
+
+func test_no_traffic_spawns_in_a_tunnel_mouth() -> void:
+	for t: Track in [NeonStrip.build(), Timberline.build()]:
+		var mouths := t.tunnel_mouths()
+		eq(mouths.size(), 1, t.name + " has one tunnel")
+		var tr := Traffic.new()
+		tr.spawn(t, 300)
+		for m in mouths:
+			check(_car_past(t, tr, m) == null, "%s: nothing spawned through the mouth at %d" % [t.name, m])
+
+
+func test_no_traffic_spawns_ahead_of_the_players_start() -> void:
+	var t := PalmCoast.build()
+	var tr := Traffic.new()
+	tr.spawn(t, 1000, 7, 800 * Cfg.SEGMENT_LENGTH)
+	check(_car_past(t, tr, 800) == null, "the road ahead of a start partway in is clear")
+	var plain := Traffic.new()
+	plain.spawn(t, 1000)
+	check(_car_past(t, plain, 800) != null, "where it would have had traffic")
+
+
+func test_keep_clear_is_the_same_mirrored() -> void:
+	eq(Traffic.keep_clear(PalmCoast.build(), 14), Traffic.keep_clear(Stages.build(0, true), 14),
+		"mirroring clears the same stretches")
+
+
+## A car in lane `k` of 4 on `t`, rammed away from `from_x`.
+func _rammed(t: Track, tr: Traffic, k: int, from_x: float) -> Traffic.TrafficCar:
+	var c := Traffic.TrafficCar.new()
+	c.z = 50.0 * Cfg.SEGMENT_LENGTH
+	c.speed = Cfg.MAX_SPEED * 0.4
+	c.sprite = "sedan_tan"
+	c.lane_frac = (k + 0.5) / 4.0
+	c.offset = t.segments[0].lane_x(k) * t.side()
+	c.lane = c.offset
+	c.segment = t.find_segment(c.z)
+	c.segment.cars.append(c)
+	tr.cars.append(c)
+	Traffic.fling(c, from_x)
+	return c
+
+
+## A car in lane `k`, `ahead` segments on from `like`, going as fast.
+func _blocker(t: Track, tr: Traffic, k: int, like: Traffic.TrafficCar, ahead: int) -> void:
+	var o := Traffic.TrafficCar.new()
+	o.z = like.z + ahead * Cfg.SEGMENT_LENGTH
+	o.speed = like.speed
+	o.sprite = "semi"
+	o.lane_frac = (k + 0.5) / 4.0
+	o.offset = t.segments[0].lane_x(k) * t.side()
+	o.lane = o.offset
+	o.segment = t.find_segment(o.z)
+	o.segment.cars.append(o)
+	tr.cars.append(o)
+
+
+func _land(t: Track, tr: Traffic, c: Traffic.TrafficCar) -> void:
+	for i in 600:
+		tr.update(DT, t)
+	check(c.solid(), "solid again")
+
+
+func test_a_rammed_car_lands_back_in_its_own_lane_when_clear() -> void:
+	var t := flat_track()
+	var tr := Traffic.new()
+	tr.spawn(t, 0)
+	var c := _rammed(t, tr, 2, 0.0)
+	_land(t, tr, c)
+	near(c.offset, 0.25, 0.001, "its own lane")
+
+
+func test_a_rammed_car_comes_back_in_a_clear_lane() -> void:
+	var t := flat_track()
+	var tr := Traffic.new()
+	tr.spawn(t, 0)
+	var c := _rammed(t, tr, 2, 0.5)  # knocked left, toward the oncoming lanes
+	_blocker(t, tr, 2, c, 1)  # its lane taken while it flies
+	_land(t, tr, c)
+	near(c.offset, 0.75, 0.001, "the clear lane its way, not its taken one or an oncoming one")
+	eq(Traffic.lane_index(c.lane_frac, 4), 3, "and keeps to it")
+
+
+func test_a_rammed_car_on_a_mirrored_stage_comes_back_mirrored() -> void:
+	var t := flat_track()
+	t.mirrored = true
+	var tr := Traffic.new()
+	tr.spawn(t, 0)
+	var c := _rammed(t, tr, 2, -0.5)
+	_blocker(t, tr, 2, c, 1)
+	_land(t, tr, c)
+	near(c.offset, -0.75, 0.001, "the mirror image")
+
+
+func test_with_every_lane_its_way_taken_it_goes_home() -> void:
+	var t := flat_track()
+	var tr := Traffic.new()
+	tr.spawn(t, 0)
+	var c := _rammed(t, tr, 2, 0.0)
+	_blocker(t, tr, 2, c, 1)
+	_blocker(t, tr, 3, c, 2)
+	_land(t, tr, c)
+	near(c.offset, 0.25, 0.001, "its own lane")
+
+
+func test_nothing_spawns_coming_the_other_way_to_meet_the_grid() -> void:
+	for mirror in [false, true]:
+		var t := Stages.build(0, mirror)
+		var tr := Traffic.new()
+		tr.spawn(t, 1000)
+		var near_start := 0
+		for c in tr.cars:
+			if c.segment.index < Tuning.i("traffic/oncoming_clear"):
+				near_start += 1
+				check(not c.oncoming, "no oncoming car at segment %d, ahead of the grid" % c.segment.index)
+				check(c.oncoming == (c.offset * t.side() < 0.0), "and each on its side of the road")
+		check(near_start > 0, "cars there, all going the player's way")

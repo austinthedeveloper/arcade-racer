@@ -38,6 +38,8 @@ const BLINK := 0.5  # seconds per flash of a signal, on for BLINK_ON of it
 const BLINK_ON := 0.3
 const CHANGE_EVERY := [5.0, 16.0]  # seconds between one car's lane changes
 const CHANGE_ROOM := 3  # segments ahead and behind that must be clear in the new lane
+const SPAWN_FROM := 40  # segments past the start line before traffic spawns
+const SPAWN_TO_END := 10  # and none in the last of the loop
 
 ## The usual four-lane road's lanes (Segment.lane_offsets for a road of any width, WS-7).
 const LANE_OFFSETS := [-0.75, -0.25, 0.25, 0.75]
@@ -85,7 +87,9 @@ static func with_fronts(kinds: Array) -> Array:
 	return out if not out.is_empty() else with_fronts(CARS)
 
 
-func spawn(track: Track, count: int, seed_value: int = 7) -> void:
+## `count` cars spread over the road, none where keep_clear says not (RC-14); `start_z` is
+## where the player starts (or starts again).
+func spawn(track: Track, count: int, seed_value: int = 7, start_z := 0.0) -> void:
 	for seg in track.segments:
 		seg.cars.clear()
 	cars.clear()
@@ -93,8 +97,55 @@ func spawn(track: Track, count: int, seed_value: int = 7) -> void:
 	var rng := _rng
 	rng.seed = seed_value
 	var specials: Array = track.theme.get("specials", SPECIALS)
+	var start := track.find_segment(start_z).index
+	var clear := keep_clear(track, start)
+	var totals := spawn_totals(track, clear)
 	for i in count:
-		_add_car(track, rng.randf_range(40.0, track.segments.size() - 10.0) * Cfg.SEGMENT_LENGTH, specials)
+		_add_car(track, _spawn_z(totals), specials, start, clear)
+
+
+## Fair traffic (RC-14): the segments no car spawns in, by index. The stretch just past a blind
+## crest (Track.blind_crests), through a tunnel mouth (Track.tunnel_mouths) and ahead of
+## `start_index`, where the player starts: traffic/spawn_clear segments each (Tuning), the whole
+## road across, so a mirrored stage clears the same.
+static func keep_clear(track: Track, start_index: int) -> Array[bool]:
+	var n := track.segments.size()
+	var out: Array[bool] = []
+	out.resize(n)
+	out.fill(false)
+	var reach := Tuning.i("traffic/spawn_clear")
+	var froms: Array[int] = [start_index]
+	froms.append_array(track.blind_crests())
+	froms.append_array(track.tunnel_mouths())
+	for from in froms:
+		for k in reach:
+			out[(from + k) % n] = true
+	return out
+
+
+## The running total of every segment's share of the spawned traffic, from the first: none
+## near the start line (before SPAWN_FROM) or the loop's end (the last SPAWN_TO_END) or where
+## `clear` says so, the same everywhere else.
+static func spawn_totals(track: Track, clear: Array[bool]) -> PackedFloat64Array:
+	var n := track.segments.size()
+	var out := PackedFloat64Array()
+	out.resize(n)
+	var sum := 0.0
+	for i in n:
+		if i >= SPAWN_FROM and i < n - SPAWN_TO_END and not clear[i]:
+			sum += 1.0
+		out[i] = sum
+	return out
+
+
+## Where the next spawned car goes: one roll of the dice into `totals` (spawn_totals), so a
+## segment gets cars in proportion to its share and a kept-clear one gets none.
+func _spawn_z(totals: PackedFloat64Array) -> float:
+	var roll := _rng.randf() * totals[totals.size() - 1]
+	var k := mini(totals.bsearch(roll, false), totals.size() - 1)
+	var below := totals[k - 1] if k > 0 else 0.0
+	var share := totals[k] - below
+	return (k + clampf((roll - below) / share, 0.0, 0.999)) * Cfg.SEGMENT_LENGTH
 
 
 ## The debug panel's traffic burst (EQ-16): `count` more cars spread over the road from
@@ -105,18 +156,38 @@ func burst(track: Track, from_z: float, count: int, span := 20000.0) -> void:
 		_add_car(track, fposmod(from_z + _rng.randf_range(0.0, span), track.length), specials)
 
 
-## A car at `z` in a lane picked by the dice, of a kind and speed picked by them too.
-func _add_car(track: Track, z: float, specials: Array) -> void:
+## Where an oncoming car spawned at `z` goes instead if it would meet the grid at `start`
+## (RC-14): as far again on, past any stretch `clear` keeps clear. `z` itself if it wouldn't.
+static func past_the_grid(track: Track, z: float, start: int, clear: Array[bool]) -> float:
+	var n := track.segments.size()
+	var reach := Tuning.i("traffic/oncoming_clear")
+	var k := floori(z / Cfg.SEGMENT_LENGTH)
+	if posmod(k - start, n) >= reach:
+		return z
+	var moved := reach
+	while clear[(k + moved) % n] and moved < n:
+		moved += 1
+	return fposmod(z + moved * Cfg.SEGMENT_LENGTH, track.length)
+
+
+## A car at `z` in a lane picked by the dice, of a kind and speed picked by them too. With a
+## `start` (spawn), an oncoming car that would meet the grid there goes on past it.
+func _add_car(track: Track, z: float, specials: Array, start := -1, clear: Array[bool] = []) -> void:
 	var rng := _rng
 	var car := TrafficCar.new()
+	var lane_roll := rng.randi()
+	var at := track.find_segment(z)
+	if start >= 0 and lane_roll % at.lanes < first_lane(track, at.lanes):
+		z = past_the_grid(track, z, start, clear)
+		at = track.find_segment(z)
 	car.z = z
 	car.last_z = car.z
-	var at := track.find_segment(car.z)
-	var k := rng.randi() % at.lanes
+	var k := lane_roll % at.lanes
+	var first := first_lane(track, at.lanes)
 	car.lane_frac = (k + 0.5) / at.lanes
 	car.offset = at.lane_x(k) * track.side()
 	car.lane = car.offset
-	car.oncoming = k < first_lane(track, at.lanes)
+	car.oncoming = k < first
 	var roll := rng.randf()
 	if roll < BIG_SHARE:
 		var pool: Array = with_fronts(BIG) if car.oncoming else BIG
@@ -159,6 +230,11 @@ func update(dt: float, track: Track) -> void:
 			car.flung = maxf(0.0, car.flung - dt)
 			car.offset = clampf(car.offset + car.fling_dir * Tuning.v("traffic/fling_speed") * dt, -4.0, 4.0)
 			car.returning = car.flung <= 0.0
+			if car.returning and follows:
+				# Landed: back into a lane with room (RC-14), its signal forgotten
+				car.lane_frac = landing_lane(track, seg, car)
+				car.lane = seg.lane_at(car.lane_frac) * track.side()
+				car.signal_dir = 0
 		elif car.returning:
 			car.offset = move_toward(car.offset, car.lane, Tuning.v("traffic/return_speed") * dt)
 			car.returning = car.offset != car.lane
@@ -213,6 +289,22 @@ static func lane_clear(track: Track, seg: Segment, k: int, me: TrafficCar) -> bo
 			if other != me and not is_nan(other.lane_frac) and lane_index(other.lane_frac, s.lanes) == k:
 				return false
 	return true
+
+
+## The lane a rammed car drives back to once it lands (RC-14), as a share of the way across
+## `seg`: its own lane if lane_clear, else the nearest clear one of the lanes running its way
+## (nearer the side it was knocked to first on a tie); its own if none is clear.
+static func landing_lane(track: Track, seg: Segment, car: TrafficCar) -> float:
+	var own := lane_index(car.lane_frac, seg.lanes)
+	var first := first_lane(track, seg.lanes)
+	var lo := 0 if car.oncoming else first
+	var hi := first if car.oncoming else seg.lanes
+	var toward := 1 if car.fling_dir * track.side() > 0.0 else -1  # as built
+	for d in seg.lanes:
+		for k: int in [own + d * toward, own - d * toward]:
+			if k >= lo and k < hi and lane_clear(track, seg, k, car):
+				return (k + 0.5) / seg.lanes
+	return (own + 0.5) / seg.lanes
 
 
 ## Which light frame a car shows now (CarSprites.traffic_texture): "left" or "right" while its

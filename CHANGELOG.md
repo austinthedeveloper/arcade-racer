@@ -26,6 +26,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 - Rivals keep to their own side of an undivided road and pass on the other side only with
   room; a rival stuck on the tail of a car pulls out to pass it.
+- Fairer traffic (RC-14): no car waits just over a jump or a big blind hilltop, just inside a
+  tunnel or covered bridge, or right ahead of where you start, and nothing coming the other way
+  meets the grid. A car you knock off the road comes back in a lane with room.
 
 ## [0.3.1] - 2026-11-01
 

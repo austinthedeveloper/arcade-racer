@@ -211,9 +211,12 @@ func test_rival_engine_and_slipstream_levels() -> void:
 
 func test_passing_traffic_whooshes_once() -> void:
 	var r := race(false, true)  # traffic, no rivals
-	audio_node().history.clear()
 	step(r, 185)
 	var car = r.traffic.cars[0]
+	r.traffic.cars.resize(1)  # just the one car: another may have rolled by the grid already
+	audio_node().history.clear()
+	var right := func() -> int: return audio_node()._pool.filter(func(p): return p.bus == "SFX Right").size()
+	var right_before: int = right.call()
 	car.offset = r.player.x + 0.4
 	car.speed = 0.0
 	car.z = fposmod(r.player.position + Cfg.PLAYER_Z + 60.0, r.track.length)
@@ -224,7 +227,7 @@ func test_passing_traffic_whooshes_once() -> void:
 	eq(count("whoosh"), 1, "a whoosh as it goes by")
 	r.audio.update(DT)
 	eq(count("whoosh"), 1, "just the one")
-	eq(audio_node()._pool.filter(func(p): return p.bus == "SFX Right").size(), 1, "on the right")
+	eq(right.call() - right_before, 1, "on the right")
 
 
 func test_each_pickup_has_its_own_sound() -> void:
