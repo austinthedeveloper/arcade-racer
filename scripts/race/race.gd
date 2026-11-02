@@ -136,6 +136,7 @@ var _final_stretch := false  # FINAL STRETCH has come up this race
 var _led_at := -INF  # race time of the last 1ST PLACE callout
 var _callout_shot := Callouts.Kind.NONE  # --callout=ID: that starburst held up after GO (screenshots)
 var _callout_shot_count := 0  # --callout=ID:COUNT: with that count (NEAR MISS x3)
+var _pickup_shot := -1  # --pickup=ID (PowerUps.IDS): the player takes that pickup at GO (screenshots)
 var _time_left_shot := NAN  # --time-left=S: start with this much on the clock (low-time screenshots)
 ## The dev flags are for the race the game starts with; later races come from the menus.
 static var _dev_args_read := false
@@ -570,6 +571,8 @@ func _physics_process(dt: float) -> void:
 					callouts.push(_callout_shot, "", Callouts.HOLD, _callout_shot_count)
 					if _callout_shot == Callouts.Kind.CHECKPOINT and timed():  # as a checkpoint shows (PR-15)
 						callouts.push(Callouts.Kind.TIME_EXTENDED, "+%d SEC" % checkpoint_bonus)
+				if _pickup_shot >= 0:
+					take_pickup(_pickup_shot)
 				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
@@ -703,9 +706,15 @@ func _check_pickups() -> void:
 	var p := power_ups.take(player.passed_segments(track), player.x)
 	if p == null:
 		return
+	take_pickup(p.kind)
+
+
+## The player takes a pickup of `kind` (a PowerUps.Kind): a mystery hubcap opens into another
+## kind, the HUD's slot shows it (Hud.slot_icon) and it takes effect.
+func take_pickup(kind: int) -> void:
 	picked_up = true
-	pickup = p.kind
-	pickup_gave = power_ups.open(p.kind, time_left)
+	pickup = kind
+	pickup_gave = power_ups.open(kind, time_left)
 	pickup_age = 0.0
 	_give(pickup_gave)
 
@@ -1018,6 +1027,8 @@ func _parse_dev_args() -> void:
 			var spec := arg.get_slice("=", 1)
 			_callout_shot = Callouts.IDS.get(spec.get_slice(":", 0), Callouts.Kind.NONE)
 			_callout_shot_count = int(spec.get_slice(":", 1)) if spec.contains(":") else 0
+		elif arg.begins_with("--pickup="):
+			_pickup_shot = PowerUps.IDS.find(arg.get_slice("=", 1))
 		elif arg.begins_with("--time-left="):
 			_time_left_shot = float(arg.get_slice("=", 1))
 		elif arg.begins_with("--shot-dir="):

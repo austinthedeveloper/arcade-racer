@@ -198,8 +198,42 @@ func test_hud_slot_icon() -> void:
 	eq(Hud.slot_icon(0.0, 0.0, -1, -1, 99.0), "", "empty")
 	eq(Hud.slot_icon(2.0, 0.0, PowerUps.Kind.RAM, PowerUps.Kind.RAM, 3.0), "icon_ram", "ram running")
 	eq(Hud.slot_icon(0.0, 1.0, PowerUps.Kind.GHOST, PowerUps.Kind.GHOST, 3.0), "icon_ghost", "ghost running")
-	eq(Hud.slot_icon(0.0, 0.0, PowerUps.Kind.MYSTERY, PowerUps.Kind.CLOCK, 0.1), "reveal_1", "mystery spins open")
-	eq(Hud.slot_icon(0.0, 0.0, PowerUps.Kind.MYSTERY, PowerUps.Kind.CLOCK, 0.8), "icon_clock", "then shows what it gave")
+	eq(Hud.slot_icon(0.0, 0.0, PowerUps.Kind.MYSTERY, PowerUps.Kind.CLOCK, 0.1), "pickup_mystery_1", "mystery: the hubcap spins first")
+	eq(Hud.slot_icon(0.0, 0.0, PowerUps.Kind.MYSTERY, PowerUps.Kind.CLOCK, 0.2), "pickup_mystery_2", "a quarter turn on")
+	eq(Hud.slot_icon(0.0, 0.0, PowerUps.Kind.MYSTERY, PowerUps.Kind.CLOCK, 0.55), "reveal_1", "after half a second it bursts open")
+	eq(Hud.slot_icon(0.0, 0.0, PowerUps.Kind.MYSTERY, PowerUps.Kind.CLOCK, 0.95), "reveal_4", "the last reveal frame")
+	eq(Hud.slot_icon(0.0, 0.0, PowerUps.Kind.MYSTERY, PowerUps.Kind.CLOCK, 1.2), "icon_clock", "then shows what it gave")
+	eq(Hud.slot_icon(0.0, 0.0, PowerUps.Kind.MYSTERY, PowerUps.Kind.CLOCK, 2.2), "icon_clock", "for as long as any pickup shows")
+	eq(Hud.slot_icon(0.0, 0.0, PowerUps.Kind.MYSTERY, PowerUps.Kind.CLOCK, 3.1), "", "then fades")
+	eq(Hud.slot_icon(5.0, 0.0, PowerUps.Kind.MYSTERY, PowerUps.Kind.RAM, 0.3), "pickup_mystery_3", "a ram plate it gave waits for the spin")
+	eq(Hud.slot_icon(5.0, 0.0, PowerUps.Kind.MYSTERY, PowerUps.Kind.RAM, 1.1), "icon_ram", "then runs in the slot")
 	eq(Hud.slot_icon(0.0, 0.0, PowerUps.Kind.NITRO, PowerUps.Kind.NITRO, 2.0), "", "fades after a moment")
 	for name in ["pickup_nitro", "pickup_mystery_3", "icon_slot", "fx_ram", "reveal_4"]:
 		check(PowerUps.texture(name) != null, name + " sprite")
+
+
+# CP-14: a mystery hubcap taken in a race, the slot's icon sampled every tick as it runs on:
+# half a second of the spinning hubcap, the four reveal frames in order, then what it gave.
+func test_slot_spins_the_hubcap_then_reveals_what_it_gave() -> void:
+	var r := race(true, false, 0, false)
+	var p: PowerUps.Pickup = r.power_ups.pickups[0]
+	p.kind = PowerUps.Kind.MYSTERY
+	r.state = r.State.RACING
+	r.player.position = p.segment * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z + 5.0
+	r.player.x = p.offset
+	r._check_pickups()
+	eq(r.pickup, PowerUps.Kind.MYSTERY, "a hubcap taken")
+	check(r.pickup_gave != PowerUps.Kind.MYSTERY, "and opened into something else")
+	var seen: Array[String] = []
+	var times := {}
+	while r.pickup_age < 1.4:
+		var icon := Hud.slot_icon(r.player.ram_time, r.player.ghost_time, r.pickup, r.pickup_gave, r.pickup_age)
+		if seen.is_empty() or seen[-1] != icon:
+			seen.append(icon)
+			times[icon] = r.pickup_age
+		drive(r, 1)
+	var spin := seen.filter(func(s: String) -> bool: return s.begins_with("pickup_mystery_"))
+	check(spin.size() >= 3, "the hubcap spins through its frames: %s" % [seen])
+	eq(seen.slice(spin.size(), spin.size() + 4), ["reveal_1", "reveal_2", "reveal_3", "reveal_4"], "then the reveal frames, in order")
+	near(times.get("reveal_1", 0.0), Hud.MYSTERY_SPIN_TIME, 0.02, "the reveal starts half a second in")
+	eq(seen[-1], "icon_" + PowerUps.IDS[r.pickup_gave], "and ends on what it turned into")

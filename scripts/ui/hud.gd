@@ -20,6 +20,12 @@ const RADAR_ARROW := Vector2(9, 7)  # an arrow's width and height
 const GOLD := Color("#ffd23a")
 const DIAL_START := PI * 0.75  # the speedometer's zero, bottom left...
 const DIAL_SWEEP := PI * 1.5  # ...round to top speed at the bottom right
+## The power-up slot (CP-14): a mystery hubcap spins there this long, then its reveal frames
+## (reveal_1 to reveal_4) burst it open over this long; what a pickup gave then shows this long.
+const MYSTERY_SPIN_TIME := 0.5
+const MYSTERY_REVEAL_TIME := 0.5
+const REVEAL_FRAMES := 4
+const SLOT_SHOW_TIME := 1.5
 const REDLINE := 0.9  # engine revs (RaceAudio.engine_rpm) where the tach turns red
 ## The HUD colors that carry meaning. Each state also differs in shape (the low clock beats
 ## and shows a warning sign, the leader's panel has a crown, spent flames are hollow, the
@@ -706,16 +712,23 @@ func _power_up_slot(slot: Rect2) -> void:
 		draw_rect(Rect2(slot.end.x + 4, slot.end.y - slot.size.y * left, 3, slot.size.y * left), Color("#7ad8ff"))
 
 
-## Which sprite the power-up slot shows (PowerUps.texture), or "" for an empty slot.
+## Which sprite the power-up slot shows (PowerUps.texture), or "" for an empty slot. A
+## mystery hubcap (CP-14) spins in the slot for MYSTERY_SPIN_TIME, then the reveal frames
+## burst it open over MYSTERY_REVEAL_TIME, then what it turned into shows; that runs over a
+## ram plate or ghost it gave, whose icon takes the slot after.
 static func slot_icon(ram_time: float, ghost_time: float, pickup: int, gave: int, age: float) -> String:
+	if pickup == PowerUps.Kind.MYSTERY and age < MYSTERY_SPIN_TIME:
+		return PowerUps.road_sprite(PowerUps.Kind.MYSTERY, age)
+	if pickup == PowerUps.Kind.MYSTERY and age < MYSTERY_SPIN_TIME + MYSTERY_REVEAL_TIME:
+		var frame := int((age - MYSTERY_SPIN_TIME) / MYSTERY_REVEAL_TIME * REVEAL_FRAMES)
+		return "reveal_%d" % (mini(REVEAL_FRAMES - 1, frame) + 1)
 	if ram_time > 0.0:
 		return "icon_ram"
 	if ghost_time > 0.0:
 		return "icon_ghost"
-	if pickup < 0 or age > 1.5:
+	var shown := SLOT_SHOW_TIME + (MYSTERY_SPIN_TIME + MYSTERY_REVEAL_TIME if pickup == PowerUps.Kind.MYSTERY else 0.0)
+	if pickup < 0 or age > shown:
 		return ""
-	if pickup == PowerUps.Kind.MYSTERY and age < 0.5:
-		return "reveal_%d" % (mini(3, int(age / 0.125)) + 1)
 	return "icon_" + PowerUps.IDS[gave]
 
 

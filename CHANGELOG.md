@@ -7,6 +7,11 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- The hubcap in the slot (CP-14): a mystery hubcap spins in the power-up slot for half a
+  second, then bursts open to show what it turned into.
+
 ## [0.4.0] - 2026-11-02
 
 ### Added
