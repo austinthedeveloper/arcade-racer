@@ -8,6 +8,11 @@ func _rect(name: String) -> Rect2:
 	return Hud.layout()[name]
 
 
+## Elements never up at the same time may share space: the stage intro card is gone before GO,
+## and the bonus feed only fills after it.
+const NEVER_TOGETHER := [["feed", "intro"]]
+
+
 func test_every_element_on_screen_and_apart() -> void:
 	var lay := Hud.layout()
 	var names: Array = lay.keys()
@@ -15,6 +20,8 @@ func test_every_element_on_screen_and_apart() -> void:
 		check(SCREEN.encloses(lay[n]), "%s on screen: %s" % [n, lay[n]])
 	for i in names.size():
 		for j in range(i + 1, names.size()):
+			if [names[i], names[j]] in NEVER_TOGETHER or [names[j], names[i]] in NEVER_TOGETHER:
+				continue
 			check(not (lay[names[i]] as Rect2).intersects(lay[names[j]]), "%s clear of %s" % [names[i], names[j]])
 
 

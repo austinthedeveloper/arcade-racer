@@ -4,30 +4,42 @@ extends TestSuite
 
 
 func test_the_card_slides_in_holds_and_slides_out_before_go() -> void:
-	check(not StageIntro.rect(-0.1).has_area(), "not before the countdown")
-	check(not StageIntro.rect(0.0).has_area(), "off screen at the very start")
-	var early := StageIntro.rect(0.1)
-	check(early.has_area() and early.position.x < StageIntro.X, "sliding in")
-	eq(StageIntro.rect(StageIntro.SLIDE_IN).position.x, StageIntro.X, "in place")
-	eq(StageIntro.rect(1.5).position.x, StageIntro.X, "held")
-	var leaving := StageIntro.rect(StageIntro.OUT_AT + 0.1)
-	check(leaving.has_area() and leaving.position.x < StageIntro.X, "sliding out")
-	check(not StageIntro.rect(StageIntro.OUT_AT + StageIntro.SLIDE_OUT).has_area(), "gone")
+	var home: Rect2 = Hud.layout()["intro"]
+	var x := home.position.x
+	check(not StageIntro.rect(-0.1, home).has_area(), "not before the countdown")
+	check(not StageIntro.rect(0.0, home).has_area(), "off screen at the very start")
+	var early := StageIntro.rect(0.1, home)
+	check(early.has_area() and early.position.x > x, "sliding in from the right")
+	eq(StageIntro.rect(StageIntro.SLIDE_IN, home).position, home.position, "in place")
+	eq(StageIntro.rect(1.5, home).position.x, x, "held")
+	var leaving := StageIntro.rect(StageIntro.OUT_AT + 0.1, home)
+	check(leaving.has_area() and leaving.position.x > x, "sliding out")
+	check(not StageIntro.rect(StageIntro.OUT_AT + StageIntro.SLIDE_OUT, home).has_area(), "gone")
 	check(StageIntro.OUT_AT + StageIntro.SLIDE_OUT <= 3.0, "gone before GO")
-	var last := -INF
+	var last := INF
 	for i in 8:
-		var x := StageIntro.rect(StageIntro.SLIDE_IN * i / 7.0 + 0.001).position.x
-		check(x >= last, "it only moves in")
-		last = x
+		var at := StageIntro.rect(StageIntro.SLIDE_IN * i / 7.0 + 0.001, home).position.x
+		check(at <= last, "it only moves in")
+		last = at
 
 
+## Clear of the HUD, the rival cards (which share the countdown) and the touch buttons.
 func test_the_card_keeps_clear_of_the_hud() -> void:
-	var card := StageIntro.rect(1.0)
-	var lay := Hud.layout()
-	for key in ["timer", "position", "progress", "speedo", "device", "subtitle", "slipstream"]:
-		check(not card.intersects(lay[key]), "clear of the " + key)
-	check(card.position.y > 135.0, "under the countdown's number")
-	check(card.end.x < Cfg.SCREEN_W / 2.0 - 40.0, "left of the car")
+	for touch in [false, true]:
+		var lay := Hud.layout(touch)
+		var card := StageIntro.rect(1.0, lay["intro"])
+		var label := "touch: " if touch else ""
+		check(card.end.x <= Cfg.SCREEN_W and card.position.y >= 0.0, label + "on screen")
+		for key in ["timer", "position", "progress", "stage", "nitro", "power_up", "speedo", "device", "subtitle", "slipstream", "cards", "radar"]:
+			check(not card.intersects(lay[key]), label + "clear of the " + key)
+		for r in Hud.card_rects(lay["cards"], Rivals.COUNT):
+			check(not card.intersects(r), label + "clear of every rival card")
+		check(card.position.x > Cfg.SCREEN_W / 2.0 + 30.0, label + "right of the countdown's number")
+	var buttons := 0
+	for b in TouchControls.RACE_BUTTONS:
+		buttons += 1
+		check(not StageIntro.rect(1.0, Hud.layout(true)["intro"]).intersects(b["rect"]), "clear of the touch " + b["id"])
+	check(buttons > 0, "touch buttons read")
 
 
 func test_the_card_says_the_stage_weather_length_and_best() -> void:
@@ -59,4 +71,4 @@ func test_the_race_counts_the_countdown_up() -> void:
 	eq(r.countdown_elapsed(), 0.0, "zero at the start")
 	drive(r, 60)
 	check(absf(r.countdown_elapsed() - 1.0) < 0.05, "a second in")
-	check(StageIntro.rect(r.countdown_elapsed()).has_area(), "the card is up")
+	check(StageIntro.rect(r.countdown_elapsed(), Hud.layout()["intro"]).has_area(), "the card is up")
