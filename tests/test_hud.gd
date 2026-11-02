@@ -131,3 +131,54 @@ func test_flame_shape() -> void:
 	near(box.position.y, 19.0, 0.01, "as tall as asked")
 	near(box.size.x, 12.0, 0.01, "as wide")
 	check(Geometry2D.triangulate_polygon(pts).size() > 0, "a simple polygon")
+
+
+## The HUD's text sizes as written in the source: the size argument (the third) of every
+## _text, _text_centered and UiText.draw call, where it's a number.
+func _literal_sizes(path: String) -> Array[int]:
+	var re := RegEx.create_from_string(r"(?:^|[^\w.])(?:_text|_text_centered|UiText\.draw|UiText\.draw_centered)\(")
+	var out: Array[int] = []
+	for line in FileAccess.get_file_as_string(path).split("\n"):
+		if line.strip_edges().begins_with("func ") or line.strip_edges().begins_with("#"):
+			continue
+		for m in re.search_all(line):
+			var args := _top_level_args(line.substr(m.get_end()))
+			if args.size() >= 4 and args[2].strip_edges().is_valid_int():
+				out.append(int(args[2]))
+	return out
+
+
+## The arguments of a call, from just after its "(", split at the commas outside brackets.
+func _top_level_args(rest: String) -> Array[String]:
+	var args: Array[String] = []
+	var depth := 0
+	var cur := ""
+	for ch in rest:
+		if ch == "(" or ch == "[":
+			depth += 1
+		elif ch == ")" or ch == "]":
+			if depth == 0:
+				args.append(cur)
+				return args
+			depth -= 1
+		elif ch == "," and depth == 0:
+			args.append(cur)
+			cur = ""
+			continue
+		cur += ch
+	return args
+
+
+func test_no_text_under_the_minimum() -> void:
+	# PR-14: nothing under 8 px at 640x360 (the MPH label was 7)
+	eq(UiText.MIN_SIZE, 8, "8 px")
+	for path in ["res://scripts/ui/hud.gd", "res://scripts/ui/results_screen.gd"]:
+		var sizes := _literal_sizes(path)
+		check(sizes.size() > 10, "found the text in %s (%d)" % [path, sizes.size()])
+		for size in sizes:
+			check(size >= UiText.MIN_SIZE, "%s draws %d px text" % [path.get_file(), size])
+	for kind in Hud.BURSTS:
+		check(Hud.BURSTS[kind]["size"] >= UiText.MIN_SIZE, "burst %s" % Callouts.TEXT[kind])
+	check(Hud.LINE2_SIZE >= UiText.MIN_SIZE and Hud.SUB_SIZE >= UiText.MIN_SIZE, "a burst's other lines")
+	eq(Hud.text_size(7), UiText.MIN_SIZE, "a smaller size is drawn at the minimum")
+	eq(Hud.text_size(12), 12, "bigger ones as asked")

@@ -105,7 +105,7 @@ func _draw() -> void:
 	var dev: String = ["KEYBOARD", "GAMEPAD", "WHEEL"][inp.kind]
 	if device.has_area():  # (not under the touch controls)
 		_text(device.position + Vector2(4, 10), dev + "  " + inp.device_name.left(28), 8, Color(1, 1, 1, 0.7))
-		_text(device.position + Vector2(4, 22), keys_hint(race.online != null), 8, Color(1, 1, 1, 0.45))
+		_text(device.position + Vector2(4, 22), keys_hint(race.online != null), 8, Color(1, 1, 1, 0.6))
 	var hint := InputRouter.wheel_hint()
 	if hint != "":
 		_text_centered(Vector2(w / 2.0, 70), hint, 10, Color("#ffd23a"))
@@ -373,7 +373,7 @@ func _draw_speedo(r: Rect2, p: PlayerCar) -> void:
 	draw_circle(c, 2.0, GOLD)
 	var shown: Array = Settings.speedometer(p.speed)
 	_text_centered(c + Vector2(0, 33), str(shown[0]), 16, Color.WHITE)
-	_text_centered(c + Vector2(0, 43), shown[1], 7, GOLD)
+	_text_centered(c + Vector2(0, 43), shown[1], 8, GOLD)
 
 
 ## Slipstream, over the speedometer: the meter filling, then the boost (BOOST, a bright bar
@@ -565,12 +565,17 @@ func _draw_demo() -> void:
 		_text_centered(Vector2(w / 2.0, Cfg.SCREEN_H - 19), "PRESS START", 12, Color("#ffd23a"))
 
 
+## The size HUD text is drawn at: never under UiText.MIN_SIZE (PR-14).
+static func text_size(size: int) -> int:
+	return maxi(size, UiText.MIN_SIZE)
+
+
 func _text(pos: Vector2, s: String, size: int, col: Color) -> void:
-	UiText.draw(self, pos, s, size, col)
+	UiText.draw(self, pos, s, text_size(size), col)
 
 
 func _text_centered(pos: Vector2, s: String, size: int, col: Color) -> void:
-	UiText.draw_centered(self, pos, s, size, col)
+	UiText.draw_centered(self, pos, s, text_size(size), col)
 
 
 ## The power-up slot under the nitro: the running ram plate or ghost with its time left, or

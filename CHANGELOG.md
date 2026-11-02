@@ -27,6 +27,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Callout pacing (PR-15): CHECKPOINT and TIME EXTENDED now come up as one burst with both
   lines, the same burst won't pop up again within three seconds (a growing near-miss chain
   still does), and winning shows FINISH! first, then 1ST PLACE.
+- HUD legibility (PR-14): no HUD text is smaller than 8 pixels any more (the MPH label and the
+  car names on the results were 7), and the key hints in the corner are a little brighter.
 
 ### Changed
 
