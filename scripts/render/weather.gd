@@ -122,7 +122,64 @@ static func rain_streak(drop: Vector3, t: float, pct: float) -> PackedVector2Arr
 	return PackedVector2Array([head - Vector2(lean * length, length), head])
 
 
+## Cover (WS-12): the stretches of road with a roof over the camera, where the rain stops and
+## the thunder comes muffled. Inside a tunnel or covered bridge (Segment.covered) from its
+## entrance to its exit, and under a span that is a deck over the road for SHELTER_SPANS
+## world units past the span (the sprite is flat, but the bridge it shows is not).
+## Real overpasses are 15 to 30 m deep: about 12 segments, a fifth of a second flat out.
+const SHELTER_SPANS := {"thunder_overpass": 2400.0, "harvest_trestle": 1200.0, "redrock_arch": 1600.0}
+## The rain thins out over this many world units at a cover's edges rather than cutting off.
+const SHELTER_FADE := 200.0
+## Shelter (0..1) from which the thunder is muffled (Audio.play's muffled: a low-pass, quieter).
+const MUFFLE_FROM := 0.5
+
+
 ## A road color `c` wet by `wet` (0..1), reflecting `sky` more the farther off it is (`far`,
 ## 0 at the car to 1 at the draw distance), as wet asphalt does at a low angle.
 static func wet_color(c: Color, sky: Color, wet: float, far: float) -> Color:
 	return c.lerp(sky, clampf(wet, 0.0, 1.0) * sqrt(clampf(far, 0.0, 1.0)))
+
+
+## The covered stretches of `track` (cover above), as world z ranges: x where the roof starts,
+## y where it ends, in order along the road. A plain function of the track: the same stage
+## always gives the same cover, mirrored or not.
+static func shelters(track: Track) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var run_start := -1.0
+	for seg in track.segments:
+		if seg.covered:
+			if run_start < 0.0:
+				run_start = maxf(0.0, seg.w1.z - Cfg.SEGMENT_LENGTH)  # from the entrance span
+		elif run_start >= 0.0:
+			out.append(Vector2(run_start, seg.w1.z))  # to the exit span
+			run_start = -1.0
+		for id in seg.spans:
+			if SHELTER_SPANS.has(id):
+				out.append(Vector2(seg.w1.z, seg.w1.z + SHELTER_SPANS[id]))
+	if run_start >= 0.0:
+		out.append(Vector2(run_start, track.length))
+	out.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	return out
+
+
+## How sheltered the camera at world z is (0 in the open, 1 under a roof), from `cover`
+## (shelters): full a SHELTER_FADE in from a cover's ends, fading to 0 at them.
+static func shelter_at(cover: Array[Vector2], z: float) -> float:
+	var out := 0.0
+	for c in cover:
+		if c.x > z:
+			break
+		if z <= c.y:
+			out = maxf(out, clampf(minf(z - c.x, c.y - z) / SHELTER_FADE, 0.0, 1.0))
+	return out
+
+
+## How many of `drops` rain streaks show with the camera `shelter`ed (0..1): all in the open,
+## none under a roof.
+static func drops_shown(drops: int, shelter: float) -> int:
+	return int(roundf(drops * (1.0 - clampf(shelter, 0.0, 1.0))))
+
+
+## Whether thunder heard from `shelter` comes muffled.
+static func thunder_muffled(shelter: float) -> bool:
+	return shelter >= MUFFLE_FROM
