@@ -3,10 +3,12 @@ extends SceneTree
 ## The game's main loop (project.godot `run/main_loop_type`, EQ-14). Its `_init` runs before
 ## the engine loads anything else, even the autoloads, so when the Updater has downloaded a
 ## newer release's .pck it is loaded here over the built-in game, and everything after
-## (autoloads, scenes, scripts, art) comes from the update.
+## (the autoloads' scripts, scenes, scripts, art) comes from the update.
 ##
 ## An update can change anything but this file and project.godot's settings (only the
-## version, which this sets). Keep it small and never use a game script here.
+## version, which this sets). So never add an autoload: an updated game starts only the
+## installed game's (test_updater checks the list). Keep this small and never use a game
+## script here.
 ##
 ## A start on an update is marked `booting` until the title clears it (Updater.mark_good),
 ## so an update that never reaches the title is skipped the next time.

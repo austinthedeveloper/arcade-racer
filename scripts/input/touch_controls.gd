@@ -1,6 +1,6 @@
 class_name TouchControls
 extends CanvasLayer
-## Autoload (Touch). On-screen controls for a touchscreen (ON-4, ON-5): the Web build on a
+## On-screen controls for a touchscreen (ON-4, ON-5): the Web build on a
 ## phone or tablet, or a touch laptop. Racing: steer left and right under the left thumb,
 ## gas, brake and nitro under the right, pause at the top. Everywhere else (menus, the pause
 ## menu, the results): a D-pad, OK and BACK. Each button holds an InputMap action down, as
@@ -10,6 +10,9 @@ extends CanvasLayer
 ##
 ## They show at the first touch (from the start on a phone's browser, or with --touch) and
 ## hide on a key or a pad button.
+##
+## Not an autoload: an update (BootTree) keeps the installed game's autoloads, so a new one
+## never starts on a game that updated itself. InputRouter adds this at start (add_to).
 
 enum Layout { RACE, MENU }
 
@@ -37,6 +40,9 @@ const MENU_BUTTONS := [
 	{"id": "back", "rect": Rect2(478, 284, 70, 44), "action": "back", "label": "BACK"},
 ]
 
+## The one on screen (add_to), or null (a test's race on its own).
+static var current: TouchControls
+
 var shown := false
 ## The race on now (race.gd sets it): racing, it shows the driving layout.
 var race: Node
@@ -55,6 +61,26 @@ func _ready() -> void:
 	c.draw.connect(_draw_on.bind(c))
 	add_child(c)
 	shown = DevArgs.has("--touch") or OS.has_feature("web_android") or OS.has_feature("web_ios")
+
+
+## Puts the controls on `root` (once), from InputRouter at start.
+static func add_to(root: Node) -> void:
+	if current != null and is_instance_valid(current):
+		return
+	current = TouchControls.new()
+	current.name = "Touch"
+	root.add_child.call_deferred(current)
+
+
+## Whether the controls are up.
+static func showing() -> bool:
+	return current != null and is_instance_valid(current) and current.shown
+
+
+## The race on now, for the driving layout.
+static func set_race(r: Node) -> void:
+	if current != null and is_instance_valid(current):
+		current.race = r
 
 
 static func buttons(layout: Layout) -> Array:

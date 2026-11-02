@@ -232,3 +232,17 @@ func test_the_game_opens_on_the_title_from_a_checkout() -> void:
 	eq(g.screen, g.Screen.UPDATE, "the update screen")
 	g.menu.step(TestSuite.DT)
 	eq(g.screen, g.Screen.TITLE, "up to date: the title")
+
+
+## The autoloads as v0.2.0 shipped them. A game that updated itself keeps its installed
+## project.godot, so it only ever starts these: a new one (0.3.0's Touch) is missing there
+## and every script naming it fails. Add a node from an existing autoload instead
+## (TouchControls.add_to).
+const AUTOLOADS := ["InputRouter", "Audio", "Settings", "SaveData", "Updates"]
+
+
+func test_the_autoloads_never_change() -> void:
+	var cfg := ConfigFile.new()
+	eq(cfg.load("res://project.godot"), OK, "project.godot")
+	eq(Array(cfg.get_section_keys("autoload")), AUTOLOADS, "the autoloads an installed game has")
+
