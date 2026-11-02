@@ -1,6 +1,7 @@
 # Builds Windows, macOS, Web and Linux with tools/export.sh. A pushed v* tag
-# (e.g. v0.1.0) publishes a GitHub Release with the zips; a manual
-# run only uploads them as a workflow artifact, to try a build first.
+# (e.g. v0.1.0) publishes a GitHub Release with the zips and puts the Web build
+# on Azure (the web job); a manual run only uploads them as a workflow
+# artifact, to try a build first.
 name: Release
 
 on:
@@ -20,6 +21,8 @@ jobs:
     name: Export and release
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
 
@@ -63,7 +66,7 @@ jobs:
 
           - **Windows:** \`SundownRun-$VERSION-windows.zip\`. Unzip and run \`SundownRun.exe\`. It isn't code-signed (docs/10-releases.md says why), so SmartScreen may warn: choose *More info*, then *Run anyway*.
           - **macOS** (Intel and Apple Silicon): \`SundownRun-$VERSION-macos.zip\`. Unzip and move *Sundown Run* to Applications. It isn't notarized, so the first time right-click it and choose *Open* (or run \`xattr -cr "/Applications/Sundown Run.app"\` if macOS says it is damaged).
-          - **Web:** \`SundownRun-$VERSION-web.zip\`. Serve the folder from any static web server (for example \`python3 -m http.server\` inside it) and open \`index.html\`; opening the file directly doesn't work. Works on itch.io as an HTML upload.
+          - **Web:** play it at https://sundownrun.z13.web.core.windows.net/, or \`SundownRun-$VERSION-web.zip\`. Serve the folder from any static web server (for example \`python3 -m http.server\` inside it) and open \`index.html\`; opening the file directly doesn't work. Works on itch.io as an HTML upload.
           - **Linux** (x86_64, unsupported, for testing only): \`SundownRun-$VERSION-linux.zip\`. Unzip, \`chmod +x SundownRun.x86_64\` if needed, and run it.
 
           Keyboard, gamepads and wheels are supported; see the README for controls and wheel calibration (F2).
@@ -74,3 +77,39 @@ jobs:
           pre=""; case "$VERSION" in *-*) pre="--prerelease" ;; esac
           gh release create "$GITHUB_REF_NAME" build/release/* $pre \
             --title "Sundown Run $VERSION" --notes-file notes.md --verify-tag
+
+  # A tag's Web build goes on the Azure Storage static website
+  # (https://sundownrun.z13.web.core.windows.net/), replacing the last one. The
+  # job signs in with OIDC as the sundownrun-web-deploy app, which may only write
+  # blobs in that account; the "web" environment admits v* tags only and holds
+  # the IDs as variables (docs/10-releases.md: Web).
+  web:
+    name: Deploy Web to Azure
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: web
+      url: https://sundownrun.z13.web.core.windows.net/
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: SundownRun-${{ needs.build.outputs.version }}
+          path: build/release
+
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Upload to the static website
+        env:
+          AZURE_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT }}
+        run: tools/deploy_web.sh "build/release/SundownRun-${{ needs.build.outputs.version }}-web.zip"

@@ -89,3 +89,21 @@ func test_changelog_describes_this_version() -> void:
 	for i in range(1, headings.size()):
 		var line := "## [%s] - " % headings[i]
 		check(text.contains(line), headings[i] + " has a date")
+
+
+## A tag's Web build goes to Azure (tools/deploy_web.sh, the release workflow's web job). The
+## job may only run for a tag, in the "web" environment its Azure sign-in trusts, and must
+## deploy the zip tools/export.sh names.
+func test_tag_deploys_the_web_build() -> void:
+	var workflow := FileAccess.get_file_as_string("res://.github/workflows/release.yml")
+	var web := workflow.get_slice("\n  web:\n", 1)
+	check(web != "", "release.yml has a web job")
+	check(web.contains("needs: build") and web.contains("if: github.ref_type == 'tag'"),
+		"after the build, for a tag only")
+	check(web.contains("name: web") and web.contains("id-token: write"),
+		"in the web environment, signing in with OIDC")
+	check(web.contains("tools/deploy_web.sh \"build/release/SundownRun-${{ needs.build.outputs.version }}-web.zip\""),
+		"deploys export.sh's web zip")
+	var export_sh := FileAccess.get_file_as_string("res://tools/export.sh")
+	check(export_sh.contains("SundownRun-$version-web.zip"), "export.sh writes that zip")
+	check(FileAccess.file_exists("res://tools/deploy_web.sh"), "tools/deploy_web.sh exists")
