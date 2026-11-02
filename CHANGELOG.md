@@ -62,6 +62,18 @@ the release workflow puts that section at the top of the GitHub Release notes
   muffled and quieter.
 - Skyline's harbor (WS-14): the city's lights reflected in the water now stay right under the
   towers they reflect through every bend and hill, instead of sliding off to one side.
+- Fairer traffic (RC-14): no car waits just over a jump or a big blind hilltop, just inside a
+  tunnel or covered bridge, or right ahead of where you start, and nothing coming the other way
+  meets the grid. A car you knock off the road comes back in a lane with room.
+- Traffic has a rhythm along each stage (RC-20): towns, the Strip, downtown Skyline and the
+  stops along the way are busy; Redrock's open desert and Timberline's snowy summit are empty;
+  causeways, bridges, the wheat fields, the switchbacks and the road works are quiet. Nothing
+  drives up to the grid from behind during the countdown any more.
+- Catch-up nitro (RC-16): reach a checkpoint in the last two places on easy or normal and you
+  get one nitro charge back (NITRO +1). Hard gives nothing.
+- The horn moves traffic (RC-13): honk close behind a slower car and after a beat it signals
+  and moves over a lane, away from you, or keeps to the edge of its lane if the next one is
+  taken. Big rigs, buses and the stage's locals ignore it.
 
 ## [0.3.1] - 2026-11-01
 

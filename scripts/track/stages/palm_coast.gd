@@ -67,6 +67,9 @@ static func build() -> Track:
 	t.finish_stage(final_straight)
 	# Through town the boulevard opens out to six lanes (WS-7)
 	t.set_width(town_start, town_end - town_start, BOULEVARD_WIDTH, 6)
+	# Town is busy wherever the boulevard is wide, the beach road quieter on the way home (RC-20)
+	t.set_traffic(town_start - Track.WIDTH_EASE, town_end - town_start + 2 * Track.WIDTH_EASE, Track.TRAFFIC_BUSY)
+	t.set_traffic(town_end + Track.WIDTH_EASE, final_straight - town_end - Track.WIDTH_EASE, Track.TRAFFIC_QUIET)
 
 	_decorate(t, town_start, town_end)
 	t.add_spans_at("palm_arch", [0.03, 0.55])

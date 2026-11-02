@@ -42,6 +42,7 @@ static func build() -> Track:
 	t.hill(Track.LENGTH_MEDIUM, Track.HILL_MEDIUM)
 
 	# Switchbacks up through the pines
+	var switchbacks := t.segments.size()
 	t.curve(Track.LENGTH_SHORT, -Track.CURVE_HARD, Track.HILL_LOW)
 	t.curve(Track.LENGTH_SHORT, Track.CURVE_HARD, Track.HILL_LOW)
 	t.curve(Track.LENGTH_SHORT, -Track.CURVE_HARD, Track.HILL_LOW)
@@ -80,6 +81,11 @@ static func build() -> Track:
 	t.finish_stage(final_straight)
 	# Over the top the pass is two lanes: the summit straight, the crest and the bend after it (WS-7)
 	t.set_width(snow_start, summit_end - snow_start, SUMMIT_WIDTH, 2)
+	# A few cars on the switchbacks, none over the snowy summit, the lodge's guests coming and
+	# going down in the valley (RC-20)
+	t.set_traffic(final_straight - 200, 200, Track.TRAFFIC_BUSY)
+	t.set_traffic(switchbacks, snow_start - switchbacks, Track.TRAFFIC_QUIET)
+	t.set_traffic(snow_start, snow_end - snow_start, Track.TRAFFIC_EMPTY)
 
 	_decorate(t, snow_start, snow_end)
 	t.add_tunnel(t.free_spot(snow_start - 120, 35), 30, "covered_bridge", "covered_bridge_truss", 2)

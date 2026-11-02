@@ -18,6 +18,7 @@ const START_SEGMENT := 14  # where the start line is drawn
 const CHECKPOINT_FRACTIONS := [0.25, 0.5, 0.75]
 const FINISH_INTO_STRAIGHT := 60  # segments into the final straight
 const TUNNEL_RAMP := 10.0  # segments from a tunnel mouth to its darkest
+const CREST_SPAN := 8  # segments either side of a crest its slopes are measured over (blind_crests)
 
 ## Curves this sharp or sharper get a turn sign before them and chevrons on the outside.
 const SHARP_CURVE := CURVE_MEDIUM
@@ -139,6 +140,34 @@ func set_ground(left: int, right: int) -> void:
 ## "grip" (1, dry, without one).
 func set_grip(grip: float) -> void:
 	_grip = grip
+
+
+## How busy the road is along a stretch (RC-20): set_traffic, read by Traffic.spawn_totals.
+const TRAFFIC_EMPTY := 0
+const TRAFFIC_QUIET := 1
+const TRAFFIC_NORMAL := 2
+const TRAFFIC_BUSY := 3
+
+
+## Segments `first` to `first + count` (wrapping) carry `level` traffic: TRAFFIC_EMPTY to
+## TRAFFIC_BUSY. A stage's script sets its stretches; the rest stay TRAFFIC_NORMAL.
+func set_traffic(first: int, count: int, level: int) -> void:
+	for i in range(first, first + count):
+		segments[posmod(i, segments.size())].traffic = level
+
+
+## A traffic level's share of the spawned cars per segment, against TRAFFIC_NORMAL's 1:
+## traffic/quiet and traffic/busy (Tuning).
+static func traffic_weight(level: int) -> float:
+	match level:
+		TRAFFIC_EMPTY:
+			return 0.0
+		TRAFFIC_QUIET:
+			return Tuning.v("traffic/quiet")
+		TRAFFIC_BUSY:
+			return Tuning.v("traffic/busy")
+		_:
+			return 1.0
 
 
 ## Makes the road `width` half-widths (Cfg.ROAD_WIDTH; 1 is usual) with `lanes` lanes for
@@ -284,6 +313,38 @@ func add_tunnel(start: int, length: int, entrance: String, ring: String, every :
 ## 1 once TUNNEL_RAMP segments in.
 static func tunnel_depth(k: int, length: int) -> float:
 	return clampf(float(mini(k, length - k)) / TUNNEL_RAMP, 0.0, 1.0)
+
+
+## The entrance segment of every tunnel and covered bridge (the segment before its first
+## covered one), in order.
+func tunnel_mouths() -> Array[int]:
+	var out: Array[int] = []
+	for i in range(1, segments.size()):
+		if segments[i].covered and not segments[i - 1].covered:
+			out.append(i - 1)
+	return out
+
+
+## Every blind crest (RC-14), in order: a segment where the road stops climbing and drops away
+## so sharply that the road beyond is out of sight. Its slope over CREST_SPAN segments before it
+## less the slope over CREST_SPAN after is traffic/blind_crest (Tuning) at least: a jump or a
+## big hill's top, not a gentle roll or a bump.
+func blind_crests() -> Array[int]:
+	var out: Array[int] = []
+	var n := segments.size()
+	var sharp := Tuning.v("traffic/blind_crest")
+	for i in range(1, n - 1):
+		var up := segments[i - 1].w2.y - segments[i - 1].w1.y
+		var down := segments[i].w2.y - segments[i].w1.y
+		if up <= 0.0 or down > 0.0:
+			continue
+		var before := maxi(0, i - CREST_SPAN)
+		var after := mini(n - 1, i + CREST_SPAN)
+		var rise := (segments[i].w1.y - segments[before].w1.y) / ((i - before) * Cfg.SEGMENT_LENGTH)
+		var fall := (segments[after].w1.y - segments[i].w1.y) / ((after - i) * Cfg.SEGMENT_LENGTH)
+		if rise - fall >= sharp:
+			out.append(i)
+	return out
 
 
 ## The first segment at or after `index` with no race gate or span within `margin` segments.

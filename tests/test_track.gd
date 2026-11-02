@@ -469,3 +469,65 @@ func test_stages_narrow_and_widen() -> void:
 			eq(lanes.keys(), [Cfg.LANES], t.name + " keeps to four lanes")
 		for i in [Track.START_SEGMENT, t.finish_index]:
 			eq(t.segments[i].lanes, Cfg.LANES, "%s: four lanes at segment %d" % [t.name, i])
+
+
+# --- Traffic density along a stage (RC-20) ------------------------------------------
+
+## Segments of `t` at each traffic level, Track.TRAFFIC_EMPTY to TRAFFIC_BUSY.
+func _levels(t: Track) -> Array[int]:
+	var out: Array[int] = [0, 0, 0, 0]
+	for seg in t.segments:
+		out[seg.traffic] += 1
+	return out
+
+
+func test_every_stage_has_a_traffic_rhythm() -> void:
+	for i in Stages.count():
+		var t := Stages.build(i)
+		for seg in t.segments:
+			if not check(seg.traffic >= Track.TRAFFIC_EMPTY and seg.traffic <= Track.TRAFFIC_BUSY,
+					"%s segment %d: a traffic level (%d)" % [t.name, seg.index, seg.traffic]):
+				break
+		var levels := _levels(t)
+		check(levels[Track.TRAFFIC_BUSY] >= 100, "%s has a busy stretch (%s)" % [t.name, levels])
+		check(levels[Track.TRAFFIC_EMPTY] + levels[Track.TRAFFIC_QUIET] >= 100, "%s has a quiet one (%s)" % [t.name, levels])
+		check(levels[Track.TRAFFIC_NORMAL] + levels[Track.TRAFFIC_BUSY] > t.segments.size() / 3,
+			"%s carries traffic on much of it (%s)" % [t.name, levels])
+		var totals := Traffic.spawn_totals(t, Traffic.keep_clear(t, Track.START_SEGMENT))
+		check(totals[totals.size() - 1] > 500.0, t.name + " has room for its traffic")
+		eq(_levels(Stages.build(i, true)), levels, t.name + " mirrored keeps its stretches")
+
+
+func test_towns_are_busy_and_the_desert_and_summit_empty() -> void:
+	var palm := PalmCoast.build()
+	var skyline := Stages.build(7)
+	for t: Track in [palm, skyline]:
+		for seg in t.segments:
+			if seg.width >= PalmCoast.BOULEVARD_WIDTH and not eq(seg.traffic, Track.TRAFFIC_BUSY, t.name + ": the six-lane town is busy"):
+				break
+	var neon := NeonStrip.build()
+	var mouth := neon.tunnel_mouths()[0]
+	eq(neon.segments[mouth].traffic, Track.TRAFFIC_BUSY, "the Strip (its tunnel too) is busy")
+	var redrock := Redrock.build()
+	for i in 1000:
+		if not eq(redrock.segments[i].traffic, Track.TRAFFIC_EMPTY, "Redrock's open desert is empty (segment %d)" % i):
+			break
+	var timber := Timberline.build()
+	var snow := 0
+	for seg in timber.segments:
+		if seg.grip < 1.0:
+			snow += 1
+			if not eq(seg.traffic, Track.TRAFFIC_EMPTY, "Timberline's snowy summit is empty (segment %d)" % seg.index):
+				break
+	check(snow > 100, "over the whole summit")
+
+
+func test_traffic_weights() -> void:
+	eq(Track.traffic_weight(Track.TRAFFIC_EMPTY), 0.0, "empty: none")
+	eq(Track.traffic_weight(Track.TRAFFIC_NORMAL), 1.0, "normal: the usual share")
+	check(Track.traffic_weight(Track.TRAFFIC_QUIET) < 1.0, "quiet: less")
+	check(Track.traffic_weight(Track.TRAFFIC_BUSY) > 1.5, "busy: plenty more")
+	var t := flat_track(100)
+	t.set_traffic(90, 20, Track.TRAFFIC_BUSY)
+	eq([t.segments[89].traffic, t.segments[90].traffic, t.segments[99].traffic, t.segments[9].traffic, t.segments[10].traffic],
+		[Track.TRAFFIC_NORMAL, Track.TRAFFIC_BUSY, Track.TRAFFIC_BUSY, Track.TRAFFIC_BUSY, Track.TRAFFIC_NORMAL], "a stretch over the loop's end wraps")

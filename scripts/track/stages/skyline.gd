@@ -88,6 +88,10 @@ static func build() -> Track:
 	t.finish_stage(final_straight)
 	# Downtown is a six-lane boulevard between the towers (WS-7)
 	t.set_width(downtown.x, downtown.y - downtown.x, BOULEVARD_WIDTH, 6)
+	# The bridges flow, downtown is jammed wherever the boulevard is wide (RC-20)
+	for b in bridges:
+		t.set_traffic(b.x, b.y - b.x, Track.TRAFFIC_QUIET)
+	t.set_traffic(downtown.x - Track.WIDTH_EASE, downtown.y - downtown.x + 2 * Track.WIDTH_EASE, Track.TRAFFIC_BUSY)
 
 	_decorate(t, downtown, bridges, port)
 	for b in bridges:

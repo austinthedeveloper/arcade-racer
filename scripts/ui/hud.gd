@@ -145,7 +145,7 @@ func _draw() -> void:
 	# Banners
 	if race.counting_down():
 		_text_centered(Vector2(w / 2.0, 130), str(ceili(race.countdown)), 64, Color("#ffd23a"))
-		StageIntro.draw(self, race.countdown_elapsed(), intro_text())
+		StageIntro.draw(self, race.countdown_elapsed(), lay["intro"], intro_text())
 	if not race.callouts.current.is_empty() and not race.results.visible:
 		_draw_callout(race.callouts.current, Vector2(w / 2.0, CALLOUT_Y))
 	if Settings.subtitles:
@@ -161,7 +161,7 @@ func intro_text() -> Dictionary:
 ## Where each HUD element goes on the 640x360 screen (the window scales the whole picture):
 ## the clock, the place, the route bar (with its markers) and the stage under it, the nitro
 ## flames, the power-up slot, the bonus feed, the slipstream bar, the speedometer, the
-## input device and the announcer's subtitle. With the touch controls up (`touch`,
+## input device, the announcer's subtitle, the rival cards, the radar and the stage intro card. With the touch controls up (`touch`,
 ## TouchControls), the speedometer sits between the thumbs and the device line goes.
 static func layout(touch := false) -> Dictionary:
 	var w := float(Cfg.SCREEN_W)
@@ -188,6 +188,7 @@ static func layout(touch := false) -> Dictionary:
 		"tuned": Rect2(w / 2.0 + 118, 10, 40, 13),
 		"cards": Rect2(6, 120, CARD_SIZE.x, Rivals.COUNT * (CARD_SIZE.y + CARD_GAP) - CARD_GAP),
 		"radar": Rect2(w / 2.0 - 90, 192, 180, 16),
+		"intro": Rect2(Vector2(w - 14 - StageIntro.CARD.x, 76), StageIntro.CARD),
 	}
 
 

@@ -63,6 +63,9 @@ static func build() -> Track:
 	t.straight(Track.LENGTH_LONG)
 
 	t.finish_stage(final_straight)
+	# Farm traffic around the farm stop, hardly anyone out in the wheat (RC-20)
+	t.set_traffic(farm_at - 60, 120, Track.TRAFFIC_BUSY)
+	t.set_traffic(fields_start, fields_end - fields_start, Track.TRAFFIC_QUIET)
 
 	_decorate(t, fields_start, fields_end)
 	t.add_spans_at("harvest_trestle", [0.35, 0.7])

@@ -1,20 +1,19 @@
 class_name StageIntro
 extends RefCounted
-## The stage intro card (PR-16): during the countdown, a card slides in from the left with the
+## The stage intro card (PR-16): during the countdown, a card slides in from the right with the
 ## stage's name, its weather, its length, and your best time and medal there, then slides back
 ## out before GO. The Hud draws it; where it is and what it says are plain functions here.
 
 const CARD := Vector2(232, 70)
-const Y := 150.0  # the card's top: under the countdown's number, clear of the car
-const X := 14.0  # its left edge, slid in
 const SLIDE_IN := 0.35  # seconds from the countdown's start to fully in
 const OUT_AT := 2.3  # seconds from the start when it starts back out
 const SLIDE_OUT := 0.35
 
 
-## Where the card is `elapsed` seconds into the countdown: off the left edge before and after,
+## Where the card is `elapsed` seconds into the countdown, slid in to `home` (Hud.layout's
+## "intro", top right: the rival cards have the left): off the right edge before and after,
 ## eased in and out. An empty Rect2 when it isn't on screen.
-static func rect(elapsed: float) -> Rect2:
+static func rect(elapsed: float, home: Rect2) -> Rect2:
 	var k := 0.0
 	if elapsed >= 0.0 and elapsed < OUT_AT:
 		k = ease_out(clampf(elapsed / SLIDE_IN, 0.0, 1.0))
@@ -22,8 +21,8 @@ static func rect(elapsed: float) -> Rect2:
 		k = 1.0 - ease_in(clampf((elapsed - OUT_AT) / SLIDE_OUT, 0.0, 1.0))
 	if k <= 0.0:
 		return Rect2()
-	var hidden_x := -CARD.x - 8.0
-	return Rect2(Vector2(roundf(lerpf(hidden_x, X, k)), Y), CARD)
+	var hidden_x := float(Cfg.SCREEN_W) + 8.0
+	return Rect2(Vector2(roundf(lerpf(hidden_x, home.position.x, k)), home.position.y), CARD)
 
 
 static func ease_out(t: float) -> float:
@@ -64,8 +63,8 @@ static func lines(stage: int, mirror: bool, theme: Dictionary, length: float, un
 
 
 ## Draws the card `elapsed` seconds into the countdown on `ci` (the Hud).
-static func draw(ci: CanvasItem, elapsed: float, text: Dictionary) -> void:
-	var r := rect(elapsed)
+static func draw(ci: CanvasItem, elapsed: float, home: Rect2, text: Dictionary) -> void:
+	var r := rect(elapsed, home)
 	if not r.has_area():
 		return
 	ci.draw_rect(r.grow(2), Color("#1b2a6b"))
