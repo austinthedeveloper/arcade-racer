@@ -6,6 +6,7 @@ extends RefCounted
 
 static func theme() -> Dictionary:
 	return {
+		"hour": 6.5,  # the time of day it is drawn at: dawn (Sundown, WS-16)
 		"sky_top": Color("#9cc4b4"),
 		"sky_bottom": Color("#f6c9a8"),
 		"fog": Color("#d9dccd"),

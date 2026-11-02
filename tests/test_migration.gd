@@ -300,6 +300,21 @@ func test_settings_v12_loads() -> void:
 	_load_settings("settings_v12.cfg")
 	eq([Settings.loaded_version, Settings.whats_new_seen, Settings.co_pilot], [12, "0.4.0", true], "its keys as saved")
 	eq([Settings.rumble, Settings.reduce_motion, Settings.radio], [6, true, 2], "the rest as saved")
+
+
+func test_settings_v12_to_v13_adds_the_camera_view() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v12.cfg")
+	eq(Settings.migrate(cfg), 12, "from version 12")
+	eq([CfgVersion.of(cfg), cfg.get_value("display", "camera_view")], [Settings.VERSION, CameraView.View.CHASE_NEAR], "migrated on: chase near, as ever")
+	_clean()
+	_load_settings("settings_v12.cfg")
+	eq(Settings.camera_view, CameraView.View.CHASE_NEAR, "v12 loads in chase near")
+	eq([Settings.rumble, Settings.reduce_motion], [6, true], "the rest as saved")
+	Settings.camera_view = CameraView.View.BUMPER
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.camera_view], [Settings.VERSION, CameraView.View.BUMPER], "saved and loaded back")
 	_clean()
 
 

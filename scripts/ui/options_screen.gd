@@ -10,7 +10,7 @@ extends MenuScreen
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
 	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP,
-	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE, CO_PILOT }
+	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE, CAMERA, CO_PILOT }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -18,7 +18,7 @@ const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
 const PAGE_ROWS := [
 	[Row.AUTO_GAS, Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.RESET_OPTIONS,
 		Row.RESET_SAVE],
-	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
+	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS, Row.CAMERA],
 	[Row.MUSIC, Row.SFX, Row.RADIO],
 	[Row.CALIBRATE, Row.WHEEL, Row.REMAP, Row.KEY_STEER_IN, Row.KEY_STEER_OUT, Row.RUMBLE],
 	[Row.SCREEN_SHAKE, Row.FLASH, Row.REDUCE_MOTION, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.CO_PILOT, Row.GEARS],
@@ -30,7 +30,7 @@ const SLOTS := 11
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
-	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE", "CO-PILOT"]
+	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE", "CAMERA VIEW", "CO-PILOT"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -64,6 +64,7 @@ const HELP := [
 	"Keyboard: how fast the steering comes back to center when you let go.",
 	"No camera shake, nitro view stretch, rising and dipping scenery or rain streaks.",
 	"Gamepad rumble on crashes, bumps, landings, nitro and off the road. 0 turns it off.",
+	"Where the race is seen from: close behind, further back, or low on the bumper. V changes it while you drive.",
 	"Steers for you, in your lane and round every bend. Steer to change lanes.",
 ]
 ## The rows that show ON or OFF.
@@ -184,6 +185,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.flash = _step(s.flash, dir, s.EFFECT_STEPS + 1, wrap)
 		Row.UNITS:
 			s.units = _step(s.units, dir, s.Units.size(), wrap)
+		Row.CAMERA:
+			s.camera_view = _step(s.camera_view, dir, CameraView.View.size(), wrap)
 		Row.FULLSCREEN:
 			s.fullscreen = not s.fullscreen
 		Row.INTEGER_SCALE:
@@ -240,6 +243,8 @@ static func value_text(row: int) -> String:
 			return str(s.rumble)
 		Row.UNITS:
 			return s.UNIT_NAMES[s.units]
+		Row.CAMERA:
+			return CameraView.name_of(s.camera_view)
 		Row.FULLSCREEN:
 			return "FULLSCREEN" if s.fullscreen else "WINDOWED"
 		Row.GEARS:

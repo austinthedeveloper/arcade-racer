@@ -481,7 +481,7 @@ func test_option_pages() -> void:
 	o.handle(confirm)
 	eq(o.page, OptionsScreen.Page.DISPLAY, "confirm on the page bar: next page")
 	eq(o.rows(), [OptionsScreen.Row.PAGE, OptionsScreen.Row.FULLSCREEN, OptionsScreen.Row.INTEGER_SCALE,
-		OptionsScreen.Row.VSYNC, OptionsScreen.Row.SCANLINES, OptionsScreen.Row.UNITS, OptionsScreen.Row.BACK], "Display rows")
+		OptionsScreen.Row.VSYNC, OptionsScreen.Row.SCANLINES, OptionsScreen.Row.UNITS, OptionsScreen.Row.CAMERA, OptionsScreen.Row.BACK], "Display rows")
 	o.handle(up)
 	o.handle(confirm)
 	eq(g.screen, g.Screen.TITLE, "BACK from any page")

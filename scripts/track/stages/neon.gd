@@ -5,6 +5,8 @@ extends RefCounted
 
 static func theme() -> Dictionary:
 	return {
+		"hour": 22.5,  # the time of day it is drawn at: night (Sundown, WS-16)
+		"headlights": true,  # a dark stage: pools of light ahead of the cars, tail lights aglow (WS-17)
 		"sky_top": Color("#0b0820"),
 		"sky_bottom": Color("#5a1f6e"),
 		"fog": Color("#2a1840"),

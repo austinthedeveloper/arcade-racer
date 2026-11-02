@@ -29,7 +29,8 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 11: [controls] rumble (missing: as designed, EFFECT_STEPS).
 ## 12: [news] seen, the last version whose notes the title showed (WhatsNew; missing: none,
 ## so an update from an older build shows its notes); [play] co_pilot (missing: off).
-const VERSION := 12
+## 13: [display] camera_view (missing: CameraView.View.CHASE_NEAR, the only view before).
+const VERSION := 13
 ## Keyboard steering feel (AC-11): how fast a held key turns in and a released one comes back,
 ## snappy to smooth. Each multiplies its rate (shares of full lock per second); STANDARD is
 ## the rate every earlier build had.
@@ -69,6 +70,7 @@ var subtitles := true  # the announcer's words on screen (Announcer)
 ## rain streaks, whatever the screen shake option says (shake_amount, motion_reduced).
 var reduce_motion := false
 var units: int = Units.MPH  # the speedometer's
+var camera_view: int = CameraView.View.CHASE_NEAR  # the race's camera (WS-15): the VIEW button steps it
 var fullscreen := false  # windowed by default
 var integer_scale := false  # whole-number scaling of the 640x360 view (borders round it)
 var vsync := true
@@ -113,6 +115,7 @@ func reset() -> void:
 	subtitles = true
 	reduce_motion = false
 	units = Units.MPH
+	camera_view = CameraView.View.CHASE_NEAR
 	fullscreen = false
 	integer_scale = false
 	vsync = true
@@ -152,6 +155,7 @@ func load_settings() -> void:
 		subtitles = bool(cfg.get_value("accessibility", "subtitles", subtitles))
 		reduce_motion = bool(cfg.get_value("accessibility", "reduce_motion", reduce_motion))
 		units = clampi(int(cfg.get_value("display", "units", units)), 0, Units.size() - 1)
+		camera_view = clampi(int(cfg.get_value("display", "camera_view", camera_view)), 0, CameraView.View.size() - 1)
 		fullscreen = bool(cfg.get_value("display", "fullscreen", fullscreen))
 		integer_scale = bool(cfg.get_value("display", "integer_scale", integer_scale))
 		vsync = bool(cfg.get_value("display", "vsync", vsync))
@@ -163,7 +167,7 @@ func load_settings() -> void:
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11, _v11_to_v12])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11, _v11_to_v12, _v12_to_v13])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -236,6 +240,11 @@ static func _v11_to_v12(cfg: ConfigFile) -> void:
 	cfg.set_value("play", "co_pilot", false)
 
 
+## Version 13 added the camera view (WS-15): chase near, the one view every earlier build had.
+static func _v12_to_v13(cfg: ConfigFile) -> void:
+	cfg.set_value("display", "camera_view", CameraView.View.CHASE_NEAR)
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -263,6 +272,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("accessibility", "subtitles", subtitles)
 	cfg.set_value("accessibility", "reduce_motion", reduce_motion)
 	cfg.set_value("display", "units", units)
+	cfg.set_value("display", "camera_view", camera_view)
 	cfg.set_value("display", "fullscreen", fullscreen)
 	cfg.set_value("display", "integer_scale", integer_scale)
 	cfg.set_value("display", "vsync", vsync)
