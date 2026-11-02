@@ -18,6 +18,10 @@ the release workflow puts that section at the top of the GitHub Release notes
   station: rock through Redrock, Timberline and Harvest, synthwave on Neon Strip and Skyline,
   funk on Palm Coast and the Bayou, techno into Thunderhead. A station you pick still plays
   everywhere, and the radio button still changes it mid-race.
+- Co-pilot (AC-14): Options > Accessibility > CO-PILOT steers for you, keeping the car in the
+  middle of its lane and round every bend, and brakes for the sharp ones. Steer to move over a
+  lane; it won't let you drive off the road. With AUTO GAS too, the youngest drivers can race
+  without touching a thing. Off by default.
 
 ## [0.4.0] - 2026-11-02
 

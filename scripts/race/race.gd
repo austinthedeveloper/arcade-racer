@@ -518,7 +518,10 @@ func _physics_process(dt: float) -> void:
 	if _autodrive or demo:
 		inp = _autodrive_input()
 	else:
-		inp = Assists.apply(inp, player, track, Settings.steer_assist, Settings.brake_assist)
+		if Settings.co_pilot:  # (AC-14: in place of the steering assist, and braking for the bends)
+			inp = Assists.co_pilot(inp, player, track)
+		inp = Assists.apply(inp, player, track, Settings.steer_assist and not Settings.co_pilot,
+			Settings.brake_assist or Settings.co_pilot)
 	horn = inp.horn
 	if calibration.visible or debug_panel.visible:  # (the tuning panel holds the race still)
 		_redraw()

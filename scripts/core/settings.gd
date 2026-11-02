@@ -28,7 +28,7 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 10: [accessibility] reduce_motion (missing: off).
 ## 11: [controls] rumble (missing: as designed, EFFECT_STEPS).
 ## 12: [news] seen, the last version whose notes the title showed (WhatsNew; missing: none,
-## so an update from an older build shows its notes).
+## so an update from an older build shows its notes); [play] co_pilot (missing: off).
 const VERSION := 12
 ## Keyboard steering feel (AC-11): how fast a held key turns in and a released one comes back,
 ## snappy to smooth. Each multiplies its rate (shares of full lock per second); STANDARD is
@@ -52,6 +52,7 @@ var difficulty: int = Difficulty.Level.NORMAL
 var carry_time := false  # Grand Tour: clock left at a finish carries into the next stage
 var steer_assist := false  # Assists: keyboard and gamepad steering pulls toward the lane
 var brake_assist := false  # Assists: brakes into corners taken too fast
+var co_pilot := false  # Assists.co_pilot (AC-14): the steering done for you, nudged by the player's
 var manual_gears := false  # the player shifts (PlayerCar.shift); automatic by default
 var key_steer_in: int = STEER_FEEL_STANDARD  # into STEER_FEEL_NAMES: a held key's turn in
 var key_steer_out: int = STEER_FEEL_STANDARD  # and a released key's return to center
@@ -97,6 +98,7 @@ func reset() -> void:
 	carry_time = false
 	steer_assist = false
 	brake_assist = false
+	co_pilot = false
 	manual_gears = false
 	key_steer_in = STEER_FEEL_STANDARD
 	key_steer_out = STEER_FEEL_STANDARD
@@ -135,6 +137,7 @@ func load_settings() -> void:
 		carry_time = bool(cfg.get_value("play", "carry_time", carry_time))
 		steer_assist = bool(cfg.get_value("play", "steer_assist", steer_assist))
 		brake_assist = bool(cfg.get_value("play", "brake_assist", brake_assist))
+		co_pilot = bool(cfg.get_value("play", "co_pilot", co_pilot))
 		manual_gears = bool(cfg.get_value("play", "manual_gears", manual_gears))
 		key_steer_in = clampi(int(cfg.get_value("controls", "key_steer_in", key_steer_in)), 0, STEER_FEEL_NAMES.size() - 1)
 		key_steer_out = clampi(int(cfg.get_value("controls", "key_steer_out", key_steer_out)), 0, STEER_FEEL_NAMES.size() - 1)
@@ -227,9 +230,10 @@ static func _v10_to_v11(cfg: ConfigFile) -> void:
 
 
 ## Version 12 added what the title's what's new last showed: nothing, so the first start on
-## this build after an older one shows its notes.
+## this build after an older one shows its notes. And the co-pilot, off as before.
 static func _v11_to_v12(cfg: ConfigFile) -> void:
 	cfg.set_value("news", "seen", "")
+	cfg.set_value("play", "co_pilot", false)
 
 
 ## Writes the options. Over a file from a newer build, its other keys are kept
@@ -244,6 +248,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("play", "carry_time", carry_time)
 	cfg.set_value("play", "steer_assist", steer_assist)
 	cfg.set_value("play", "brake_assist", brake_assist)
+	cfg.set_value("play", "co_pilot", co_pilot)
 	cfg.set_value("play", "manual_gears", manual_gears)
 	cfg.set_value("controls", "key_steer_in", key_steer_in)
 	cfg.set_value("controls", "key_steer_out", key_steer_out)
