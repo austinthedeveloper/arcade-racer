@@ -42,11 +42,15 @@ const PALETTE := {
 	"slip_boost": Color("#fff2a8"),
 	"tach": Color("#5dff8a"),
 	"tach_red": Color("#ff3a3a"),
+	"net_good": Color("#5dff8a"),
+	"net_fair": Color("#ffb21a"),
+	"net_poor": Color("#c81e28"),
+	"net_unknown": Color("#8a8a9a"),
 }
 const MUST_DIFFER := [
 	["clock", "clock_low"], ["panel", "lead_panel"], ["lead_panel", "lead_text"], ["you", "rival"],
 	["rival", "ghost"], ["nitro_lit", "nitro_spent"], ["ahead", "behind"], ["slip_meter", "slip_boost"],
-	["tach", "tach_red"],
+	["tach", "tach_red"], ["net_good", "net_poor"], ["net_fair", "net_poor"],
 ]
 ## Simulated luminance contrast every MUST_DIFFER pair keeps (1 is none; text on a page
 ## asks 4.5, a pair of states on one gauge much less).
@@ -154,6 +158,36 @@ func _draw() -> void:
 		_draw_subtitle(lay["subtitle"], race.audio.announcer.subtitle())
 	if race.notice_time > 0.0:
 		_draw_notice(Vector2(w / 2.0, 72), race.notice, notice_alpha(race.notice_time))
+
+
+## The connection dot (ON-12), top right of the time panel: green, amber or red for the
+## relay's round trip, with the milliseconds beside it (not the color alone); a grey ring
+## before the first comes back. Red is a ring too, blinking where flashing is allowed.
+func _draw_net(c: Vector2, ms: float) -> void:
+	var q := OnlineSession.quality(ms)
+	var col := net_color(q)
+	draw_circle(c, 4.5, Color(0, 0, 0, 0.8))
+	if q == OnlineSession.Quality.UNKNOWN:
+		draw_arc(c, 3.0, 0.0, TAU, 12, col, 1.5)
+		return
+	if q == OnlineSession.Quality.POOR and int(time * 3.0) % 2 == 0 and Settings.flash_amount(1.0) > 0.5:
+		draw_arc(c, 3.0, 0.0, TAU, 12, col, 1.5)
+	else:
+		draw_circle(c, 3.5, col)
+	var label := "%d" % roundi(ms)
+	_text(Vector2(c.x - 7 - UiText.width(label, 8), c.y + 3), label, 8, Color(1, 1, 1, 0.75))
+
+
+## The dot's color for a quality (OnlineSession.Quality).
+static func net_color(q: int) -> Color:
+	match q:
+		OnlineSession.Quality.GOOD:
+			return PALETTE["net_good"]
+		OnlineSession.Quality.FAIR:
+			return PALETTE["net_fair"]
+		OnlineSession.Quality.POOR:
+			return PALETTE["net_poor"]
+	return PALETTE["net_unknown"]
 
 
 ## An online notice (ON-11), "P2 DROPPED OUT": a dark pill with a red dot, under the route bar
@@ -367,6 +401,8 @@ func _draw_timer(r: Rect2) -> void:
 		_text(r.position + Vector2(6, 36), clock_text(race.race_time), 20, Color.WHITE)
 		var tag: String = "FREE DRIVE" if race.free_drive else "ONLINE  " + race.online.link.room
 		_text(r.position + Vector2(6, 52), tag, 9, Color(1, 1, 1, 0.8))
+		if race.online != null:
+			_draw_net(Vector2(r.end.x - 9, r.position.y + 9), race.online.round_trip_ms())
 	elif race.time_attack:
 		_text(r.position + Vector2(6, 34), clock_text(race.race_time), 20, Color.WHITE)
 		var best: Ghost = race.ghost

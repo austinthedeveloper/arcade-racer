@@ -16,6 +16,10 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Watch after the line (ON-10): finish an online race ahead of someone and the camera follows
   the leader of those still racing, with live standings ("WATCHING P2"), until the last car is
   in; then the results come up. Enter brings them up sooner.
+- Connection quality (ON-12): a dot by the clock in an online race shows the round trip
+  through the server, green under 150 ms, amber under 300 ms and red beyond (or when the room
+  goes quiet), with the milliseconds beside it. If the server ever offers regions, ONLINE
+  shows a SERVER picker under HOST and JOIN; today's server has one region, so it doesn't.
 
 ### Changed
 

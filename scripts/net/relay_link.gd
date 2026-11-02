@@ -22,6 +22,11 @@ const REASONS := {"HOST LEFT": "THE HOST LEFT", "IDLE": "THE ROOM CLOSED: IDLE",
 	"NO SUCH GAME": "THE SERVER DOESN'T KNOW THIS GAME", "TOO MANY TRIES": "TOO MANY TRIES: WAIT A MINUTE",
 	"TOO MANY ROOMS": "TOO MANY ROOMS: WAIT A MINUTE"}
 
+const MAX_REGIONS := 8
+## A region's relay picked on the online screen (ON-12), or "" for URL. A relay with regions
+## would list them at /v1/regions (regions_url); today's lists none, so no picker shows.
+static var chosen := ""
+
 var ws := WebSocketPeer.new()
 var _inbox: Array = []
 var _started_ms := 0
@@ -29,10 +34,42 @@ var _keep_ms := 0
 
 
 ## The relay's address: URL, or --relay=ws://... on the command line (a local relay for testing:
-## `npm start` in pickleball-relay, then --relay=ws://127.0.0.1:8080).
+## `npm start` in pickleball-relay, then --relay=ws://127.0.0.1:8080), or the region picked.
 static func address() -> String:
+	return chosen if chosen != "" else home()
+
+
+## The relay before any region is picked: URL, or --relay.
+static func home() -> String:
 	var a := DevArgs.value("--relay")
 	return a if a != "" else URL
+
+
+## Where the relay at `base` (a ws:// or wss:// address) would list its regions: an HTTP GET
+## answering {"regions": [{"name": "US EAST", "url": "wss://..."}, ...]}.
+static func regions_url(base: String) -> String:
+	var http := base.replace("wss://", "https://").replace("ws://", "http://")
+	return http.trim_suffix("/") + "/v1/regions"
+
+
+## The regions in a /v1/regions answer: [{name, url}], names in capitals, only those with a
+## name and a ws:// or wss:// address, at most MAX_REGIONS. Anything else is none.
+static func parse_regions(body: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var json := JSON.new()
+	if json.parse(body) != OK:
+		return out
+	var got: Variant = json.data
+	if not got is Dictionary or not (got as Dictionary).get("regions") is Array:
+		return out
+	for r: Variant in got["regions"]:
+		if not r is Dictionary:
+			continue
+		var name := String(r.get("name", "")).strip_edges().to_upper()
+		var url := String(r.get("url", ""))
+		if name != "" and (url.begins_with("wss://") or url.begins_with("ws://")) and out.size() < MAX_REGIONS:
+			out.append({"name": name.left(16), "url": url})
+	return out
 
 
 ## A room's name as typed, cleaned: capitals from ALPHABET, at most ROOM_LEN.

@@ -24,6 +24,50 @@ var row: int = Row.START  # the host's lobby cursor
 var notice := ""  # a short line under the grid ("A ROOM IS 4 LETTERS")
 var _held_letters := {}  # keyboard letters held down: typing D or S doesn't also move the cursor
 var _staged: Array = []  # stage_shot's guests, kept alive
+## The relay's regions (ON-12), [{name, url}] from its /v1/regions; the picker shows under HOST
+## and JOIN only when it lists two or more. Today's relay lists none.
+var regions: Array[Dictionary] = []
+var region := 0  # into regions: the one HOST and JOIN go through
+var on_region := false  # the cursor on the region row rather than HOST / JOIN
+var _fetch: HTTPRequest
+
+
+## Asks the relay for its regions, in a window (not in the headless tests).
+func _ready() -> void:
+	super._ready()
+	if is_inside_tree() and DisplayServer.get_name() != "headless":
+		_fetch = HTTPRequest.new()
+		_fetch.timeout = 10.0
+		add_child(_fetch)
+		_fetch.request_completed.connect(_regions_came)
+		_fetch.request(RelayLink.regions_url(RelayLink.home()))
+
+
+func _regions_came(_result: int, code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	var none: Array[Dictionary] = []
+	set_regions(RelayLink.parse_regions(body.get_string_from_utf8()) if code == 200 else none)
+
+
+## The relay's regions came (or none): the picker on the one already picked, else the first.
+func set_regions(list: Array[Dictionary]) -> void:
+	regions = list
+	region = 0
+	for i in regions.size():
+		if regions[i]["url"] == RelayLink.chosen:
+			region = i
+	if not shows_regions():
+		on_region = false
+
+
+## Whether the region picker is up: the relay lists more than one.
+func shows_regions() -> bool:
+	return regions.size() >= 2
+
+
+## Picks region `i` (wrapping): HOST and JOIN go through its relay from now on.
+func pick_region(i: int) -> void:
+	region = posmod(i, regions.size())
+	RelayLink.chosen = String(regions[region]["url"])
 
 
 ## What shows now: before a room, CHOOSE or CODE; in one, from its phase.
@@ -100,7 +144,13 @@ func handle(m: MenuInput) -> void:
 
 
 func _handle_choose(m: MenuInput) -> void:
-	if m.step() != 0:
+	if shows_regions() and m.step_y() != 0:
+		on_region = not on_region
+		Audio.play("tick")
+	elif on_region and (m.step() != 0 or m.confirm_pressed):
+		pick_region(region + (m.step() if m.step() != 0 else 1))
+		Audio.play("tick")
+	elif m.step() != 0:
 		move(m.step())
 		Audio.play("tick")
 	elif m.confirm_pressed:
@@ -204,8 +254,13 @@ static func tap_at(event: InputEvent) -> Variant:
 func tap(pos: Vector2) -> void:
 	match current():
 		View.CHOOSE:
+			if shows_regions() and region_rect().has_point(pos):
+				on_region = true
+				handle(_confirm())
+				return
 			for i in CHOICES.size():
 				if choice_rect(i).has_point(pos):
+					on_region = false
 					index = i
 					handle(_confirm())
 		View.CODE:
@@ -281,19 +336,33 @@ func _draw_choose() -> void:
 	var w := float(Cfg.SCREEN_W)
 	var help := ["Open a room and share its four letters.", "Type the four letters a friend's room shows."]
 	for i in CHOICES.size():
-		var on := i == index
+		var on := i == index and not on_region
 		var r := choice_rect(i)
 		_frame(r, Color(GOLD, 0.4 + 0.15 * sin(time * 4.0)) if on else Color.TRANSPARENT)
 		draw_rect(r, Color("#1d3fa8") if on else Color(0.04, 0.03, 0.1, 0.9))
 		_text_centered(Vector2(r.get_center().x, r.get_center().y + 8), CHOICES[i], 22, GOLD if on else Color(1, 1, 1, 0.6))
 	_text_centered(Vector2(w / 2.0, 236), help[index], 11, Color(1, 1, 1, 0.85))
 	_text_centered(Vector2(w / 2.0, 262), "Racing in the %s" % Cars.get_car(game.car_index)["name"], 10, Color(SKY, 0.9))
-	_footer(hints(true))
+	if shows_regions():
+		var r := region_rect()
+		_frame(r, Color(GOLD, 0.4 + 0.15 * sin(time * 4.0)) if on_region else Color.TRANSPARENT)
+		draw_rect(r, Color("#1d3fa8") if on_region else Color(0.04, 0.03, 0.1, 0.9))
+		_text(r.position + Vector2(10, 14), "SERVER", 10, Color(1, 1, 1, 0.7))
+		_text_centered(Vector2(r.get_center().x + 24, r.position.y + 14), String(regions[region]["name"]), 11, GOLD if on_region else Color.WHITE)
+		if on_region:
+			_arrow(Vector2(r.position.x + 78, r.get_center().y), -1, GOLD)
+			_arrow(Vector2(r.end.x - 12, r.get_center().y), 1, GOLD)
+	_footer(hints(true) + ("    Up / Down: server" if shows_regions() else ""))
 
 
 ## HOST (0) or JOIN (1) on screen.
 static func choice_rect(i: int) -> Rect2:
 	return Rect2(Cfg.SCREEN_W / 2.0 - 170 + i * 190, 110, 150, 90)
+
+
+## The region picker's row (ON-12), under HOST and JOIN.
+static func region_rect() -> Rect2:
+	return Rect2(Cfg.SCREEN_W / 2.0 - 120, 280, 240, 20)
 
 
 ## The host's lobby row `i` (Row) on screen.
@@ -398,7 +467,7 @@ func _draw_lobby() -> void:
 
 
 # --- Dev helper: --screen=online:<view> --menu-shot=... ------------------------------
-# (online:menu, online:code with two letters in, online:lobby hosting with two guests in,
+# (online:menu, online:regions the region picker on two made-up regions, online:code with two letters in, online:lobby hosting with two guests in,
 # online:guest the lobby as a guest sees it, online:error a refusal; all on an in-memory relay.)
 
 func stage_shot(which: String) -> void:
@@ -425,6 +494,14 @@ func stage_shot(which: String) -> void:
 			rooms.erase(game.online)
 			_staged = rooms
 			row = Row.STAGE
+		"regions":  # a relay that lists regions, as today's doesn't
+			var two: Array[Dictionary] = [{"name": "US EAST", "url": "wss://us-east.invalid"},
+				{"name": "EUROPE WEST", "url": "wss://eu-west.invalid"}]
+			if _fetch != null:
+				_fetch.cancel_request()  # (the real relay's answer, none, would clear them)
+			set_regions(two)
+			region = 1  # (shown picked, without changing the relay this run would use)
+			on_region = true
 		"error":
 			var g := LoopLink.new(relay)
 			g.join("ZZZZ")
