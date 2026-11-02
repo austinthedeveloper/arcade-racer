@@ -7,6 +7,9 @@ extends Control
 const LOGO := "res://assets/sprites/ui/logo.png"
 const DEMO_LOGO_SCALE := 0.6
 const CALLOUT_Y := 120.0  # the middle of the callouts
+const LINE2_SIZE := 18  # a starburst's second headline (TIME EXTENDED under CHECKPOINT)
+const SUB_SIZE := 11  # and its small line
+const LINE_GAP := 4.0  # pixels between a starburst's lines
 const GOLD := Color("#ffd23a")
 const DIAL_START := PI * 0.75  # the speedometer's zero, bottom left...
 const DIAL_SWEEP := PI * 1.5  # ...round to top speed at the bottom right
@@ -406,9 +409,9 @@ func _draw_callout(c: Dictionary, center: Vector2) -> void:
 	var style: Dictionary = BURSTS[kind]
 	var a := Callouts.alpha(c)
 	var k := Callouts.pop_scale(c["age"])
-	var text := Callouts.label(c)
 	var size: int = style["size"]
-	var radius := burst_radius(text, size) * k
+	var lines := burst_lines(c, size)
+	var radius := burst_radius_for(lines) * k
 	var spin := sin(time * 2.0) * 0.06
 	var spikes: int = style["spikes"]
 	draw_colored_polygon(Callouts.starburst(center + Vector2(0, 4), radius * 1.12, spikes, 0.74, spin), Color(0, 0, 0, 0.45 * a))
@@ -417,10 +420,41 @@ func _draw_callout(c: Dictionary, center: Vector2) -> void:
 	draw_colored_polygon(Callouts.starburst(center, radius * 0.7, spikes, 0.86, -spin), Color(style["core"], a))
 	if k < 0.9:
 		return  # (the text comes in with the burst nearly grown)
-	var ty := center.y + size * 0.35 - (6.0 if c["sub"] != "" else 0.0)
-	_text_centered(Vector2(center.x, ty), text, size, Color(style["text"], a))
+	for i in lines.size():
+		var line: Dictionary = lines[i]
+		var col: Color = style["text"] if i == 0 else (BURSTS[Callouts.Kind.TIME_EXTENDED]["fill"] if line["size"] == LINE2_SIZE else Color.WHITE)
+		_text_centered(Vector2(center.x, center.y + line["y"]), line["text"], line["size"], Color(col, a))
+
+
+## The lines a starburst shows, top to bottom: {"text", "size", "y"} with "y" the baseline
+## below the burst's middle. The headline (with its count), a second headline when it has
+## one (TIME EXTENDED under CHECKPOINT, PR-15) and the small line under them.
+static func burst_lines(c: Dictionary, size: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = [{"text": Callouts.label(c), "size": size}]
+	if c.get("line2", "") != "":
+		out.append({"text": c["line2"], "size": LINE2_SIZE})
 	if c["sub"] != "":
-		_text_centered(Vector2(center.x, ty + 15), c["sub"], 11, Color(1, 1, 1, a))
+		out.append({"text": c["sub"], "size": SUB_SIZE})
+	# Stacked baselines, a little apart, the block's middle on the burst's
+	var tall := 0.0
+	for line in out:
+		tall += line["size"] * 0.75 + (LINE_GAP if not is_same(line, out[0]) else 0.0)
+	var y := -tall / 2.0
+	for i in out.size():
+		y += out[i]["size"] * 0.75 + (LINE_GAP if i > 0 else 0.0)
+		out[i]["y"] = roundf(y)
+	return out
+
+
+## The burst's half-size for its lines: wide enough for the widest, tall enough for the stack.
+static func burst_radius_for(lines: Array[Dictionary]) -> Vector2:
+	var r := burst_radius(lines[0]["text"], lines[0]["size"])
+	var top: float = lines[0]["y"] - lines[0]["size"] * 0.75
+	var bottom: float = lines[-1]["y"]
+	for line in lines.slice(1):
+		r.x = maxf(r.x, UiText.width(line["text"], line["size"]) / 2.0 + 30.0)
+	r.y = maxf(r.y, maxf(-top, bottom) / 0.62)
+	return r
 
 
 ## A starburst's half-size for `text` at `size`: room round the text, and never so flat

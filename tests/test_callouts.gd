@@ -10,14 +10,14 @@ func _tick(c: Callouts, seconds: float) -> void:
 func test_one_at_a_time_in_order() -> void:
 	var c := Callouts.new()
 	c.push(Callouts.Kind.CHECKPOINT)
-	c.push(Callouts.Kind.TIME_EXTENDED, "+25 SEC")
+	c.push(Callouts.Kind.BIG_AIR, "+2")
 	eq(c.current["kind"], Callouts.Kind.CHECKPOINT, "the first is up")
 	eq(c.waiting.size(), 1, "the second waits")
 	_tick(c, Callouts.MIN_SHOW * 0.5)
 	eq(c.current["kind"], Callouts.Kind.CHECKPOINT, "not stomped by the one behind it")
 	_tick(c, Callouts.MIN_SHOW)
-	eq(c.current["kind"], Callouts.Kind.TIME_EXTENDED, "then the next")
-	eq(c.current["sub"], "+25 SEC", "with its line")
+	eq(c.current["kind"], Callouts.Kind.BIG_AIR, "then the next")
+	eq(c.current["sub"], "+2", "with its line")
 	_tick(c, Callouts.SHOW_TIME)
 	check(c.current.is_empty(), "and then nothing")
 
@@ -73,21 +73,101 @@ func test_messages_dont_merge() -> void:
 	eq(c.waiting.size(), 1, "two pickups, two messages")
 
 
+func test_checkpoint_and_time_extended_are_one_burst() -> void:
+	var c := Callouts.new()
+	c.push(Callouts.Kind.CHECKPOINT)
+	c.push(Callouts.Kind.TIME_EXTENDED, "+25 SEC")
+	eq(c.current["kind"], Callouts.Kind.CHECKPOINT, "the checkpoint is up")
+	eq(c.current["line2"], "TIME EXTENDED", "with TIME EXTENDED as its second line")
+	eq(c.current["sub"], "+25 SEC", "and the seconds under them")
+	check(c.waiting.is_empty(), "nothing behind it")
+	c.clear()
+	c.push(Callouts.Kind.GO)
+	c.push(Callouts.Kind.CHECKPOINT)
+	c.push(Callouts.Kind.TIME_EXTENDED, "+20 SEC")
+	eq(c.waiting.size(), 1, "behind GO, still one burst")
+	eq(c.waiting[0]["line2"], "TIME EXTENDED", "merged into the waiting checkpoint")
+	c.clear()
+	c.push(Callouts.Kind.TIME_EXTENDED, "+5 SEC")
+	eq(c.current["kind"], Callouts.Kind.TIME_EXTENDED, "with no checkpoint it bursts on its own")
+
+
+func test_the_merged_burst_fits() -> void:
+	var c := {"kind": Callouts.Kind.CHECKPOINT, "text": "CHECKPOINT", "line2": "TIME EXTENDED", "sub": "+25 SEC", "count": 1}
+	var lines := Hud.burst_lines(c, Hud.BURSTS[Callouts.Kind.CHECKPOINT]["size"])
+	eq(lines.map(func(l: Dictionary) -> String: return l["text"]), ["CHECKPOINT", "TIME EXTENDED", "+25 SEC"], "three lines, in order")
+	for i in range(1, lines.size()):
+		check(lines[i]["y"] - lines[i]["size"] * 0.75 >= lines[i - 1]["y"], "line %d under the one above" % i)
+	var r := Hud.burst_radius_for(lines)
+	check(r.x * 2.0 > UiText.width("TIME EXTENDED", Hud.LINE2_SIZE) + 40.0, "as wide as the widest line, with room")
+	check(r.y * 0.74 >= -lines[0]["y"] + lines[0]["size"] * 0.75 - 4.0, "the top line inside the valleys")
+	check(r.x * 1.12 < Cfg.SCREEN_W / 2.0, "on screen")
+	var one := Hud.burst_lines({"kind": Callouts.Kind.GO, "text": "GO!", "line2": "", "sub": "", "count": 1}, 34)
+	eq(Hud.burst_radius_for(one), Hud.burst_radius("GO!", 34), "a one-line burst as before")
+
+
+func test_a_kind_does_not_repeat_too_soon() -> void:
+	var c := Callouts.new()
+	c.push(Callouts.Kind.BIG_AIR)
+	_tick(c, Callouts.SHOW_TIME + 0.1)
+	check(c.current.is_empty(), "the first came and went")
+	c.push(Callouts.Kind.BIG_AIR)
+	check(c.current.is_empty(), "another BIG AIR straight after is dropped")
+	c.push(Callouts.Kind.NEAR_MISS)
+	eq(c.current.get("kind"), Callouts.Kind.NEAR_MISS, "another kind still bursts")
+	c.push(Callouts.Kind.NEAR_MISS, "", Callouts.SHOW_TIME, 1)
+	eq(c.current["count"], 1, "a new chain counts into the one up")
+	_tick(c, Callouts.SHOW_TIME + 0.1)
+	c.push(Callouts.Kind.NEAR_MISS, "", Callouts.SHOW_TIME, 2)
+	eq(Callouts.label(c.current), "NEAR MISS x2", "a chain growing is news: never capped")
+	_tick(c, Callouts.REPEAT_GAP)
+	c.push(Callouts.Kind.BIG_AIR)
+	eq(c.current.get("kind"), Callouts.Kind.BIG_AIR, "after REPEAT_GAP it bursts again")
+	check(Callouts.too_soon(10.0, 10.0 + Callouts.REPEAT_GAP - 0.01), "too soon")
+	check(not Callouts.too_soon(10.0, 10.0 + Callouts.REPEAT_GAP), "not")
+
+
+func test_first_place_never_ahead_of_finish() -> void:
+	var c := Callouts.new()
+	c.push(Callouts.Kind.FIRST_PLACE)  # took the lead a moment before the line
+	c.push(Callouts.Kind.NEAR_MISS)
+	c.finish("FINISH!", "1ST of 6", true)
+	eq(c.current["text"], "FINISH!", "FINISH! first, at once")
+	eq(c.waiting.map(func(w: Dictionary) -> String: return w["text"]), ["1ST PLACE", "FINISH!"], "then 1ST PLACE, then FINISH! again")
+	c.push(Callouts.Kind.BIG_AIR)
+	c.push_message("NITRO +1")
+	eq(c.waiting.size(), 2, "nothing more after the line")
+	_tick(c, Callouts.MIN_SHOW + 0.05)
+	eq(c.current["text"], "FINISH!", "not cut short by the burst behind it")
+	_tick(c, Callouts.FINISH_LEAD)
+	eq(c.current["kind"], Callouts.Kind.FIRST_PLACE, "then the win")
+	_tick(c, Callouts.SHOW_TIME + 0.05)
+	eq(c.current["text"], "FINISH!", "and the finish holds")
+	_tick(c, 20.0)
+	eq(c.current["seconds"], Callouts.HOLD, "held")
+	c.clear()
+	c.push(Callouts.Kind.BIG_AIR)
+	check(not c.current.is_empty(), "a restart takes callouts again")
+	c.clear()
+	c.finish("FINISH!", "", false)
+	check(c.current["seconds"] >= Callouts.HOLD and c.waiting.is_empty(), "no win: FINISH! held alone")
+
+
 func test_a_backlog_drops_the_oldest_waiting() -> void:
 	var c := Callouts.new()
 	c.push(Callouts.Kind.GO)
-	for k in [Callouts.Kind.CHECKPOINT, Callouts.Kind.TIME_EXTENDED, Callouts.Kind.NEAR_MISS, Callouts.Kind.BIG_AIR]:
+	for k in [Callouts.Kind.CHECKPOINT, Callouts.Kind.FINAL_STRETCH, Callouts.Kind.NEAR_MISS, Callouts.Kind.BIG_AIR]:
 		c.push(k)
 	eq(c.waiting.size(), Callouts.MAX_WAITING, "capped")
-	eq(c.waiting[0]["kind"], Callouts.Kind.TIME_EXTENDED, "the oldest went")
+	eq(c.waiting[0]["kind"], Callouts.Kind.FINAL_STRETCH, "the oldest went")
 
 
 func test_a_held_message_stays_until_cleared() -> void:
 	var c := Callouts.new()
-	c.push(Callouts.Kind.FIRST_PLACE)
+	c.push(Callouts.Kind.BIG_AIR)
 	c.push_message("FINISH!", "Time 1:02.00", Callouts.HOLD)
 	_tick(c, Callouts.MIN_SHOW + 0.05)
-	eq(c.current["text"], "FINISH!", "1ST PLACE first, then the finish")
+	eq(c.current["text"], "FINISH!", "the burst, then the finish")
 	c.push(Callouts.Kind.NEAR_MISS)
 	_tick(c, 30.0)
 	eq(c.current["text"], "FINISH!", "held, even with one waiting")
@@ -148,7 +228,8 @@ func test_race_go_checkpoint_and_stretch() -> void:
 	r.player.distance = r.checkpoint_distances[0] + 1.0
 	r._check_progress()
 	eq(r.callouts.current.get("kind"), Callouts.Kind.CHECKPOINT, "CHECKPOINT")
-	eq(r.callouts.waiting[0]["kind"], Callouts.Kind.TIME_EXTENDED, "TIME EXTENDED behind it")
+	eq(r.callouts.current.get("line2"), "TIME EXTENDED", "TIME EXTENDED in the same burst")
+	check(r.callouts.waiting.is_empty(), "not a burst of its own")
 	eq(r.banner, "CHECKPOINT!", "the race's banner as before")
 	r.callouts.clear()
 	r.next_checkpoint = r.checkpoint_distances.size()  # (past them all)
@@ -174,6 +255,20 @@ func test_race_near_miss_and_lead() -> void:
 	r.callouts.clear()
 	r._callouts_after_tick(r.score.bonuses.size(), 2)
 	check(r.callouts.current.is_empty(), "not again straight after")
+
+
+func test_race_finish_in_first_shows_finish_first() -> void:
+	var r := race(false, true)
+	drive(r, 181)
+	r.place = 1
+	r.callouts.push(Callouts.Kind.FIRST_PLACE)  # the lead taken just before the line
+	for car: RivalCar in r.rivals.cars:
+		car.distance = 0.0
+	r.player.distance = r.finish_distance + 1.0
+	r._check_progress()
+	eq(r.place, 1, "won")
+	eq(r.callouts.current.get("text"), "FINISH!", "FINISH! first")
+	eq(r.callouts.waiting[0]["kind"], Callouts.Kind.FIRST_PLACE, "1ST PLACE after it")
 
 
 func test_race_finish_holds() -> void:

@@ -512,6 +512,8 @@ func _physics_process(dt: float) -> void:
 				_banner("GO!", "", 1.0, Callouts.Kind.GO)
 				if _callout_shot != Callouts.Kind.NONE:
 					callouts.push(_callout_shot, "", Callouts.HOLD, _callout_shot_count)
+					if _callout_shot == Callouts.Kind.CHECKPOINT and timed():  # as a checkpoint shows (PR-15)
+						callouts.push(Callouts.Kind.TIME_EXTENDED, "+%d SEC" % checkpoint_bonus)
 				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
@@ -711,9 +713,8 @@ func _check_progress() -> void:
 		if SaveData.is_unlocked(Unlocks.mirror_id(stage_index)) and not before_unlocks.has(Unlocks.mirror_id(stage_index)):
 			new_unlocks.append(Unlocks.mirror_id(stage_index))
 		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
-		if place == 1 and not rivals.cars.is_empty():
-			callouts.push(Callouts.Kind.FIRST_PLACE)
-		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], Callouts.HOLD)
+		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], Callouts.HOLD, Callouts.Kind.NONE)
+		callouts.finish(banner, banner_sub, place == 1 and not rivals.cars.is_empty())
 
 
 ## A tour stage finished: points, then on, another go, or the end of the tour. Returns the

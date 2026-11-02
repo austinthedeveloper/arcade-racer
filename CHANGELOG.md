@@ -24,6 +24,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Near-miss chains (RC-15): near misses within two seconds of each other chain, and the burst
   says so (NEAR MISS x2, x3...). Each one in a chain scores more, up to five times the points;
   a two-second gap or a crash breaks it.
+- Callout pacing (PR-15): CHECKPOINT and TIME EXTENDED now come up as one burst with both
+  lines, the same burst won't pop up again within three seconds (a growing near-miss chain
+  still does), and winning shows FINISH! first, then 1ST PLACE.
 
 ### Changed
 

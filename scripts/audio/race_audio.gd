@@ -306,6 +306,8 @@ func _announce(dt: float) -> void:
 	var c: Dictionary = race.callouts.current
 	if not c.is_empty() and not is_same(c, _callout):
 		announcer.say(CALLOUT_LINES.get(c["kind"], ""))
+		if c.get("line2", "") == Callouts.TEXT[Callouts.Kind.TIME_EXTENDED]:  # one burst, both lines (PR-15)
+			announcer.say(CALLOUT_LINES[Callouts.Kind.TIME_EXTENDED])
 	_callout = c
 	var line := announcer.update(dt)
 	if line != "":
