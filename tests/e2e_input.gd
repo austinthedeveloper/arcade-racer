@@ -30,6 +30,7 @@ func _initialize() -> void:
 	TestSuite.use_scratch_settings(_settings)
 	TestSuite.use_scratch_save(root.get_node("SaveData"))
 	TestSuite.use_scratch_ghosts()
+	TestSuite.use_scratch_logs()  # never the player's user://logs/
 	Tuning.use_defaults()  # never the player's user://tuning.cfg
 	_game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(_game)

@@ -38,6 +38,7 @@ const CUES := {
 	"time_up": ["sfx", false, -3.0],
 	"thunder": ["sfx", false, -9.0],  # a beat after a lightning flash (Weather)
 	"radio_tune": ["sfx", false, -10.0],  # changing station
+	"shutter": ["sfx", false, -6.0],  # the photo key (Photo)
 	"station_rock": ["music", true, -11.0],  # the radio (Radio)
 	"station_synthwave": ["music", true, -9.5],
 	"station_funk": ["music", true, -10.0],

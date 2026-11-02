@@ -12,33 +12,34 @@ const KEYBOARD_GUID := "keyboard"
 ## The actions the player can rebind on every device (RemapScreen), in screen order.
 ## shift_up and shift_down only change gear with manual gears on (Settings.manual_gears); view
 ## steps the camera view (CameraView); the horn moves the car ahead over (Traffic.honk), the
-## radio only sounds.
-const REMAP_ACTIONS := ["nitro", "shift_up", "shift_down", "horn", "radio", "pause", "view"]
+## radio only sounds; photo saves a picture of the race without the HUD (Photo, PR-21).
+const REMAP_ACTIONS := ["nitro", "shift_up", "shift_down", "horn", "radio", "pause", "view", "photo"]
 const ACTION_NAMES := {"nitro": "NITRO", "shift_up": "SHIFT UP", "shift_down": "SHIFT DOWN", "horn": "HORN", "radio": "RADIO",
-	"pause": "PAUSE", "view": "VIEW"}
+	"pause": "PAUSE", "view": "VIEW", "photo": "PHOTO"}
 ## Default bindings: physical keycodes on the keyboard, joypad buttons on a pad. A wheel's
 ## buttons differ by model, so only its nitro has one (from calibration, nitro_button): its
 ## paddles are bound to shift_up and shift_down on the remap screen. A pad shifts up on Y and
 ## down on LB, so nitro has RB alone.
 const KEYBOARD_DEFAULTS := {
 	"nitro": [KEY_SPACE, KEY_SHIFT], "shift_up": [KEY_E], "shift_down": [KEY_Q], "horn": [KEY_H], "radio": [KEY_M],
-	"pause": [KEY_ESCAPE, KEY_P], "view": [KEY_V],
+	"pause": [KEY_ESCAPE, KEY_P], "view": [KEY_V], "photo": [KEY_F12],
 }
 const PAD_DEFAULTS := {
 	"nitro": [JOY_BUTTON_RIGHT_SHOULDER], "shift_up": [JOY_BUTTON_Y], "shift_down": [JOY_BUTTON_LEFT_SHOULDER],
 	"horn": [JOY_BUTTON_LEFT_STICK], "radio": [], "pause": [JOY_BUTTON_START], "view": [JOY_BUTTON_RIGHT_STICK],
+	"photo": [],
 }
 ## The keyboard's fixed actions (InputRouter registers them), which a binding can clash with:
 ## input action -> keys, and the name a clash shows.
 const KEYBOARD_FIXED := {
 	"steer_left": [KEY_LEFT, KEY_A], "steer_right": [KEY_RIGHT, KEY_D], "accelerate": [KEY_UP, KEY_W],
 	"brake": [KEY_DOWN, KEY_S], "restart": [KEY_R], "confirm": [KEY_ENTER, KEY_KP_ENTER], "back": [KEY_BACKSPACE],
-	"debug_input": [KEY_F1], "calibrate": [KEY_F2], "debug_panel": [KEY_F3],
+	"debug_input": [KEY_F1], "calibrate": [KEY_F2], "debug_panel": [KEY_F3], "copy_report": [KEY_F4],
 }
 const FIXED_NAMES := {
 	"steer_left": "STEER LEFT", "steer_right": "STEER RIGHT", "accelerate": "GAS", "brake": "BRAKE",
 	"restart": "RESTART", "confirm": "SELECT", "back": "BACK", "debug_input": "INPUT DEBUG", "calibrate": "CALIBRATE",
-	"debug_panel": "TUNING PANEL",
+	"debug_panel": "TUNING PANEL", "copy_report": "COPY REPORT",
 }
 ## A pad's buttons with a fixed job (InputRouter._read_pad): name -> buttons.
 const PAD_FIXED := {

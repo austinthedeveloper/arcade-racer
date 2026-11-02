@@ -337,6 +337,42 @@ func test_race_starts_on_the_chosen_station() -> void:
 	Settings.radio = saved
 
 
+## A station per stage (PR-19): SHUFFLE starts each stage on its own station, a picked
+## station still wins, and the radio button still switches.
+func test_a_station_per_stage() -> void:
+	var saved: int = Settings.radio
+	for i in Stages.count():
+		var own := Radio.for_theme(Stages.theme(i))
+		check(own >= 0, Stages.stage_name(i) + " names a station")
+	eq(Radio.genre(Radio.for_theme(Stages.theme(2))), "SYNTHWAVE", "Neon Strip on synthwave")
+	eq(Radio.genre(Radio.for_theme(Stages.theme(1))), "ROCK", "Redrock on rock")
+	eq(Radio.for_theme({}), -1, "a theme without one")
+	check(Radio.start_station(Radio.SHUFFLE, 7, -1) >= 0, "none named: shuffle still picks one")
+	# SHUFFLE follows the stage
+	Settings.radio = Radio.SHUFFLE
+	for stage in [1, 2]:
+		var r := race(false, false, stage)
+		audio_node().history.clear()
+		step(r, 1)
+		eq(r.audio.station, Radio.for_theme(Stages.theme(stage)), Stages.stage_name(stage) + ": its own station")
+		eq(audio_node().music_cue, Radio.cue(r.audio.station), "playing it")
+		# the radio button still switches
+		var n := input(1.0)
+		n.radio_pressed = true
+		step(r, 1, n)
+		eq(r.audio.station, Radio.next(Radio.for_theme(Stages.theme(stage))), "the button: the next station up the dial")
+		r.start_race()  # again: back on the stage's own
+		step(r, 1)
+		eq(r.audio.station, Radio.for_theme(Stages.theme(stage)), "a restart starts on the stage's own again")
+	# A picked station wins over the stage's
+	var picked := Radio.next(Radio.for_theme(Stages.theme(2)))
+	Settings.radio = picked
+	var neon := race(false, false, 2)
+	step(neon, 1)
+	eq(neon.audio.station, picked, "the picked station, not Neon's")
+	Settings.radio = saved
+
+
 func test_radio_button_switches_without_a_gap() -> void:
 	var r := fresh_race()
 	step(r, 200, input(1.0))

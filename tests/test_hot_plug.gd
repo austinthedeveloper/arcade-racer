@@ -1,6 +1,8 @@
 ## Hot-plug (WH-7): unplugging the joypad that's driving pauses the race with a notice, and
-## plugging it back in carries on with the same profile. Fake joypads, through
-## Input.joy_connection_changed and InputRouter.joy_changed; always on the scratch profiles.
+## plugging it back in counts 3, 2, 1 (WH-12) and carries on with the same profile; a
+## different joypad plugged in drives in its place, the notice saying so. Fake joypads,
+## through Input.joy_connection_changed and InputRouter.joy_changed; always on the scratch
+## profiles.
 extends TestSuite
 
 const WHEEL := "03000000-hotplug-wheel"
@@ -43,6 +45,24 @@ func _racing() -> Node:
 	return r
 
 
+## Plugged back in: the count runs 3, 2, 1 with the race held still, then it resumes.
+func _count_down(r: Node) -> void:
+	check(r.paused and r.replug_count > 0.0, "back: paused for the count")
+	eq(r.pause_menu.counting, PauseMenu.REPLUG_COUNT, "from 3")
+	var z: float = r.player.distance
+	var numbers: Array[int] = []
+	var ticks := 0
+	while r.paused and ticks < 400:
+		var n := PauseMenu.count_number(r.pause_menu.counting)
+		if numbers.is_empty() or numbers[-1] != n:
+			numbers.append(n)
+		drive(r, 1, input(1.0))
+		ticks += 1
+	eq(numbers, [3, 2, 1] as Array[int], "counting 3, 2, 1")
+	near(ticks * DT, PauseMenu.REPLUG_COUNT, DT * 1.5, "over three seconds")
+	near(r.player.distance, z, 0.001, "the car still till the count is done")
+
+
 func _done(r: Node) -> void:
 	r.free()  # off InputRouter's signals before the next test
 	_clean()
@@ -68,7 +88,8 @@ func test_unplugging_the_wheel_pauses_and_plugging_it_back_resumes() -> void:
 	drive(r, 30, input(1.0))
 	eq(r.player.distance, z, "frozen while it's gone")
 	Input.joy_connection_changed.emit(ID, true)  # Godot can't name a fake one: the id says who
-	check(not r.paused and not r.pause_menu.visible, "plugged back in: the race carries on")
+	_count_down(r)
+	check(not r.paused and not r.pause_menu.visible, "after the count the race carries on")
 	eq(r.pause_menu.notice, [] as Array[String], "the notice goes")
 	eq([InputRouter.unplugged_driver, InputRouter.last_active_device], ["", ID], "and it drives again")
 	check(InputRouter._saved[WHEEL] == p, "with the same profile")
@@ -84,11 +105,65 @@ func test_back_on_another_device_id() -> void:
 	_plug_wheel()
 	InputRouter.joy_changed(ID, false, WHEEL, "Test Wheel")
 	check(r.paused, "paused")
-	InputRouter.joy_changed(OTHER_ID, true, "03000000-someone-else", "Other Pad")
-	check(r.paused, "another joypad plugging in doesn't resume it")
 	InputRouter.joy_changed(3, true, WHEEL, "Test Wheel")
-	check(not r.paused, "the same wheel on a new id does")
+	eq(r.pause_menu.notice, PauseMenu.replugged_notice("Test Wheel", true, true), "the same wheel on a new id is back")
+	eq(r.pause_menu.notice[0], "WHEEL CONNECTED", "saying so")
 	eq(InputRouter.last_active_device, 3, "and drives, on that id")
+	_count_down(r)
+	check(not r.paused, "then the race carries on")
+	_done(r)
+
+
+func test_a_different_device_counts_down_and_says_so() -> void:
+	# WH-12: a different GUID plugged in while the wheel is gone takes over, the notice saying
+	# it is a different one, on its own settings
+	_clean()
+	var r := _racing()
+	_plug_wheel()
+	Input.joy_connection_changed.emit(ID, false)
+	check(r.paused, "paused")
+	InputRouter.joy_changed(OTHER_ID, true, "03000000-someone-else", "Other Pad")
+	eq(r.pause_menu.notice, ["A DIFFERENT CONTROLLER", "Other Pad is driving now, with its own settings."] as Array[String],
+		"a different one, named")
+	eq(PauseMenu.notice_tint(r.pause_menu.notice), MenuScreen.GOLD, "in gold, not the disconnect's red")
+	eq([InputRouter.unplugged_driver, InputRouter.last_active_device], ["", OTHER_ID], "it drives now")
+	_count_down(r)
+	check(not r.paused, "and the race carries on")
+	_done(r)
+	r = _racing()
+	_plug_wheel()
+	Input.joy_connection_changed.emit(ID, false)
+	InputRouter.joy_changed(OTHER_ID, true, "03000000-another-wheel", "Fanatec CSL Elite Wheel")
+	eq(r.pause_menu.notice[0], "A DIFFERENT WHEEL", "a wheel by its name")
+	_done(r)
+
+
+func test_pause_stops_the_count() -> void:
+	_clean()
+	var r := _racing()
+	_plug_wheel()
+	Input.joy_connection_changed.emit(ID, false)
+	Input.joy_connection_changed.emit(ID, true)
+	drive(r, 30, input(1.0))
+	check(r.replug_count > 0.0 and r.replug_count < PauseMenu.REPLUG_COUNT, "counting")
+	var p := input(1.0)
+	p.pause_pressed = true
+	drive(r, 1, p)
+	check(r.paused and r.pause_menu.visible and r.replug_count == 0.0, "pause: the count stops, on the pause menu")
+	eq(r.pause_menu.counting, 0.0, "the menu, not the count")
+	drive(r, 240, input(1.0))
+	check(r.paused, "and it stays paused for the player to resume")
+	_done(r)
+
+
+func test_the_countdown_screenshot() -> void:
+	_clean()
+	var r := _racing()
+	var game := load("res://scripts/core/game.gd")
+	game.stage_unplug()
+	game.stage_replug(false)
+	check(r.paused and r.replug_count > 0.0, "--screen=replugged counts down as a real replug does")
+	eq(r.pause_menu.notice[0], "A DIFFERENT WHEEL", "a different wheel")
 	_done(r)
 
 
@@ -108,6 +183,8 @@ func test_an_unsaved_profile_comes_back_too() -> void:
 	InputRouter.joy_changed(OTHER_ID, true, PAD, "Test Pad")
 	check(InputRouter._transient.get(OTHER_ID) == p, "the same profile, on its new id")
 	eq(p.binding("nitro"), [JOY_BUTTON_X], "rebinds and all")
+	eq(r.pause_menu.notice[0], "CONTROLLER CONNECTED", "the same pad back")
+	_count_down(r)
 	check(not r.paused, "and the race carries on")
 	_done(r)
 
@@ -135,7 +212,7 @@ func test_a_pause_the_player_made_stays() -> void:
 	Input.joy_connection_changed.emit(ID, false)
 	check(r.paused and r.pause_menu.notice.size() == 2, "already paused: the notice shows")
 	Input.joy_connection_changed.emit(ID, true)
-	check(r.paused, "back: still paused, as the player left it")
+	check(r.paused and r.replug_count == 0.0, "back: still paused, as the player left it, no count")
 	eq(r.pause_menu.notice, [] as Array[String], "without the notice")
 	_done(r)
 

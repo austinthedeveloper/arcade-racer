@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+	The Web build's page (EQ-23): Godot's HTML shell (export_presets.cfg, Web,
+	html/custom_html_shell) with a Sundown Run loading screen in place of Godot's
+	splash: a sunset over the night sky, the name, and a bar with how much of the
+	engine and the game has downloaded. Plain HTML and CSS, no pictures, so it shows
+	the moment the page arrives. Godot fills in the $GODOT_ placeholders on export.
+-->
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<title>$GODOT_PROJECT_NAME</title>
+		<style>
+:root {
+	--night: #140c2a;
+	--dusk: #3b1a5c;
+	--glow: #ff5ea8;
+	--gold: #ffd23a;
+	--sky: #3ad0ff;
+	--chrome: #1b2a6b;
+}
+
+html, body, #canvas {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+body {
+	color: white;
+	background-color: var(--night);
+	overflow: hidden;
+	touch-action: none;
+}
+
+#canvas {
+	display: block;
+}
+
+#canvas:focus {
+	outline: none;
+}
+
+#loader {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2.2vmin;
+	background: linear-gradient(to bottom, var(--night) 0%, var(--dusk) 55%, #a8336e 78%, #ff8a3a 100%);
+	font-family: 'Trebuchet MS', 'Arial Black', Arial, sans-serif;
+	z-index: 1;
+}
+
+/* The logo's striped sun, sinking into the horizon. */
+#sun {
+	width: 34vmin;
+	height: 17vmin;
+	border-radius: 17vmin 17vmin 0 0;
+	background:
+		repeating-linear-gradient(to bottom, transparent 0 1.4vmin, var(--night) 1.4vmin 2.1vmin) bottom / 100% 45% no-repeat,
+		linear-gradient(to bottom, var(--gold), #ff8a3a 55%, var(--glow));
+	box-shadow: 0 0 6vmin rgba(255, 94, 168, 0.45);
+}
+
+#name {
+	margin: 0;
+	font-size: 9vmin;
+	font-style: italic;
+	font-weight: 900;
+	letter-spacing: 0.06em;
+	line-height: 1;
+	color: var(--gold);
+	text-shadow: 0.5vmin 0.5vmin 0 var(--glow), 1vmin 1vmin 0 var(--chrome);
+	text-align: center;
+}
+
+#bar {
+	width: min(70vw, 480px);
+	height: 18px;
+	padding: 3px;
+	border: 2px solid #c9d4ff;
+	background: var(--chrome);
+	box-sizing: content-box;
+}
+
+#fill {
+	height: 100%;
+	width: 0%;
+	background: linear-gradient(to bottom, #fff2a8, var(--gold) 45%, #ff9d2e);
+	transition: width 0.2s linear;
+}
+
+#fill.waiting {
+	width: 30%;
+	animation: sweep 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes sweep {
+	from { margin-left: 0%; }
+	to { margin-left: 70%; }
+}
+
+#status {
+	min-height: 1.2em;
+	font-size: 14px;
+	letter-spacing: 0.12em;
+	color: rgba(255, 255, 255, 0.85);
+	text-align: center;
+}
+
+#notice {
+	display: none;
+	max-width: min(80vw, 560px);
+	padding: 1rem;
+	border: 1px solid #ff5e7a;
+	background: #3a1430;
+	color: #f2e6ee;
+	font-family: Arial, sans-serif;
+	line-height: 1.4;
+	text-align: center;
+	white-space: pre-line;
+}
+		</style>
+		$GODOT_HEAD_INCLUDE
+	</head>
+	<body>
+		<canvas id="canvas">
+			Your browser does not support the canvas tag.
+		</canvas>
+
+		<noscript>
+			Sundown Run needs JavaScript to run in the browser.
+		</noscript>
+
+		<div id="loader">
+			<div id="sun"></div>
+			<h1 id="name">SUNDOWN RUN</h1>
+			<div id="bar" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+				<div id="fill" class="waiting"></div>
+			</div>
+			<div id="status">LOADING</div>
+			<div id="notice"></div>
+		</div>
+
+		<script src="$GODOT_URL"></script>
+		<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const loader = document.getElementById('loader');
+	const bar = document.getElementById('bar');
+	const fill = document.getElementById('fill');
+	const status = document.getElementById('status');
+	const notice = document.getElementById('notice');
+
+	// What the bar says: the share downloaded, in MB, then STARTING while the engine
+	// sets up after the last byte.
+	function loadingText(current, total) {
+		if (!(current > 0 && total > 0)) {
+			return 'LOADING';
+		}
+		if (current >= total) {
+			return 'STARTING';
+		}
+		const mb = (n) => (n / 1e6).toFixed(1);
+		return 'LOADING ' + Math.floor(100 * current / total) + '%  (' + mb(current) + ' / ' + mb(total) + ' MB)';
+	}
+
+	function showProgress(current, total) {
+		if (current > 0 && total > 0) {
+			const pct = Math.min(100, 100 * current / total);
+			fill.classList.remove('waiting');
+			fill.style.width = pct + '%';
+			bar.setAttribute('aria-valuenow', Math.floor(pct));
+		} else {
+			fill.classList.add('waiting');
+		}
+		status.textContent = loadingText(current, total);
+	}
+
+	function fail(err) {
+		console.error(err);
+		let text = 'An unknown error occurred.';
+		if (err instanceof Error) {
+			text = err.message;
+		} else if (typeof err === 'string') {
+			text = err;
+		}
+		bar.style.display = 'none';
+		status.textContent = 'SUNDOWN RUN COULD NOT START';
+		notice.textContent = text;
+		notice.style.display = 'block';
+	}
+
+	const missing = Engine.getMissingFeatures({
+		threads: GODOT_THREADS_ENABLED,
+	});
+	if (missing.length !== 0) {
+		fail('This browser is missing what the game needs:\n' + missing.join('\n')
+			+ '\nTry a current Chrome, Edge, Firefox or Safari.');
+		return;
+	}
+	showProgress(0, 0);
+	engine.startGame({
+		'onProgress': showProgress,
+	}).then(() => {
+		loader.remove();
+	}, fail);
+}());
+		</script>
+	</body>
+</html>

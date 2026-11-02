@@ -100,6 +100,9 @@ var pause_menu: PauseMenu
 ## The GUID of the joypad driving while it's unplugged (WH-7), or "". The pause menu says so.
 var unplugged := ""
 var _unplug_paused := false  # the unplugging paused the race, so plugging back in resumes it
+## Seconds left counting 3, 2, 1 after the joypad came back (WH-12), before the race resumes;
+## 0 when not counting. The pause menu shows the count (PauseMenu.counting).
+var replug_count := 0.0
 var results: ResultsScreen  # after the finish (RC-5)
 var new_best_time := false  # this finish set the best time for the stage and car
 var best_before := {}  # SaveData.best for the stage and car before this finish
@@ -108,6 +111,13 @@ var _start_distance := 0.0  # where the player started this run, for the miles d
 
 var background: Background
 var road: RoadRenderer
+## The layer the HUD, the results, the pause menu and the photo flash are on: hidden for the
+## frame a photo is taken (begin_photo).
+var ui_layer: CanvasLayer
+var photo: Photo  # the photo key's flash (PR-21)
+var photo_taking := false  # the HUD is hidden for a photo being taken
+var last_photo := ""  # the last photo's path ("" when it couldn't be saved)
+var _touch_was_visible := false
 var fx: FxLayer  # between the road and the HUD
 var hud: Hud
 ## The F1 input overlay, F2 calibration wizard and F3 tuning panel. The game passes in its
@@ -131,6 +141,7 @@ var _staged := false  # this race was staged for a screenshot: nothing it does i
 var _drive_x := NAN  # --drive-x=X: start on this line and autodrive holds it (road half-widths; past 1 is off the road)
 var _lightning_at := NAN  # --lightning-at=SECONDS: a full lightning strike then, on a stage with lightning (screenshots)
 var _screenshot_frames: Array[int] = []
+var _photo_frames: Array[int] = []  # --photo-at=N,M: the photo key pressed on those frames (into --shot-dir)
 var _screenshot_dir := ""
 var _gas_since := NAN  # when the gas went down, in seconds from GO (Launch.grade)
 var _frame := 0  # physics ticks since this race (re)started
@@ -153,6 +164,7 @@ func _ready() -> void:
 	fx = FxLayer.new()
 	add_child(fx)
 	var layer := CanvasLayer.new()
+	ui_layer = layer
 	add_child(layer)
 	hud = Hud.new()
 	hud.race = self
@@ -172,6 +184,8 @@ func _ready() -> void:
 		debug_panel = DebugPanel.new()
 		layer.add_child(debug_panel)
 	debug_panel.race = self
+	photo = Photo.new()
+	layer.add_child(photo)  # over the rest of the layer
 	audio = RaceAudio.new(self)
 	add_child(audio)
 	if not InputRouter.driver_unplugged.is_connected(driver_unplugged):
@@ -371,6 +385,8 @@ func pause() -> void:
 
 func resume() -> void:
 	paused = false
+	replug_count = 0.0
+	pause_menu.counting = 0.0
 	pause_menu.close()
 	unplugged = ""  # resumed without it (the keyboard, or a restart): no waiting for it
 	_unplug_paused = false
@@ -423,16 +439,42 @@ func driver_unplugged(guid: String, joy_name: String, wheel: bool) -> void:
 	pause_menu.notice = PauseMenu.unplugged_notice(joy_name, wheel)
 
 
-## It's back (InputRouter.driver_replugged), with the same profile: the race carries on if
-## the unplugging paused it and the pause menu is still up (not the options over it).
-func driver_replugged(guid: String) -> void:
-	if guid != unplugged:
+## A joypad is back (InputRouter.driver_replugged, WH-12): the one that went (`same`), or a
+## different one in its place, which the notice says. If the unplugging paused the race and
+## the pause menu is still up (not the options over it), it counts 3, 2, 1 and carries on
+## (replug_tick); otherwise it stays paused as the player left it, the notice saying only
+## that a different device is driving.
+func driver_replugged(_guid: String, joy_name := "", wheel := false, same := true) -> void:
+	if unplugged == "":
 		return
+	unplugged = ""
 	if _unplug_paused and paused and pause_menu.visible:
-		resume()
+		replug_count = PauseMenu.REPLUG_COUNT
+		pause_menu.counting = replug_count
+		pause_menu.notice = PauseMenu.replugged_notice(joy_name, wheel, same)
+		Audio.play("beep")
 	else:
-		unplugged = ""
-		pause_menu.notice = []
+		var n: Array[String] = []
+		if not same:
+			n = PauseMenu.replugged_notice(joy_name, wheel, same)
+		pause_menu.notice = n
+
+
+## One tick of the replug countdown: a beep on each number, the race resumed at 0. Pause
+## (or back) stops it, and the pause menu takes over, still paused.
+func replug_tick(dt: float, stop: bool) -> void:
+	if stop:
+		replug_count = 0.0
+		pause_menu.counting = 0.0
+		pause_menu.open()
+		return
+	var shown := ceili(replug_count)
+	replug_count = maxf(0.0, replug_count - dt)
+	pause_menu.counting = replug_count
+	if replug_count <= 0.0:
+		resume()
+	elif ceili(replug_count) != shown:
+		Audio.play("beep")
 
 
 ## Back from the options the pause menu opened: the menu again, still paused.
@@ -508,18 +550,25 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(dt: float) -> void:
+	if InputRouter.state.photo_pressed and not demo:
+		take_photo()
 	var inp: DriveInput = Settings.drive_input(InputRouter.state)
 	if _autodrive or demo:
 		inp = _autodrive_input()
 	else:
-		inp = Assists.apply(inp, player, track, Settings.steer_assist, Settings.brake_assist)
+		if Settings.co_pilot:  # (AC-14: in place of the steering assist, and braking for the bends)
+			inp = Assists.co_pilot(inp, player, track)
+		inp = Assists.apply(inp, player, track, Settings.steer_assist and not Settings.co_pilot,
+			Settings.brake_assist or Settings.co_pilot)
 	horn = inp.horn
 	if calibration.visible or debug_panel.visible:  # (the tuning panel holds the race still)
 		_redraw()
 		return
 	dt *= debug_panel.logic.slow_motion()
 	if paused:
-		if pause_menu.visible:  # (hidden while the options are up)
+		if replug_count > 0.0:  # the joypad back: 3, 2, 1 (WH-12)
+			replug_tick(dt, inp.pause_pressed or InputRouter.menu.back_pressed)
+		elif pause_menu.visible:  # (hidden while the options are up)
 			pause_action(pause_menu.choose(InputRouter.menu, inp.pause_pressed))
 		if online == null or not paused:
 			_redraw()
@@ -669,6 +718,47 @@ func _physics_process(dt: float) -> void:
 	_frame += 1
 	if _screenshot_frames.has(_frame):
 		_save_screenshot(_frame)
+	if _photo_frames.has(_frame):
+		take_photo()
+
+
+## The photo key (PR-21): hides the HUD for this frame, grabs the frame once it is drawn and
+## saves it (finish_photo). Not while one is being taken already.
+func take_photo() -> void:
+	if not begin_photo():
+		return
+	if not is_inside_tree():
+		finish_photo(null)
+		return
+	await RenderingServer.frame_post_draw
+	var tex := get_viewport().get_texture()
+	finish_photo(tex.get_image() if tex != null else null)
+
+
+## Hides the HUD layer (the HUD, the pause menu, the results) and the touch controls for the
+## photo's frame. Returns false when a photo is already being taken.
+func begin_photo() -> bool:
+	if photo_taking:
+		return false
+	photo_taking = true
+	ui_layer.visible = false
+	_touch_was_visible = TouchControls.current != null and TouchControls.current.visible
+	if _touch_was_visible:
+		TouchControls.current.visible = false
+	return true
+
+
+## The photo's frame, `img`, grabbed: saves it (Photo.save), puts the HUD back, sounds the
+## shutter and flashes. Returns the photo's path, "" when there was nothing to save.
+func finish_photo(img: Image) -> String:
+	photo_taking = false
+	ui_layer.visible = true
+	if _touch_was_visible and TouchControls.current != null:
+		TouchControls.current.visible = true
+	last_photo = Photo.save(img)
+	Audio.play("shutter")
+	photo.flash()
+	return last_photo
 
 
 ## The camera view (WS-15, CameraView) the road and the FX layer draw from. Display only.
@@ -1040,8 +1130,12 @@ func _parse_dev_args() -> void:
 			_callout_shot_count = int(spec.get_slice(":", 1)) if spec.contains(":") else 0
 		elif arg.begins_with("--time-left="):
 			_time_left_shot = float(arg.get_slice("=", 1))
+		elif arg.begins_with("--photo-at="):
+			for f in arg.get_slice("=", 1).split(","):
+				_photo_frames.append(int(f))
 		elif arg.begins_with("--shot-dir="):
 			_screenshot_dir = arg.get_slice("=", 1)
+			Photo.dir = _screenshot_dir
 
 
 func _autodrive_input() -> DriveInput:

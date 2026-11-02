@@ -12,8 +12,10 @@ const PATH := "user://tuning.cfg"
 const PRESET_DIR := "user://tuning_presets"
 const LOG_PATH := "user://tuning_log.txt"
 ## The areas, in the debug panel's page order. A key is "area/name".
-const AREAS := ["driving", "slide", "crashes", "ai", "traffic", "draft", "launch", "power_ups", "scoring", "camera", "world"]
-const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "SCORING", "CAMERA", "WORLD"]
+const AREAS := ["driving", "slide", "crashes", "ai", "traffic", "draft", "launch", "power_ups", "scoring", "camera", "world",
+	"assists"]
+const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "SCORING", "CAMERA",
+	"WORLD", "ASSISTS"]
 ## key: [default, min, max, step, what it is]. tools/tuning_adopt.py rewrites the defaults in
 ## place, so keep one value to a line, the default first.
 const TABLE := {
@@ -149,6 +151,9 @@ const TABLE := {
 	"world/puddle_share": [0.3, 0.0, 1.0, 0.05, "share of the near road's segments with a puddle"],
 	"world/puddle_glint": [0.65, 0.0, 1.0, 0.05, "how bright a puddle's highlight is"],
 	"world/puddle_reach": [60, 0, 200, 5, "segments ahead that puddles are drawn"],
+	"assists/co_pilot_gain": [1.5, 0.5, 4.0, 0.1, "co-pilot: lock per road half-width off its lane's middle"],
+	"assists/co_pilot_edge": [4.0, 0.0, 10.0, 0.5, "co-pilot: extra lock per half-width past the outer lanes, back toward the road"],
+	"assists/co_pilot_nudge": [0.6, 0.1, 1.0, 0.05, "co-pilot: share of the steering a full push of the player's takes over"],
 }
 
 ## Where overrides are read from and saved to; "" keeps them in memory only (tests).

@@ -91,6 +91,20 @@ func test_changelog_describes_this_version() -> void:
 		check(text.contains(line), headings[i] + " has a date")
 
 
+## What's new (PR-17): the export bundles this version's section for the title, where the
+## game reads it (WhatsNew.BUNDLED), and takes it away again after.
+func test_export_bundles_whats_new() -> void:
+	var export_sh := FileAccess.get_file_as_string("res://tools/export.sh")
+	check(export_sh.contains("tools/changelog.py --json \"$version\" >" + WhatsNew.BUNDLED.trim_prefix("res://")),
+		"export.sh writes the notes where WhatsNew reads them")
+	check(export_sh.contains("rm -f " + WhatsNew.BUNDLED.trim_prefix("res://")), "and removes them after")
+	check(FileAccess.get_file_as_string("res://.gitignore").contains(WhatsNew.BUNDLED.trim_prefix("res://")),
+		"never committed")
+	for preset in ["Windows", "macOS", "Web", "Linux"]:
+		var filter: String = presets().get_value(section(presets(), preset), "exclude_filter", "")
+		check(not filter.contains("assets"), preset + " exports assets/")
+
+
 ## A tag's Web build goes to Azure (tools/deploy_web.sh, the release workflow's web job). The
 ## job may only run for a tag, in the "web" environment its Azure sign-in trusts, and must
 ## deploy the zip tools/export.sh names.
@@ -107,3 +121,79 @@ func test_tag_deploys_the_web_build() -> void:
 	var export_sh := FileAccess.get_file_as_string("res://tools/export.sh")
 	check(export_sh.contains("SundownRun-$version-web.zip"), "export.sh writes that zip")
 	check(FileAccess.file_exists("res://tools/deploy_web.sh"), "tools/deploy_web.sh exists")
+
+
+# --- Web load (EQ-23) ---------------------------------------------------------------------
+
+## The Web build's .pck may not grow past this (bytes): every byte is downloaded before the
+## game starts. 0.4.0's was 25.0 MB. Raising it is a decision, not a fix for a red build.
+const WEB_PCK_BUDGET := 28_000_000
+## The files the export copies as they are (imported files go as their .godot/imported copies).
+const EXPORTED_AS_IS := ["gd", "tscn", "tres", "gdshader", "json", "uid", "import"]
+## How far the estimate may sit from the real .pck (CI compares them).
+const ESTIMATE_TOLERANCE := 0.1
+const WEB_EXCLUDED := ["res://tests", "res://tools", "res://docs", "res://build", "res://.godot"]
+
+
+## The Web .pck's size worked out from the project, without exporting it: each imported
+## resource's .godot/imported files plus the files exported as they are, outside the preset's
+## excluded folders and any folder with a .gdignore.
+static func web_pck_estimate(dir := "res://") -> int:
+	if dir.trim_suffix("/") in WEB_EXCLUDED or FileAccess.file_exists(dir.path_join(".gdignore")):
+		return 0
+	var d := DirAccess.open(dir)
+	if d == null:
+		return 0
+	var total := 0
+	for f in d.get_files():
+		var path := dir.path_join(f)
+		if f.get_extension() == "import":
+			var cfg := ConfigFile.new()
+			if cfg.load(path) == OK:
+				for dest: String in cfg.get_value("deps", "dest_files", []):
+					total += file_size(dest)
+		if f.get_extension() in EXPORTED_AS_IS:
+			total += file_size(path)
+	for sub in d.get_directories():
+		total += web_pck_estimate(dir.path_join(sub))
+	return total
+
+
+static func file_size(path: String) -> int:
+	var file := FileAccess.open(path, FileAccess.READ)
+	return 0 if file == null else file.get_length()
+
+
+func test_the_web_build_has_its_own_loading_screen() -> void:
+	var cfg := presets()
+	var shell: String = cfg.get_value(section(cfg, "Web") + ".options", "html/custom_html_shell", "")
+	eq(shell, "res://web/shell.html", "the Web preset uses web/shell.html")
+	var html := FileAccess.get_file_as_string(shell)
+	check(html != "", "the shell is there")
+	# What Godot's exporter fills in, and what starts the engine.
+	for placeholder in ["$GODOT_URL", "$GODOT_CONFIG", "$GODOT_THREADS_ENABLED", "$GODOT_HEAD_INCLUDE", "$GODOT_PROJECT_NAME"]:
+		check(html.contains(placeholder), "the shell has " + placeholder)
+	check(html.contains("engine.startGame(") and html.contains("'onProgress'"), "starts the game with a progress handler")
+	check(html.contains("id=\"bar\"") and html.contains("role=\"progressbar\""), "a progress bar")
+	check(html.contains("Engine.getMissingFeatures"), "says what an old browser is missing")
+	# Nothing to fetch before it shows: no pictures, fonts or scripts from elsewhere.
+	check(not html.contains("http://") and not html.contains("https://") and not html.contains("<img"),
+		"the loader is plain HTML and CSS")
+
+
+func test_the_web_pck_fits_its_budget() -> void:
+	var estimate := web_pck_estimate()
+	check(estimate > 10_000_000, "the estimate counts the art (%d bytes)" % estimate)
+	check(estimate <= WEB_PCK_BUDGET, "the Web .pck, about %.1f MB, fits its %.1f MB budget"
+		% [estimate / 1e6, WEB_PCK_BUDGET / 1e6])
+	# CI exports the real one (ci.yml, the export smoke job) and points this at it.
+	var real_path := OS.get_environment("SUNDOWN_WEB_PCK")
+	print("  Web .pck estimate %d bytes%s" % [estimate, "" if real_path == "" else ", exported %d" % file_size(real_path)])
+	if real_path == "":
+		return
+	var real := file_size(real_path)
+	check(real > 0, "the exported .pck is at SUNDOWN_WEB_PCK: " + real_path)
+	check(real <= WEB_PCK_BUDGET, "the exported Web .pck, %.1f MB, fits its %.1f MB budget"
+		% [real / 1e6, WEB_PCK_BUDGET / 1e6])
+	near(float(estimate) / maxf(real, 1.0), 1.0, ESTIMATE_TOLERANCE,
+		"the estimate (%d) within 10%% of the exported .pck (%d)" % [estimate, real])

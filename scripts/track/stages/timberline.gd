@@ -21,6 +21,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#5d6068"), Color("#575a62")],
 		"lane": Color("#f4f4f4"),
 		"clock": [31, 33, 35, 24],  # seconds on ARCADE: start, then each checkpoint (WS-11)
+		"station": "station_rock",  # the radio station SHUFFLE starts on here (Radio, PR-19)
 		"background": "res://assets/sprites/backgrounds/timberline_far.png",
 		"specials": ["log_truck", "suv_green", "street_sweeper"],
 		"snow_grip": 0.92,  # the road over the snowy summit (RC-12); dry elsewhere
