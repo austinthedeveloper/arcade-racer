@@ -12,6 +12,9 @@ const STEER_AHEAD := 3000.0  # world units ahead the steering reads the curve (a
 const STEER_CURVE := 0.25
 const STEER_GAIN := 1.5
 const LOOKAHEAD := 50  # segments checked for slower cars in the way
+const ONCOMING_SCAN := 2  # times LOOKAHEAD looked ahead for oncoming traffic
+const ONCOMING_CAUTION := 0.4  # oncoming room counts this much of a standing car's (oncoming_gap)
+const ONCOMING_CROSS_TIME := 1.0  # seconds before an oncoming car arrives that its lane can still be crossed
 const LANE_CLEARANCE := 0.05  # road half-widths of room kept beside a car when passing
 const CROSS_TIME := 0.3  # seconds ahead within which the way across to a new lane must be clear
 const LIFT_TIME := 0.5  # seconds: closer than this behind a car with nowhere to go, lift...
@@ -69,6 +72,7 @@ func drive(me: PlayerCar, track: Track, racers: Array, dt: float) -> DriveInput:
 			if _blocking >= BLOCK_TIME:
 				_blocking = 0.0
 				_resting = BLOCK_REST
+	want = keep_to_own_side(track, z, want)
 	_react -= dt
 	if style != RivalProfile.Style.ERRATIC or _react <= 0.0:
 		var looking := ERRATIC_LOOKAHEAD if style == RivalProfile.Style.ERRATIC else LOOKAHEAD
@@ -141,6 +145,23 @@ static func straight_ahead(track: Track, z: float) -> bool:
 	return true
 
 
+## On an undivided road (RC-11), `want` kept out of the oncoming lanes: no nearer the middle
+## than the middle of the nearest lane going its way. open_lane still passes on the other side.
+static func keep_to_own_side(track: Track, z: float, want: float) -> float:
+	if Traffic.divided(track):
+		return want
+	var seg := track.narrowest_ahead(z)
+	var inner: float = seg.lane_x(Traffic.first_lane(track, seg.lanes)) * track.side()
+	return maxf(want * track.side(), inner * track.side()) * track.side()
+
+
+## `k` segments to an oncoming car as the room before a standing one: what is left when
+## `me` (at `speed`) has covered its share of the closing gap, cut by ONCOMING_CAUTION since
+## braking won't get out of its way.
+static func oncoming_gap(k: int, speed: float, car_speed: float) -> int:
+	return floori(k * ONCOMING_CAUTION * maxf(speed, 0.0) / maxf(speed + car_speed, 1.0))
+
+
 ## Where to drive across the road: `want` if it's clear for LOOKAHEAD segments, otherwise the
 ## lane (nearest `want` first) with the most room before a slower car. The lanes are those of
 ## the narrowest road just ahead (Track.narrowest_ahead). Returns {"x", "gap"}, gap in
@@ -176,15 +197,27 @@ static func clear_for(track: Track, z: float, x: float, me: PlayerCar, racers: A
 			first = mini(first, int(ahead / Cfg.SEGMENT_LENGTH))
 	# Close ahead, a car between here and `x` blocks the way across too, not just `x` itself
 	var near := ceili(me.speed * CROSS_TIME / Cfg.SEGMENT_LENGTH)
-	for k in first:
+	# Oncoming traffic (RC-11) closes at both speeds: it is looked for further out, and its
+	# gap counted as the room before a standing car (oncoming_gap)
+	var best := first
+	for k in first * ONCOMING_SCAN:
+		if k >= best and oncoming_gap(k, me.speed, Cfg.MAX_SPEED) >= best:
+			break
 		for car: Traffic.TrafficCar in track.segments[(here + k) % n].cars:
-			if not car.solid() or car.speed >= me.speed:
+			# Slower than it could go is in the way, even at its speed: stuck on the tail of a
+			# car (bumped down to its speed) it would otherwise see a clear road and never pull out
+			if not car.solid() or (not car.oncoming and (k >= best or car.speed >= maxf(me.speed, me.top_speed))):
 				continue
 			var room := half_car * (1.0 + car.width_mult) + LANE_CLEARANCE
+			var gap := oncoming_gap(k, me.speed, car.speed) if car.oncoming else k
 			if absf(car.offset - x) < room:
-				return k
+				best = mini(best, gap)
+				continue
 			var on_the_way := (car.offset - me.x) * (x - me.x) > 0.0 \
 				and absf(car.offset - me.x) < absf(x - me.x) + room
-			if k < near and on_the_way:
-				return k
-	return first
+			# An oncoming car in the way across is crossed only well before it arrives
+			var soon := k * Cfg.SEGMENT_LENGTH < (me.speed + car.speed) * ONCOMING_CROSS_TIME if car.oncoming \
+				else k < near
+			if soon and on_the_way:
+				best = mini(best, gap)
+	return best

@@ -29,7 +29,7 @@ static func in_wake(me: PlayerCar, track: Track, racers: Array) -> bool:
 	var here := track.find_segment(nose).index
 	for k in ceili(LENGTH / Cfg.SEGMENT_LENGTH) + 1:
 		for car: Traffic.TrafficCar in track.segments[(here + k) % track.segments.size()].cars:
-			if not Traffic.BIG.has(car.sprite) or not car.solid() or me.speed < car.speed * KEEP_UP:
+			if not Traffic.BIG.has(car.sprite) or not car.solid() or car.oncoming or me.speed < car.speed * KEEP_UP:
 				continue
 			var ahead := wrapf(car.z - nose, -track.length * 0.5, track.length * 0.5)
 			if ahead > 0.0 and ahead < LENGTH and absf(car.offset - me.x) < WIDTH:

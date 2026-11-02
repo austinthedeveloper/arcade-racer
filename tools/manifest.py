@@ -20,7 +20,7 @@ def build(project_dir="."):
     """The manifest for the sprites in `project_dir`: a roadside sprite with reduced copies
     (spritelib.lod_steps of its height) lists them under "lod"."""
     # Imported here: the tools import this module too
-    from make_car_sprites import TRAFFIC
+    from make_car_sprites import CAR_SCALE, LIGHT_SHEET, TRAFFIC
     from make_drawn_props import DRAWN
     from make_span_sprites import SPANS, solid_part
     from make_stage_sprites import STAGES
@@ -46,6 +46,19 @@ def build(project_dir="."):
         for name in names:
             if name is not None:
                 traffic[name] = {"file": "traffic/%s.png" % name, "world_per_px": world_per_px}
+    traffic[LIGHT_SHEET[1]] = {"file": "traffic/%s.png" % LIGHT_SHEET[1], "world_per_px": CAR_SCALE}
+    for name, entry in traffic.items():
+        # CP-6: a front view (oncoming) and light-state frames, where they were made
+        front = "traffic/front/%s.png" % name
+        if os.path.exists(os.path.join(project_dir, "assets", "sprites", front)):
+            entry["front"] = front
+        lights = {}
+        for state in ("brake", "left", "right"):
+            light = "traffic/lights/%s_%s.png" % (name, state)
+            if os.path.exists(os.path.join(project_dir, "assets", "sprites", light)):
+                lights[state] = light
+        if lights:
+            entry["lights"] = lights
     for entry in roadside.values():
         steps = sprite_lods(project_dir, entry["file"])
         if steps:

@@ -7,6 +7,21 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Oncoming traffic (RC-11): on Palm Coast, Redrock, Timberline, Bayou and Harvest the left
+  lanes carry traffic coming the other way, drawn from the front with its headlights on (CP-6).
+  Meeting one head-on is a longer spin than running into the back of a car; a ram plate knocks
+  it aside, a ghost goes through it, and a close pass is a near miss. Neon Strip, Thunderhead
+  and Skyline are divided roads with traffic one way only.
+- Lane-change tells (RC-11): some everyday cars change lanes now and then, flashing a turn
+  signal for a second first. A new tan sedan joins the traffic.
+
+### Changed
+
+- Rivals keep to their own side of an undivided road and pass on the other side only with
+  room; a rival stuck on the tail of a car pulls out to pass it.
+
 ## [0.3.1] - 2026-11-01
 
 ### Fixed

@@ -771,3 +771,91 @@ func test_no_slide_slow_off_road_or_for_rivals() -> void:
 	eq(p.slide, 0.0, "a crash ends it")
 	p.reset()
 	eq(p.slide, 0.0, "and a restart")
+
+
+# --- Oncoming traffic (RC-11) ------------------------------------------------------
+
+func _oncoming(t: Track, p: PlayerCar, ahead: float, offset := 0.0) -> Traffic.TrafficCar:
+	var c := Traffic.TrafficCar.new()
+	c.oncoming = true
+	c.z = p.position + Cfg.PLAYER_Z + ahead
+	c.last_z = c.z
+	c.offset = offset
+	c.lane = offset
+	c.speed = Cfg.MAX_SPEED * 0.4
+	c.sprite = "sedan_beige"
+	c.segment = t.find_segment(c.z)
+	c.segment.cars.append(c)
+	return c
+
+
+## Runs traffic and the car together for `ticks`; true once the car crashed.
+func _drive_into(t: Track, p: PlayerCar, tr: Traffic, ticks: int) -> bool:
+	for i in ticks:
+		p.update(DT, input(), t, true)
+		tr.update(DT, t)
+		p.collide(t)
+		if p.crashed:
+			return true
+	return false
+
+
+func test_a_head_on_crashes_even_when_stopped() -> void:
+	var t := flat_track()
+	var p := _car(0.0)
+	p.reset(4000.0)
+	var tr := Traffic.new()
+	var c := _oncoming(t, p, 2000.0)
+	tr.cars.append(c)
+	check(_drive_into(t, p, tr, 120), "an oncoming car runs into a car standing in its lane")
+	near(p.crash_length, Cfg.HEAD_ON_DURATION, 0.001, "the longer head-on spin")
+	check(c.flung > 0.0, "and is knocked aside")
+
+
+func test_a_head_on_at_speed_is_never_skipped() -> void:
+	var t := flat_track()
+	var p := _car(Cfg.MAX_SPEED * 1.3)
+	p.reset(4000.0)
+	var tr := Traffic.new()
+	tr.cars.append(_oncoming(t, p, 3000.0))
+	check(_drive_into(t, p, tr, 120), "met nose to nose at nitro speed")
+	check(p.speed <= Cfg.MAX_SPEED * 1.3 * Cfg.HEAD_ON_KEEP + 1.0, "most of the speed gone")
+
+
+func test_oncoming_in_another_lane_goes_by() -> void:
+	var t := flat_track()
+	var p := _car(Cfg.MAX_SPEED)
+	p.reset(4000.0)
+	var tr := Traffic.new()
+	tr.cars.append(_oncoming(t, p, 3000.0, -0.75))
+	p.x = 0.25
+	check(not _drive_into(t, p, tr, 120), "a lane apart")
+	check(not p.hit_traffic, "untouched")
+
+
+func test_a_ghost_drives_through_oncoming_traffic() -> void:
+	var t := flat_track()
+	var p := _car(Cfg.MAX_SPEED)
+	p.reset(4000.0)
+	p.ghost_time = 5.0
+	var tr := Traffic.new()
+	tr.cars.append(_oncoming(t, p, 3000.0))
+	check(not _drive_into(t, p, tr, 120), "see-through")
+
+
+func test_a_ram_plate_flings_oncoming_traffic() -> void:
+	var t := flat_track()
+	var p := _car(Cfg.MAX_SPEED)
+	p.reset(4000.0)
+	p.ram_time = 5.0
+	var tr := Traffic.new()
+	var c := _oncoming(t, p, 3000.0)
+	tr.cars.append(c)
+	var rammed := false
+	for i in 120:
+		p.update(DT, input(), t, true)
+		tr.update(DT, t)
+		p.collide(t)
+		rammed = rammed or p.rammed
+	check(rammed and not p.crashed, "rammed out of the way")
+	check(c.flung > 0.0 or c.returning, "flying")

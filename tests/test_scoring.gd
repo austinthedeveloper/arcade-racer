@@ -94,6 +94,28 @@ func test_passing_close_to_traffic_is_a_near_miss() -> void:
 	eq(s.bonuses.size(), 0, "a lane over is no near miss")
 
 
+func test_missing_oncoming_traffic_is_a_near_miss() -> void:
+	# An oncoming car passes the nose from its far side, a segment the nose never enters
+	var t := flat_track()
+	var s := Scoring.new()
+	var p := PlayerCar.new()
+	p.reset(4000.0)
+	p.speed = Cfg.MAX_SPEED
+	p.x = 0.0
+	p.last_position = p.position - 200.0
+	var car := Traffic.TrafficCar.new()
+	car.oncoming = true
+	car.last_z = p.last_position + Cfg.PLAYER_Z + 30.0
+	car.z = p.position + Cfg.PLAYER_Z - 300.0
+	car.offset = -0.45
+	car.speed = Cfg.MAX_SPEED * 0.4
+	car.segment = t.find_segment(car.z)
+	car.segment.cars.append(car)
+	check(not p.passed_segments(t).has(car.segment), "in a segment behind the ones entered")
+	s.watch(DT, p, t)
+	eq(s.bonuses.size(), 1, "a near miss")
+
+
 func test_the_feed_fades_after_the_finish() -> void:
 	# Review on #118: the feed only aged while racing, so the finish's bonuses stayed up.
 	var r := race(true, false, 0)

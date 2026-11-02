@@ -51,6 +51,10 @@ Use: <stage specials for <stage> | Traffic.CARS | Traffic.BIG>
 1. tools/make_car_sprites.py: append to TRAFFIC
    ("<sheet>", TRAFFIC_CAR_WIDTH, CAR_SCALE, [names]) for cars or
    ("<sheet>", TRAFFIC_BIG_WIDTH, BIG_SCALE, [names]) for trucks and buses.
+   A front-view sheet of the same vehicles goes in FRONTS (only vehicles with a front view
+   come the other way on undivided roads, RC-11). A car in Traffic.CARS signals before changing
+   lanes only with signal frames: add it to SIGNALLERS (its taillights lit amber; TAIL_BOX if
+   its body is red or yellow) and check the lights/ frames.
 2. python3 tools/make_car_sprites.py assets/concept .  (rebuilds all cars and traffic; it prints
    "warning: ... has N sprites, expected M" when the count is off: fix the names list)
 3. Use them: a stage's theme() "specials" list (scripts/track/stages/<stage>.gd), or

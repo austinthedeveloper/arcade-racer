@@ -317,7 +317,7 @@ func _draw_cars(seg: Segment) -> void:
 		if car.flung > 0.0:
 			# Rammed: arcs up and off the road
 			cy -= sin((1.0 - car.flung / Traffic.FLING_TIME) * PI) * w * 0.9
-		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog)
+		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog, car.oncoming, Traffic.light_state(car))
 
 	for r: RivalCar in _rivals_in.get(seg.index, []):
 		_draw_rival(seg, r, tint)

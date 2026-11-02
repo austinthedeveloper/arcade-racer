@@ -113,14 +113,19 @@ func watch(dt: float, p: PlayerCar, track: Track) -> void:
 	if p.crash_time > 0.0:
 		return
 	var nose := p.position + Cfg.PLAYER_Z
+	var cars: Array = []
 	for seg in p.passed_segments(track):
-		for car: Traffic.TrafficCar in seg.cars:
-			if not car.solid():
-				continue
-			var now := wrapf(car.z - nose, -track.length * 0.5, track.length * 0.5)
-			if now <= 0.0 and p.gap_when_tick_began(car, track) > 0.0 \
-					and near_miss(p.x, p.speed, car.offset, car.width_mult):
-				add("NEAR MISS", NEAR_MISS)
+		cars.append_array(seg.cars.filter(func(c: Traffic.TrafficCar) -> bool: return not c.oncoming))
+	# Oncoming traffic (RC-11) can go by without the nose entering its segment
+	cars.append_array(Traffic.around(track, nose, Cfg.ONCOMING_REACH).filter(
+		func(c: Traffic.TrafficCar) -> bool: return c.oncoming))
+	for car: Traffic.TrafficCar in cars:
+		if not car.solid():
+			continue
+		var now := wrapf(car.z - nose, -track.length * 0.5, track.length * 0.5)
+		if now <= 0.0 and p.gap_when_tick_began(car, track) > 0.0 \
+				and near_miss(p.x, p.speed, car.offset, car.width_mult):
+			add("NEAR MISS", NEAR_MISS)
 
 
 ## Passing a checkpoint: a clean section if nothing was touched since the last one.

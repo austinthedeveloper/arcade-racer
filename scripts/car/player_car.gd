@@ -332,6 +332,7 @@ func collide(track: Track) -> void:
 	for seg in passed_segments(track):
 		if _collide_segment(seg, track):
 			return
+	_collide_oncoming(track)
 
 
 ## Collides with one segment's spans, sprites and traffic. True once something was hit.
@@ -355,7 +356,7 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 	if ghost_time > 0.0:
 		return false
 	for car in seg.cars:
-		if not car.solid():
+		if not car.solid() or car.oncoming:
 			continue
 		var car_half: float = half_car * car.width_mult
 		var reach: float = (half_car + car_half) * Cfg.HIT_OVERLAP
@@ -386,6 +387,39 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 			bumped = true
 			move_to(car.z - Cfg.PLAYER_Z - Cfg.BUMP_GAP, track)
 		return true
+	return false
+
+
+## Oncoming traffic (RC-11) near the nose: it closes on the car even when the car is slow
+## or still, so it is looked for around the nose every tick rather than in the segments
+## entered. Meeting one nose to nose is a head-on; steering into one alongside a side-swipe.
+func _collide_oncoming(track: Track) -> bool:
+	if ghost_time > 0.0:
+		return false
+	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
+	var nose := position + Cfg.PLAYER_Z
+	for car: Traffic.TrafficCar in Traffic.around(track, nose, Cfg.ONCOMING_REACH):
+		if not car.oncoming or not car.solid():
+			continue
+		var reach: float = (half_car + half_car * car.width_mult) * Cfg.HIT_OVERLAP
+		if absf(x - car.offset) >= reach:
+			continue
+		var gap := gap_when_tick_began(car, track)
+		var now := wrapf(car.z - nose, -track.length * 0.5, track.length * 0.5)
+		if gap > 0.0 and now <= 0.0:
+			hit_traffic = true
+			Traffic.fling(car, x)
+			if ram_time > 0.0:
+				rammed = true
+			else:
+				crash(Cfg.HEAD_ON_DURATION, speed * Cfg.HEAD_ON_KEEP)
+			return true
+		if gap <= 0.0 and gap > -Cfg.CAR_LENGTH and absf(last_x - car.offset) >= reach:
+			hit_traffic = true
+			x = car.offset + (reach if x >= car.offset else -reach)
+			speed *= 1.0 - Cfg.SIDESWIPE_SPEED_LOSS
+			bumped = true
+			return true
 	return false
 
 
