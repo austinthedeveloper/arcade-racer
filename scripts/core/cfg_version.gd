@@ -39,3 +39,47 @@ static func to_write(path: String, current: int, fresh := false) -> ConfigFile:
 	cfg = ConfigFile.new()
 	stamp(cfg, current)
 	return cfg
+
+
+# --- Backups (EQ-21) ----------------------------------------------------------------------
+# A loader migrates an older file as it reads it; the first save after writes it over in the
+# new version. Just before that write, the file as it was is copied to `path`.bak
+# (backup_if_older), so nothing is written until something is saved. Options > Game >
+# RESTORE BACKUP copies every .bak back over its file and loads them again.
+
+const BACKUP := ".bak"
+
+
+static func backup_path(path: String) -> String:
+	return path + BACKUP
+
+
+static func has_backup(path: String) -> bool:
+	return FileAccess.file_exists(backup_path(path))
+
+
+## Before a save writes `path` in version `current`: when the file there is older (a save
+## from before this version, about to be written over migrated), a copy of it as it is goes to
+## `path`.bak. Returns true when it made one.
+static func backup_if_older(path: String, current: int) -> bool:
+	var disk := ConfigFile.new()
+	if not FileAccess.file_exists(path) or disk.load(path) != OK or of(disk) >= current:
+		return false
+	var err := DirAccess.copy_absolute(ProjectSettings.globalize_path(path), ProjectSettings.globalize_path(backup_path(path)))
+	if err != OK:
+		push_warning("Couldn't back up %s before migrating it (error %d)" % [path, err])
+	return err == OK
+
+
+## Puts `path`.bak back over `path` (copied to a side file first, then renamed over it, so a
+## cut-off copy never replaces the file). The backup is kept. Returns true when it did.
+static func restore(path: String) -> bool:
+	if not has_backup(path):
+		return false
+	var tmp := ProjectSettings.globalize_path(path + ".restoring")
+	var err := DirAccess.copy_absolute(ProjectSettings.globalize_path(backup_path(path)), tmp)
+	if err == OK:
+		err = DirAccess.rename_absolute(tmp, ProjectSettings.globalize_path(path))
+	if err != OK:
+		push_error("Couldn't restore %s from its backup (error %d)" % [path, err])
+	return err == OK

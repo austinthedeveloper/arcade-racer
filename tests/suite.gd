@@ -46,23 +46,25 @@ static func remove_tree(dir: String) -> void:
 ## Points the InputRouter at an empty profile file of the tests' own.
 static func use_scratch_profiles(router: Node) -> void:
 	router.profile_path = SCRATCH_PROFILES
-	if FileAccess.file_exists(SCRATCH_PROFILES):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SCRATCH_PROFILES))
+	for f in [SCRATCH_PROFILES, SCRATCH_PROFILES + CfgVersion.BACKUP]:
+		if FileAccess.file_exists(f):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
 	router.load_profiles()
 
 
 ## Points the Settings autoload at an empty options file of the tests' own (all defaults).
 static func use_scratch_settings(settings: Node) -> void:
 	settings.path = SCRATCH_SETTINGS
-	if FileAccess.file_exists(SCRATCH_SETTINGS):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SCRATCH_SETTINGS))
+	for f in [SCRATCH_SETTINGS, SCRATCH_SETTINGS + CfgVersion.BACKUP]:
+		if FileAccess.file_exists(f):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
 	settings.load_settings()
 
 
 ## Points the SaveData autoload at an empty save file of the tests' own (a fresh save).
 static func use_scratch_save(save_data: Node) -> void:
 	save_data.path = SCRATCH_SAVE
-	for f in [SCRATCH_SAVE, SCRATCH_SAVE + ".bad", SCRATCH_SAVE + ".tmp"]:
+	for f in [SCRATCH_SAVE, SCRATCH_SAVE + ".bad", SCRATCH_SAVE + ".tmp", SCRATCH_SAVE + CfgVersion.BACKUP]:
 		if FileAccess.file_exists(f):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
 	save_data.load_save()

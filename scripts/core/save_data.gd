@@ -157,6 +157,7 @@ func save(fresh := false) -> void:
 		cfg.set_value("stats", k, stats[k])
 	# Written whole to a side file and then renamed over the save, so a crash mid-write
 	# never leaves a cut-off save.
+	CfgVersion.backup_if_older(path, VERSION)  # (EQ-21)
 	var tmp := path + ".tmp"
 	var err := cfg.save(tmp)
 	if err == OK:

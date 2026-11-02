@@ -500,3 +500,91 @@ func test_profiles_write_the_version() -> void:
 		after[guid] = keys
 	eq(after, before, "the same profiles")
 	_clean()
+
+
+# --- Backups (EQ-21) ---
+
+func _on_disk_version(path: String) -> int:
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	return CfgVersion.of(cfg)
+
+
+func test_a_migrated_file_is_backed_up_before_it_is_written_over() -> void:
+	_clean()
+	for path in [TestSuite.SCRATCH_SETTINGS, TestSuite.SCRATCH_SAVE, TestSuite.SCRATCH_PROFILES]:
+		check(not CfgVersion.has_backup(path), "a fresh file has no backup: " + path.get_file())
+	_load_settings("settings_v10.cfg")
+	_load_save("save_v2.cfg")
+	_load_profiles("input_profiles_v1.cfg")
+	var fixtures := {TestSuite.SCRATCH_SETTINGS: "settings_v10.cfg", TestSuite.SCRATCH_SAVE: "save_v2.cfg",
+		TestSuite.SCRATCH_PROFILES: "input_profiles_v1.cfg"}
+	for path: String in fixtures:
+		check(not CfgVersion.has_backup(path), "loading (and migrating) alone writes nothing: " + path.get_file())
+	Settings.save()
+	SaveData.save()
+	InputRouter._write_profiles()
+	for path: String in fixtures:
+		check(CfgVersion.has_backup(path), "an older file is backed up before it's written over migrated: " + path.get_file())
+	Settings.save()  # (a second save: the file is the new version now, the backup stays as it was)
+	SaveData.save()
+	InputRouter._write_profiles()
+	for path: String in fixtures:
+		eq(FileAccess.get_file_as_string(CfgVersion.backup_path(path)), FileAccess.get_file_as_string(FIXTURES + fixtures[path]),
+			"as it was: " + path.get_file())
+	_clean()
+	Settings.save()
+	Settings.load_settings()
+	check(not CfgVersion.has_backup(TestSuite.SCRATCH_SETTINGS), "a current file isn't")
+	_use_fixture("save_future.cfg", TestSuite.SCRATCH_SAVE)
+	SaveData.load_save()
+	SaveData.save()
+	check(not CfgVersion.has_backup(TestSuite.SCRATCH_SAVE), "nor a newer one (nothing migrates)")
+	_clean()
+
+
+func test_restore_puts_the_backups_back() -> void:
+	_clean()
+	eq(OptionsScreen.backups(), [] as Array[String], "no backups yet")
+	eq(OptionsScreen.restore_backups(), 0, "nothing to restore")
+	var before := _load_save("save_v2.cfg")
+	_load_settings("settings_v10.cfg")
+	SaveData.record_finish(1, "car_vega", 50.0, 1)  # saved: the file is the current version now
+	Settings.rumble = 2
+	Settings.save()
+	eq([_on_disk_version(TestSuite.SCRATCH_SAVE), _on_disk_version(TestSuite.SCRATCH_SETTINGS)], [SaveData.VERSION, Settings.VERSION],
+		"both written over in the new version")
+	eq(OptionsScreen.backups(), [TestSuite.SCRATCH_SETTINGS, TestSuite.SCRATCH_SAVE] as Array[String], "the two backed up")
+	eq(OptionsScreen.restore_backups(), 2, "both restored")
+	eq([_on_disk_version(TestSuite.SCRATCH_SAVE), _on_disk_version(TestSuite.SCRATCH_SETTINGS)], [2, 10], "the old files back")
+	eq([SaveData.furthest_stage, SaveData.total_points, Array(SaveData.unlocks), SaveData.bests], [before[0], before[1], before[2], before[3]],
+		"the save as it was, loaded")
+	eq(Settings.rumble, Settings.EFFECT_STEPS, "the options as they were, loaded")
+	check(CfgVersion.has_backup(TestSuite.SCRATCH_SAVE), "the backup kept")
+	_clean()
+
+
+func test_the_restore_row_asks_first() -> void:
+	_clean()
+	var o := OptionsScreen.new()
+	o.go_to(OptionsScreen.Row.RESTORE)
+	eq(o.page, OptionsScreen.Page.GAME, "on the Game page, by the resets")
+	eq(o.row_text(OptionsScreen.Row.RESTORE), "NONE", "no backups")
+	check(not o.select_restore() and not o.confirming, "selecting it does nothing")
+	eq(o.help_text(), OptionsScreen.NO_BACKUP_HELP, "and says why")
+	_load_save("save_v2.cfg")
+	SaveData.total_points = 999
+	SaveData.save()
+	eq(o.row_text(OptionsScreen.Row.RESTORE), "", "a backup to restore")
+	check(not o.select_restore() and o.confirming, "the first select asks")
+	eq(o.row_text(OptionsScreen.Row.RESTORE), "SURE?", "shown on the row")
+	eq(o.row_text(OptionsScreen.Row.RESET_SAVE), "", "only on its own row")
+	o.move(1)
+	check(not o.confirming, "moving away cancels")
+	o.go_to(OptionsScreen.Row.RESTORE)
+	o.select_restore()
+	check(o.select_restore(), "the second select restores")
+	eq(o.row_text(OptionsScreen.Row.RESTORE), "DONE", "shows it ran")
+	eq(SaveData.total_points, 250, "the save before the change")
+	o.free()
+	_clean()

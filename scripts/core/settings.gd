@@ -248,6 +248,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("display", "integer_scale", integer_scale)
 	cfg.set_value("display", "vsync", vsync)
 	cfg.set_value("display", "scanlines", scanlines)
+	CfgVersion.backup_if_older(path, VERSION)  # (EQ-21)
 	cfg.save(path)
 	apply_volumes()
 	apply_display()

@@ -14,6 +14,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Instant replay (RC-17): after the finish, the last six seconds before the line play back
   once, every racer and the traffic as they were, before the results. Any key or button
   skips it; Enter during the finish slow-down still goes straight to the results.
+- Save backups (EQ-21): before a new version updates your options, progress or wheel setups
+  to its format, it keeps a copy of each file as it was (a .bak beside it). Options > Game >
+  RESTORE BACKUP puts them back (it asks first).
 
 ## [0.4.0] - 2026-11-02
 
