@@ -3,7 +3,7 @@ extends RefCounted
 ## Civilian cars cruising in lanes. Each car lives in its segment's `cars` list for rendering
 ## and collision. On an undivided road (a stage theme without "divided") the lanes left of the
 ## middle carry oncoming traffic, drawn from the front (RC-11). Some everyday cars change lanes
-## now and then, after signalling for SIGNAL_TIME.
+## now and then, after signalling for traffic/signal_time (Tuning).
 
 class TrafficCar:
 	var z := 0.0
@@ -24,7 +24,7 @@ class TrafficCar:
 	var oncoming := false  # drives toward the player (z falls); `speed` is still positive
 	var change_in := INF  # seconds to its next lane change; INF for a car that never changes
 	## Signalling: -1 left, 1 right on screen, 0 not. It moves over once it has signalled for
-	## SIGNAL_TIME, and the signal goes off when it is in its new lane.
+	## traffic/signal_time, and the signal goes off when it is in its new lane.
 	var signal_dir := 0
 	var signal_age := 0.0
 
@@ -33,21 +33,14 @@ class TrafficCar:
 	func solid() -> bool:
 		return flung <= 0.0 and not returning
 
-const SIGNAL_TIME := 1.0  # seconds a car signals before it moves over
 const SIGNAL_GIVE_UP := 4.0  # seconds: the signal goes off even if the car never got there (held at a narrowing edge)
 const BLINK := 0.5  # seconds per flash of a signal, on for BLINK_ON of it
 const BLINK_ON := 0.3
-const CHANGER_SHARE := 0.5  # of the cars that have signal frames (CarSprites), the share that change lanes
 const CHANGE_EVERY := [5.0, 16.0]  # seconds between one car's lane changes
-const CHANGE_RETRY := 1.5  # seconds before trying again when the next lane is taken
 const CHANGE_ROOM := 3  # segments ahead and behind that must be clear in the new lane
 
 ## The usual four-lane road's lanes (Segment.lane_offsets for a road of any width, WS-7).
 const LANE_OFFSETS := [-0.75, -0.25, 0.25, 0.75]
-const MERGE_SPEED := 0.8  # road half-widths per second, moving over where lanes merge or split
-const FLING_TIME := 0.8  # how long a rammed car flies
-const FLING_SPEED := 4.0  # road half-widths per second sideways
-const RETURN_SPEED := 1.2  # road half-widths per second, drifting back to its lane after landing
 const CARS := ["compact_teal", "sedan_beige", "wagon_blue", "van_red", "mini_white", "roadster_yellow",
 	"pickup_red", "suv_green", "muscle_white", "van_navy", "hatch_purple", "sedan_tan"]
 const BIG := ["semi", "bus", "box_truck", "rv", "carrier", "garbage_truck"]
@@ -100,39 +93,51 @@ func spawn(track: Track, count: int, seed_value: int = 7) -> void:
 	var rng := _rng
 	rng.seed = seed_value
 	var specials: Array = track.theme.get("specials", SPECIALS)
-	var big := BIG
-	var everyday := CARS
 	for i in count:
-		var car := TrafficCar.new()
-		car.z = rng.randf_range(40.0, track.segments.size() - 10.0) * Cfg.SEGMENT_LENGTH
-		car.last_z = car.z
-		var at := track.find_segment(car.z)
-		var k := rng.randi() % at.lanes
-		car.lane_frac = (k + 0.5) / at.lanes
-		car.offset = at.lane_x(k) * track.side()
-		car.lane = car.offset
-		car.oncoming = k < first_lane(track, at.lanes)
-		var roll := rng.randf()
-		if roll < BIG_SHARE:
-			var pool: Array = with_fronts(big) if car.oncoming else big
-			car.sprite = pool[rng.randi() % pool.size()]
-			car.speed = Cfg.MAX_SPEED * rng.randf_range(BIG_SPEED[0], BIG_SPEED[1])
-		elif roll < BIG_SHARE + SPECIAL_SHARE:
-			var pool: Array = with_fronts(specials) if car.oncoming else specials
-			car.sprite = pool[rng.randi() % pool.size()]
-			car.speed = Cfg.MAX_SPEED * rng.randf_range(SPECIAL_SPEED[0], SPECIAL_SPEED[1])
-		else:
-			var pool: Array = with_fronts(everyday) if car.oncoming else everyday
-			car.sprite = pool[rng.randi() % pool.size()]
-			car.speed = Cfg.MAX_SPEED * rng.randf_range(CAR_SPEED[0], CAR_SPEED[1])
-		var changes := rng.randf() < CHANGER_SHARE
-		var first_change := rng.randf_range(CHANGE_EVERY[0], CHANGE_EVERY[1])
-		if changes and not car.oncoming and CarSprites.signals(car.sprite):
-			car.change_in = first_change
-		car.width_mult = CarSprites.traffic[car.sprite]["world_w"] / Cfg.CAR_WIDTH
-		car.segment = track.find_segment(car.z)
-		car.segment.cars.append(car)
-		cars.append(car)
+		_add_car(track, rng.randf_range(40.0, track.segments.size() - 10.0) * Cfg.SEGMENT_LENGTH, specials)
+
+
+## The debug panel's traffic burst (EQ-16): `count` more cars spread over the road from
+## `from_z` to `span` world units on, wherever the player is.
+func burst(track: Track, from_z: float, count: int, span := 20000.0) -> void:
+	var specials: Array = track.theme.get("specials", SPECIALS)
+	for i in count:
+		_add_car(track, fposmod(from_z + _rng.randf_range(0.0, span), track.length), specials)
+
+
+## A car at `z` in a lane picked by the dice, of a kind and speed picked by them too.
+func _add_car(track: Track, z: float, specials: Array) -> void:
+	var rng := _rng
+	var car := TrafficCar.new()
+	car.z = z
+	car.last_z = car.z
+	var at := track.find_segment(car.z)
+	var k := rng.randi() % at.lanes
+	car.lane_frac = (k + 0.5) / at.lanes
+	car.offset = at.lane_x(k) * track.side()
+	car.lane = car.offset
+	car.oncoming = k < first_lane(track, at.lanes)
+	var roll := rng.randf()
+	if roll < BIG_SHARE:
+		var pool: Array = with_fronts(BIG) if car.oncoming else BIG
+		car.sprite = pool[rng.randi() % pool.size()]
+		car.speed = Cfg.MAX_SPEED * rng.randf_range(BIG_SPEED[0], BIG_SPEED[1])
+	elif roll < BIG_SHARE + SPECIAL_SHARE:
+		var pool: Array = with_fronts(specials) if car.oncoming else specials
+		car.sprite = pool[rng.randi() % pool.size()]
+		car.speed = Cfg.MAX_SPEED * rng.randf_range(SPECIAL_SPEED[0], SPECIAL_SPEED[1])
+	else:
+		var pool: Array = with_fronts(CARS) if car.oncoming else CARS
+		car.sprite = pool[rng.randi() % pool.size()]
+		car.speed = Cfg.MAX_SPEED * rng.randf_range(CAR_SPEED[0], CAR_SPEED[1])
+	var changes := rng.randf() < Tuning.v("traffic/changer_share")
+	var first_change := rng.randf_range(CHANGE_EVERY[0], CHANGE_EVERY[1])
+	if changes and not car.oncoming and CarSprites.signals(car.sprite):
+		car.change_in = first_change
+	car.width_mult = CarSprites.traffic[car.sprite]["world_w"] / Cfg.CAR_WIDTH
+	car.segment = track.find_segment(car.z)
+	car.segment.cars.append(car)
+	cars.append(car)
 
 
 func update(dt: float, track: Track) -> void:
@@ -152,14 +157,14 @@ func update(dt: float, track: Track) -> void:
 			car.lane = seg.lane_at(car.lane_frac) * track.side()
 		if car.flung > 0.0:
 			car.flung = maxf(0.0, car.flung - dt)
-			car.offset = clampf(car.offset + car.fling_dir * FLING_SPEED * dt, -4.0, 4.0)
+			car.offset = clampf(car.offset + car.fling_dir * Tuning.v("traffic/fling_speed") * dt, -4.0, 4.0)
 			car.returning = car.flung <= 0.0
 		elif car.returning:
-			car.offset = move_toward(car.offset, car.lane, RETURN_SPEED * dt)
+			car.offset = move_toward(car.offset, car.lane, Tuning.v("traffic/return_speed") * dt)
 			car.returning = car.offset != car.lane
 		elif follows:
 			# Lanes merge or split here: it moves over, and never runs off a narrowing road
-			car.offset = keep_on_road(move_toward(car.offset, car.lane, MERGE_SPEED * dt), track.width_at(car.z))
+			car.offset = keep_on_road(move_toward(car.offset, car.lane, Tuning.v("traffic/merge_speed") * dt), track.width_at(car.z))
 
 
 ## A lane-changing car's tick: counting down to its next change, signalling, then moving
@@ -168,12 +173,12 @@ func _change_lanes(car: TrafficCar, dt: float, track: Track, seg: Segment) -> vo
 	if car.signal_dir != 0:
 		var was := car.signal_age
 		car.signal_age += dt
-		if was < SIGNAL_TIME and car.signal_age >= SIGNAL_TIME:
+		if was < Tuning.v("traffic/signal_time") and car.signal_age >= Tuning.v("traffic/signal_time"):
 			# The road may have narrowed while it signalled
 			var k := clampi(lane_index(car.lane_frac, seg.lanes) + car.signal_dir * track.side(),
 				first_lane(track, seg.lanes), seg.lanes - 1)
 			car.lane_frac = (k + 0.5) / seg.lanes
-		elif car.signal_age >= SIGNAL_TIME and (absf(car.offset - seg.lane_at(car.lane_frac) * track.side()) < 0.001
+		elif car.signal_age >= Tuning.v("traffic/signal_time") and (absf(car.offset - seg.lane_at(car.lane_frac) * track.side()) < 0.001
 				or car.signal_age >= SIGNAL_GIVE_UP):
 			car.signal_dir = 0
 			car.change_in = _rng.randf_range(CHANGE_EVERY[0], CHANGE_EVERY[1])
@@ -187,7 +192,7 @@ func _change_lanes(car: TrafficCar, dt: float, track: Track, seg: Segment) -> vo
 	if k + d < lo or k + d >= seg.lanes:
 		d = -d
 	if k + d < lo or k + d >= seg.lanes or not lane_clear(track, seg, k + d, car):
-		car.change_in = CHANGE_RETRY
+		car.change_in = Tuning.v("traffic/change_retry")
 		return
 	car.signal_dir = d * track.side()
 	car.signal_age = 0.0
@@ -239,5 +244,5 @@ static func keep_on_road(offset: float, width: float) -> float:
 static func fling(car: TrafficCar, from_x: float) -> void:
 	if car.flung <= 0.0 and not car.returning:
 		car.lane = car.offset
-	car.flung = FLING_TIME
+	car.flung = Tuning.v("traffic/fling_time")
 	car.fling_dir = 1.0 if car.offset >= from_x else -1.0

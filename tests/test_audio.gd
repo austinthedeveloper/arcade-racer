@@ -236,7 +236,7 @@ func test_each_pickup_has_its_own_sound() -> void:
 		r.audio.update(DT)
 		eq(count(RaceAudio.PICKUP_CUES[kind]), 1, RaceAudio.PICKUP_CUES[kind])
 	r.picked_up = false
-	r.player.draft_time = Draft.BOOST_TIME
+	r.player.draft_time = Tuning.v("draft/boost_time")
 	r.audio.update(DT)
 	eq(count("draft_boost"), 1, "the slipstream boost")
 

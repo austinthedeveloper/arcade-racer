@@ -16,6 +16,7 @@ func _initialize() -> void:
 	TestSuite.use_scratch_settings(root.get_node("Settings"))
 	TestSuite.use_scratch_save(root.get_node("SaveData"))
 	TestSuite.use_scratch_ghosts()
+	Tuning.use_defaults()  # never the player's user://tuning.cfg
 	SpriteLibrary.load_all()
 	CarSprites.load_all()
 	var filter := ""

@@ -143,7 +143,7 @@ func test_race_near_miss_and_lead() -> void:
 	var r := race(false, false)
 	drive(r, 200)
 	r.callouts.clear()
-	r.score.add("NEAR MISS", Scoring.NEAR_MISS)  # as if scored this tick
+	r.score.add("NEAR MISS", Tuning.i("scoring/near_miss"))  # as if scored this tick
 	r._callouts_after_tick(r.score.bonuses.size() - 1, r.place)
 	eq(r.callouts.current.get("kind"), Callouts.Kind.NEAR_MISS, "a near miss bursts")
 	r.callouts.clear()

@@ -93,6 +93,8 @@ func _draw() -> void:
 	_power_up_fx()
 	_draw_speedo(lay["speedo"], p)
 	_draw_slipstream(lay["slipstream"], p)
+	if Tuning.any_tuned():
+		_draw_tuned(lay["tuned"])
 
 	# Device, bottom left
 	var device: Rect2 = lay["device"]
@@ -161,7 +163,15 @@ static func layout(touch := false) -> Dictionary:
 		"speedo": Rect2(w - 112, h - 98, 106, 92),
 		"device": Rect2(6, h - 30, 280, 26),
 		"subtitle": Rect2(w / 2.0 - 160, 46, 320, 18),
+		"tuned": Rect2(w / 2.0 + 118, 10, 40, 13),
 	}
+
+
+## TUNED: the debug panel (F3) has changed something from the defaults, so this isn't the
+## game as designed.
+func _draw_tuned(r: Rect2) -> void:
+	_panel(r, Color(1.0, 0.6, 0.23, 0.85))
+	_text_centered(Vector2(r.get_center().x, r.end.y - 3), "TUNED", 8, Color(0.08, 0.05, 0.12))
 
 
 ## The route bar inside the progress element (the markers stick out above and below).
@@ -336,7 +346,7 @@ func _draw_nitro(r: Rect2, p: PlayerCar) -> void:
 func _draw_speedo(r: Rect2, p: PlayerCar) -> void:
 	var c := Vector2(r.get_center().x, r.position.y + 46)
 	var rad := 42.0
-	var pct := clampf(p.speed / (Cfg.MAX_SPEED * Cfg.NITRO_SPEED_MULT), 0.0, 1.0)
+	var pct := clampf(p.speed / (Cfg.MAX_SPEED * Tuning.v("driving/nitro_speed")), 0.0, 1.0)
 	draw_circle(c, rad + 2, Color(0.04, 0.03, 0.1, 0.7))
 	draw_arc(c, rad + 1, 0, TAU, 48, Color(GOLD, 0.8), 2)
 	# The tach: revs on the inner ring, red past the redline
@@ -374,7 +384,7 @@ func _draw_slipstream(r: Rect2, p: PlayerCar) -> void:
 	draw_rect(bar.grow(1), Color(0, 0, 0, 0.55))
 	if not on:
 		return
-	var fill := clampf(p.draft_time / Draft.BOOST_TIME if boost else p.draft, 0.0, 1.0)
+	var fill := clampf(p.draft_time / Tuning.v("draft/boost_time") if boost else p.draft, 0.0, 1.0)
 	var filled := Rect2(bar.position, Vector2(bar.size.x * fill, bar.size.y))
 	draw_rect(filled, PALETTE["slip_boost"] if boost else PALETTE["slip_meter"])
 	if boost:
@@ -432,7 +442,7 @@ static func burst_radius(text: String, size: int) -> Vector2:
 ## A run's time as m:ss.cc.
 ## The dev keys under the device line (no R restart online, where restart is off).
 static func keys_hint(online: bool) -> String:
-	return "F1 input debug   F2 calibrate wheel" + ("" if online else "   R restart")
+	return "F1 input debug   F2 calibrate wheel   F3 tuning" + ("" if online else "   R restart")
 
 
 static func clock_text(seconds: float) -> String:
@@ -542,7 +552,7 @@ func _power_up_slot(slot: Rect2) -> void:
 	var k := minf((slot.size.x - 6.0) / tex.get_width(), (slot.size.y - 6.0) / tex.get_height())
 	var size := Vector2(tex.get_width(), tex.get_height()) * k
 	draw_texture_rect(tex, Rect2(slot.get_center() - size / 2.0, size), false)
-	var left := p.ram_time / PowerUps.RAM_TIME if p.ram_time > 0.0 else p.ghost_time / PowerUps.GHOST_TIME
+	var left := p.ram_time / Tuning.v("power_ups/ram_time") if p.ram_time > 0.0 else p.ghost_time / Tuning.v("power_ups/ghost_time")
 	if left > 0.0:
 		draw_rect(Rect2(slot.end.x + 4, slot.end.y - slot.size.y * left, 3, slot.size.y * left), Color("#7ad8ff"))
 

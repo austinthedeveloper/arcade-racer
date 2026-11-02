@@ -325,12 +325,12 @@ func count(effect: String) -> int:
 
 ## The player car's base (middle of its bottom edge) on screen, lifted when it's in the air.
 static func car_base(p: PlayerCar) -> Vector2:
-	var s := Cfg.CAMERA_DEPTH / Cfg.PLAYER_Z
-	return Vector2(Cfg.SCREEN_W * 0.5, Cfg.HORIZON_Y + s * (Cfg.CAMERA_HEIGHT - p.air_height) * Cfg.PROJ)
+	var s := Tuning.v("camera/depth") / Cfg.PLAYER_Z
+	return Vector2(Cfg.SCREEN_W * 0.5, Cfg.HORIZON_Y + s * (Tuning.v("camera/height") - p.air_height) * Cfg.PROJ)
 
 
 static func car_width() -> float:
-	return Cfg.CAR_WIDTH * Cfg.CAMERA_DEPTH / Cfg.PLAYER_Z * Cfg.PROJ
+	return Cfg.CAR_WIDTH * Tuning.v("camera/depth") / Cfg.PLAYER_Z * Cfg.PROJ
 
 
 static func exhaust(base: Vector2, w: float, side: float) -> Vector2:

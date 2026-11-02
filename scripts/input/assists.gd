@@ -16,8 +16,6 @@ const STEER_FULL := 0.7  # ...and where it is at full strength
 ## A corner is taken at the speed that needs this much of full lock to hold it.
 const CORNER_LOCK := 0.8
 const LOOKAHEAD := 80  # segments of road ahead the braking assist reads
-## The braking the assist plans on (under its cap, so it is done braking by the corner).
-const PLAN_DECEL := Cfg.BRAKING * BRAKE_CAP * 0.6
 const BRAKE_RAMP := Cfg.MAX_SPEED * 0.04  # this far over the corner speed, full assist braking
 
 
@@ -45,7 +43,7 @@ static func steer_help(steer_in: float, x: float, pct: float, curve: float, car:
 	if absf(x) > (1.0 if seg == null else seg.width):
 		return 0.0
 	var lane := nearest_lane(x, lanes)
-	var hold := pct * curve * Cfg.CENTRIFUGAL * car.pull_mult / car.steer_mult
+	var hold := pct * curve * Tuning.v("driving/centrifugal") * car.pull_mult / car.steer_mult
 	var want := (lane - x) * STEER_GAIN + hold
 	var strength := smoothstep(STEER_FROM, STEER_FULL, pct) * (1.0 - clampf(absf(steer_in), 0.0, 1.0))
 	return clampf(want, -STEER_CAP, STEER_CAP) * strength
@@ -63,16 +61,17 @@ static func nearest_lane(x: float, lanes: Array = Traffic.LANE_OFFSETS) -> float
 ## The fastest the car can hold a curve of `curve` using CORNER_LOCK of its steering
 ## (world units per second); INF on a straight or a curve it can take flat out.
 static func corner_speed(curve: float, car: PlayerCar) -> float:
-	var need := absf(curve) * Cfg.CENTRIFUGAL * car.pull_mult / car.steer_mult  # lock per unit of speed fraction
+	var need := absf(curve) * Tuning.v("driving/centrifugal") * car.pull_mult / car.steer_mult  # lock per unit of speed fraction
 	if need <= 0.0001:
 		return INF
 	var pct := CORNER_LOCK / need
 	return INF if pct >= 1.0 else pct * Cfg.MAX_SPEED
 
 
-## The fastest the car may go now and still slow (at PLAN_DECEL) for every corner in the
-## next LOOKAHEAD segments from segment `from`.
+## The fastest the car may go now and still slow (planning on 60% of BRAKE_CAP, so it is done braking by the corner) for every
+## corner in the next LOOKAHEAD segments from segment `from`.
 static func corner_speed_ahead(car: PlayerCar, track: Track, from: int) -> float:
+	var plan_decel := Cfg.MAX_SPEED / Tuning.v("driving/braking_time") * BRAKE_CAP * 0.6
 	var limit := INF
 	var n := track.segments.size()
 	for i in LOOKAHEAD:
@@ -81,7 +80,7 @@ static func corner_speed_ahead(car: PlayerCar, track: Track, from: int) -> float
 		if v == INF:
 			continue
 		var dist := i * Cfg.SEGMENT_LENGTH
-		limit = minf(limit, sqrt(v * v + 2.0 * PLAN_DECEL * dist))
+		limit = minf(limit, sqrt(v * v + 2.0 * plan_decel * dist))
 	return limit
 
 

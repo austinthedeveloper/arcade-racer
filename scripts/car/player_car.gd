@@ -47,7 +47,7 @@ var steer_mult := 1.0
 var pull_mult := 1.0
 var offroad_mult := 1.0
 var nitro_max := Cfg.NITRO_CHARGES
-var nitro_duration := Cfg.NITRO_DURATION
+var nitro_duration := Tuning.v("driving/nitro_time")
 
 # Power-ups (PowerUps): seconds left on each
 var ram_time := 0.0  # traffic you hit flies off instead of crashing you
@@ -63,7 +63,7 @@ var bumped := false  # true for the tick the car nudges slower traffic without c
 var rubbing := false  # side by side against another racer this tick (Rivals.resolve_contacts)
 var hit_traffic := false  # true for the tick the car touches a traffic car (any way)
 var crash_time := 0.0
-var crash_length := Cfg.CRASH_DURATION  # seconds the crash under way lasts in all
+var crash_length := Tuning.v("crashes/crash_time")  # seconds the crash under way lasts in all
 var crash_floor := 0.0  # the speed the crash under way slows to
 
 var _alt := 0.0
@@ -79,7 +79,7 @@ func setup(car: Dictionary) -> void:
 	pull_mult = t["pull"]
 	offroad_mult = t["offroad"]
 	nitro_max = t["nitros"]
-	nitro_duration = Cfg.NITRO_DURATION * t["nitro_time"]
+	nitro_duration = Tuning.v("driving/nitro_time") * t["nitro_time"]
 
 
 func reset(start_position: float = 0.0) -> void:
@@ -166,9 +166,9 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	shifted = 0
 	var seg := track.find_segment(position + Cfg.PLAYER_Z)
 	var pct := speed / Cfg.MAX_SPEED
-	var top := top_speed * (Cfg.NITRO_SPEED_MULT if nitro_time > 0.0 else 1.0)
+	var top := top_speed * (Tuning.v("driving/nitro_speed") if nitro_time > 0.0 else 1.0)
 	if draft_time > 0.0:
-		top *= Draft.SPEED_MULT
+		top *= Tuning.v("draft/speed_mult")
 	if manual:
 		top *= 1.0 + MANUAL_TOP_BONUS
 
@@ -202,46 +202,46 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 
 	# Steering and the outward pull of curves. Less grip steers less against the same pull,
 	# so the car slides wider through a bend
-	var rate := dt * Cfg.STEER_RATE * steer_mult * pct
+	var rate := dt * Tuning.v("driving/steer_rate") * steer_mult * pct
 	last_x = x
 	if airborne:
-		rate *= Cfg.AIR_STEER
-	x += steer_in * rate * (1.0 if airborne else grip_for(seg.grip, offroad)) * (Cfg.SLIDE_TURN if slide != 0.0 else 1.0)
+		rate *= Tuning.v("driving/air_steer")
+	x += steer_in * rate * (1.0 if airborne else grip_for(seg.grip, offroad)) * (Tuning.v("slide/turn") if slide != 0.0 else 1.0)
 	if not airborne:
-		x -= rate / steer_mult * pct * seg.curve * Cfg.CENTRIFUGAL * pull_mult
-	steer = lerpf(steer, steer_in, minf(1.0, dt * Cfg.STEER_SMOOTHING))
+		x -= rate / steer_mult * pct * seg.curve * Tuning.v("driving/centrifugal") * pull_mult
+	steer = lerpf(steer, steer_in, minf(1.0, dt * Tuning.v("driving/steer_smoothing")))
 
 	# Speed
 	var was := speed
 	if crash_time > 0.0:
 		crash_time -= dt
-		speed = move_toward(speed, crash_floor, Cfg.CRASH_BRAKING * dt)
+		speed = move_toward(speed, crash_floor, Cfg.MAX_SPEED * Tuning.v("crashes/crash_braking") * dt)
 		var recover := Cfg.CRASH_RECOVER_X * seg.width
-		x = move_toward(x, clampf(x, -recover, recover), dt * Cfg.CRASH_RECOVER_RATE)
+		x = move_toward(x, clampf(x, -recover, recover), dt * Tuning.v("crashes/recover_rate"))
 	elif slide != 0.0:
 		# Sliding: neither the throttle nor the brake bites, the tires scrub a little speed off
-		speed -= Cfg.SLIDE_DECEL * dt
+		speed -= Cfg.MAX_SPEED * Tuning.v("slide/decel") * dt
 	elif not airborne:
 		if throttle > 0.01:
-			var boost := Cfg.NITRO_ACCEL_MULT if nitro_time > 0.0 else 1.0
+			var boost := Tuning.v("driving/nitro_accel") if nitro_time > 0.0 else 1.0
 			if launch_time > 0.0:
-				boost *= Launch.BOOST_ACCEL
+				boost *= Tuning.v("launch/boost_accel")
 			elif bog_time > 0.0:
-				boost *= Launch.BOG_ACCEL
+				boost *= Tuning.v("launch/bog_accel")
 			if manual:
 				boost *= lug(gear, pct)
-			speed += Cfg.ACCEL * accel_mult * boost * throttle * (Cfg.ACCEL_START - Cfg.ACCEL_FADE * speed / top) * dt
+			speed += Cfg.MAX_SPEED / Tuning.v("driving/accel_time") * accel_mult * boost * throttle * (Tuning.v("driving/accel_start") - Tuning.v("driving/accel_fade") * speed / top) * dt
 		if brake > 0.01:
-			speed -= Cfg.BRAKING * brake * dt
+			speed -= Cfg.MAX_SPEED / Tuning.v("driving/braking_time") * brake * dt
 		if throttle <= 0.01 and brake <= 0.01:
-			speed -= Cfg.DECEL * dt
+			speed -= Cfg.MAX_SPEED / Tuning.v("driving/coast_time") * dt
 	offroad = absf(x) > track.width_at(position + Cfg.PLAYER_Z)
-	if offroad and not airborne and offroad_mult > 0.0 and speed > Cfg.OFFROAD_LIMIT / offroad_mult:
-		speed = maxf(Cfg.OFFROAD_LIMIT / offroad_mult, speed - Cfg.OFFROAD_DECEL * offroad_mult * dt)
+	if offroad and not airborne and offroad_mult > 0.0 and speed > Cfg.MAX_SPEED / Tuning.v("driving/offroad_limit") / offroad_mult:
+		speed = maxf(Cfg.MAX_SPEED / Tuning.v("driving/offroad_limit") / offroad_mult, speed - Cfg.MAX_SPEED / Tuning.v("driving/offroad_decel_time") * offroad_mult * dt)
 	if speed > top:
-		speed = move_toward(speed, top, Cfg.OVERSPEED_DECAY * dt)
+		speed = move_toward(speed, top, Cfg.MAX_SPEED * Tuning.v("driving/overspeed_decay") * dt)
 	if manual and speed > gear_limit(gear):  # the rev limiter: held there, or let down to it
-		speed = gear_limit(gear) if was <= gear_limit(gear) else move_toward(speed, gear_limit(gear), Cfg.OVERSPEED_DECAY * dt)
+		speed = gear_limit(gear) if was <= gear_limit(gear) else move_toward(speed, gear_limit(gear), Cfg.MAX_SPEED * Tuning.v("driving/overspeed_decay") * dt)
 	speed = maxf(speed, 0.0)
 	x = clampf(x, -Cfg.MAX_X, Cfg.MAX_X)
 	braking = brake > 0.1
@@ -251,15 +251,15 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 
 
 ## The power slide (RC-8) after this tick, from `slide` before it (-1 left, 1 right, 0 none):
-## braking at least SLIDE_BRAKE with SLIDE_STEER lock at SLIDE_SPEED or faster starts one the
-## way the car is steering; it lasts while the lock stays at least SLIDE_HOLD that way and the
-## car faster than SLIDE_EXIT_SPEED. `can` is false in the air, off the road or crashed: no slide.
+## braking at least slide/brake with slide/steer lock at slide/speed or faster (Tuning) starts
+## one the way the car is steering; it lasts while the lock stays at least slide/hold that way
+## and the car faster than slide/exit_speed. `can` is false in the air, off the road or crashed: no slide.
 static func slide_after(slide: float, speed: float, steer_in: float, brake: float, can: bool) -> float:
 	if not can:
 		return 0.0
 	if slide != 0.0:
-		return slide if steer_in * slide >= Cfg.SLIDE_HOLD and speed > Cfg.SLIDE_EXIT_SPEED else 0.0
-	if brake >= Cfg.SLIDE_BRAKE and absf(steer_in) >= Cfg.SLIDE_STEER and speed >= Cfg.SLIDE_SPEED:
+		return slide if steer_in * slide >= Tuning.v("slide/hold") and speed > Cfg.MAX_SPEED * Tuning.v("slide/exit_speed") else 0.0
+	if brake >= Tuning.v("slide/brake") and absf(steer_in) >= Tuning.v("slide/steer") and speed >= Cfg.MAX_SPEED * Tuning.v("slide/speed"):
 		return signf(steer_in)
 	return 0.0
 
@@ -280,16 +280,16 @@ static func grip_for(grip: float, off: bool) -> float:
 func _update_air(dt: float, new_road_y: float) -> void:
 	var road_vy := (new_road_y - road_y) / dt if dt > 0.0 else 0.0
 	if airborne:
-		_vy -= Cfg.GRAVITY * dt
+		_vy -= Tuning.v("driving/gravity") * dt
 		_alt += _vy * dt
 		if _alt <= new_road_y:
 			_alt = new_road_y
 			_vy = road_vy
 			airborne = false
 			landed = true
-	elif _vy - road_vy > Cfg.GRAVITY * dt and speed > Cfg.TAKEOFF_SPEED:
+	elif _vy - road_vy > Tuning.v("driving/gravity") * dt and speed > Cfg.MAX_SPEED * Tuning.v("driving/takeoff_speed"):
 		airborne = true
-		_vy -= Cfg.GRAVITY * dt
+		_vy -= Tuning.v("driving/gravity") * dt
 		_alt = road_y + _vy * dt
 	else:
 		_vy = road_vy
@@ -359,7 +359,7 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 		if not car.solid() or car.oncoming:
 			continue
 		var car_half: float = half_car * car.width_mult
-		var reach: float = (half_car + car_half) * Cfg.HIT_OVERLAP
+		var reach: float = (half_car + car_half) * Tuning.v("crashes/hit_overlap")
 		if absf(x - car.offset) >= reach:
 			continue
 		var gap := gap_when_tick_began(car, track)
@@ -371,7 +371,7 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 			hit_traffic = true
 			# Steered into a car beside you: pushed back out to your side, no snap behind it
 			x = car.offset + (reach if x >= car.offset else -reach)
-			speed *= 1.0 - Cfg.SIDESWIPE_SPEED_LOSS
+			speed *= 1.0 - Tuning.v("crashes/sideswipe_loss")
 			bumped = true
 			return true
 		if speed <= car.speed:
@@ -380,10 +380,10 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 		if ram_time > 0.0:
 			Traffic.fling(car, x)
 			rammed = true
-		elif speed - car.speed > Cfg.CRASH_CLOSING_SPEED:
+		elif speed - car.speed > Cfg.MAX_SPEED * Tuning.v("crashes/crash_closing"):
 			spin_out(car, track)
 		else:
-			speed = car.speed * maxf(Cfg.BUMP_KEEP, car.speed / speed)
+			speed = car.speed * maxf(Tuning.v("crashes/bump_keep"), car.speed / speed)
 			bumped = true
 			move_to(car.z - Cfg.PLAYER_Z - Cfg.BUMP_GAP, track)
 		return true
@@ -401,7 +401,7 @@ func _collide_oncoming(track: Track) -> bool:
 	for car: Traffic.TrafficCar in Traffic.around(track, nose, Cfg.ONCOMING_REACH):
 		if not car.oncoming or not car.solid():
 			continue
-		var reach: float = (half_car + half_car * car.width_mult) * Cfg.HIT_OVERLAP
+		var reach: float = (half_car + half_car * car.width_mult) * Tuning.v("crashes/hit_overlap")
 		if absf(x - car.offset) >= reach:
 			continue
 		var gap := gap_when_tick_began(car, track)
@@ -412,12 +412,12 @@ func _collide_oncoming(track: Track) -> bool:
 			if ram_time > 0.0:
 				rammed = true
 			else:
-				crash(Cfg.HEAD_ON_DURATION, speed * Cfg.HEAD_ON_KEEP)
+				crash(Tuning.v("crashes/head_on_time"), speed * Tuning.v("crashes/head_on_keep"))
 			return true
 		if gap <= 0.0 and gap > -Cfg.CAR_LENGTH and absf(last_x - car.offset) >= reach:
 			hit_traffic = true
 			x = car.offset + (reach if x >= car.offset else -reach)
-			speed *= 1.0 - Cfg.SIDESWIPE_SPEED_LOSS
+			speed *= 1.0 - Tuning.v("crashes/sideswipe_loss")
 			bumped = true
 			return true
 	return false
@@ -461,14 +461,14 @@ static func hits_span(seg: Segment, car_x: float, half_car: float) -> bool:
 ## Ran into the back of traffic too fast to bump it: a short spin, dropped in behind it at a
 ## share of its speed. Costs about a second, not the stop of a roadside crash.
 func spin_out(car: Traffic.TrafficCar, track: Track) -> void:
-	speed = minf(speed, car.speed * Cfg.TRAFFIC_CRASH_KEEP)
+	speed = minf(speed, car.speed * Tuning.v("crashes/traffic_spin_keep"))
 	move_to(car.z - Cfg.PLAYER_Z - Cfg.BUMP_GAP, track)
-	crash(Cfg.TRAFFIC_CRASH_DURATION, speed)
+	crash(Tuning.v("crashes/traffic_spin_time"), speed)
 
 
 ## A crash: no controls for `duration` seconds while the car slows to `slow_to` (a stop, unless
 ## it's a spin off traffic).
-func crash(duration := Cfg.CRASH_DURATION, slow_to := 0.0) -> void:
+func crash(duration := Tuning.v("crashes/crash_time"), slow_to := 0.0) -> void:
 	crash_time = duration
 	crash_length = duration
 	crash_floor = slow_to

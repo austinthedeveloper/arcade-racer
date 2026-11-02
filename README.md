@@ -33,6 +33,7 @@ The game opens on the title screen, then mode select, stage select (postcards pi
 | Pause menu: choose / select / resume | Up, Down / Enter / Esc or Backspace | D-pad / A / B or Start | Steer / gas pedal / brake pedal |
 | Input debug overlay | F1 | | |
 | Calibrate wheel | F2 | | |
+| Tuning panel (see [Tuning](#tuning)) | F3 | | |
 
 Power slide: brake while steering at speed, then keep the steering on. The car slides round
 tighter for a little speed; it ends when you straighten up.
@@ -141,7 +142,8 @@ assets/sprites/             in-game sprites (placeholders for now)
 assets/audio/               synthesized sounds, radio and announcer (how to swap in recordings: its README)
 tests/                      test runner, suites, golden traces, end-to-end smoke
 tools/                      test.sh, shots.sh, sprite-cutting scripts, make_audio.py, export.sh,
-                            car_angles.sh (car review page), roadmap_sync.py (docs vs GitHub)
+                            car_angles.sh (car review page), roadmap_sync.py (docs vs GitHub),
+                            tuning_adopt.py (tuned values in as the new defaults)
 ```
 
 For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--car=car_mesa` picks a car by id (the ids are in `scripts/car/cars.gd`), `--at-segment=N` starts N segments into the stage, `--no-traffic` removes traffic, `--no-rivals` removes the rivals, `--drive-x=1.8` starts the car on that line (past 1 is off the road) and keeps autodrive on it, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|modes|options|stages|cars|pause|unplugged|results|update|remap|wheel --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits (`options:audio` opens an options page, `update:failed` an update state). `--callout=near_miss` holds a callout up after GO, `--time-left=9` starts on a low clock, and `--lightning-at=5` forces a lightning strike on Thunderhead. `CLAUDE.md` lists more examples. Left on the title for 20 seconds, the game plays an autodriven demo race (attract mode) until any key or button; `--attract-delay=N` changes the wait and `--screen=demo` starts one straight away.
@@ -161,6 +163,32 @@ tools/test.sh test_race        # only tests whose name contains "test_race"
 and steep uphills and gentle and steep downhills, in the real race scene, and builds one page to
 look through them, flag shots and write notes: `build/car_angles/car_angles.html`. It needs a
 display and PIL (`SHOTS_PYTHON=...`); `--car=car_mesa` does one car.
+
+### Tuning
+
+The driving, AI, traffic, drafting, launch, power-up, scoring and camera numbers live in one
+table, `scripts/core/tuning.gd` (`Tuning.TABLE`: default, range, step and what each is). F3, in
+a race or the menus, opens the tuning panel over it and holds the race still: a page per area
+(left and right on the PAGE row), up and down pick a value, left and right nudge it by its step
+(held, faster), Enter puts it back to its default. Changes apply at once, the HUD shows TUNED
+while anything differs from the defaults, and they are saved to `user://tuning.cfg`, which the
+next run loads (`--tuning-file=PATH` for another). The ACTIONS page has slow motion, jump to a
+segment, give a power-up, set the clock and a traffic burst; PRESETS resets everything and saves
+and loads named sets (`user://tuning_presets/`). Every change is logged with the stage, car and
+race time to `user://tuning_log.txt`. Tests and golden traces always run on the defaults.
+`--screen=debug:camera --menu-shot=/tmp/d.png` screenshots a page.
+
+Adopting a session's values as the new defaults:
+
+1. Read `tuning_log.txt` and go through the changes value by value: what each fixed, whether it
+   held up on other stages and cars, which to keep. Drop the rest in the panel (Enter on a value),
+   or keep them out with `--only`.
+2. `python3 tools/tuning_adopt.py --dry-run` prints the before-and-after table for the game's
+   own `tuning.cfg` (or name a file, a preset).
+3. `python3 tools/tuning_adopt.py` writes the defaults into `Tuning.TABLE` and regenerates the
+   golden traces (`GODOT=...`; `--no-golden` to leave them).
+4. `tools/test.sh`, then commit with the table and the reasons. The adopted overrides now equal
+   the defaults, so the next run drops them and TUNED goes.
 
 ### Roadmap and GitHub
 

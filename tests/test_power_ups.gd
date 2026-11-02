@@ -73,7 +73,7 @@ func test_nitro_speed_takes_a_pickup_in_a_skipped_segment() -> void:
 	t.segments[51].pickups.append(p)
 	var car := PlayerCar.new()
 	car.reset(50 * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z + 190.0)
-	car.speed = Cfg.MAX_SPEED * Cfg.NITRO_SPEED_MULT
+	car.speed = Cfg.MAX_SPEED * Tuning.v("driving/nitro_speed")
 	car.nitro_time = 1.0
 	car.x = 0.25
 	car.update(DT, DriveInput.new(), t, true)
@@ -95,7 +95,7 @@ func test_ghost_drives_through_traffic() -> void:
 	car.z = Cfg.PLAYER_Z + 10.0
 	car.segment = t.find_segment(car.z)
 	car.segment.cars.append(car)
-	p.ghost_time = PowerUps.GHOST_TIME
+	p.ghost_time = Tuning.v("power_ups/ghost_time")
 	p.collide(t)
 	check(p.crash_time <= 0.0, "no crash as a ghost")
 	p.ghost_time = 0.0
@@ -116,7 +116,7 @@ func test_ram_plate_knocks_traffic_flying() -> void:
 	car.segment = t.find_segment(car.z)
 	car.segment.cars.append(car)
 	tr.cars.append(car)
-	p.ram_time = PowerUps.RAM_TIME
+	p.ram_time = Tuning.v("power_ups/ram_time")
 	p.collide(t)
 	check(p.crash_time <= 0.0, "no crash with the ram plate")
 	check(p.rammed, "rammed")
@@ -174,7 +174,7 @@ func test_pickups_reach_the_race() -> void:
 	r.player.x = p.offset
 	var before: float = r.time_left
 	r._check_pickups()
-	near(r.time_left, before + PowerUps.CLOCK_BONUS, 0.001, "clock adds time")
+	near(r.time_left, before + Tuning.v("power_ups/clock_bonus"), 0.001, "clock adds time")
 	eq(r.pickup, PowerUps.Kind.CLOCK, "HUD knows what was taken")
 	r.player.nitro_charges = 0
 	var q: PowerUps.Pickup = r.power_ups.pickups[1]

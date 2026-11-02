@@ -33,8 +33,12 @@ if [ -n "$all" ]; then
     echo "FAIL: script errors in the e2e run"; e2e=1
   fi
   [ $e2e -ne 0 ] && status=$e2e
-  # The sprite tools' helpers (tools/test_spritelib.py), when their libraries are installed.
+  # The tuning adopt tool (EQ-17): plain Python, no libraries
   PYTHON=${PYTHON:-python3}
+  printf "\ntuning adopt tool:\n"
+  "$PYTHON" -m unittest tools/test_tuning_adopt.py >"$out" 2>&1 || { cat "$out"; status=1; }
+  tail -1 "$out"
+  # The sprite tools' helpers (tools/test_spritelib.py), when their libraries are installed.
   printf "\nsprite tool helpers:\n"
   if "$PYTHON" -c "import PIL, numpy, scipy" >/dev/null 2>&1; then
     "$PYTHON" -m unittest discover -s tools -p "test_*.py" >"$out" 2>&1 || status=1

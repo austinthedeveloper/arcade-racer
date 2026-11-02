@@ -31,7 +31,7 @@ var rivals: Array[RivalCar] = []
 var ghost := Vector3.ZERO  # Time Attack's ghost: distance, x, steer (Ghost.at)
 var ghost_strips: Dictionary = {}  # its car's strips; empty for no ghost
 var camera_z := 0.0
-var camera_depth := Cfg.CAMERA_DEPTH  # the race eases it down for the nitro stretch
+var camera_depth := Tuning.v("camera/depth")  # the race eases it down for the nitro stretch
 var flash := 1.0  # the FLASHING option's share of the designed blink (Settings.flash_amount(1.0))
 var time := 0.0
 ## Stage flow (StageFlow): the end of the stage drawn in the next stage's palette. Off for Free
@@ -71,7 +71,7 @@ func _draw() -> void:
 	var count := segs.size()
 	var base := track.find_segment(camera_z)
 	var base_percent := fposmod(camera_z, Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH
-	var cam_y := player.road_y + Cfg.CAMERA_HEIGHT
+	var cam_y := player.road_y + Tuning.v("camera/height")
 	var cam_x := player.x * Cfg.ROAD_WIDTH
 	var x := 0.0
 	var dx := -base.curve * base_percent
@@ -316,7 +316,7 @@ func _draw_cars(seg: Segment) -> void:
 			continue
 		if car.flung > 0.0:
 			# Rammed: arcs up and off the road
-			cy -= sin((1.0 - car.flung / Traffic.FLING_TIME) * PI) * w * 0.9
+			cy -= sin((1.0 - car.flung / Tuning.v("traffic/fling_time")) * PI) * w * 0.9
 		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog, car.oncoming, Traffic.light_state(car))
 
 	for r: RivalCar in _rivals_in.get(seg.index, []):
@@ -451,7 +451,7 @@ func _draw_player() -> void:
 	var p := player
 	var s := camera_depth / Cfg.PLAYER_Z
 	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
-	var y := Cfg.HORIZON_Y + s * Cfg.CAMERA_HEIGHT * Cfg.PROJ
+	var y := Cfg.HORIZON_Y + s * Tuning.v("camera/height") * Cfg.PROJ
 	var lift := p.air_height * s * Cfg.PROJ
 	var steer := p.shown_steer()
 	if p.crash_time > 0.0:

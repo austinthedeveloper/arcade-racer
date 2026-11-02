@@ -43,14 +43,14 @@ func test_shake_kicks() -> void:
 	var p := PlayerCar.new()
 	eq(_kick(p, 0.0, false), 0.0, "nothing: still")
 	p.crashed = true
-	near(_kick(p, 0.0, false), Cfg.SHAKE_CRASH - Cfg.SHAKE_SETTLE * DT, 0.001, "crash")
+	near(_kick(p, 0.0, false), Tuning.v("camera/shake_crash") - Tuning.v("camera/shake_settle") * DT, 0.001, "crash")
 	p.crashed = false
 	p.landed = true
-	near(_kick(p, 0.0, false), Cfg.SHAKE_LANDING - Cfg.SHAKE_SETTLE * DT, 0.001, "landing")
+	near(_kick(p, 0.0, false), Tuning.v("camera/shake_landing") - Tuning.v("camera/shake_settle") * DT, 0.001, "landing")
 	p.landed = false
-	near(_kick(p, 0.0, true), Cfg.SHAKE_TAKEOFF - Cfg.SHAKE_SETTLE * DT, 0.001, "taking off over a crest")
-	check(Cfg.SHAKE_TAKEOFF < Cfg.SHAKE_LANDING, "takeoff is the smaller one")
-	near(_kick(p, 4.0, true), 4.0 - Cfg.SHAKE_SETTLE * DT, 0.001, "doesn't cut a bigger shake short")
+	near(_kick(p, 0.0, true), Tuning.v("camera/shake_takeoff") - Tuning.v("camera/shake_settle") * DT, 0.001, "taking off over a crest")
+	check(Tuning.v("camera/shake_takeoff") < Tuning.v("camera/shake_landing"), "takeoff is the smaller one")
+	near(_kick(p, 4.0, true), 4.0 - Tuning.v("camera/shake_settle") * DT, 0.001, "doesn't cut a bigger shake short")
 	var s := 3.0
 	for i in 60:
 		s = _kick(p, s, false)
@@ -68,13 +68,13 @@ func test_no_shake_at_zero() -> void:
 	var moved := false
 	for i in 20:
 		r.player.crashed = true  # a crash every tick: the most shake there is
-		r._shake = Cfg.SHAKE_CRASH
+		r._shake = Tuning.v("camera/shake_crash")
 		drive(r, 1, input(1.0))
 		moved = moved or r.road.position != Vector2.ZERO
 	check(moved, "10: the road shakes")
 	Settings.screen_shake = 0
 	for i in 20:
-		r._shake = Cfg.SHAKE_CRASH
+		r._shake = Tuning.v("camera/shake_crash")
 		drive(r, 1, input(1.0))
 		eq(r.road.position, Vector2.ZERO, "0: no shake")
 	_clean()
@@ -84,23 +84,23 @@ func test_nitro_fov_stretch() -> void:
 	_clean()
 	var r := race(false, false)
 	drive(r, 200, input(1.0))
-	eq(r.road.camera_depth, Cfg.CAMERA_DEPTH, "no nitro: the designed depth")
+	eq(r.road.camera_depth, Tuning.v("camera/depth"), "no nitro: the designed depth")
 	var nitro := input(1.0)
 	nitro.nitro_pressed = true
 	drive(r, 1, nitro)
 	drive(r, 60, input(1.0))
 	check(r.player.nitro_time > 0.0, "nitro burning")
-	check(r.road.camera_depth < Cfg.CAMERA_DEPTH, "the view widens (%.3f)" % r.road.camera_depth)
-	check(r.road.camera_depth >= Cfg.CAMERA_DEPTH * (1.0 - Cfg.NITRO_FOV_STRETCH) - 0.0001, "a few percent at most")
+	check(r.road.camera_depth < Tuning.v("camera/depth"), "the view widens (%.3f)" % r.road.camera_depth)
+	check(r.road.camera_depth >= Tuning.v("camera/depth") * (1.0 - Tuning.v("camera/nitro_fov_stretch")) - 0.0001, "a few percent at most")
 	Settings.screen_shake = 0
 	drive(r, 1, input(1.0))
-	eq(r.road.camera_depth, Cfg.CAMERA_DEPTH, "0: no stretch")
-	eq(r.camera_depth(Cfg.NITRO_FOV_STRETCH), Cfg.CAMERA_DEPTH, "camera_depth at 0")
+	eq(r.road.camera_depth, Tuning.v("camera/depth"), "0: no stretch")
+	eq(r.camera_depth(Tuning.v("camera/nitro_fov_stretch")), Tuning.v("camera/depth"), "camera_depth at 0")
 	Settings.screen_shake = 10
-	near(r.camera_depth(Cfg.NITRO_FOV_STRETCH), Cfg.CAMERA_DEPTH * (1.0 - Cfg.NITRO_FOV_STRETCH), 0.0001, "at 10")
+	near(r.camera_depth(Tuning.v("camera/nitro_fov_stretch")), Tuning.v("camera/depth") * (1.0 - Tuning.v("camera/nitro_fov_stretch")), 0.0001, "at 10")
 	drive(r, 400, input(1.0))
 	eq(r.player.nitro_time, 0.0, "nitro over")
-	eq(r.road.camera_depth, Cfg.CAMERA_DEPTH, "eases back")
+	eq(r.road.camera_depth, Tuning.v("camera/depth"), "eases back")
 	_clean()
 
 

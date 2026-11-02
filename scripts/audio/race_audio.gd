@@ -290,7 +290,7 @@ static func wind_level(p: PlayerCar) -> float:
 
 ## The slipstream buffet, with the draft meter (Draft).
 static func draft_level(p: PlayerCar) -> float:
-	return clampf(p.draft * 1.2, 0.0, 1.0) if p.speed_percent() > Draft.MIN_SPEED else 0.0
+	return clampf(p.draft * 1.2, 0.0, 1.0) if p.speed_percent() > Tuning.v("draft/min_speed") else 0.0
 
 
 ## The nearest rival's engine, by its gap along the road (either way).

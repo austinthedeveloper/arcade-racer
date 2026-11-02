@@ -190,7 +190,7 @@ func test_a_signalling_car_changes_lanes_after_the_delay() -> void:
 	eq(c.signal_dir, 1, "on an undivided road it can only go right, away from the oncoming lanes")
 	eq(Traffic.light_state(c), "right", "the right signal lights at once")
 	var ticks := 0
-	while c.signal_age < Traffic.SIGNAL_TIME - DT:
+	while c.signal_age < Tuning.v("traffic/signal_time") - DT:
 		tr.update(DT, t)
 		ticks += 1
 		eq(c.offset, 0.25, "holds its lane while signalling")
@@ -258,7 +258,7 @@ func test_no_change_into_a_taken_lane() -> void:
 	tr.cars.append(other)
 	tr.update(DT, t)
 	eq(c.signal_dir, 0, "the next lane is taken: no signal")
-	near(c.change_in, Traffic.CHANGE_RETRY, 0.001, "tries again shortly")
+	near(c.change_in, Tuning.v("traffic/change_retry"), 0.001, "tries again shortly")
 
 
 func test_the_right_frame_per_state() -> void:

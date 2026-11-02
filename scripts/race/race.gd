@@ -100,14 +100,16 @@ var background: Background
 var road: RoadRenderer
 var fx: FxLayer  # between the road and the HUD
 var hud: Hud
-## The F1 input overlay and F2 calibration wizard. The game passes in its own, so there is one
-## pair across the menus and the race; a race run on its own (tests, race.tscn) makes a pair.
+## The F1 input overlay, F2 calibration wizard and F3 tuning panel. The game passes in its
+## own, so there is one of each across the menus and the race; a race run on its own (tests,
+## race.tscn) makes its own.
 var debug_overlay: InputDebugOverlay
 var calibration: CalibrationWizard
+var debug_panel: DebugPanel
 var audio: RaceAudio
 
 var _shake := 0.0  # camera shake as designed, in pixels; the screen shake option scales what shows
-var _fov_stretch := 0.0  # 0..Cfg.NITRO_FOV_STRETCH, eased while nitro burns
+var _fov_stretch := 0.0  # 0..camera/nitro_fov_stretch (Tuning), eased while nitro burns
 var _was_airborne := false
 var _autodrive := false
 var _log_banners := false
@@ -154,6 +156,10 @@ func _ready() -> void:
 	if calibration == null:
 		calibration = CalibrationWizard.new()
 		layer.add_child(calibration)
+	if debug_panel == null:
+		debug_panel = DebugPanel.new()
+		layer.add_child(debug_panel)
+	debug_panel.race = self
 	audio = RaceAudio.new(self)
 	add_child(audio)
 	if not InputRouter.driver_unplugged.is_connected(driver_unplugged):
@@ -278,6 +284,8 @@ func start_race() -> void:
 ## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
 func _exit_tree() -> void:
 	InputRouter.speed_factor = 0.0
+	if debug_panel != null and debug_panel.race == self:
+		debug_panel.race = null
 
 
 ## After a finish: on to the next stage, or back to the first after the last.
@@ -387,6 +395,32 @@ func pause_action(action: int) -> void:
 			quit_requested.emit()
 
 
+## Carries out the tuning panel's action (TuningPanel.Action), with its values in `panel`.
+func debug_action(action: int, panel: TuningPanel) -> void:
+	match action:
+		TuningPanel.Action.JUMP:
+			debug_jump(panel.jump_to)
+		TuningPanel.Action.GIVE:
+			_give(TuningPanel.GIVE_KINDS[panel.give])
+		TuningPanel.Action.CLOCK:
+			time_left = panel.clock
+		TuningPanel.Action.BURST:
+			traffic.burst(track, player.position + Cfg.PLAYER_Z + 1000.0, panel.burst)
+
+
+## Puts the player's car at segment `seg`, that far along the route (as --at-segment does):
+## the checkpoints behind it are passed, the ones ahead still to come.
+func debug_jump(seg: int) -> void:
+	player.position = fposmod(seg * Cfg.SEGMENT_LENGTH, track.length)
+	player.last_position = player.position
+	player.distance = seg * Cfg.SEGMENT_LENGTH
+	player.road_y = track.height_at(player.position + Cfg.PLAYER_Z)
+	player.x = clampf(player.x, -1.0, 1.0)
+	next_checkpoint = 0
+	while next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
+		next_checkpoint += 1
+
+
 ## A demo is done: it reached the finish, ran out of time or ran its length.
 func demo_over() -> bool:
 	return state == State.FINISHED or state == State.TIME_UP or race_time >= Attract.DEMO_SECONDS
@@ -416,9 +450,10 @@ func _physics_process(dt: float) -> void:
 	else:
 		inp = Assists.apply(inp, player, track, Settings.steer_assist, Settings.brake_assist)
 	horn = inp.horn
-	if calibration.visible:
+	if calibration.visible or debug_panel.visible:  # (the tuning panel holds the race still)
 		_redraw()
 		return
+	dt *= debug_panel.logic.slow_motion()
 	if paused:
 		if pause_menu.visible:  # (hidden while the options are up)
 			pause_action(pause_menu.choose(InputRouter.menu, inp.pause_pressed))
@@ -468,9 +503,9 @@ func _physics_process(dt: float) -> void:
 		State.COUNTDOWN:
 			if online == null or online.go:  # online, the countdown runs from the host's GO
 				countdown -= dt
-			if countdown <= Launch.ROLL_TIME:
+			if countdown <= Tuning.v("launch/roll_time"):
 				for car: PlayerCar in rivals.everyone(player):
-					car.speed = Launch.ROLL_SPEED
+					car.speed = Tuning.v("launch/roll_speed")
 			if countdown <= 0.0:
 				state = State.RACING
 				_banner("GO!", "", 1.0, Callouts.Kind.GO)
@@ -537,8 +572,8 @@ func _physics_process(dt: float) -> void:
 	var shown := Settings.shake_amount(_shake)
 	road.position = Vector2(roundf(randf_range(-1, 1) * shown), roundf(randf_range(-1, 1) * shown))
 	# Nitro widens the view a little (display only: the renderer's camera depth)
-	var stretch_to := Cfg.NITRO_FOV_STRETCH if player.nitro_time > 0.0 else 0.0
-	_fov_stretch = move_toward(_fov_stretch, stretch_to, dt * Cfg.NITRO_FOV_RATE)
+	var stretch_to := Tuning.v("camera/nitro_fov_stretch") if player.nitro_time > 0.0 else 0.0
+	_fov_stretch = move_toward(_fov_stretch, stretch_to, dt * Tuning.v("camera/nitro_fov_rate"))
 	road.camera_depth = camera_depth(_fov_stretch)
 	road.flash = Settings.flash_amount(1.0)
 	road.time += sim
@@ -561,20 +596,20 @@ func _physics_process(dt: float) -> void:
 ## over a crest and rough ground at speed kick it up, and it settles back to still.
 static func shake_after(shake: float, p: PlayerCar, took_off: bool, dt: float) -> float:
 	if p.crashed:
-		shake = Cfg.SHAKE_CRASH
+		shake = Tuning.v("camera/shake_crash")
 	elif p.landed:
-		shake = maxf(shake, Cfg.SHAKE_LANDING)
+		shake = maxf(shake, Tuning.v("camera/shake_landing"))
 	elif took_off:
-		shake = maxf(shake, Cfg.SHAKE_TAKEOFF)
+		shake = maxf(shake, Tuning.v("camera/shake_takeoff"))
 	elif p.offroad and p.speed > 100.0:
-		shake = maxf(shake, Cfg.SHAKE_OFFROAD * p.speed_percent())
-	return move_toward(shake, 0.0, dt * Cfg.SHAKE_SETTLE)
+		shake = maxf(shake, Tuning.v("camera/shake_offroad") * p.speed_percent())
+	return move_toward(shake, 0.0, dt * Tuning.v("camera/shake_settle"))
 
 
-## The renderer's camera depth for a nitro stretch (0..Cfg.NITRO_FOV_STRETCH), after the
-## screen shake option: Cfg.CAMERA_DEPTH with no stretch or with the option at 0.
+## The renderer's camera depth for a nitro stretch (0..camera/nitro_fov_stretch), after the
+## screen shake option: the tuned camera/depth with no stretch or with the option at 0.
 static func camera_depth(stretch: float) -> float:
-	return Cfg.CAMERA_DEPTH * (1.0 - Settings.shake_amount(stretch))
+	return Tuning.v("camera/depth") * (1.0 - Settings.shake_amount(stretch))
 
 
 ## Grades the start once it's known: the gas down in the window around GO, or too early.
@@ -606,18 +641,23 @@ func _check_pickups() -> void:
 	pickup = p.kind
 	pickup_gave = power_ups.open(p.kind, time_left)
 	pickup_age = 0.0
-	match pickup_gave:
+	_give(pickup_gave)
+
+
+## What a pickup (or the debug panel) gives: a PowerUps.Kind other than MYSTERY.
+func _give(kind: int) -> void:
+	match kind:
 		PowerUps.Kind.NITRO:
 			player.nitro_charges = mini(player.nitro_max, player.nitro_charges + 1)
 			_banner("NITRO +1", "", 1.2)
 		PowerUps.Kind.CLOCK:
-			time_left += PowerUps.CLOCK_BONUS
-			_banner("+%d SEC" % PowerUps.CLOCK_BONUS, "", 1.2)
+			time_left += Tuning.v("power_ups/clock_bonus")
+			_banner("+%d SEC" % Tuning.v("power_ups/clock_bonus"), "", 1.2)
 		PowerUps.Kind.RAM:
-			player.ram_time = PowerUps.RAM_TIME
+			player.ram_time = Tuning.v("power_ups/ram_time")
 			_banner("RAM PLATE", "Traffic goes flying", 1.2)
 		PowerUps.Kind.GHOST:
-			player.ghost_time = PowerUps.GHOST_TIME
+			player.ghost_time = Tuning.v("power_ups/ghost_time")
 			_banner("GHOST", "Drive right through", 1.2)
 
 
@@ -847,6 +887,7 @@ func _redraw() -> void:
 # --- Dev helpers: `godot -- --autodrive --screenshots=60,300 --shot-dir=/tmp/shots` -------
 
 func _parse_dev_args() -> void:
+	Tuning.boot(DevArgs.value("--tuning-file", Tuning.PATH))  # (the game has, unless this is race.tscn on its own)
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--autodrive":
 			_autodrive = true
@@ -900,7 +941,7 @@ func _autodrive_input() -> DriveInput:
 ## would only brake).
 static func autodrive_slides(curve_ahead: float, steer: float, car: PlayerCar) -> bool:
 	return car.slide == 0.0 and not car.airborne and not car.offroad and absf(curve_ahead) >= Track.CURVE_HARD \
-		and absf(steer) >= Cfg.SLIDE_STEER and car.speed >= Cfg.SLIDE_SPEED
+		and absf(steer) >= Tuning.v("slide/steer") and car.speed >= Cfg.MAX_SPEED * Tuning.v("slide/speed")
 
 
 ## The lane with the most open road ahead, keeping the current one on a tie. Anything slower

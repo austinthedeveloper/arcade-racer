@@ -5,18 +5,6 @@ extends RefCounted
 ## function; the race calls `watch` every tick and `finish` at the line.
 
 const PLACE_POINTS := [20, 15, 12, 10, 8, 6, 4, 2]
-const NEAR_MISS := 1
-## Road half-widths between the two cars' sides, under: 0 is closer than lane center to lane
-## center, so an ordinary pass in the next lane doesn't count; you have to shave it.
-const NEAR_MISS_ROOM := 0.0
-const NEAR_MISS_SPEED := 0.6  # share of Cfg.MAX_SPEED, at least
-const AIR := 1
-const BIG_AIR := 2
-const AIR_TIME := 0.5  # seconds off the ground for AIR...
-const BIG_AIR_TIME := 1.0  # ...and for BIG AIR
-const CLEAN_SECTION := 3
-const NO_CRASH := 5
-const DRAFT := 1
 const FEED_TIME := 1.6  # seconds a bonus stays up on the HUD
 
 var bonuses: Array[Dictionary] = []  # {"name", "points"} in the order they were earned
@@ -31,30 +19,30 @@ static func place_points(place: int) -> int:
 	return PLACE_POINTS[place - 1] if place >= 1 and place <= PLACE_POINTS.size() else 0
 
 
-## Passing a car with less than NEAR_MISS_ROOM between your sides (overlapping a little,
+## Passing a car with less than scoring/near_miss_room (Tuning) between your sides (overlapping a little,
 ## short of a hit), at speed.
 static func near_miss(x: float, speed: float, car_offset: float, car_width_mult: float) -> bool:
-	if speed < Cfg.MAX_SPEED * NEAR_MISS_SPEED:
+	if speed < Cfg.MAX_SPEED * Tuning.v("scoring/near_miss_speed"):
 		return false
 	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
 	var both := half_car * (1.0 + car_width_mult)
 	var between := absf(x - car_offset) - both
-	return between >= -both * (1.0 - Cfg.HIT_OVERLAP) and between < NEAR_MISS_ROOM
+	return between >= -both * (1.0 - Tuning.v("crashes/hit_overlap")) and between < Tuning.v("scoring/near_miss_room")
 
 
 ## Points for a jump `seconds` long.
 static func air_points(seconds: float) -> int:
-	if seconds >= BIG_AIR_TIME:
-		return BIG_AIR
-	return AIR if seconds >= AIR_TIME else 0
+	if seconds >= Tuning.v("scoring/big_air_time"):
+		return Tuning.i("scoring/big_air")
+	return Tuning.i("scoring/air") if seconds >= Tuning.v("scoring/air_time") else 0
 
 
 static func clean_section_points(contacts_in_section: int) -> int:
-	return CLEAN_SECTION if contacts_in_section == 0 else 0
+	return Tuning.i("scoring/clean_section") if contacts_in_section == 0 else 0
 
 
 static func no_crash_points(crash_count: int) -> int:
-	return NO_CRASH if crash_count == 0 else 0
+	return Tuning.i("scoring/no_crash") if crash_count == 0 else 0
 
 
 func total() -> int:
@@ -104,11 +92,11 @@ func watch(dt: float, p: PlayerCar, track: Track) -> void:
 		air += dt
 	elif p.landed or air > 0.0:
 		var pts := air_points(air)
-		add("BIG AIR" if pts == BIG_AIR else "AIR", pts)
+		add("BIG AIR" if pts == Tuning.i("scoring/big_air") else "AIR", pts)
 		air = 0.0
 	var drafting := p.draft_time > 0.0
 	if drafting and not _was_drafting:
-		add("SLIPSTREAM", DRAFT)
+		add("SLIPSTREAM", Tuning.i("scoring/draft"))
 	_was_drafting = drafting
 	if p.crash_time > 0.0:
 		return
@@ -125,7 +113,7 @@ func watch(dt: float, p: PlayerCar, track: Track) -> void:
 		var now := wrapf(car.z - nose, -track.length * 0.5, track.length * 0.5)
 		if now <= 0.0 and p.gap_when_tick_began(car, track) > 0.0 \
 				and near_miss(p.x, p.speed, car.offset, car.width_mult):
-			add("NEAR MISS", NEAR_MISS)
+			add("NEAR MISS", Tuning.i("scoring/near_miss"))
 
 
 ## Passing a checkpoint: a clean section if nothing was touched since the last one.

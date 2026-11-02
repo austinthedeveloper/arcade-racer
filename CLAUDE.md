@@ -22,6 +22,8 @@ godot --path . -- --screen=online:lobby --touch --menu-shot=/tmp/o.png   # the o
 godot --headless --path . -s res://tools/online_probe.gd -- --relay=ws://127.0.0.1:8080   # host + guest through a relay (npm start in ../snes/pickleball-relay); no --relay: the live one
 godot --path . -- --online=host --stage=1 --autodrive --room-file=/tmp/room   # then in another: --online=join:$(cat /tmp/room) --autodrive; two windows race, print the finishes, quit
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
+godot --path . -- --tuning-file=res://tests/fixtures/tuning_override.cfg --screen=debug:camera --menu-shot=/tmp/d.png   # the F3 tuning panel on a page (Tuning.AREAS, actions, presets); race flags put it over a race
+python3 tools/tuning_adopt.py [FILE] [--only=KEYS] [--dry-run]   # tuned values into Tuning.TABLE as the defaults, golden traces regenerated (README: Tuning)
 godot --headless --path . -s res://tools/track_preview.gd -- --out=/tmp/plots   # plot every stage top-down and side-on to PNG (--stage=N for one)
 tools/shots.sh                                      # screenshot regression vs tests/shots/ (needs a display, PIL; SHOTS_PYTHON=...)
 tools/shots.sh --update                             # rewrite tests/shots/ after a deliberate visual change
@@ -58,6 +60,10 @@ and also checks every stage's autodriven race finishes in time and every rival f
 - Add or extend tests with every change.
 - Tests never touch the player's wheel profiles or options (`TestSuite.use_scratch_profiles`,
   `TestSuite.use_scratch_settings`). Golden traces run on the default options.
+- A gameplay number worth tuning (driving, AI, traffic, drafting, launch, power-ups, scoring,
+  camera) goes in `Tuning.TABLE` (`scripts/core/tuning.gd`) with a range and step, read with
+  `Tuning.v("area/name")`, not as a constant; the F3 panel then tunes it. Tests run on the
+  defaults (`Tuning.use_defaults` in the runners); a test that tunes calls it again after.
 - Logic that a test needs to reach goes in a plain function (see `RoadRenderer.sprite_rect`,
   `CarSprites.steer_frame`, `CalibrationWizard.capture`), not inside `_draw` or `_process`.
 

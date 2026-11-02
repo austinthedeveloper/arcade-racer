@@ -65,7 +65,7 @@ func test_pitch_warp_shows_more_roof_uphill() -> void:
 func test_pitch_warp_matches_the_camera_geometry() -> void:
 	# Car faces +z, camera behind and above it. Pitching the nose up by a turns the roof
 	# normal (0, 1, 0) to (0, cos a, -sin a) and the tail normal (0, 0, -1) to (0, -sin a, -cos a).
-	var to_cam := Vector3(0.0, Cfg.CAMERA_HEIGHT, -Cfg.PLAYER_Z).normalized()
+	var to_cam := Vector3(0.0, Tuning.v("camera/height"), -Cfg.PLAYER_Z).normalized()
 	for slope in [0.3, -0.3]:
 		var pitch := PlayerCar.pitch_for_slope(slope)
 		var a := atan(slope)  # nose-up angle
@@ -256,15 +256,15 @@ func test_background_layers_scroll_at_their_own_rates() -> void:
 
 
 func test_background_layers_shift_with_the_hills() -> void:
-	eq(Background.hill_shift(0.0, Cfg.CAMERA_DEPTH), 0.0, "flat road: the horizon stays")
-	check(Background.hill_shift(1500.0, Cfg.CAMERA_DEPTH) < 0.0, "a climb ahead lifts the scenery")
-	check(Background.hill_shift(-1500.0, Cfg.CAMERA_DEPTH) > 0.0, "a crest drops it")
-	eq(Background.hill_shift(1e6, Cfg.CAMERA_DEPTH), -Background.HILL_MAX, "at most HILL_MAX up")
-	eq(Background.hill_shift(-1e6, Cfg.CAMERA_DEPTH), Background.HILL_MAX, "and down")
+	eq(Background.hill_shift(0.0, Tuning.v("camera/depth")), 0.0, "flat road: the horizon stays")
+	check(Background.hill_shift(1500.0, Tuning.v("camera/depth")) < 0.0, "a climb ahead lifts the scenery")
+	check(Background.hill_shift(-1500.0, Tuning.v("camera/depth")) > 0.0, "a crest drops it")
+	eq(Background.hill_shift(1e6, Tuning.v("camera/depth")), -Background.HILL_MAX, "at most HILL_MAX up")
+	eq(Background.hill_shift(-1e6, Tuning.v("camera/depth")), Background.HILL_MAX, "and down")
 	# Where the road HILL_AHEAD ahead lands on the screen, relative to the flat horizon
 	var rise := -1000.0
-	var road_dy := -rise * Cfg.CAMERA_DEPTH / Background.HILL_AHEAD * Cfg.PROJ
-	eq(Background.hill_shift(rise, Cfg.CAMERA_DEPTH), roundf(road_dy), "follows the road's far end")
+	var road_dy := -rise * Tuning.v("camera/depth") / Background.HILL_AHEAD * Cfg.PROJ
+	eq(Background.hill_shift(rise, Tuning.v("camera/depth")), roundf(road_dy), "follows the road's far end")
 	var hill := 20.0
 	var sky := Background.layer_bottom("sky", hill) - Background.layer_bottom("sky", 0.0)
 	var far := Background.layer_bottom("far", hill) - Background.layer_bottom("far", 0.0)
