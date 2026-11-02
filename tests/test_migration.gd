@@ -269,6 +269,26 @@ func test_settings_v10_to_v11_adds_rumble() -> void:
 	_clean()
 
 
+func test_settings_v11_to_v12_adds_whats_new() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v11.cfg")
+	eq(Settings.migrate(cfg), 11, "from version 11")
+	eq([CfgVersion.of(cfg), cfg.get_value("news", "seen")], [Settings.VERSION, ""],
+		"migrated on: no notes seen, so this build's show")
+	_clean()
+	_load_settings("settings_v11.cfg")
+	eq([Settings.whats_new_seen, Settings.had_file], ["", true], "v11 loads, an install that ran before")
+	eq([Settings.rumble, Settings.reduce_motion, Settings.key_steer_in], [6, true, 1], "the rest as saved")
+	Settings.whats_new_seen = "0.5.0"
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.whats_new_seen], [Settings.VERSION, "0.5.0"], "saved and loaded back")
+	Settings.reset()
+	eq(Settings.whats_new_seen, "0.5.0", "resetting the options keeps it seen")
+	_clean()
+	eq([Settings.whats_new_seen, Settings.had_file], ["", false], "no file: none seen, a fresh install")
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")

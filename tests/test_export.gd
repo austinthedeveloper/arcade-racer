@@ -91,6 +91,20 @@ func test_changelog_describes_this_version() -> void:
 		check(text.contains(line), headings[i] + " has a date")
 
 
+## What's new (PR-17): the export bundles this version's section for the title, where the
+## game reads it (WhatsNew.BUNDLED), and takes it away again after.
+func test_export_bundles_whats_new() -> void:
+	var export_sh := FileAccess.get_file_as_string("res://tools/export.sh")
+	check(export_sh.contains("tools/changelog.py --json \"$version\" >" + WhatsNew.BUNDLED.trim_prefix("res://")),
+		"export.sh writes the notes where WhatsNew reads them")
+	check(export_sh.contains("rm -f " + WhatsNew.BUNDLED.trim_prefix("res://")), "and removes them after")
+	check(FileAccess.get_file_as_string("res://.gitignore").contains(WhatsNew.BUNDLED.trim_prefix("res://")),
+		"never committed")
+	for preset in ["Windows", "macOS", "Web", "Linux"]:
+		var filter: String = presets().get_value(section(presets(), preset), "exclude_filter", "")
+		check(not filter.contains("assets"), preset + " exports assets/")
+
+
 ## A tag's Web build goes to Azure (tools/deploy_web.sh, the release workflow's web job). The
 ## job may only run for a tag, in the "web" environment its Azure sign-in trusts, and must
 ## deploy the zip tools/export.sh names.

@@ -27,7 +27,9 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 9: [controls] key_steer_in, key_steer_out (missing: STANDARD, as every earlier build).
 ## 10: [accessibility] reduce_motion (missing: off).
 ## 11: [controls] rumble (missing: as designed, EFFECT_STEPS).
-const VERSION := 11
+## 12: [news] seen, the last version whose notes the title showed (WhatsNew; missing: none,
+## so an update from an older build shows its notes).
+const VERSION := 12
 ## Keyboard steering feel (AC-11): how fast a held key turns in and a released one comes back,
 ## snappy to smooth. Each multiplies its rate (shares of full lock per second); STANDARD is
 ## the rate every earlier build had.
@@ -70,10 +72,13 @@ var fullscreen := false  # windowed by default
 var integer_scale := false  # whole-number scaling of the 640x360 view (borders round it)
 var vsync := true
 var scanlines := false  # a CRT-style overlay (SCANLINE_SHADER)
+## The last version whose notes the title showed (WhatsNew, PR-17); "" for none yet.
+var whats_new_seen := ""
 ## The overlay apply_display() shows or hides; made on first use.
 var scanline_layer: CanvasLayer
 ## The version of the file last loaded (VERSION when there was no file).
 var loaded_version := VERSION
+var had_file := false  # the last load found a file (a game that ran before: WhatsNew)
 
 
 func _ready() -> void:
@@ -82,7 +87,7 @@ func _ready() -> void:
 	load_settings()
 
 
-## Back to the defaults (not saved).
+## Back to the defaults (not saved). What's new stays seen (whats_new_seen is not an option).
 func reset() -> void:
 	auto_gas = false
 	traffic = Traffic.NORMAL
@@ -116,9 +121,11 @@ func reset() -> void:
 
 func load_settings() -> void:
 	reset()
+	whats_new_seen = ""
 	loaded_version = VERSION
 	var cfg := ConfigFile.new()
-	if cfg.load(path) == OK:
+	had_file = cfg.load(path) == OK
+	if had_file:
 		loaded_version = migrate(cfg)
 		auto_gas = bool(cfg.get_value("play", "auto_gas", auto_gas))
 		traffic = clampi(int(cfg.get_value("play", "traffic", traffic)), 0, Traffic.size() - 1)
@@ -146,13 +153,14 @@ func load_settings() -> void:
 		integer_scale = bool(cfg.get_value("display", "integer_scale", integer_scale))
 		vsync = bool(cfg.get_value("display", "vsync", vsync))
 		scanlines = bool(cfg.get_value("display", "scanlines", scanlines))
+		whats_new_seen = str(cfg.get_value("news", "seen", whats_new_seen))
 	apply_volumes()
 	apply_display()
 
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11, _v11_to_v12])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -218,6 +226,12 @@ static func _v10_to_v11(cfg: ConfigFile) -> void:
 	cfg.set_value("controls", "rumble", EFFECT_STEPS)
 
 
+## Version 12 added what the title's what's new last showed: nothing, so the first start on
+## this build after an older one shows its notes.
+static func _v11_to_v12(cfg: ConfigFile) -> void:
+	cfg.set_value("news", "seen", "")
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -248,6 +262,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("display", "integer_scale", integer_scale)
 	cfg.set_value("display", "vsync", vsync)
 	cfg.set_value("display", "scanlines", scanlines)
+	cfg.set_value("news", "seen", whats_new_seen)
 	cfg.save(path)
 	apply_volumes()
 	apply_display()

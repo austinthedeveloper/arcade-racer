@@ -30,8 +30,12 @@ pre-release on GitHub, and the auto-updater still offers it.
 4. Merge that, then `git tag vx.y.z && git push origin vx.y.z`.
 5. The release workflow stops at once if `tools/changelog.py` finds no section for the tag;
    otherwise it runs the tests, exports, and publishes the release with the changelog section
-   as "What's new" above the download notes.
-6. Start the previous release's desktop build and check it updates itself to the new one.
+   as "What's new" above the download notes. `tools/export.sh` also bundles that section
+   (`tools/changelog.py --json`, as `assets/whats_new.json`), and the title screen shows it
+   once to players who updated (PR-17). Bullets show by their name, the words before the
+   first ": ", so start each with a short name ("Photo key (PR-21): ...").
+6. Start the previous release's desktop build and check it updates itself to the new one, and
+   that the title shows what's new in it once.
 
 ## Decision: no code signing yet (2026-11-01)
 

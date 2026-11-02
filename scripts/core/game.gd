@@ -44,6 +44,9 @@ var debug_overlay: InputDebugOverlay
 var debug_panel: DebugPanel
 var _layer: CanvasLayer
 var _menu_shot := ""
+## What's new (WhatsNew) may come up on the title: not for a staged screenshot (--menu-shot),
+## which neither shows it nor marks it seen; --screen=whats_new stages it.
+var news_allowed := true
 ## Where the options screen goes back to (close_options): the title unless whoever opened
 ## it says otherwise.
 var _options_back := Callable()
@@ -72,6 +75,7 @@ func _ready() -> void:
 	if car != "":
 		car_index = maxi(0, Cars.LIST.find(Cars.find(car)))
 	mirror = DevArgs.has("--mirror")
+	news_allowed = DevArgs.value("--menu-shot") == ""
 	var mode := DevArgs.value("--mode")
 	if mode != "":
 		mode_index = ModeSelect.Item.get(mode.to_upper(), mode_index)
@@ -133,7 +137,8 @@ func _physics_process(dt: float) -> void:
 		_swallow -= 1
 		return
 	if screen == Screen.TITLE:
-		idle = 0.0 if woke else idle + dt
+		var reading := menu is TitleScreen and not (menu as TitleScreen).news.is_empty()  # (what's new up)
+		idle = 0.0 if woke or reading else idle + dt
 		if idle >= attract_delay:
 			start_demo()
 			return
@@ -166,6 +171,9 @@ func show_title(item := 0) -> void:
 		Updates.mark_good()  # a start on an update got this far: keep it
 	var t := TitleScreen.new()
 	t.index = item
+	if news_allowed:
+		t.news = WhatsNew.take()
+		t.news_version = Updater.version()
 	_set_menu(t, Screen.TITLE)
 
 
@@ -497,7 +505,8 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # its MIRROR toggle on.
 # --screen=debug opens the F3 tuning panel (debug:camera, debug:actions etc. for a page:
 # Tuning.AREAS, actions, presets), over the title, or over a race given race flags.
-# --screen=stats opens the stats page (MP-11).
+# --screen=stats opens the stats page (MP-11). --screen=whats_new shows this version's notes
+# over the title (PR-17), without marking them seen.
 # --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
 # a download; update:checking, update:failed, update:full and update:ready the other states.)
 
@@ -517,6 +526,10 @@ func _open(which: String) -> void:
 			show_mode_select()
 		"stats":
 			show_stats()
+		"whats_new":
+			show_title()
+			(menu as TitleScreen).news = WhatsNew.items(WhatsNew.notes(Updater.version()))
+			(menu as TitleScreen).news_version = Updater.version()
 		_ when which.begins_with("online"):
 			show_online()
 			(menu as OnlineScreen).stage_shot(which.get_slice(":", 1) if which.contains(":") else "menu")

@@ -12,6 +12,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Photo key (PR-21): F12 saves a picture of the race without the HUD to the game's
   screenshots folder, with a shutter click and a flash (Options > Accessibility > FLASH tones
   it down). Bind it to a pad or wheel button on the remap screen as PHOTO.
+- What's new (PR-17): the first time the game starts after an update, the title lists what
+  the new version added, changed and fixed. Enter puts it away; it doesn't come back.
 
 ## [0.4.0] - 2026-11-02
 
