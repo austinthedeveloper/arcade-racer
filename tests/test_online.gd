@@ -312,7 +312,9 @@ func test_online_flags_put_two_games_in_a_race() -> void:
 	eq(games[1].online.slot, 1, "the guest second on the grid")
 
 
-func test_the_host_leaving_mid_race_leaves_the_guest_racing_alone() -> void:
+## The host leaving mid-race (ON-11) ends the race on the guest's game with the results so far:
+## the host's car held where it was last seen, ahead of the guest, and the guest OUT.
+func test_the_host_leaving_mid_race_ends_it_with_the_results_so_far() -> void:
 	var r := room(1)
 	var rc := TestSuite.new_race(false, false, 0, false)
 	rc.online = r[1]
@@ -324,12 +326,68 @@ func test_the_host_leaving_mid_race_leaves_the_guest_racing_alone() -> void:
 	settle(r)
 	drive(rc, 240, input(1.0))
 	eq(rc.rivals.cars.size(), 1, "the host on the road")
+	var host_car := PlayerCar.new()
+	host_car.distance = rc.player.distance + 3000.0
+	host_car.speed = 3000.0
+	for i in OnlineSession.SEND_EVERY:
+		r[0].send_car(host_car)
+	settle(r)
+	drive(rc, 2, input(1.0))
 	r[0].leave()
 	settle(r)
 	drive(rc, 2, input(1.0))
-	eq(rc.rivals.cars.size(), 0, "gone")
+	check(rc.cut_short, "cut short")
+	eq(rc.state, rc.State.FINISHED, "the race is over")
 	eq(rc.banner, "THE HOST LEFT", "and it says so")
-	eq(rc.state, rc.State.RACING, "racing on")
+	eq(rc.notice, "THE HOST LEFT", "on the notice too")
+	eq(rc.rivals.cars.size(), 1, "the host's car stays, for the standings")
+	var held: float = rc.rivals.cars[0].distance
+	eq(rc.place, 2, "behind the host, where they were")
+	drive(rc, int(rc.CUT_SHORT_RESULTS * 60.0) + 5, input(1.0))
+	check(rc.results.visible, "the results so far come up")
+	eq(rc.rivals.cars[0].distance, held, "the host's car held where it was")
+	eq(ResultsScreen.online_label(r[1]), "BACK", "back to the online screen, which says why")
+	var rows := ResultsScreen.rows(rc.rivals.standings(rc.player, rc.player_finish), rc.player, rc.player_finish, rc.car_id)
+	eq([rows[0]["name"], rows[1]["name"]], ["P1", "YOU"], "the standings so far")
+
+
+## A guest dropping out (ON-11): a notice on everyone else's game, and the car fades off the
+## road rather than vanishing; it doesn't touch anyone meanwhile.
+func test_a_player_dropping_out_fades_off_the_road_with_a_notice() -> void:
+	var r := room(2)
+	var races: Array = []
+	for i in [0, 2]:
+		var rc := TestSuite.new_race(false, false, 0, false)
+		rc.online = r[i]
+		_nodes.append(rc)
+		races.append(rc)
+	r[0].start()
+	settle(r)
+	for rc: Node in races:
+		rc.start_race()
+	r[1].loaded()
+	settle(r)
+	for i in 240:
+		for rc: Node in races:
+			drive(rc, 1, input(1.0))
+		settle(r, DT)
+	var host_race: Node = races[0]
+	eq(host_race.rivals.cars.size(), 2, "P2 and P3 on the host's road")
+	r[1].leave()
+	settle(r)
+	for rc: Node in races:
+		drive(rc, 1, input(1.0))
+		var p2: RivalCar = rc.rivals.cars.filter(func(c: RivalCar) -> bool: return c.slot == 1)[0]
+		eq(rc.notice, "P2 DROPPED OUT", "the notice")
+		check(rc.notice_time > 0.0, "up")
+		check(p2.fade < 1.0 and p2.fade > 0.0, "P2 fading: %f" % p2.fade)
+		check(not rc.solid_cars().has(p2), "and can't be hit meanwhile")
+		check(rc.state == rc.State.RACING and not rc.cut_short, "the race goes on")
+	drive(host_race, int(host_race.FADE_TIME * 60.0) + 2, input(1.0))
+	eq(host_race.rivals.cars.size(), 1, "faded out and gone")
+	drive(host_race, int(host_race.NOTICE_TIME * 60.0), input(1.0))
+	eq(host_race.notice_time, 0.0, "the notice gone in time")
+	near(Hud.notice_alpha(0.25), 0.5, 0.001, "fading over its last half second")
 
 
 func test_tapping_letters_types_a_room() -> void:

@@ -15,6 +15,9 @@ var finish_time := 0.0  # race seconds when it crossed the line
 ## driven here. `slot` is its place in the room.
 var remote := false
 var slot := -1
+## How solid it's drawn: 1, or down to 0 as a player who dropped out fades off the road
+## (ON-11). Under 1 it neither touches anyone nor is watched.
+var fade := 1.0
 
 
 ## Another player's car in an online race, in slot `s` of the room.

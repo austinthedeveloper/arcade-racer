@@ -253,7 +253,7 @@ func _field_panel(field: Array[Dictionary]) -> void:
 		_text(Vector2(band.position.x + 46, y + 12), r["name"], 9, Color.WHITE)
 		_text(Vector2(band.position.x + 46, y + 22), String(Cars.find(r["car"])["name"]).to_upper(), 8, Color(1, 1, 1, 0.7))
 		var t: float = r["time"]
-		var tt := Hud.clock_text(t) if t >= 0.0 else "RACING"
+		var tt := Hud.clock_text(t) if t >= 0.0 else ("OUT" if race.cut_short else "RACING")
 		var tw := _font.get_string_size(tt, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
 		_text(Vector2(band.end.x - 6 - tw, y + 17), tt, 10, Color.WHITE if t >= 0.0 else Color(1, 1, 1, 0.55))
 

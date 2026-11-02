@@ -49,6 +49,15 @@ var _shown := {}  # online: slot -> where its car was shown last tick (OnlineSes
 ## Online after the finish (ON-10): the car the camera follows, the leader of the players still
 ## racing (watch_target); null when not watching. The results wait until the last car is in.
 var watching: RivalCar
+## Online (ON-11): a short line about the room ("P2 DROPPED OUT"), and its seconds left.
+var notice := ""
+var notice_time := 0.0
+## Online (ON-11): the room went mid-race (the host left, or the line): the race ended there,
+## with the results so far.
+var cut_short := false
+const NOTICE_TIME := 3.0
+const FADE_TIME := 1.2  # seconds a player who dropped out takes to fade off the road
+const CUT_SHORT_RESULTS := 1.5  # seconds from the room going to the results
 var _own_strips: Dictionary = {}  # the player car's strips, for the camera back from watching
 var ghost: Ghost  # Time Attack: the best run so far, replayed (null before the first)
 var recording: Ghost  # Time Attack: this run, tick by tick
@@ -296,6 +305,9 @@ func start_race() -> void:
 	road.player_strips = CarSprites.strips(car["strip"])
 	_own_strips = road.player_strips
 	watching = null
+	notice = ""
+	notice_time = 0.0
+	cut_short = false
 	road.rivals = rivals.cars
 	road.ghost_strips = road.player_strips if ghost != null else {}
 	fx.clear()
@@ -602,7 +614,8 @@ func _physics_process(dt: float) -> void:
 	InputRouter.speed_factor = player.speed_percent()
 	var cam: PlayerCar = player if watching == null else watching  # (last tick's)
 	var seg_before := track.find_segment(cam.position + Cfg.PLAYER_Z)
-	Draft.update(player, sim, state == State.RACING and Draft.in_wake(player, track, rivals.everyone(player)))
+	var solid := solid_cars()
+	Draft.update(player, sim, state == State.RACING and Draft.in_wake(player, track, solid))
 	player.update(sim, inp, track, state == State.RACING)
 	if horn and state == State.RACING:
 		traffic.honk(track, player.position + Cfg.PLAYER_Z, player.x, player.speed)  # (RC-13)
@@ -615,7 +628,7 @@ func _physics_process(dt: float) -> void:
 		player.speed = move_toward(player.speed, 0.0, FINISH_BRAKING * sim)
 		player.braking = player.speed > 0.0
 	touched_traffic = touched_traffic or player.hit_traffic
-	Rivals.resolve_contacts(rivals.everyone(player), track)
+	Rivals.resolve_contacts(solid, track)
 	place = rivals.place(player, player_finish)
 	var place_before := place
 	picked_up = false
@@ -901,7 +914,7 @@ func timed() -> bool:
 static func watch_target(cars: Array) -> RivalCar:
 	var best: RivalCar = null
 	for r: RivalCar in cars:
-		if r.remote and not r.finished and (best == null or r.distance > best.distance):
+		if r.remote and not r.finished and r.fade >= 1.0 and (best == null or r.distance > best.distance):
 			best = r
 	return best
 
@@ -947,24 +960,27 @@ func online_continue() -> void:
 		online.ready_again(not online.is_ready_again())
 
 
+## Everyone on the road who can be touched or drafted: the player and the rivals, less a player
+## fading out (ON-11).
+func solid_cars() -> Array:
+	return rivals.everyone(player).filter(func(c: PlayerCar) -> bool: return not (c is RivalCar and (c as RivalCar).fade < 1.0))
+
+
 ## Online (ON-3): the other players where their games last said, moved on since; their
-## finishes; those who left taken off the road; this car sent on.
+## finishes; those who dropped out faded off the road (ON-11); this car sent on. The room
+## going (the host left, or the line) ends the race with the results so far.
 func _online_tick(dt: float) -> void:
-	var closed := online.phase == OnlineSession.Phase.CLOSED  # the host left, or the line went
-	if closed and not _shown.is_empty():
-		_banner(online.error, "Racing on alone", 2.0)
+	notice_time = maxf(0.0, notice_time - dt)
+	var closed := online.phase == OnlineSession.Phase.CLOSED
+	if closed:
+		if not cut_short:
+			end_cut_short()
+		return
 	for r: RivalCar in rivals.cars.duplicate():
 		if not r.remote:
 			continue
-		if closed:
-			rivals.cars.erase(r)
-			_shown.erase(r.slot)
-			continue
 		if online.gone.has(r.slot):
-			rivals.cars.erase(r)
-			_shown.erase(r.slot)
-			if state == State.RACING:
-				_banner("%s LEFT" % OnlineSession.player_name(r.slot), "", 1.5)
+			_fade_out(r, dt)
 			continue
 		if online.cars.has(r.slot):
 			var got: Array = online.cars[r.slot]
@@ -982,6 +998,43 @@ func _online_tick(dt: float) -> void:
 func drive_itself() -> void:
 	_autodrive = true
 	_log_banners = true
+
+
+## A player who dropped out (ON-11): a notice, then their car runs on at its last speed as it
+## fades, and goes (one already over the line stays in the standings, unseen).
+func _fade_out(r: RivalCar, dt: float) -> void:
+	if r.fade >= 1.0:
+		show_notice("%s DROPPED OUT" % OnlineSession.player_name(r.slot))
+	r.fade = maxf(0.0, r.fade - dt / FADE_TIME)
+	r.distance += r.speed * dt
+	r.position = fposmod(r.distance, track.length)
+	if r.fade <= 0.0 and not r.finished:
+		rivals.cars.erase(r)
+		_shown.erase(r.slot)
+
+
+## Online (ON-11): a line about the room for NOTICE_TIME (the HUD's, under the route bar).
+func show_notice(text: String) -> void:
+	notice = text
+	notice_time = NOTICE_TIME
+
+
+## The room went mid-race (ON-11): the race ends where everyone is, the others held where they
+## were last seen, and the results so far come up (BACK leads to the online screen, which
+## says why). Over the line already, the results come now rather than after the others.
+func end_cut_short() -> void:
+	cut_short = true
+	show_notice(online.error)
+	for r: RivalCar in rivals.cars:
+		if r.remote:
+			r.speed = 0.0
+	if state == State.COUNTDOWN or state == State.RACING:
+		_banner(online.error, "The results so far", CUT_SHORT_RESULTS)
+		state = State.FINISHED
+		finish_age = maxf(0.0, RESULTS_AFTER - CUT_SHORT_RESULTS)
+		player.nitro_time = 0.0
+		after = After.MENU
+		place = rivals.place(player, player_finish)
 
 
 ## Whether this race is the player's own, to save from: not autodriven, not started partway

@@ -152,6 +152,24 @@ func _draw() -> void:
 		_draw_callout(race.callouts.current, Vector2(w / 2.0, CALLOUT_Y))
 	if Settings.subtitles:
 		_draw_subtitle(lay["subtitle"], race.audio.announcer.subtitle())
+	if race.notice_time > 0.0:
+		_draw_notice(Vector2(w / 2.0, 72), race.notice, notice_alpha(race.notice_time))
+
+
+## An online notice (ON-11), "P2 DROPPED OUT": a dark pill with a red dot, under the route bar
+## and the subtitle, fading out over its last half second.
+func _draw_notice(center: Vector2, text: String, a: float) -> void:
+	var tw := UiText.width(text, 11)
+	var r := Rect2(center.x - tw / 2.0 - 18, center.y - 10, tw + 30, 20)
+	draw_rect(r, Color(0.04, 0.03, 0.1, 0.8 * a))
+	draw_rect(Rect2(r.position.x, r.position.y, 2, r.size.y), Color(PALETTE["behind"], a))
+	draw_circle(Vector2(r.position.x + 10, center.y), 3.5, Color(PALETTE["behind"], a))
+	_text(Vector2(r.position.x + 20, center.y + 4), text, 11, Color(1, 1, 1, a))
+
+
+## A notice's alpha with `left` seconds to go: whole, then fading over the last half second.
+static func notice_alpha(left: float) -> float:
+	return clampf(left / 0.5, 0.0, 1.0)
 
 
 ## The stage intro card's text (PR-16) for this race.

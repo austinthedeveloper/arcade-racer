@@ -17,6 +17,12 @@ the release workflow puts that section at the top of the GitHub Release notes
   the leader of those still racing, with live standings ("WATCHING P2"), until the last car is
   in; then the results come up. Enter brings them up sooner.
 
+### Changed
+
+- Disconnects online (ON-11): a player who drops out shows a notice ("P2 DROPPED OUT") and
+  their car fades off the road instead of vanishing. The host leaving (or your connection
+  going) now ends the race there with the results so far, instead of leaving you racing alone.
+
 ## [0.4.0] - 2026-11-02
 
 ### Added

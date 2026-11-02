@@ -413,6 +413,8 @@ static func pixel_sprite_rect(sx: float, base_y: float, w: float, h: float, offs
 
 ## A rival in its segment, drawn with its car's steering strip like the player's.
 func _draw_rival(seg: Segment, r: RivalCar, tint: Color) -> void:
+	if r.fade <= 0.0:
+		return
 	var p := fposmod(r.position + Cfg.PLAYER_Z, Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH
 	var s := lerpf(seg.scale1, seg.scale2, p)
 	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
@@ -426,7 +428,7 @@ func _draw_rival(seg: Segment, r: RivalCar, tint: Color) -> void:
 		steer = sin(r.crash_time * 20.0) * 2.0
 		lift += sin(r.crash_time / r.crash_length * PI) * w * 0.3
 	CarSprites.draw_player(self, r.strips, Vector2(roundf(cx), roundf(cy)), w, steer, r.braking,
-		roundf(lift), r.pitch, 1.0, tint)
+		roundf(lift), r.pitch, r.fade, tint)
 
 
 ## Where the ghost is on the track (its distance from the start line, wrapped).
