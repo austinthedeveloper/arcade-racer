@@ -165,6 +165,9 @@ func _ready() -> void:
 	if not InputRouter.driver_unplugged.is_connected(driver_unplugged):
 		InputRouter.driver_unplugged.connect(driver_unplugged)
 		InputRouter.driver_replugged.connect(driver_replugged)
+	# (the window's notification may not reach a node under it on every platform: its signal does)
+	if is_inside_tree() and not get_window().focus_exited.is_connected(focus_lost):
+		get_window().focus_exited.connect(focus_lost)
 	if not _dev_args_read:
 		_dev_args_read = true
 		_parse_dev_args()
@@ -350,6 +353,32 @@ func resume() -> void:
 	unplugged = ""  # resumed without it (the keyboard, or a restart): no waiting for it
 	_unplug_paused = false
 	pause_menu.notice = []
+
+
+## Auto-pause (AC-15): the window losing focus, the app going to the background (a phone
+## browser's tab hidden) or the OS pausing it pauses a race under way (focus_lost).
+const FOCUS_LOST := [NOTIFICATION_WM_WINDOW_FOCUS_OUT, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED]
+
+
+func _notification(what: int) -> void:
+	if what in FOCUS_LOST:
+		focus_lost()
+
+
+## Whether losing focus pauses the race now: a race under way, the player's (not the attract
+## demo, an autodriven run or a golden trace), not paused already, and not online, where the
+## pause menu doesn't stop the race and opening it on its own would leave the car coasting.
+func auto_pauses() -> bool:
+	return not demo and not _autodrive and online == null and not paused \
+		and (state == State.COUNTDOWN or state == State.RACING)
+
+
+## The window lost focus: pauses the race if auto_pauses says so. Returns whether it did.
+func focus_lost() -> bool:
+	if not auto_pauses():
+		return false
+	pause()
+	return true
 
 
 ## The joypad driving was unplugged (InputRouter.driver_unplugged): a race under way pauses,

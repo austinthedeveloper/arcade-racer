@@ -26,6 +26,8 @@ the release workflow puts that section at the top of the GitHub Release notes
   SMOOTHEST. STANDARD steers exactly as before.
 - Reduce motion (AC-13): one switch in Options > Accessibility turns off the camera shake, the
   nitro view stretch, the scenery rising and dipping with the hills, and the rain streaks.
+- Auto-pause (AC-15): switching to another window, or sending a phone browser tab to the
+  background, pauses the race. Online races carry on, as they always do.
 
 ### Changed
 
