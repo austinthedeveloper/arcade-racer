@@ -352,6 +352,10 @@ func test_no_traffic_spawns_ahead_of_the_players_start() -> void:
 	var tr := Traffic.new()
 	tr.spawn(t, 1000, 7, 800 * Cfg.SEGMENT_LENGTH)
 	check(_car_past(t, tr, 800) == null, "the road ahead of a start partway in is clear")
+	var behind := Tuning.i("traffic/behind_clear")
+	for c in tr.cars:
+		var back := posmod(800 - c.segment.index, t.segments.size())
+		check(back == 0 or back > behind, "nothing behind it to drive up to the grid (a car %d back)" % back)
 	var plain := Traffic.new()
 	plain.spawn(t, 1000)
 	check(_car_past(t, plain, 800) != null, "where it would have had traffic")
@@ -452,3 +456,25 @@ func test_nothing_spawns_coming_the_other_way_to_meet_the_grid() -> void:
 				check(not c.oncoming, "no oncoming car at segment %d, ahead of the grid" % c.segment.index)
 				check(c.oncoming == (c.offset * t.side() < 0.0), "and each on its side of the road")
 		check(near_start > 0, "cars there, all going the player's way")
+
+
+# --- Traffic density along a stage (RC-20) ------------------------------------------
+
+func test_spawned_traffic_follows_the_stretches() -> void:
+	var t := flat_track(1000)
+	t.set_traffic(100, 300, Track.TRAFFIC_EMPTY)
+	t.set_traffic(400, 300, Track.TRAFFIC_BUSY)
+	var tr := Traffic.new()
+	tr.spawn(t, 400)
+	var counts := [0, 0, 0]
+	for c in tr.cars:
+		var i := c.segment.index
+		if i >= 100 and i < 400:
+			counts[0] += 1
+		elif i >= 400 and i < 700:
+			counts[1] += 1
+		elif i >= 700 and i < 900:  # not the end of the loop, behind the start (behind_clear)
+			counts[2] += 1
+	eq(counts[0], 0, "none on the empty stretch")
+	var ratio := float(counts[1]) / maxf(1.0, counts[2])
+	near(ratio, Tuning.v("traffic/busy") * 300.0 / 200.0, 0.8, "the busy stretch has its share more than the ordinary (%s)" % [counts])

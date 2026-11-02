@@ -77,6 +77,10 @@ static func build() -> Track:
 	causeways.append(Vector2i(start, t.segments.size()))
 
 	t.finish_stage(final_straight)
+	# Locals on the island road, few cars out over the water (RC-20)
+	t.set_traffic(island.x, island.y - island.x, Track.TRAFFIC_BUSY)
+	for c in causeways:
+		t.set_traffic(c.x, c.y - c.x, Track.TRAFFIC_QUIET)
 
 	_decorate(t, causeways)
 	_rails(t, island, channel)

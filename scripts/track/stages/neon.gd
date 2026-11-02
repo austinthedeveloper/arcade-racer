@@ -66,6 +66,9 @@ static func build() -> Track:
 	t.straight(Track.LENGTH_LONG)
 
 	t.finish_stage(final_straight)
+	# The Strip is the busiest road in the game; the overpass run out of town thins out (RC-20)
+	t.set_traffic(strip_start, strip_end - strip_start, Track.TRAFFIC_BUSY)
+	t.set_traffic(plaza_at + 30, final_straight - plaza_at - 30, Track.TRAFFIC_QUIET)
 
 	_decorate(t, strip_start, strip_end, plaza_at)
 	t.add_tunnel(t.free_spot(strip_start + 120, 50), 45, "neon_tunnel", "neon_tunnel_ring", 3, "neon_tunnel_exit")

@@ -68,6 +68,9 @@ static func build() -> Track:
 	t.finish_stage(final_straight)
 	# The road works close it down to two lanes, coned off at the narrowed edge (WS-7)
 	t.set_width(works_start, works_end - works_start, WORKS_WIDTH, 2)
+	# Trucks round the truck stop; the road works and the storm keep most people home (RC-20)
+	t.set_traffic(stop_at - 40, 120, Track.TRAFFIC_BUSY)
+	t.set_traffic(works_start - Track.WIDTH_EASE, works_end - works_start + 2 * Track.WIDTH_EASE, Track.TRAFFIC_QUIET)
 
 	_decorate(t, works_start, works_end)
 	t.add_spans_at("thunder_overpass", [0.15, 0.45, 0.6, 0.88])

@@ -66,6 +66,10 @@ static func build() -> Track:
 	t.straight(Track.LENGTH_LONG)
 
 	t.finish_stage(final_straight)
+	# Nobody out in the open desert; the canyon road and the diner see the traffic (RC-20)
+	t.set_traffic(0, canyon_start, Track.TRAFFIC_EMPTY)
+	t.set_traffic(diner_at - 40, 120, Track.TRAFFIC_BUSY)
+	t.set_traffic(diner_at + 80, final_straight - diner_at - 80, Track.TRAFFIC_QUIET)
 
 	_decorate(t, canyon_start, canyon_end, diner_at)
 	t.add_spans_at("redrock_arch", [0.3, 0.42, 0.62])

@@ -142,6 +142,34 @@ func set_grip(grip: float) -> void:
 	_grip = grip
 
 
+## How busy the road is along a stretch (RC-20): set_traffic, read by Traffic.spawn_totals.
+const TRAFFIC_EMPTY := 0
+const TRAFFIC_QUIET := 1
+const TRAFFIC_NORMAL := 2
+const TRAFFIC_BUSY := 3
+
+
+## Segments `first` to `first + count` (wrapping) carry `level` traffic: TRAFFIC_EMPTY to
+## TRAFFIC_BUSY. A stage's script sets its stretches; the rest stay TRAFFIC_NORMAL.
+func set_traffic(first: int, count: int, level: int) -> void:
+	for i in range(first, first + count):
+		segments[posmod(i, segments.size())].traffic = level
+
+
+## A traffic level's share of the spawned cars per segment, against TRAFFIC_NORMAL's 1:
+## traffic/quiet and traffic/busy (Tuning).
+static func traffic_weight(level: int) -> float:
+	match level:
+		TRAFFIC_EMPTY:
+			return 0.0
+		TRAFFIC_QUIET:
+			return Tuning.v("traffic/quiet")
+		TRAFFIC_BUSY:
+			return Tuning.v("traffic/busy")
+		_:
+			return 1.0
+
+
 ## Makes the road `width` half-widths (Cfg.ROAD_WIDTH; 1 is usual) with `lanes` lanes for
 ## segments `first` to `first + count`, easing from the width either side over `ease`
 ## segments before and after, its lanes changing halfway through each ease. Call after the

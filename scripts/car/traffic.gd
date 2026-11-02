@@ -98,16 +98,16 @@ func spawn(track: Track, count: int, seed_value: int = 7, start_z := 0.0) -> voi
 	rng.seed = seed_value
 	var specials: Array = track.theme.get("specials", SPECIALS)
 	var start := track.find_segment(start_z).index
-	var clear := keep_clear(track, start)
-	var totals := spawn_totals(track, clear)
+	var totals := spawn_totals(track, keep_clear(track, start))
 	for i in count:
-		_add_car(track, _spawn_z(totals), specials, start, clear)
+		_add_car(track, _spawn_z(totals), specials, start, totals)
 
 
 ## Fair traffic (RC-14): the segments no car spawns in, by index. The stretch just past a blind
 ## crest (Track.blind_crests), through a tunnel mouth (Track.tunnel_mouths) and ahead of
 ## `start_index`, where the player starts: traffic/spawn_clear segments each (Tuning), the whole
-## road across, so a mirrored stage clears the same.
+## road across, so a mirrored stage clears the same. And traffic/behind_clear segments behind
+## the start, so nothing drives up to the grid during the countdown.
 static func keep_clear(track: Track, start_index: int) -> Array[bool]:
 	var n := track.segments.size()
 	var out: Array[bool] = []
@@ -120,12 +120,15 @@ static func keep_clear(track: Track, start_index: int) -> Array[bool]:
 	for from in froms:
 		for k in reach:
 			out[(from + k) % n] = true
+	for k in Tuning.i("traffic/behind_clear"):
+		out[posmod(start_index - 1 - k, n)] = true
 	return out
 
 
 ## The running total of every segment's share of the spawned traffic, from the first: none
 ## near the start line (before SPAWN_FROM) or the loop's end (the last SPAWN_TO_END) or where
-## `clear` says so, the same everywhere else.
+## `clear` says so, elsewhere the weight of its stretch's traffic level (RC-20,
+## Track.traffic_weight).
 static func spawn_totals(track: Track, clear: Array[bool]) -> PackedFloat64Array:
 	var n := track.segments.size()
 	var out := PackedFloat64Array()
@@ -133,19 +136,26 @@ static func spawn_totals(track: Track, clear: Array[bool]) -> PackedFloat64Array
 	var sum := 0.0
 	for i in n:
 		if i >= SPAWN_FROM and i < n - SPAWN_TO_END and not clear[i]:
-			sum += 1.0
+			sum += Track.traffic_weight(track.segments[i].traffic)
 		out[i] = sum
 	return out
+
+
+## Segment `i`'s share of the traffic in `totals` (spawn_totals).
+static func share_of(totals: PackedFloat64Array, i: int) -> float:
+	return totals[i] - (totals[i - 1] if i > 0 else 0.0)
 
 
 ## Where the next spawned car goes: one roll of the dice into `totals` (spawn_totals), so a
 ## segment gets cars in proportion to its share and a kept-clear one gets none.
 func _spawn_z(totals: PackedFloat64Array) -> float:
-	var roll := _rng.randf() * totals[totals.size() - 1]
+	var dice := _rng.randf()
+	if totals[totals.size() - 1] <= 0.0:  # nowhere to put it: anywhere, then
+		return dice * (totals.size() - 1) * Cfg.SEGMENT_LENGTH
+	var roll := dice * totals[totals.size() - 1]
 	var k := mini(totals.bsearch(roll, false), totals.size() - 1)
-	var below := totals[k - 1] if k > 0 else 0.0
-	var share := totals[k] - below
-	return (k + clampf((roll - below) / share, 0.0, 0.999)) * Cfg.SEGMENT_LENGTH
+	var share := share_of(totals, k)
+	return (k + clampf((roll - (totals[k] - share)) / share, 0.0, 0.999)) * Cfg.SEGMENT_LENGTH
 
 
 ## The debug panel's traffic burst (EQ-16): `count` more cars spread over the road from
@@ -157,28 +167,29 @@ func burst(track: Track, from_z: float, count: int, span := 20000.0) -> void:
 
 
 ## Where an oncoming car spawned at `z` goes instead if it would meet the grid at `start`
-## (RC-14): as far again on, past any stretch `clear` keeps clear. `z` itself if it wouldn't.
-static func past_the_grid(track: Track, z: float, start: int, clear: Array[bool]) -> float:
+## (RC-14): as far again on, past any stretch with no share of the traffic in `totals`
+## (spawn_totals). `z` itself if it wouldn't.
+static func past_the_grid(track: Track, z: float, start: int, totals: PackedFloat64Array) -> float:
 	var n := track.segments.size()
 	var reach := Tuning.i("traffic/oncoming_clear")
 	var k := floori(z / Cfg.SEGMENT_LENGTH)
 	if posmod(k - start, n) >= reach:
 		return z
 	var moved := reach
-	while clear[(k + moved) % n] and moved < n:
+	while moved < n and share_of(totals, (k + moved) % n) <= 0.0:
 		moved += 1
 	return fposmod(z + moved * Cfg.SEGMENT_LENGTH, track.length)
 
 
 ## A car at `z` in a lane picked by the dice, of a kind and speed picked by them too. With a
 ## `start` (spawn), an oncoming car that would meet the grid there goes on past it.
-func _add_car(track: Track, z: float, specials: Array, start := -1, clear: Array[bool] = []) -> void:
+func _add_car(track: Track, z: float, specials: Array, start := -1, totals := PackedFloat64Array()) -> void:
 	var rng := _rng
 	var car := TrafficCar.new()
 	var lane_roll := rng.randi()
 	var at := track.find_segment(z)
 	if start >= 0 and lane_roll % at.lanes < first_lane(track, at.lanes):
-		z = past_the_grid(track, z, start, clear)
+		z = past_the_grid(track, z, start, totals)
 		at = track.find_segment(z)
 	car.z = z
 	car.last_z = car.z

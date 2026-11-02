@@ -29,6 +29,10 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Fairer traffic (RC-14): no car waits just over a jump or a big blind hilltop, just inside a
   tunnel or covered bridge, or right ahead of where you start, and nothing coming the other way
   meets the grid. A car you knock off the road comes back in a lane with room.
+- Traffic has a rhythm along each stage (RC-20): towns, the Strip, downtown Skyline and the
+  stops along the way are busy; Redrock's open desert and Timberline's snowy summit are empty;
+  causeways, bridges, the wheat fields, the switchbacks and the road works are quiet. Nothing
+  drives up to the grid from behind during the countdown any more.
 
 ## [0.3.1] - 2026-11-01
 

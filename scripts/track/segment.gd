@@ -14,6 +14,7 @@ var band := 0  # alternating color band for stripes
 var ground_left := 0
 var ground_right := 0
 var grip := 1.0  # the road's grip (RC-12): 1 dry; lower when wet or snowy (Track.set_grip)
+var traffic := 2  # how busy the road is here (RC-20): Track.TRAFFIC_EMPTY to TRAFFIC_BUSY (Track.set_traffic)
 ## The road's half-width at the near and far ends, in Cfg.ROAD_WIDTH (1 the usual four lanes),
 ## and its lane count (WS-7, Track.set_width). Car and pickup x is in Cfg.ROAD_WIDTH too, so a
 ## car keeps its place across a narrowing; roadside sprite offsets are in this segment's
