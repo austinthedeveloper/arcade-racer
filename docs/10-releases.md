@@ -80,8 +80,11 @@ their next visit.
   month at this traffic.
 - **Sign-in:** the Entra app `sundownrun-web-deploy` has *Storage Blob Data Contributor* on that
   account and nothing else. GitHub signs in as it with OIDC: its federated credential trusts
-  `repo:austinthedeveloper/arcade-racer:environment:web`, and the repository's `web`
-  environment admits `v*` tags only. There are no secrets; the client, tenant and subscription
+  `repo:austinthedeveloper@2235324/arcade-racer@1439840465:environment:web`, and the
+  repository's `web` environment admits `v*` tags only. This repository's tokens name the
+  owner and repository with their numeric IDs; a subject with the plain names
+  (`repo:austinthedeveloper/arcade-racer:...`, also on the app, unused) fails the sign-in with
+  AADSTS700213, as the 0.4.0 release's first run did. There are no secrets; the client, tenant and subscription
   IDs and the account name are variables on that environment.
 - **No special headers needed:** the Web preset is single-threaded (`test_export` checks this),
   so no COOP/COEP headers are needed. Azure doesn't compress files on the fly, so the deploy
