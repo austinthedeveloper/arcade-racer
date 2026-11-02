@@ -53,6 +53,9 @@ nose points along when it comes in.
 Tripo's Vega comes in nose toward the camera and needs `--forward=-y`. Its lamps are only
 painted on, so the render makes orange-to-amber texels glow (`GLOW_*` in the render script).
 
+`--style=cel` renders flat bands of light instead of the model's own shading, with a hard
+highlight (`CEL_*`), closer to pixel art.
+
 `tools/blender/render_car.py` sets the look in its constants: `STEER_YAW` (the turn at each
 frame, matched to the sheets), `PITCH` (the hill tilt), the camera (`CAMERA_TILT`,
 `CAMERA_LENS`, `CAMERA_DISTANCE`) and the sun from the upper left. `tools/blender/blockout_vega.py`
@@ -62,6 +65,9 @@ Models in `assets/models/` stay out of the Godot project (`.gdignore`); only the
 
 **The Vega trial (2026-11-02):** the rendered Vega has the right shape and turns convincingly,
 but in a race it looked duller and softer than the concept-sheet sprite, and its taillights
-barely showed, even with the lamp glow and extra saturation and contrast. The concept-sheet
-strips stay in the game. `build/car_renders/vega_ingame_compare.png` (made by hand) had four
+barely showed, even with the lamp glow and extra saturation and contrast. Cel shading, with
+the sun moved ahead of the car as in the hero art, came out crisper and redder, but the lamps
+still read pale pink and the light bar faint: the concept's glowing triangles are painted
+detail the model's texture doesn't have. The concept-sheet strips stay in the game; the models
+may still serve the car select turntable (CP-10), a screen of its own. `build/car_renders/vega_ingame_compare.png` (made by hand) had four
 race frames side by side.
