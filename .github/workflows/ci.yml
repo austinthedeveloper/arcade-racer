@@ -51,6 +51,34 @@ jobs:
       - name: test_golden
         run: tools/test.sh test_golden.
 
+  # Reproducible assets (EQ-19): every sprite tool rebuilds its sprites from assets/concept
+  # with the pinned libraries, and a picture that differs from the committed one by a pixel
+  # fails the job (pixels, not bytes: zlib builds differ). The differing files are uploaded.
+  sprites:
+    name: Reproducible sprites
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Pinned sprite tool libraries
+        run: pip install -r tools/requirements.txt
+
+      - name: Rebuild every sprite and compare (tools/check_sprites.py)
+        run: python tools/check_sprites.py --out="${{ runner.temp }}/rebuilt"
+
+      - name: Keep the differing sprites
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: rebuilt-sprites
+          path: ${{ runner.temp }}/rebuilt
+          if-no-files-found: ignore
+
   # The exported Linux build (unsupported platform, kept so the export
   # pipeline and a later Steam Deck test stay working) starts and plays.
   smoke:
