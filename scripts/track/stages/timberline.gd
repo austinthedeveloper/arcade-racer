@@ -9,6 +9,7 @@ const SUMMIT_WIDTH := 0.65  # the road's half-width over the summit (Track.set_w
 
 static func theme() -> Dictionary:
 	return {
+		"hour": 11.0,  # the time of day it is drawn at: late morning (Sundown, WS-16)
 		"sky_top": Color("#1f6fe0"),
 		"sky_bottom": Color("#cfe6ff"),
 		"fog": Color("#e4eef8"),

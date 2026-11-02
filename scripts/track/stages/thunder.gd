@@ -9,6 +9,7 @@ const WORKS_WIDTH := 0.6  # the road's half-width through the road works (Track.
 
 static func theme() -> Dictionary:
 	return {
+		"hour": 16.0,  # the time of day it is drawn at: afternoon, under the storm (Sundown, WS-16)
 		"sky_top": Color("#1b2140"),
 		"sky_bottom": Color("#6d6f96"),
 		"fog": Color("#59607e"),

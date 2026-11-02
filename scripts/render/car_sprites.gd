@@ -24,6 +24,9 @@ const DECK_SPLIT := 0.55
 # the bumper does the opposite at half the rate.
 const DECK_STRETCH := 0.35
 
+## How long the cars' shadows are, times the plain one (Sundown.shadow_length): the race sets
+## it for the stage's hour (WS-16); they stretch toward the camera, away from the low sun.
+static var shadow_length := 1.0
 static var _strip_sets: Dictionary = {}  # car strip id -> its strips
 static var traffic: Dictionary = {}
 
@@ -173,6 +176,13 @@ static func draw_traffic(ci: CanvasItem, base: Vector2, w: float, id: String, ti
 
 
 static func _shadow(ci: CanvasItem, base: Vector2, w: float, strength: float) -> void:
+	var r := shadow_rect(base, w, shadow_length)
+	ci.draw_rect(r, Color(0, 0, 0, 0.35 * strength / sqrt(maxf(1.0, shadow_length))))
+
+
+## The shadow under a car `w` wide standing at `base`, `length` times as long as by day: from
+## just under its bumper toward the camera, the low sun being ahead.
+static func shadow_rect(base: Vector2, w: float, length := 1.0) -> Rect2:
 	var h := maxf(1.0, w * 0.05)
-	ci.draw_rect(Rect2(base.x - w * 0.5, base.y - h * 0.6, w, h), Color(0, 0, 0, 0.35 * strength))
+	return Rect2(base.x - w * 0.5, base.y - h * 0.6, w, h * maxf(1.0, length))
 

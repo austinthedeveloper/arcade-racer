@@ -9,6 +9,7 @@ const BOULEVARD_WIDTH := 1.5  # the road's half-width downtown (Track.set_width)
 
 static func theme() -> Dictionary:
 	return {
+		"hour": 20.0,  # the time of day it is drawn at: sunset (Sundown, WS-16)
 		"sky_top": Color("#24124a"),
 		"sky_bottom": Color("#f2875a"),
 		"fog": Color("#5b3f78"),

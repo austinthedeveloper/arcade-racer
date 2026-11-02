@@ -81,7 +81,7 @@ func _draw_layer(tex: Texture2D, layer: String, alpha: float, of_theme: Dictiona
 	var tw := float(tex.get_width())
 	var y0 := layer_bottom(layer, hill, of_theme) - tex.get_height()
 	var x0 := layer_x(offset, layer, tw, of_theme)
-	var tint := Color(1, 1, 1, alpha)
+	var tint := Color(Sundown.light_of(of_theme), alpha)  # the stage's light at its hour (WS-16)
 	var size := Vector2(-tw if mirrored else tw, tex.get_height())
 	draw_texture_rect(tex, Rect2(Vector2(x0, y0), size), false, tint)
 	draw_texture_rect(tex, Rect2(Vector2(x0 + tw, y0), size), false, tint)
