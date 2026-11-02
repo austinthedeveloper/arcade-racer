@@ -220,6 +220,23 @@ func test_settings_v7_to_v8_adds_manual_gears() -> void:
 	_clean()
 
 
+func test_settings_v8_to_v9_adds_keyboard_steering_feel() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v8.cfg")
+	eq(Settings.migrate(cfg), 8, "from version 8")
+	eq([CfgVersion.of(cfg), cfg.get_value("controls", "key_steer_in"), cfg.get_value("controls", "key_steer_out")],
+		[Settings.VERSION, Settings.STEER_FEEL_STANDARD, Settings.STEER_FEEL_STANDARD], "migrated on: standard both ways")
+	_clean()
+	_load_settings("settings_v8.cfg")
+	eq(Settings.key_steer_rates(), Vector2(5.0, 9.0), "v8 steers as it did")
+	eq([Settings.manual_gears, Settings.subtitles, Settings.radio], [true, false, 2], "the rest as saved")
+	Settings.key_steer_in = 0
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.key_steer_in], [Settings.VERSION, 0], "saved and loaded back")
+	_clean()
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")

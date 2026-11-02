@@ -73,10 +73,9 @@ func _physics_process(dt: float) -> void:
 	var down := {"nitro": false, "pause": false, "restart": false, "confirm": false, "horn": false, "radio": false,
 		"shift_up": false, "shift_down": false}
 
-	# Keyboard: digital steering ramps in, and snaps back faster than it ramps
+	# Keyboard: digital steering ramps in, and snaps back faster than it ramps (key_steer)
 	var kb_target := Input.get_action_strength("steer_right") - Input.get_action_strength("steer_left")
-	var returning := kb_target == 0.0 or signf(kb_target) != signf(_kb_steer)
-	_kb_steer = move_toward(_kb_steer, kb_target, dt * (9.0 if returning else 5.0))
+	_kb_steer = key_steer(_kb_steer, kb_target, dt, Settings.key_steer_rates())
 	steer = _kb_steer * lerpf(1.0, 0.75, speed_factor)
 	throttle = Input.get_action_strength("accelerate")
 	brake = Input.get_action_strength("brake")
@@ -142,6 +141,14 @@ func _physics_process(dt: float) -> void:
 		state.kind = DriveInput.Kind.KEYBOARD
 		state.device_name = "Keyboard"
 		state.mapped = true
+
+
+## The keyboard's steering one tick on: from `current` toward the keys' `target` (-1, 0 or 1)
+## at `rates`.x while turning in, `rates`.y coming back (the keys released, or the other way,
+## or starting from center) (Settings.key_steer_rates).
+static func key_steer(current: float, target: float, dt: float, rates: Vector2) -> float:
+	var returning := target == 0.0 or signf(target) != signf(current)
+	return move_toward(current, target, dt * (rates.y if returning else rates.x))
 
 
 func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
