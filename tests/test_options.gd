@@ -379,10 +379,10 @@ func test_reset_options_leaves_save_and_profiles() -> void:
 
 func test_reset_save_asks_then_leaves_options_and_profiles() -> void:
 	_fill_all_three()
-	var settings_before := _file(TestSuite.SCRATCH_SETTINGS)
 	var profiles_before := _file(TestSuite.SCRATCH_PROFILES)
 	var keep := _as_device(DriveInput.Kind.KEYBOARD)
 	var g := _game()
+	var settings_before := _file(TestSuite.SCRATCH_SETTINGS)  # (after the title marks what's new seen)
 	g.show_options()
 	var o: OptionsScreen = g.menu
 	o.go_to(OptionsScreen.Row.RESET_SAVE)

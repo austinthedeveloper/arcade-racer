@@ -198,6 +198,116 @@ func test_race_uses_the_assists_only_when_on() -> void:
 	_clean()
 
 
+# --- Co-pilot (AC-14) -----------------------------------------------------------------
+
+func test_co_pilot_off_by_default_and_saved() -> void:
+	_clean()
+	eq(Settings.co_pilot, false, "off by default")
+	var o := OptionsScreen.new()
+	o.go_to(OptionsScreen.Row.CO_PILOT)
+	eq(o.page, OptionsScreen.Page.ACCESSIBILITY, "on the Accessibility page")
+	o.change(OptionsScreen.Row.CO_PILOT, 1, true)
+	eq(OptionsScreen.value_text(OptionsScreen.Row.CO_PILOT), "ON", "shown")
+	Settings.reset()
+	Settings.load_settings()
+	eq(Settings.co_pilot, true, "saved and loaded back")
+	o.free()
+	_clean()
+
+
+func test_co_pilot_steers_to_the_lane_and_holds_the_curve() -> void:
+	var p := _car(Cfg.MAX_SPEED)
+	var lanes: Array = Traffic.LANE_OFFSETS
+	check(Assists.co_pilot_steer(0.1, 1.0, 0.0, 1.0, p, lanes) > 0.0, "left of the 0.25 lane: steers right")
+	check(Assists.co_pilot_steer(-0.4, 1.0, 0.0, 1.0, p, lanes) > 0.0, "left of the -0.25 lane: steers right")
+	eq(Assists.co_pilot_steer(0.25, 1.0, 0.0, 1.0, p, lanes), 0.0, "in the lane on a straight: nothing")
+	var hold := Assists.co_pilot_steer(0.25, 1.0, Track.CURVE_EASY, 1.0, p, lanes)
+	near(hold, Track.CURVE_EASY * Tuning.v("driving/centrifugal"), 0.0001, "the lock that cancels the curve's pull")
+	near(Assists.co_pilot_steer(0.25, 0.5, Track.CURVE_EASY, 1.0, p, lanes), hold * 0.5, 0.0001, "less at half speed")
+	check(Assists.co_pilot_steer(0.25, 1.0, Track.CURVE_EASY, 0.8, p, lanes) > hold, "more on a slippery road")
+	eq(Assists.co_pilot_share(1.0, 0.25, 0.75, 1.0), Tuning.v("assists/co_pilot_nudge"), "a full push takes its share")
+	eq(Assists.co_pilot_share(0.0, 0.25, 0.75, 1.0), 0.0, "none without one")
+	eq(Assists.co_pilot_share(1.0, 1.0, 0.75, 1.0), 0.0, "pushing out at the road's edge: none")
+	eq(Assists.co_pilot_share(-1.0, 1.0, 0.75, 1.0), Tuning.v("assists/co_pilot_nudge"), "back in from it: all of it")
+	var edge := Assists.co_pilot_steer(1.1, 1.0, 0.0, 1.0, p, lanes)
+	check(edge < Assists.co_pilot_steer(0.85, 1.0, 0.0, 1.0, p, lanes), "past the outer lane: back on, harder")
+	check(edge <= -0.9, "hard (%.2f)" % edge)
+	var inp := input(0.7)
+	inp.brake = 0.2
+	var out := Assists.co_pilot(inp, _car(Cfg.MAX_SPEED, 0.1), _corner_track())
+	eq([out.throttle, out.brake], [0.7, 0.2], "gas and brake are the player's")
+	check(out.steer > 0.0, "the steering the co-pilot's")
+
+
+func test_co_pilot_keeps_the_car_in_its_lane_round_the_bends() -> void:
+	# AC-14: gas held, no steering; a long hard bend one way, a medium one the other. As the
+	# race does it: the co-pilot steering, the braking assist under it.
+	var t := Track.new()
+	t.straight(Track.LENGTH_LONG)
+	t.curve(Track.LENGTH_LONG, Track.CURVE_HARD)
+	t.curve(Track.LENGTH_LONG, -Track.CURVE_MEDIUM)
+	t.straight(Track.LENGTH_LONG)
+	t.finish_building(t.segments.size() - 10)
+	var p := _car(Cfg.MAX_SPEED * 0.9, 0.25)
+	var worst := 0.0
+	var braked := false
+	for i in 1500:
+		var inp := Assists.apply(Assists.co_pilot(input(1.0), p, t), p, t, false, true)
+		braked = braked or inp.brake > 0.0
+		p.update(DT, inp, t, true)
+		worst = maxf(worst, absf(p.x - 0.25))
+	check(p.distance > (Track.LENGTH_LONG * 3) * Cfg.SEGMENT_LENGTH, "through both bends (%.0f)" % p.distance)
+	check(braked, "braking for the hard one")
+	check(worst < 0.15, "never far off its lane's middle (%.3f)" % worst)
+
+
+func test_the_players_steering_nudges_it_over_a_lane() -> void:
+	var t := TestSuite.flat_track()
+	var p := _car(Cfg.MAX_SPEED * 0.8, 0.25)
+	var right := input(1.0, 1.0)
+	for i in 30:
+		p.speed = Cfg.MAX_SPEED * 0.8
+		p.update(DT, Assists.co_pilot(right, p, t), t, true)
+	check(p.x > 0.5, "held right: over toward the next lane (%.2f)" % p.x)
+	for i in 120:
+		p.speed = Cfg.MAX_SPEED * 0.8
+		p.update(DT, Assists.co_pilot(input(1.0), p, t), t, true)
+	near(p.x, 0.75, 0.03, "let go: settled in the new lane")
+	for i in 240:
+		p.speed = Cfg.MAX_SPEED * 0.8
+		p.update(DT, Assists.co_pilot(right, p, t), t, true)
+	check(p.x < 1.1 and not p.offroad, "held right on: the co-pilot keeps it on the road (%.2f)" % p.x)
+
+
+func test_a_race_finishes_with_the_co_pilot_and_no_steering() -> void:
+	# AC-14's done-when: not autodriven, gas held, never a touch of steering
+	_clean()
+	Settings.co_pilot = true
+	for stage in [0, 2, 6]:  # Palm Coast with traffic and rivals; the Strip and Thunderhead's bends
+		var r := race(false, stage == 0, stage)
+		var ticks := run_until(r, func() -> bool: return r.state == r.State.FINISHED or r.state == r.State.TIME_UP,
+			20000, input(1.0))
+		check(ticks > 0 and r.state == r.State.FINISHED, "%s: finished, not TIME UP (%d ticks, %.1f s left)" % [
+			Stages.stage_name(stage), ticks, r.time_left])
+	_clean()
+
+
+func test_off_the_race_steers_as_it_always_did() -> void:
+	_clean()
+	var r := race(false, false)
+	drive(r, 200, input(1.0))
+	var x: float = r.player.x
+	Settings.co_pilot = true
+	var r2 := race(false, false)
+	drive(r2, 600, input(1.0))
+	Settings.co_pilot = false
+	var r3 := race(false, false)
+	drive(r3, 200, input(1.0))
+	eq(r3.player.x, x, "off: exactly as before")
+	check(absf(r2.player.x - Assists.nearest_lane(r2.player.x)) < 0.05, "on: in a lane (%.3f)" % r2.player.x)
+	_clean()
+
+
 func test_steering_pulls_toward_the_lanes_of_this_road() -> void:
 	# WS-7: the lanes of the road under the car, however wide it is
 	var p := _car(Cfg.MAX_SPEED)

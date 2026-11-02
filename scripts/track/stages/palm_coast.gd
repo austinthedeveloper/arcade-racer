@@ -19,6 +19,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#6e6e79"), Color("#686873")],
 		"lane": Color("#f0f0f0"),
 		"clock": [42, 39, 36, 27],  # seconds on ARCADE: start, then each checkpoint (WS-11)
+		"station": "station_funk",  # the radio station SHUFFLE starts on here (Radio, PR-19)
 		"background": "res://assets/sprites/backgrounds/palm_coast_far.png",
 		"specials": ["surf_van", "golf_cart", "ice_cream_truck"],
 	}

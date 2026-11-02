@@ -11,8 +11,9 @@ const PATH := "user://tuning.cfg"
 const PRESET_DIR := "user://tuning_presets"
 const LOG_PATH := "user://tuning_log.txt"
 ## The areas, in the debug panel's page order. A key is "area/name".
-const AREAS := ["driving", "slide", "crashes", "ai", "traffic", "draft", "launch", "power_ups", "scoring", "camera"]
-const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "SCORING", "CAMERA"]
+const AREAS := ["driving", "slide", "crashes", "ai", "traffic", "draft", "launch", "power_ups", "scoring", "camera", "assists"]
+const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "SCORING", "CAMERA",
+	"ASSISTS"]
 ## key: [default, min, max, step, what it is]. tools/tuning_adopt.py rewrites the defaults in
 ## place, so keep one value to a line, the default first.
 const TABLE := {
@@ -126,6 +127,9 @@ const TABLE := {
 	"camera/shake_settle": [12.0, 1.0, 40.0, 1.0, "pixels per second back to still"],
 	"camera/nitro_fov_stretch": [0.05, 0.0, 0.2, 0.01, "share the view widens while nitro burns"],
 	"camera/nitro_fov_rate": [0.15, 0.01, 1.0, 0.01, "share per second the stretch eases in and out"],
+	"assists/co_pilot_gain": [1.5, 0.5, 4.0, 0.1, "co-pilot: lock per road half-width off its lane's middle"],
+	"assists/co_pilot_edge": [4.0, 0.0, 10.0, 0.5, "co-pilot: extra lock per half-width past the outer lanes, back toward the road"],
+	"assists/co_pilot_nudge": [0.6, 0.1, 1.0, 0.05, "co-pilot: share of the steering a full push of the player's takes over"],
 }
 
 ## Where overrides are read from and saved to; "" keeps them in memory only (tests).

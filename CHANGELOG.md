@@ -15,6 +15,23 @@ the release workflow puts that section at the top of the GitHub Release notes
 - The browser version opens on a Sundown Run loading screen (EQ-23): a sunset, the name and a
   bar showing how much has downloaded (percent and MB), in place of Godot's logo, and a plain
   message if the browser can't run the game.
+- Photo key (PR-21): F12 saves a picture of the race without the HUD to the game's
+  screenshots folder, with a shutter click and a flash (Options > Accessibility > FLASH tones
+  it down). Bind it to a pad or wheel button on the remap screen as PHOTO.
+- What's new (PR-17): the first time the game starts after an update, the title lists what
+  the new version added, changed and fixed. Enter puts it away; it doesn't come back.
+- A station per stage (PR-19): with the radio on SHUFFLE, each stage starts on its own
+  station: rock through Redrock, Timberline and Harvest, synthwave on Neon Strip and Skyline,
+  funk on Palm Coast and the Bayou, techno into Thunderhead. A station you pick still plays
+  everywhere, and the radio button still changes it mid-race.
+- Co-pilot (AC-14): Options > Accessibility > CO-PILOT steers for you, keeping the car in the
+  middle of its lane and round every bend, and brakes for the sharp ones. Steer to move over a
+  lane; it won't let you drive off the road. With AUTO GAS too, the youngest drivers can race
+  without touching a thing. Off by default.
+- Replug countdown (WH-12): plugging your wheel or pad back in after it came loose counts
+  3, 2, 1 before the race goes on, so you have a moment to get your hands back on it. Pause
+  stops the count. Plug in a different one and it drives instead, the screen saying it's a
+  different device with its own settings.
 
 ## [0.4.0] - 2026-11-02
 

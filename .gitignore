@@ -9,3 +9,5 @@
 # so ignore any .import files an earlier editor session left there.
 assets/concept/**/*.import
 __pycache__/
+# What's new, bundled by tools/export.sh from CHANGELOG.md for the export only
+assets/whats_new.json

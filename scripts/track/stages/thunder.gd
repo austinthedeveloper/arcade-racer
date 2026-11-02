@@ -21,6 +21,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#3c3e46"), Color("#373941")],  # rain-soaked asphalt
 		"lane": Color("#e6e6ea"),
 		"clock": [21, 36, 29, 24],  # seconds on ARCADE: start, then each checkpoint (WS-11)
+		"station": "station_techno",  # the radio station SHUFFLE starts on here (Radio, PR-19)
 		"background": "res://assets/sprites/backgrounds/thunder_far.png",
 		"specials": ["tanker", "cement_mixer", "dump_truck"],
 		"divided": true,  # a divided highway or boulevard: no oncoming traffic (RC-11)

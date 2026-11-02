@@ -44,6 +44,9 @@ var debug_overlay: InputDebugOverlay
 var debug_panel: DebugPanel
 var _layer: CanvasLayer
 var _menu_shot := ""
+## What's new (WhatsNew) may come up on the title: not for a staged screenshot (--menu-shot),
+## which neither shows it nor marks it seen; --screen=whats_new stages it.
+var news_allowed := true
 ## Where the options screen goes back to (close_options): the title unless whoever opened
 ## it says otherwise.
 var _options_back := Callable()
@@ -70,11 +73,13 @@ func _ready() -> void:
 	var quick := false
 	var pause_shot := false
 	var unplug_shot := false
+	var replug_shot := ""  # --screen=replugged (a different wheel) or replugged:same
 	var debug_page := ""  # --screen=debug[:page]: the tuning panel, over a race given race flags
 	var car := DevArgs.value("--car")
 	if car != "":
 		car_index = maxi(0, Cars.LIST.find(Cars.find(car)))
 	mirror = DevArgs.has("--mirror")
+	news_allowed = DevArgs.value("--menu-shot") == ""
 	var mode := DevArgs.value("--mode")
 	if mode != "":
 		mode_index = ModeSelect.Item.get(mode.to_upper(), mode_index)
@@ -86,6 +91,10 @@ func _ready() -> void:
 		elif arg == "--screen=unplugged":
 			pause_shot = true
 			unplug_shot = true
+		elif arg.begins_with("--screen=replugged"):
+			pause_shot = true
+			unplug_shot = true
+			replug_shot = arg.get_slice(":", 1) if arg.contains(":") else "different"
 		elif arg == "--screen=results":
 			quick = true  # a race, staged to a finish (race.gd)
 		elif arg.begins_with("--screen=debug"):
@@ -108,6 +117,8 @@ func _ready() -> void:
 			show_title()
 	if unplug_shot:
 		stage_unplug()
+		if replug_shot != "":
+			stage_replug(replug_shot == "same")
 	elif pause_shot:
 		race.pause()
 	if debug_page != "":
@@ -136,7 +147,8 @@ func _physics_process(dt: float) -> void:
 		_swallow -= 1
 		return
 	if screen == Screen.TITLE:
-		idle = 0.0 if woke else idle + dt
+		var reading := menu is TitleScreen and not (menu as TitleScreen).news.is_empty()  # (what's new up)
+		idle = 0.0 if woke or reading else idle + dt
 		if idle >= attract_delay:
 			start_demo()
 			return
@@ -169,6 +181,9 @@ func show_title(item := 0) -> void:
 		Updates.mark_good()  # a start on an update got this far: keep it
 	var t := TitleScreen.new()
 	t.index = item
+	if news_allowed:
+		t.news = WhatsNew.take()
+		t.news_version = Updater.version()
 	_set_menu(t, Screen.TITLE)
 
 
@@ -494,13 +509,15 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 
 # --- Dev helpers: `godot -- --screen=stages --menu-shot=/tmp/stages.png` -------------
 # (--screen=pause starts a race and pauses it; add --at-segment=N to pause further in.
-# --screen=unplugged pauses it as a wheel unplugged mid-race does.
+# --screen=unplugged pauses it as a wheel unplugged mid-race does; --screen=replugged then
+# plugs a different wheel in (replugged:same the same one), for the 3, 2, 1 that follows.
 # --car=car_mesa opens car select on that car. --screen=results stages a finish.
 # --mode=single_race (a ModeSelect.Item) picks the mode stage select is in; --mirror turns
 # its MIRROR toggle on.
 # --screen=debug opens the F3 tuning panel (debug:camera, debug:actions etc. for a page:
 # Tuning.AREAS, actions, presets), over the title, or over a race given race flags.
-# --screen=stats opens the stats page (MP-11).
+# --screen=stats opens the stats page (MP-11). --screen=whats_new shows this version's notes
+# over the title (PR-17), without marking them seen.
 # --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
 # a download; update:checking, update:failed, update:full and update:ready the other states.)
 
@@ -520,6 +537,10 @@ func _open(which: String) -> void:
 			show_mode_select()
 		"stats":
 			show_stats()
+		"whats_new":
+			show_title()
+			(menu as TitleScreen).news = WhatsNew.items(WhatsNew.notes(Updater.version()))
+			(menu as TitleScreen).news_version = Updater.version()
 		_ when which.begins_with("online"):
 			show_online()
 			(menu as OnlineScreen).stage_shot(which.get_slice(":", 1) if which.contains(":") else "menu")
@@ -538,6 +559,15 @@ func _open(which: String) -> void:
 static func stage_unplug() -> void:
 	InputRouter.last_active_device = STAGED_JOYPAD
 	InputRouter.joy_changed(STAGED_JOYPAD, false, "staged-wheel", "Logitech G29 Driving Force Racing Wheel")
+
+
+## The wheel back for --screen=replugged (WH-12): the same one, or (`same` false) a different
+## wheel on its id, so the race counts down 3, 2, 1 saying so.
+static func stage_replug(same: bool) -> void:
+	if same:
+		InputRouter.joy_changed(STAGED_JOYPAD, true, "staged-wheel", "Logitech G29 Driving Force Racing Wheel")
+	else:
+		InputRouter.joy_changed(STAGED_JOYPAD, true, "staged-wheel-2", "Thrustmaster T300RS Racing Wheel")
 
 
 ## An updater posed in `state_name` (an Updater.State, lower case) for the update screen's
