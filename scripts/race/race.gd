@@ -14,6 +14,7 @@ enum State { COUNTDOWN, RACING, FINISHED, TIME_UP }
 ## stage sets one, WS-11); Settings scales it for the others.
 const RADIO_SHOW := 1.5  # seconds the new station's name stays up
 const START_TIME := 45.0
+const COUNTDOWN_TIME := 3.0  # seconds from the grid to GO
 const CHECKPOINT_BONUS := 25.0
 const BACKGROUND_SCROLL := 0.0006  # per segment travelled, per unit of curve
 # After the finish line (finish_time_scale)
@@ -70,7 +71,7 @@ var rumble_sent := 0
 var traffic: Traffic
 var rivals := Rivals.new()
 var state := State.COUNTDOWN
-var countdown := 3.0
+var countdown := COUNTDOWN_TIME
 var time_left := START_TIME
 var race_time := 0.0
 var finish_age := 0.0  # seconds since the finish line (real time, not slowed)
@@ -99,6 +100,8 @@ var _unplug_paused := false  # the unplugging paused the race, so plugging back 
 var results: ResultsScreen  # after the finish (RC-5)
 var new_best_time := false  # this finish set the best time for the stage and car
 var best_before := {}  # SaveData.best for the stage and car before this finish
+var stats_recorded := false  # this run is in the stats page's counters (record_stats)
+var _start_distance := 0.0  # where the player started this run, for the miles driven
 
 var background: Background
 var road: RoadRenderer
@@ -180,6 +183,7 @@ func _ready() -> void:
 
 
 func start_race() -> void:
+	record_stats(false)  # a run restarted partway: its miles, crashes and near misses
 	InputRouter.speed_factor = 0.0
 	_frame = 0
 	track = Stages.build(stage_index, mirror)
@@ -190,6 +194,8 @@ func start_race() -> void:
 	CarSprites.load_all()
 	player.reset(_start_segment * Cfg.SEGMENT_LENGTH)
 	player.distance = _start_segment * Cfg.SEGMENT_LENGTH  # that far along the route, so the finish is where it is drawn
+	_start_distance = player.distance
+	stats_recorded = false
 	if not is_nan(_drive_x):
 		player.x = _drive_x  # already on that line, past any roadside railing
 	elif online != null:
@@ -232,7 +238,7 @@ func start_race() -> void:
 	if tour and tour_state.drivers.is_empty():
 		tour_state.drivers = rivals.driver_names()
 	state = State.RACING if demo else State.COUNTDOWN
-	countdown = 0.0 if demo else 3.0
+	countdown = 0.0 if demo else COUNTDOWN_TIME
 	clock = stage_clock(track.theme, track.checkpoints.size())
 	time_left = Settings.race_time(clock[0]) + (tour_state.carried if tour else 0.0)
 	if not is_nan(_time_left_shot):
@@ -290,6 +296,7 @@ func start_race() -> void:
 
 ## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
 func _exit_tree() -> void:
+	record_stats(false)  # quit partway (or after the results, already counted)
 	InputRouter.speed_factor = 0.0
 	if debug_panel != null and debug_panel.race == self:
 		debug_panel.race = null
@@ -472,6 +479,11 @@ func counting_down() -> bool:
 	return state == State.COUNTDOWN
 
 
+## Seconds since the countdown started (the stage intro card, StageIntro, slides by it).
+func countdown_elapsed() -> float:
+	return COUNTDOWN_TIME - countdown
+
+
 ## Whether the touch controls (TouchControls) show the driving layout: the race is on screen,
 ## not under the pause menu, the results or the calibration wizard.
 func touch_driving() -> bool:
@@ -561,6 +573,7 @@ func _physics_process(dt: float) -> void:
 			if time_left <= 0.0 and timed():
 				time_left = 0.0
 				state = State.TIME_UP
+				record_stats(true)
 				_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", Callouts.HOLD)
 
 	# Past the line the world drops into slow motion for a moment (sim, the world's tick), and
@@ -735,6 +748,7 @@ func _check_progress() -> void:
 		var before_furthest := SaveData.furthest_stage
 		var before_unlocks: Array = SaveData.unlocks.duplicate()
 		new_best_time = record_finish()
+		record_stats(true)
 		if time_attack:
 			_save_ghost()
 		var mins := int(race_time) / 60
@@ -798,6 +812,28 @@ func record_finish() -> bool:
 	var placed := not rivals.cars.is_empty()
 	var goes_on := tour and (not placed or Tour.advances(place))
 	return SaveData.record_finish(stage_index, car_id, race_time, place if placed else 0, goes_on)
+
+
+## Adds this run to the stats page's counters (SaveData.record_run, MP-11), once: `counted`
+## at a finish or TIME UP; a run left partway (restarted, quit, Free Drive) adds only its
+## miles, crashes and near misses. Not for runs that aren't the player's (_saves).
+func record_stats(counted: bool) -> void:
+	if stats_recorded or player == null or not _saves():
+		return
+	var driven := maxf(0.0, player.distance - _start_distance)
+	if not counted and driven <= 0.0:
+		return  # never left the grid
+	stats_recorded = true
+	var won := counted and state == State.FINISHED and place == 1 and not rivals.cars.is_empty()
+	SaveData.record_run(stage_index, car_id, counted, won, score.crashes, near_misses(score), Settings.miles(driven))
+
+
+## The near misses in a stage's bonuses.
+static func near_misses(s: Scoring) -> int:
+	var n := 0
+	for b in s.bonuses:
+		n += int(b["name"] == "NEAR MISS")
+	return n
 
 
 ## Time Attack: this run becomes the ghost when it beats the saved one.

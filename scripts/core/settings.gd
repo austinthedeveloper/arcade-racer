@@ -297,6 +297,18 @@ static func speed_in(speed: float, in_units: int) -> int:
 	return roundi(mph * KPH_PER_MPH if in_units == Units.KPH else mph)
 
 
+## A distance in world units in miles, on the speedometer's scale (speed_in): a second at
+## Cfg.MAX_SPEED covers Cfg.DISPLAY_TOP_SPEED / 3600 miles.
+static func miles(world: float) -> float:
+	return world / Cfg.MAX_SPEED * Cfg.DISPLAY_TOP_SPEED / 3600.0
+
+
+## A distance in world units as text in `in_units`: "4.6 MI" or "7.4 KM", one decimal.
+static func distance_text(world: float, in_units: int) -> String:
+	var mi := miles(world)
+	return "%.1f KM" % (mi * KPH_PER_MPH) if in_units == Units.KPH else "%.1f MI" % mi
+
+
 ## The speedometer's number and label in the units option.
 func speedometer(speed: float) -> Array:
 	return [speed_in(speed, units), UNIT_NAMES[units]]

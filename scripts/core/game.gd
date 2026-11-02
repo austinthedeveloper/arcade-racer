@@ -5,7 +5,7 @@ extends Node
 ## --online=host or --online=join:CODE straight into a room (online_from_flags).
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -362,6 +362,11 @@ func start_online_race() -> void:
 	add_child(race)
 
 
+## The stats page (MP-11), from the title.
+func show_stats() -> void:
+	_set_menu(StatsScreen.new(), Screen.STATS)
+
+
 func show_stage_select() -> void:
 	var s := StageSelect.new()
 	s.index = stage_index
@@ -492,6 +497,7 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # its MIRROR toggle on.
 # --screen=debug opens the F3 tuning panel (debug:camera, debug:actions etc. for a page:
 # Tuning.AREAS, actions, presets), over the title, or over a race given race flags.
+# --screen=stats opens the stats page (MP-11).
 # --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
 # a download; update:checking, update:failed, update:full and update:ready the other states.)
 
@@ -509,6 +515,8 @@ func _open(which: String) -> void:
 			show_wheel()
 		"modes":
 			show_mode_select()
+		"stats":
+			show_stats()
 		_ when which.begins_with("online"):
 			show_online()
 			(menu as OnlineScreen).stage_shot(which.get_slice(":", 1) if which.contains(":") else "menu")

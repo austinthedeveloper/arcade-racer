@@ -30,6 +30,16 @@ the release workflow puts that section at the top of the GitHub Release notes
   background, pauses the race. Online races carry on, as they always do.
 - Gamepad rumble (WH-13): the pad you drive with rumbles on crashes, bumps, landings, nitro and
   off the road. Options > Controls > RUMBLE sets how strongly, 0 for none.
+- Medals (MP-9): every stage has bronze, silver and gold times, a little tighter on Hard and a
+  little looser on Easy. Your best time's medal hangs on each postcard on the stage map, stage
+  select shows the chosen stage's times beside its postcard, and the results show the medal a
+  run earned.
+- Stage intro card (PR-16): during the countdown a card slides in with the stage's name, its
+  weather, its length (in miles or kilometres, after the units option), and your best time and
+  medal there, and slides away before GO.
+- Stats page (MP-11): STATS on the title shows your races, wins, crashes, near misses and
+  distance driven, with your favourite car and stage. Kept in your save; a save from an earlier
+  version starts with the races and wins its best times show.
 
 ### Changed
 
