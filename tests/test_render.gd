@@ -255,6 +255,31 @@ func test_background_layers_scroll_at_their_own_rates() -> void:
 			check(x <= 0.0 and x > -1200.0, "%s at %s: the first copy starts at or left of 0" % [layer, o])
 
 
+func test_skyline_harbor_reflections_move_with_the_city() -> void:
+	# WS-14: Skyline's near strip is the harbor water holding the city's reflections, so it
+	# scrolls and rises with the far strip and the two never slide apart.
+	var theme := SkylineFinale.theme()
+	check(theme.get("reflection", false), "Skyline's near strip reflects its far one")
+	eq(Background.scroll_rate(theme, "near"), Background.scroll_rate(theme, "far"), "the water scrolls at the city's rate")
+	eq(Background.hill_rate(theme, "near"), Background.hill_rate(theme, "far"), "and rises with the hills at the city's rate")
+	eq(Background.hill_rate(theme, "near"), Background.HILL_RATE["near"], "the water still sits on the road")
+	eq(Background.scroll_rate(theme, "sky"), Background.SCROLL_RATE["sky"], "the sky drifts on its own")
+	var layers := Background.layers_of(theme)
+	var far: Texture2D = layers["far"]
+	var near: Texture2D = layers["near"]
+	eq(near.get_width(), far.get_width(), "cut at the city's scale: the strips are as wide")
+	for o: float in [0.0, 0.013, 0.37, -0.42, 2.71]:
+		eq(Background.layer_x(o, "near", near.get_width(), theme), Background.layer_x(o, "far", far.get_width(), theme),
+			"offset %s: the water's columns stay under the city's" % o)
+	var rest := Background.layer_bottom("near", 0.0, theme) - Background.layer_bottom("far", 0.0, theme)
+	for h: float in [-Background.HILL_MAX, -13.0, 7.0, Background.HILL_MAX]:
+		eq(Background.layer_bottom("near", h, theme) - Background.layer_bottom("far", h, theme), rest,
+			"hill %s: the water stays at the city's foot" % h)
+	# Every other stage keeps its parallax
+	check(not Stages.build(0).theme.get("reflection", false), "Palm Coast's layers part as before")
+	eq(Background.scroll_rate({}, "near"), Background.SCROLL_RATE["near"], "no reflection: the near strip's own rate")
+
+
 func test_background_layers_shift_with_the_hills() -> void:
 	eq(Background.hill_shift(0.0, Tuning.v("camera/depth")), 0.0, "flat road: the horizon stays")
 	check(Background.hill_shift(1500.0, Tuning.v("camera/depth")) < 0.0, "a climb ahead lifts the scenery")

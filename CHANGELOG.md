@@ -26,6 +26,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 - Rivals keep to their own side of an undivided road and pass on the other side only with
   room; a rival stuck on the tail of a car pulls out to pass it.
+- Skyline's harbor (WS-14): the city's lights reflected in the water now stay right under the
+  towers they reflect through every bend and hill, instead of sliding off to one side.
 
 ## [0.3.1] - 2026-11-01
 
