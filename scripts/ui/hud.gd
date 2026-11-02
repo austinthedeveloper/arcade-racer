@@ -132,6 +132,8 @@ func _draw() -> void:
 		pass  # the results screen has the place, time, tally and standings
 	elif ended and race.tour and (race.after == race.After.TOUR_DONE or race.after == race.After.TOUR_OVER):
 		_tour_standings(Vector2(w / 2.0, 182), "FINAL STANDINGS" if race.after == race.After.TOUR_DONE else "TOUR OVER")
+	elif watching_shown():
+		_draw_watch(Vector2(w / 2.0, 150))
 	elif race.state == race.State.FINISHED:
 		var end_y := _score_tally(Vector2(w / 2.0, 182))
 		if race.tour and race.tour_state.points.has(Tour.YOU):
@@ -146,7 +148,7 @@ func _draw() -> void:
 	if race.counting_down():
 		_text_centered(Vector2(w / 2.0, 130), str(ceili(race.countdown)), 64, Color("#ffd23a"))
 		StageIntro.draw(self, race.countdown_elapsed(), lay["intro"], intro_text())
-	if not race.callouts.current.is_empty() and not race.results.visible:
+	if not race.callouts.current.is_empty() and not race.results.visible and not watching_shown():
 		_draw_callout(race.callouts.current, Vector2(w / 2.0, CALLOUT_Y))
 	if Settings.subtitles:
 		_draw_subtitle(lay["subtitle"], race.audio.announcer.subtitle())
@@ -613,6 +615,41 @@ static func unlock_line(ids: Array[String]) -> String:
 ## Where a racer `distance` along the stage sits on the progress bar.
 static func progress_x(bar: Rect2, distance: float, finish_distance: float) -> float:
 	return bar.position.x + bar.size.x * clampf(distance / finish_distance, 0.0, 1.0)
+
+
+## Whether the live standings are up (ON-10): watching, once the finish's own moment is over.
+func watching_shown() -> bool:
+	return race.state == race.State.FINISHED and race.watching != null and race.finish_age >= race.RESULTS_AFTER
+
+
+## The live standings while watching after the finish online (ON-10): "WATCHING P2" over
+## the field in race order, times for those in and RACING for the rest, the car the camera
+## follows marked.
+func _draw_watch(top: Vector2) -> void:
+	var watched: RivalCar = race.watching
+	var rows := watch_rows(race)
+	var panel := Rect2(top.x - 110, top.y - 14, 220, 34 + 13 * rows.size())
+	draw_rect(panel, Color(0, 0, 0, 0.6))
+	draw_rect(Rect2(panel.position, Vector2(panel.size.x, 2)), Color(GOLD, 0.8))
+	_text_centered(Vector2(top.x, top.y), "WATCHING  " + watched.profile.driver, 11, GOLD)
+	for i in rows.size():
+		var r: Dictionary = rows[i]
+		var y := top.y + 16 + i * 13
+		var on: bool = not r["you"] and r["name"] == watched.profile.driver
+		var col := Color("#5dff8a") if r["you"] else (GOLD if on else Color.WHITE)
+		if on:
+			draw_colored_polygon(PackedVector2Array([Vector2(panel.position.x + 6, y - 7), Vector2(panel.position.x + 11, y - 4),
+				Vector2(panel.position.x + 6, y - 1)]), GOLD)
+		_text(Vector2(panel.position.x + 14, y), "%d  %s" % [r["place"], r["name"]], 10, col)
+		var t: float = r["time"]
+		var tt := clock_text(t) if t >= 0.0 else "RACING"
+		_text(Vector2(panel.end.x - 10 - UiText.width(tt, 10), y), tt, 10, col if t >= 0.0 else Color(1, 1, 1, 0.6))
+	_text_centered(Vector2(top.x, panel.end.y - 6), "Enter: results", 8, Color(1, 1, 1, 0.6))
+
+
+## The live standings' rows (ResultsScreen.rows) for race `r` (race.gd): everyone in race order.
+static func watch_rows(r: Node) -> Array[Dictionary]:
+	return ResultsScreen.rows(r.rivals.standings(r.player, r.player_finish), r.player, r.player_finish, r.car_id)
 
 
 ## The tour's standings, most points first, the player picked out.

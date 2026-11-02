@@ -10,6 +10,7 @@ var car := PlayerCar.new()
 var speed := Cfg.MAX_SPEED * 0.8  # --bot-speed=F: that share of top speed
 var drop_at := NAN  # --bot-drop=S: leaves the room at that race time
 var finished := false
+var time := 0.0  # its race's seconds since the GO (the host's race clock stops at the host's finish)
 
 
 ## A bot in `relay`'s room `room`, in car `car_id`, its messages `lag_ms` late (--bot-lag).
@@ -39,8 +40,10 @@ func tick(dt: float, race: Node) -> void:
 		car.distance = race.player.distance
 		car.x = OnlineSession.grid_x(s.slot) * race.track.side()
 		car.speed = 0.0
+		time = 0.0
 		return
-	if not is_nan(drop_at) and race.race_time >= drop_at:
+	time += dt
+	if not is_nan(drop_at) and time >= drop_at:
 		s.leave()
 		return
 	car.speed = speed
@@ -48,5 +51,5 @@ func tick(dt: float, race: Node) -> void:
 	s.send_car(car)
 	if not finished and car.distance >= race.finish_distance:
 		finished = true
-		s.finish(race.race_time)
+		s.finish(time)
 		s.ready_again()  # (READY for the next, as a player would on the results)

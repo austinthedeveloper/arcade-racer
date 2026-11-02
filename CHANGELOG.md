@@ -13,6 +13,9 @@ the release workflow puts that section at the top of the GitHub Release notes
   and a count of who's in ("READY 1 / 2"); the host picks the next stage there with up and
   down, and the next race starts as soon as everyone is ready. The host can also START NOW
   without waiting for the rest.
+- Watch after the line (ON-10): finish an online race ahead of someone and the camera follows
+  the leader of those still racing, with live standings ("WATCHING P2"), until the last car is
+  in; then the results come up. Enter brings them up sooner.
 
 ## [0.4.0] - 2026-11-02
 

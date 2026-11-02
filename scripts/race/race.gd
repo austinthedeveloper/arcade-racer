@@ -46,6 +46,10 @@ var mirror := false
 ## the host's GO, and the pause menu doesn't stop the race.
 var online: OnlineSession
 var _shown := {}  # online: slot -> where its car was shown last tick (OnlineSession.shown_at)
+## Online after the finish (ON-10): the car the camera follows, the leader of the players still
+## racing (watch_target); null when not watching. The results wait until the last car is in.
+var watching: RivalCar
+var _own_strips: Dictionary = {}  # the player car's strips, for the camera back from watching
 var ghost: Ghost  # Time Attack: the best run so far, replayed (null before the first)
 var recording: Ghost  # Time Attack: this run, tick by tick
 var ghost_now := Vector3.ZERO  # the ghost this tick: distance, x, steer (Ghost.at)
@@ -290,6 +294,8 @@ func start_race() -> void:
 	road.track = track
 	road.player = player
 	road.player_strips = CarSprites.strips(car["strip"])
+	_own_strips = road.player_strips
+	watching = null
 	road.rivals = rivals.cars
 	road.ghost_strips = road.player_strips if ghost != null else {}
 	fx.clear()
@@ -541,7 +547,7 @@ func _physics_process(dt: float) -> void:
 				quit_requested.emit()
 				return
 	var over := state == State.TIME_UP or state == State.FINISHED
-	if state == State.FINISHED and not _results_shown and (inp.confirm_pressed or finish_age >= RESULTS_AFTER or _staged):
+	if state == State.FINISHED and not _results_shown and (inp.confirm_pressed or (finish_age >= RESULTS_AFTER and watching == null) or _staged):
 		_show_results()  # after the finish spectacle, or Enter for them now
 		if inp.confirm_pressed:
 			return
@@ -594,7 +600,8 @@ func _physics_process(dt: float) -> void:
 		sim = dt * finish_time_scale(finish_age)
 
 	InputRouter.speed_factor = player.speed_percent()
-	var seg_before := track.find_segment(player.position + Cfg.PLAYER_Z)
+	var cam: PlayerCar = player if watching == null else watching  # (last tick's)
+	var seg_before := track.find_segment(cam.position + Cfg.PLAYER_Z)
 	Draft.update(player, sim, state == State.RACING and Draft.in_wake(player, track, rivals.everyone(player)))
 	player.update(sim, inp, track, state == State.RACING)
 	if horn and state == State.RACING:
@@ -631,7 +638,7 @@ func _physics_process(dt: float) -> void:
 		ghost_now = Ghost.sided(ghost.at(recording.count() - 1), track.side())
 		road.ghost = ghost_now
 
-	background.offset += seg_before.curve * (player.speed * sim / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
+	background.offset += seg_before.curve * (cam.speed * sim / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
 
 	# Camera shake: rough ground, crests, landings, crashes. Display only (road.position).
 	_shake = shake_after(_shake, player, player.airborne and not _was_airborne, dt)
@@ -645,14 +652,16 @@ func _physics_process(dt: float) -> void:
 	road.flash = Settings.flash_amount(1.0)
 	road.time += sim
 	fx.flash_share = road.flash
-	fx.update(sim, player, track)
+	fx.update(sim, cam, track)  # (watching online: the car on screen, ON-10)
 	last_rumble = rumble.tick(sim, player, rumble_level())
 	if last_rumble != Vector3.ZERO:
 		rumble_sent += 1
 		Rumble.send(InputRouter.last_active_device, last_rumble)
 	fx.position = road.position
-	road.camera_z = player.position
-	var rise := track.height_at(player.position + Background.HILL_AHEAD) - player.road_y
+	cam = follow(watch_target(rivals.cars) if online != null and state == State.FINISHED and player_finish >= 0.0
+		and online.phase != OnlineSession.Phase.CLOSED else null)
+	road.camera_z = cam.position
+	var rise := track.height_at(cam.position + Background.HILL_AHEAD) - cam.road_y
 	background.hill = Background.shown_hill(rise, road.camera_depth)
 	_flow(dt)
 	if _results_shot and state == State.RACING and race_time > 1.0:
@@ -885,6 +894,36 @@ static func stage_clock(theme: Dictionary, checkpoints: int) -> Array[float]:
 ## Whether the clock runs down to TIME UP (not in Time Attack, Free Drive or online).
 func timed() -> bool:
 	return not time_attack and not free_drive and online == null
+
+
+## Online after the finish (ON-10): who to watch among `cars` (the rivals), the player out in
+## front of those still racing; null with none left.
+static func watch_target(cars: Array) -> RivalCar:
+	var best: RivalCar = null
+	for r: RivalCar in cars:
+		if r.remote and not r.finished and (best == null or r.distance > best.distance):
+			best = r
+	return best
+
+
+## Points the camera at `target` (null: the player's own car) and returns the car it follows:
+## the renderer draws it where the player's car goes, and the rest as rivals.
+func follow(target: RivalCar) -> PlayerCar:
+	watching = target
+	if target == null:
+		if road.player != player:
+			road.player = player
+			road.player_strips = _own_strips
+			road.rivals = rivals.cars
+		return player
+	road.player = target
+	road.player_strips = target.strips
+	var others: Array[RivalCar] = []
+	for r: RivalCar in rivals.cars:
+		if r != target:
+			others.append(r)
+	road.rivals = others
+	return target
 
 
 ## The results online (ON-9): the host picks the next stage with up and down.
