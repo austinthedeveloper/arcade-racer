@@ -478,3 +478,94 @@ func test_spawned_traffic_follows_the_stretches() -> void:
 	eq(counts[0], 0, "none on the empty stretch")
 	var ratio := float(counts[1]) / maxf(1.0, counts[2])
 	near(ratio, Tuning.v("traffic/busy") * 300.0 / 200.0, 0.8, "the busy stretch has its share more than the ordinary (%s)" % [counts])
+
+
+# --- Horn moves traffic (RC-13) -------------------------------------------------------
+
+## One car on a flat road in lane `k` of 4, going 0.4 of top speed, 60 segments on.
+func _cruiser(t: Track, tr: Traffic, k: int, sprite := "sedan_tan", z := 60.0 * Cfg.SEGMENT_LENGTH) -> Traffic.TrafficCar:
+	var c := Traffic.TrafficCar.new()
+	c.z = z
+	c.speed = Cfg.MAX_SPEED * 0.4
+	c.sprite = sprite
+	c.lane_frac = (k + 0.5) / 4.0
+	c.offset = t.segments[0].lane_x(k) * t.side()
+	c.lane = c.offset
+	c.segment = t.find_segment(c.z)
+	c.segment.cars.append(c)
+	tr.cars.append(c)
+	return c
+
+
+## The player honking from 5 segments behind `c`, in its lane, a bit toward the middle.
+func _honk(t: Track, tr: Traffic, c: Traffic.TrafficCar, speed := Cfg.MAX_SPEED * 0.8) -> Traffic.TrafficCar:
+	return tr.honk(t, c.z - 5.0 * Cfg.SEGMENT_LENGTH, c.offset - 0.05 * t.side(), speed)
+
+
+func test_a_honked_car_changes_lane_after_a_beat() -> void:
+	var t := flat_track()
+	var tr := Traffic.new()
+	tr.spawn(t, 0)
+	var c := _cruiser(t, tr, 2)
+	eq(_honk(t, tr, c), c, "the car ahead hears it")
+	for i in 20:
+		tr.update(DT, t)
+	eq(c.offset, 0.25, "not at once: a beat first")
+	for i in 150:
+		tr.update(DT, t)
+	near(c.offset, 0.75, 0.001, "then over a lane, away from the honker")
+	eq(c.signal_dir, 0, "signal off once there")
+	eq(c.change_in, INF, "and it is no lane changer for it")
+
+
+func test_a_rig_and_a_local_ignore_the_horn() -> void:
+	var t := flat_track()
+	for sprite in ["semi", "bus", Traffic.SPECIALS[0]]:
+		var tr := Traffic.new()
+		tr.spawn(t, 0)
+		var c := _cruiser(t, tr, 2, sprite)
+		eq(_honk(t, tr, c), null, sprite + " ignores it")
+		for i in 200:
+			tr.update(DT, t)
+		eq(c.offset, 0.25, sprite + " keeps its lane")
+
+
+func test_the_horn_only_moves_a_slower_car_ahead_in_your_path() -> void:
+	var t := flat_track()
+	var tr := Traffic.new()
+	tr.spawn(t, 0)
+	var c := _cruiser(t, tr, 2)
+	eq(_honk(t, tr, c, c.speed * 0.9), null, "a car you are not catching")
+	eq(tr.honk(t, c.z - 5.0 * Cfg.SEGMENT_LENGTH, -0.75, Cfg.MAX_SPEED), null, "a car in another lane")
+	eq(tr.honk(t, c.z - 20.0 * Cfg.SEGMENT_LENGTH, c.offset, Cfg.MAX_SPEED), null, "a car out of reach")
+	eq(tr.honk(t, c.z + Cfg.SEGMENT_LENGTH, c.offset, Cfg.MAX_SPEED), null, "a car behind")
+	_cruiser(t, tr, 2, "semi", c.z - 2.0 * Cfg.SEGMENT_LENGTH)
+	eq(_honk(t, tr, c), null, "only the nearest: a rig in between takes no notice, and the car beyond can't hear")
+
+
+func test_with_the_next_lane_taken_it_keeps_over_in_its_own() -> void:
+	var t := flat_track()
+	var tr := Traffic.new()
+	tr.spawn(t, 0)
+	var c := _cruiser(t, tr, 2)
+	_cruiser(t, tr, 3, "semi", c.z + Cfg.SEGMENT_LENGTH)
+	eq(_honk(t, tr, c), c, "it hears")
+	for i in 90:
+		tr.update(DT, t)
+	near(c.offset, 0.25 + Tuning.v("traffic/horn_nudge"), 0.001, "eased toward its lane's edge")
+	eq(Traffic.lane_index(c.lane_frac, 4), 2, "still in its lane")
+	for i in roundi(Tuning.v("traffic/horn_hold") * 60.0) + 60:
+		tr.update(DT, t)
+	near(c.offset, 0.25, 0.001, "back to the middle after a while")
+
+
+func test_a_honked_car_on_a_mirrored_stage_moves_the_mirror_way() -> void:
+	var t := flat_track()
+	t.mirrored = true
+	var tr := Traffic.new()
+	tr.spawn(t, 0)
+	var c := _cruiser(t, tr, 2)
+	eq(_honk(t, tr, c), c, "it hears")
+	for i in 170:
+		tr.update(DT, t)
+	near(c.offset, -0.75, 0.001, "over a lane to the left")

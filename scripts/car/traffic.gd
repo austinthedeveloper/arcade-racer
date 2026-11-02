@@ -27,6 +27,14 @@ class TrafficCar:
 	## traffic/signal_time, and the signal goes off when it is in its new lane.
 	var signal_dir := 0
 	var signal_age := 0.0
+	## The horn (RC-13): seconds until it gives way after a honk (INF: not honked), the way it
+	## goes on screen (away from the honker), whether it is moving over a lane for it, and
+	## how far it keeps over in its lane for how long more when the next lane is taken.
+	var honk_in := INF
+	var yield_dir := 0
+	var yielding := false
+	var nudge := 0.0
+	var nudge_time := 0.0
 
 
 	## Whether the player can hit it: not while flying off or drifting back after a ram.
@@ -38,6 +46,7 @@ const BLINK := 0.5  # seconds per flash of a signal, on for BLINK_ON of it
 const BLINK_ON := 0.3
 const CHANGE_EVERY := [5.0, 16.0]  # seconds between one car's lane changes
 const CHANGE_ROOM := 3  # segments ahead and behind that must be clear in the new lane
+const HORN_WIDTH := 0.5  # road half-widths: a car this near the honker's line (times its width) is in its path
 const SPAWN_FROM := 40  # segments past the start line before traffic spawns
 const SPAWN_TO_END := 10  # and none in the last of the loop
 
@@ -235,8 +244,18 @@ func update(dt: float, track: Track) -> void:
 		var follows := not is_nan(car.lane_frac)
 		if follows and car.solid():
 			_change_lanes(car, dt, track, seg)
+		if car.honk_in < INF:
+			car.honk_in -= dt
+			if car.honk_in <= 0.0:
+				car.honk_in = INF
+				if follows and car.solid():
+					_give_way(car, track, seg)
+		if car.nudge_time > 0.0:
+			car.nudge_time -= dt
+			if car.nudge_time <= 0.0:
+				car.nudge = 0.0
 		if follows:
-			car.lane = seg.lane_at(car.lane_frac) * track.side()
+			car.lane = seg.lane_at(car.lane_frac) * track.side() + car.nudge
 		if car.flung > 0.0:
 			car.flung = maxf(0.0, car.flung - dt)
 			car.offset = clampf(car.offset + car.fling_dir * Tuning.v("traffic/fling_speed") * dt, -4.0, 4.0)
@@ -268,7 +287,10 @@ func _change_lanes(car: TrafficCar, dt: float, track: Track, seg: Segment) -> vo
 		elif car.signal_age >= Tuning.v("traffic/signal_time") and (absf(car.offset - seg.lane_at(car.lane_frac) * track.side()) < 0.001
 				or car.signal_age >= SIGNAL_GIVE_UP):
 			car.signal_dir = 0
-			car.change_in = _rng.randf_range(CHANGE_EVERY[0], CHANGE_EVERY[1])
+			if car.yielding:  # moved over for a horn: its own lane changes carry on as they were
+				car.yielding = false
+			else:
+				car.change_in = _rng.randf_range(CHANGE_EVERY[0], CHANGE_EVERY[1])
 		return
 	car.change_in -= dt
 	if car.change_in > 0.0:
@@ -283,6 +305,53 @@ func _change_lanes(car: TrafficCar, dt: float, track: Track, seg: Segment) -> vo
 		return
 	car.signal_dir = d * track.side()
 	car.signal_age = 0.0
+
+
+## The horn (RC-13): the player at track position `z`, `x` across, going `speed`, honks. The
+## nearest car ahead in the player's path within traffic/horn_reach, going the same way, gives
+## way (after traffic/horn_delay) if it is slower and hears_horn: big rigs and the stage's
+## locals ignore it. The car told, or null.
+func honk(track: Track, z: float, x: float, speed: float) -> TrafficCar:
+	var best: TrafficCar = null
+	var best_gap := Tuning.v("traffic/horn_reach")
+	var specials: Array = track.theme.get("specials", SPECIALS)
+	var n := track.segments.size()
+	var here := track.find_segment(z).index
+	var reach := ceili(best_gap / Cfg.SEGMENT_LENGTH)
+	for k in range(0, reach + 1):
+		for car: TrafficCar in track.segments[(here + k) % n].cars:
+			var gap := fposmod(car.z - z, track.length)
+			if gap < best_gap and not car.oncoming and absf(car.offset - x) <= HORN_WIDTH * car.width_mult:
+				best = car
+				best_gap = gap
+	if best == null or best.speed >= speed or not hears_horn(best, specials):
+		return null
+	best.honk_in = Tuning.v("traffic/horn_delay")
+	best.yield_dir = 1 if best.offset >= x else -1
+	return best
+
+
+## Whether `car` gives way to a horn: an everyday car (not a big rig or one of the stage's
+## `specials`) in its lane, solid, not signalling, honked or keeping over already.
+static func hears_horn(car: TrafficCar, specials: Array) -> bool:
+	return not BIG.has(car.sprite) and not specials.has(car.sprite) and not SPECIALS.has(car.sprite) \
+		and not is_nan(car.lane_frac) and car.solid() and car.signal_dir == 0 and car.honk_in == INF \
+		and car.nudge_time <= 0.0
+
+
+## A honked car gives way, `yield_dir` on screen: over a lane, signalling, if the next lane
+## that way runs its way and is clear (lane_clear); else over toward that edge of its own lane
+## (traffic/horn_nudge) for traffic/horn_hold seconds.
+func _give_way(car: TrafficCar, track: Track, seg: Segment) -> void:
+	var k := lane_index(car.lane_frac, seg.lanes) + car.yield_dir * int(track.side())
+	if k >= first_lane(track, seg.lanes) and k < seg.lanes and lane_clear(track, seg, k, car):
+		car.lane_frac = (k + 0.5) / seg.lanes
+		car.signal_dir = car.yield_dir
+		car.signal_age = Tuning.v("traffic/signal_time")  # past the wait: it moves over now
+		car.yielding = true
+		return
+	car.nudge = car.yield_dir * Tuning.v("traffic/horn_nudge")
+	car.nudge_time = Tuning.v("traffic/horn_hold")
 
 
 ## The lane (from the left, as built) `frac` of the way across a road of `lane_count` lanes.

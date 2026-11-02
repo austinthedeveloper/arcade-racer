@@ -625,3 +625,25 @@ func test_an_autodriven_race_power_slides() -> void:
 		if slid > 10:
 			break
 	check(slid > 10, "slid (%d ticks)" % slid)
+
+
+func test_the_horn_button_moves_the_car_ahead() -> void:
+	var r := race(false, true, 0, false)
+	drive(r, 200, input(1.0))
+	var car: Traffic.TrafficCar = null
+	for c: Traffic.TrafficCar in r.traffic.cars:
+		if not c.oncoming and Traffic.hears_horn(c, r.track.theme.get("specials", [])):
+			car = c
+			break
+	car.segment.cars.erase(car)
+	car.z = fposmod(r.player.position + Cfg.PLAYER_Z + 1000.0, r.track.length)
+	car.segment = r.track.find_segment(car.z)
+	car.segment.cars.append(car)
+	car.offset = r.player.x
+	car.speed = r.player.speed * 0.5
+	drive(r, 1, input(1.0))
+	eq(car.honk_in, INF, "no horn, no notice")
+	var honking := input(1.0)
+	honking.horn = true
+	drive(r, 1, honking)
+	check(car.honk_in < INF, "the horn: it gives way after a beat")

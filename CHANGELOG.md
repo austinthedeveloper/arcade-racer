@@ -35,6 +35,9 @@ the release workflow puts that section at the top of the GitHub Release notes
   drives up to the grid from behind during the countdown any more.
 - Catch-up nitro (RC-16): reach a checkpoint in the last two places on easy or normal and you
   get one nitro charge back (NITRO +1). Hard gives nothing.
+- The horn moves traffic (RC-13): honk close behind a slower car and after a beat it signals
+  and moves over a lane, away from you, or keeps to the edge of its lane if the next one is
+  taken. Big rigs, buses and the stage's locals ignore it.
 
 ## [0.3.1] - 2026-11-01
 

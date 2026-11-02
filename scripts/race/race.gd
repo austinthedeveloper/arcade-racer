@@ -61,7 +61,7 @@ var pickup := -1  # the last pickup taken (PowerUps.Kind), for the HUD
 var pickup_gave := -1  # what it gave (a mystery hubcap opens into another kind)
 var pickup_age := 99.0  # seconds since it was taken
 var picked_up := false  # true for the tick a pickup is taken
-var horn := false  # the horn button held this tick (RaceAudio sounds it; play ignores it)
+var horn := false  # the horn button held this tick (RaceAudio sounds it; traffic ahead gives way, RC-13)
 var ram_flash := 0.0  # seconds left on the ram plate's impact flash
 var traffic: Traffic
 var rivals := Rivals.new()
@@ -534,6 +534,8 @@ func _physics_process(dt: float) -> void:
 	var seg_before := track.find_segment(player.position + Cfg.PLAYER_Z)
 	Draft.update(player, sim, state == State.RACING and Draft.in_wake(player, track, rivals.everyone(player)))
 	player.update(sim, inp, track, state == State.RACING)
+	if horn and state == State.RACING:
+		traffic.honk(track, player.position + Cfg.PLAYER_Z, player.x, player.speed)  # (RC-13)
 	traffic.update(sim, track)
 	rivals.update(sim, track, player, state != State.COUNTDOWN, finish_distance)
 	if online != null:
