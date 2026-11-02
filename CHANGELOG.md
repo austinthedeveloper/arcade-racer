@@ -19,6 +19,9 @@ the release workflow puts that section at the top of the GitHub Release notes
   sun drops stage by stage, the sky, the scenery and the cars taking the evening light and the
   shadows growing long, until Skyline is raced at night. Single races keep each stage's own
   time of day.
+- Headlights at night (WS-17): on Neon Strip, Thunderhead and Skyline every car lights a pool
+  of road ahead of it, the oncoming traffic's coming toward you, and the tail lights glow
+  brighter in the dark.
 
 ## [0.4.0] - 2026-11-02
 

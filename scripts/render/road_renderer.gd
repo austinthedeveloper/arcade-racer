@@ -54,6 +54,8 @@ var _cols := PackedColorArray()
 var _idx := PackedInt32Array()
 var _fog_color := Color.WHITE
 var _light := Color.WHITE  # the sprites' tint for the stage's hour (Sundown, WS-16), this frame
+var _glow := 0.0  # the tail lights' glow in the dark (Headlights, WS-17), this frame; 0 by day
+var _lamps: Array[Vector3] = []  # the cars whose headlights light the road this frame: z, x, direction
 var _wet := 0.0  # the stage's wet road (Weather "wet"), this frame
 var _wet_sky := Color.WHITE  # and the sky it reflects
 var _horizon := float(Cfg.HORIZON_Y)  # the background's horizon row this frame (reflections mirror on it)
@@ -78,6 +80,8 @@ func _draw() -> void:
 	var here := StageFlow.palette(track, flow_share) if flow else theme
 	_fog_color = here["fog"]
 	_light = sprite_light(theme)
+	var night := Headlights.on(theme)
+	_glow = Tuning.v("world/tail_glow") if night else 0.0
 	var fog_density: float = here.get("fog_density", Cfg.FOG_DENSITY)
 	_wet = Weather.of(theme).get("wet", 0.0)
 	_wet_sky = here.get("sky_bottom", _fog_color)
@@ -126,6 +130,7 @@ func _draw() -> void:
 			drawn.append(seg)
 
 	var at := player_slot(drawn, player_seg)
+	_lamps = lamps(drawn, player.position + Cfg.PLAYER_Z, player.x) if night else ([] as Array[Vector3])
 	# Far off, a segment is a sliver of a pixel: a run of them with nothing standing on them
 	# is drawn as one band, from the run's far edge to its nearest segment (thin_run). The
 	# next segment is visible whenever one is held back, so it always gets drawn.
@@ -288,6 +293,9 @@ func _draw_segment(seg: Segment, theme: Dictionary, far: Segment, depth: float) 
 			lx1 += lane_w1
 			lx2 += lane_w2
 
+	if not _lamps.is_empty() and is_same(far, seg) and ahead < Headlights.REACH_SEGMENTS:
+		_headlight_pools(seg)
+
 	if not lights.is_empty() and seg.index % TUBE_EVERY != TUBE_EVERY - 1:
 		_tunnel_lights(seg, lights)
 
@@ -305,6 +313,36 @@ func _flush() -> void:
 	_pts.clear()
 	_cols.clear()
 	_idx.clear()
+
+
+## The cars whose headlights light the road this frame (WS-17), as (z, x, direction): the
+## player's at `player_z`, `player_x`, and the rivals' and traffic's in the `drawn` segments
+## within Headlights.REACH_SEGMENTS, the oncoming traffic's pointing back at the camera.
+func lamps(drawn: Array[Segment], player_z: float, player_x: float) -> Array[Vector3]:
+	var out: Array[Vector3] = [Vector3(player_z, player_x, 1.0)]
+	for r in rivals:
+		out.append(Vector3(r.position + Cfg.PLAYER_Z, r.x, 1.0))
+	for i in mini(drawn.size(), Headlights.REACH_SEGMENTS):
+		for car in drawn[i].cars:
+			out.append(Vector3(car.z, car.offset, -1.0 if car.oncoming else 1.0))
+	return out
+
+
+## The headlight pools lying on a segment: each car's (_lamps) slice of its pool, from its x
+## (it follows the car across the road), widening and fading out ahead of it.
+func _headlight_pools(seg: Segment) -> void:
+	var fade := 1.0 - seg.fog
+	for lamp in _lamps:
+		var sl := Headlights.slice(seg.w1.z, lamp.x, lamp.z, track.length)
+		if sl.x < 0.0:
+			continue
+		var a := Headlights.pool(lamp.y, sl.z)
+		var b := Headlights.pool(lamp.y, sl.w)
+		var strength := (a.z + b.z) * 0.5 * fade
+		if strength < 0.01:
+			continue
+		_quad_pts(road_trapezoid(seg, Vector3(sl.x, a.x - a.y, a.x + a.y), Vector3(sl.y, b.x - b.y, b.x + b.y)),
+			Color(Headlights.COLOR, strength))
 
 
 ## The background strips the wet road reflects (REFLECT_LAYERS), as [texture, screen rect]
@@ -352,11 +390,17 @@ func _puddle(seg: Segment, road: Color) -> void:
 ## the usual road from its center, as a car's offset) and from `near` to `far` along it
 ## (0..1): near left, near right, far right, far left.
 static func road_patch(seg: Segment, left: float, right: float, near: float, far: float) -> PackedVector2Array:
+	return road_trapezoid(seg, Vector3(near, left, right), Vector3(far, left, right))
+
+
+## A patch of a segment's road on screen that can widen along it: `near` and `far` are each
+## (where along the segment 0..1, left, right; across as in road_patch). Near left, near
+## right, far right, far left.
+static func road_trapezoid(seg: Segment, near: Vector3, far: Vector3) -> PackedVector2Array:
 	var out := PackedVector2Array()
-	for at: Array in [[near, left], [near, right], [far, right], [far, left]]:
-		var k: float = at[0]
-		var s := lerpf(seg.scale1, seg.scale2, k)
-		out.append(Vector2(lerpf(seg.s1.x, seg.s2.x, k) + s * float(at[1]) * Cfg.ROAD_WIDTH * Cfg.PROJ, lerpf(seg.s1.y, seg.s2.y, k)))
+	for at: Vector2 in [Vector2(near.x, near.y), Vector2(near.x, near.z), Vector2(far.x, far.z), Vector2(far.x, far.y)]:
+		var s := lerpf(seg.scale1, seg.scale2, at.x)
+		out.append(Vector2(lerpf(seg.s1.x, seg.s2.x, at.x) + s * at.y * Cfg.ROAD_WIDTH * Cfg.PROJ, lerpf(seg.s1.y, seg.s2.y, at.x)))
 	return out
 
 
@@ -417,7 +461,7 @@ func _draw_cars(seg: Segment) -> void:
 		if car.flung > 0.0:
 			# Rammed: arcs up and off the road
 			cy -= sin((1.0 - car.flung / Tuning.v("traffic/fling_time")) * PI) * w * 0.9
-		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog, car.oncoming, Traffic.light_state(car))
+		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog, car.oncoming, Traffic.light_state(car), _glow)
 
 	for r: RivalCar in _rivals_in.get(seg.index, []):
 		_draw_rival(seg, r, tint)
@@ -526,7 +570,7 @@ func _draw_rival(seg: Segment, r: RivalCar, tint: Color) -> void:
 		steer = sin(r.crash_time * 20.0) * 2.0
 		lift += sin(r.crash_time / r.crash_length * PI) * w * 0.3
 	CarSprites.draw_player(self, r.strips, Vector2(roundf(cx), roundf(cy)), w, steer, r.braking,
-		roundf(lift), r.pitch, 1.0, tint)
+		roundf(lift), r.pitch, 1.0, tint, _glow * (1.0 - seg.fog))
 
 
 ## Where the ghost is on the track (its distance from the start line, wrapped).
@@ -567,7 +611,7 @@ func _draw_player() -> void:
 	if p.ghost_time > 0.0:
 		alpha = ghost_alpha(p.ghost_time, time, flash)
 	CarSprites.draw_player(self, player_strips, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking,
-		roundf(lift), p.pitch, alpha, _light)
+		roundf(lift), p.pitch, alpha, _light, _glow)
 
 
 ## The ghosted player's see-through alpha: it blinks brighter in its last second, by as much

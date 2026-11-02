@@ -101,9 +101,10 @@ static func _add_traffic(id: String, path: String, world_per_px: float) -> void:
 ## steer: -1 full left .. 1 full right; beyond that it keeps the hardest frame.
 ## pitch: 1 full nose-down (downhill) .. -1 full nose-up (see PlayerCar.pitch).
 ## alpha: below 1 for a see-through car (the ghost power-up). tint: fog, for a rival far off.
+## glow: the tail lights lit in the dark (Headlights, WS-17), 0 by day.
 ## The nitro flame is the FX layer's (FxLayer), drawn over the car.
 static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float, steer: float, brake: bool,
-		lift: float = 0.0, pitch: float = 0.0, alpha: float = 1.0, tint: Color = Color.WHITE) -> void:
+		lift: float = 0.0, pitch: float = 0.0, alpha: float = 1.0, tint: Color = Color.WHITE, glow: float = 0.0) -> void:
 	var row := pitch_row(pitch, car.keys())
 	var strip: Dictionary = car[row]
 	var tex: Texture2D = strip["tex"]
@@ -127,11 +128,16 @@ static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float
 	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top, roundf(size.x), bumper_h), bumper_src, mod)
 	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top - deck_h, roundf(size.x), deck_h), deck_src, mod)
 	var h := deck_h + bumper_h
-	if brake:
-		# Glow over the triangle taillights
-		var ly := y - h * 0.58
+	var ly := y - h * 0.58
+	if glow > 0.0:
+		# Tail lights on in the dark: a halo round the triangle taillights
 		for side in [-1.0, 1.0]:
-			ci.draw_rect(Rect2(base.x + side * w * 0.36 - w * 0.13, ly, w * 0.26, h * 0.12), Color(1.0, 0.25, 0.1, 0.35))
+			ci.draw_rect(Rect2(base.x + side * w * 0.36 - w * 0.2, ly - h * 0.05, w * 0.4, h * 0.22), Color(Headlights.TAIL, 0.18 * glow * alpha))
+	if brake or glow > 0.0:
+		# Glow over the triangle taillights (braking, or lit at night; brighter braking)
+		var a := (0.35 if brake else 0.0) + 0.3 * glow
+		for side in [-1.0, 1.0]:
+			ci.draw_rect(Rect2(base.x + side * w * 0.36 - w * 0.13, ly, w * 0.26, h * 0.12), Color(1.0, 0.25, 0.1, minf(0.8, a) * alpha))
 
 
 ## Texture-to-screen scale for a strip drawn `w` wide: its body fills `w`, unless that would
@@ -166,13 +172,21 @@ static func steer_frame(steer: float) -> int:
 	return clampi(half + roundi(steer * half), 0, PLAYER_FRAMES - 1)
 
 
+## glow: the tail lights lit in the dark (Headlights, WS-17), 0 by day; a car coming the other
+## way shows its headlights instead, as drawn.
 static func draw_traffic(ci: CanvasItem, base: Vector2, w: float, id: String, tint: Color, fog: float,
-		oncoming := false, state := "") -> void:
+		oncoming := false, state := "", glow := 0.0) -> void:
 	var tex := traffic_texture(id, oncoming, state)
 	var h := w * tex.get_height() / float(tex.get_width())
 	if w >= 3.0:
 		_shadow(ci, base, w, 1.0 - fog)
 	ci.draw_texture_rect(tex, Rect2(base.x - w / 2.0, base.y - h, w, h), false, tint)
+	if glow > 0.0 and not oncoming and w >= 4.0:
+		var a := glow * (1.0 - fog)
+		for r in Headlights.tail_rects(base, w, h, true):
+			ci.draw_rect(r, Color(Headlights.TAIL, 0.2 * a))
+		for r in Headlights.tail_rects(base, w, h):
+			ci.draw_rect(r, Color(Headlights.TAIL, 0.55 * a))
 
 
 static func _shadow(ci: CanvasItem, base: Vector2, w: float, strength: float) -> void:
