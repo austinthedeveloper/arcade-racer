@@ -10,7 +10,7 @@ extends MenuScreen
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
 	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP,
-	WHEEL, BACK, RADIO, SUBTITLES, GEARS }
+	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -20,8 +20,8 @@ const PAGE_ROWS := [
 		Row.RESET_SAVE],
 	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
 	[Row.MUSIC, Row.SFX, Row.RADIO],
-	[Row.CALIBRATE, Row.WHEEL, Row.REMAP],
-	[Row.SCREEN_SHAKE, Row.FLASH, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.GEARS],
+	[Row.CALIBRATE, Row.WHEEL, Row.REMAP, Row.KEY_STEER_IN, Row.KEY_STEER_OUT, Row.RUMBLE],
+	[Row.SCREEN_SHAKE, Row.FLASH, Row.REDUCE_MOTION, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.GEARS],
 ]
 ## Shown on a page with no rows yet.
 const PAGE_EMPTY := ["", "", "", "", ""]
@@ -30,7 +30,7 @@ const SLOTS := 11
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
-	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS"]
+	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -60,10 +60,14 @@ const HELP := [
 	"The station races start on, or a different one each race. M changes it while you drive.",
 	"The announcer's words at the top of the screen.",
 	"Shift up and down yourself (E / Q, or buttons set in Remap) for a bit more top speed.",
+	"Keyboard: how fast a held steering key reaches full lock. Snappy is quick, smooth is gentle.",
+	"Keyboard: how fast the steering comes back to center when you let go.",
+	"No camera shake, nitro view stretch, rising and dipping scenery or rain streaks.",
+	"Gamepad rumble on crashes, bumps, landings, nitro and off the road. 0 turns it off.",
 ]
 ## The rows that show ON or OFF.
 const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES,
-	Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.SUBTITLES]
+	Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.SUBTITLES, Row.REDUCE_MOTION]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
 ## Rows the race only reads when a stage starts.
 const NEXT_RACE := [Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS, Row.GEARS]
@@ -195,6 +199,14 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.subtitles = not s.subtitles
 		Row.GEARS:
 			s.manual_gears = not s.manual_gears
+		Row.REDUCE_MOTION:
+			s.reduce_motion = not s.reduce_motion
+		Row.RUMBLE:
+			s.rumble = _step(s.rumble, dir, s.EFFECT_STEPS + 1, wrap)
+		Row.KEY_STEER_IN:
+			s.key_steer_in = _step(s.key_steer_in, dir, s.STEER_FEEL_NAMES.size(), wrap)
+		Row.KEY_STEER_OUT:
+			s.key_steer_out = _step(s.key_steer_out, dir, s.STEER_FEEL_NAMES.size(), wrap)
 		_:
 			return false
 	s.save()
@@ -221,12 +233,18 @@ static func value_text(row: int) -> String:
 			return str(s.screen_shake)
 		Row.FLASH:
 			return str(s.flash)
+		Row.RUMBLE:
+			return str(s.rumble)
 		Row.UNITS:
 			return s.UNIT_NAMES[s.units]
 		Row.FULLSCREEN:
 			return "FULLSCREEN" if s.fullscreen else "WINDOWED"
 		Row.GEARS:
 			return "MANUAL" if s.manual_gears else "AUTOMATIC"
+		Row.KEY_STEER_IN:
+			return s.STEER_FEEL_NAMES[s.key_steer_in]
+		Row.KEY_STEER_OUT:
+			return s.STEER_FEEL_NAMES[s.key_steer_out]
 	if TOGGLES.has(row):
 		return "ON" if toggled(row) else "OFF"
 	return ""
@@ -256,6 +274,8 @@ static func toggled(row: int) -> bool:
 			return s.brake_assist
 		Row.SUBTITLES:
 			return s.subtitles
+		Row.REDUCE_MOTION:
+			return s.reduce_motion
 	return false
 
 
@@ -367,7 +387,7 @@ func _draw() -> void:
 		_text(Vector2(panel.position.x + 16, y + mid + 5), LABELS[row], 12, col)
 		var right := panel.end.x - 20
 		match row:
-			Row.MUSIC, Row.SFX, Row.SCREEN_SHAKE, Row.FLASH:
+			Row.MUSIC, Row.SFX, Row.SCREEN_SHAKE, Row.FLASH, Row.RUMBLE:
 				var v := int(value_text(row))
 				for k in Settings.VOLUME_STEPS:  # EFFECT_STEPS is the same ten
 					var seg := Rect2(right - 150 + k * 13, y + mid - 6, 10, 12)

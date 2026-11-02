@@ -4,6 +4,7 @@ extends RefCounted
 ## any background.
 
 const OUTLINE := Color(0, 0, 0, 0.85)
+const MIN_SIZE := 8  # the smallest text the HUD draws, in 640x360 pixels (PR-14)
 
 
 static func draw(ci: CanvasItem, pos: Vector2, s: String, size: int, col: Color) -> void:

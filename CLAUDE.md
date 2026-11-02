@@ -8,16 +8,17 @@ Adding a car, prop, traffic vehicle, span or stage: art and Claude prompt templa
 tools/test.sh                                       # all Godot tests, headless (must pass)
 tools/test.sh test_player_car                       # one suite (filter on suite.test names; skips the e2e)
 tools/test.sh --skip=test_golden.                   # everything but the golden traces (their CI job runs them alongside)
-tools/dev.sh race 3 --car=car_mesa                  # shortcuts: play, race, auto, shots, menu <screen>, test, import (finds Godot itself)
+tools/dev.sh race 3 --car=car_mesa                  # shortcuts: play, race, auto, shots, menu <screen>, test, import (finds Godot, imports a fresh checkout)
+godot --headless --path . --import                  # once in a fresh clone or worktree before any windowed run, or it stops on "MainLoop type doesn't exist: BootTree"
 godot --path .                                      # play
 godot --path . -- --autodrive --screenshots=200,700 --shot-dir=/tmp/shots   # hands-off run with screenshots (race flags skip the menus)
 godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screenshots=300 --shot-dir=/tmp/shots   # start partway in, in another car
-godot --path . -- --autodrive --callout=near_miss --screenshots=300 --shot-dir=/tmp/shots   # hold a starburst callout up after GO (Callouts.IDS); --time-left=9 for the low clock
+godot --path . -- --autodrive --callout=near_miss --screenshots=300 --shot-dir=/tmp/shots   # hold a starburst callout up after GO (Callouts.IDS; near_miss:3 for a chain); --time-left=9 for the low clock
 godot --path . -- --autodrive --stage=7 --at-segment=300 --lightning-at=5 --screenshots=303 --shot-dir=/tmp/shots   # force a full lightning strike on Thunderhead at 5 s
 godot --path . -- --autodrive --stage=2 --mirror --screenshots=300 --shot-dir=/tmp/shots   # race the stage mirrored (WS-6), locked or not
 godot --path . -- --save-file=/tmp/save.cfg --mode=single_race --mirror --screen=stages --menu-shot=/tmp/s.png   # stage select on another save, in a mode (ModeSelect.Item), MIRROR on
 python3 tools/colorblind.py /tmp/shots/frame_00300.png --all   # the shot as seen with protanopia, deuteranopia, tritanopia (+ a sheet)
-godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, modes, options, stages, cars, pause, unplugged, results, demo, update (update:failed etc.); options:audio etc. for an options page; --car=car_mesa opens car select on it)
+godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, modes, options, stages, cars, stats, pause, unplugged, results, demo, update (update:failed etc.); options:audio etc. for an options page; --car=car_mesa opens car select on it)
 godot --path . --resolution 1600x900 -- --settings-file=/tmp/opts.cfg --profiles-file=/tmp/prof.cfg --screen=options:display --shot-as-window --menu-shot=/tmp/d.png   # other options and binding files; the shot laid out as the window shows it (also --screen=remap, --screen=wheel, and race --screenshots)
 godot --path . -- --screen=online:lobby --touch --menu-shot=/tmp/o.png   # the online lobby (online:menu, code, guest, error) on an in-memory relay, touch controls up
 godot --headless --path . -s res://tools/online_probe.gd -- --relay=ws://127.0.0.1:8080   # host + guest through a relay (npm start in ../snes/pickleball-relay); no --relay: the live one

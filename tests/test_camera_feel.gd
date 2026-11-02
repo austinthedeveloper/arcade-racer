@@ -2,6 +2,8 @@
 ## the nitro FOV stretch, and flashes, each scaled by Settings.screen_shake / flash.
 extends TestSuite
 
+const RACE := preload("res://scripts/race/race.gd")
+
 
 func _clean() -> void:
 	TestSuite.use_scratch_settings(Settings)
@@ -24,6 +26,60 @@ func test_slider_functions() -> void:
 	Settings.flash = 25
 	eq(Settings.shake_amount(4.0), 4.0, "never more than designed")
 	eq(Settings.flash_amount(0.8), 0.8, "never more than designed")
+	_clean()
+
+
+## Reduce motion (AC-13): one toggle stops the shake, the nitro stretch, the hill shift and
+## the rain, each reading it.
+func test_reduce_motion_reaches_each_effect() -> void:
+	_clean()
+	eq(Settings.reduce_motion, false, "off by default")
+	var depth := Tuning.v("camera/depth")
+	var stretch := Tuning.v("camera/nitro_fov_stretch")
+	check(Settings.shake_amount(4.0) > 0.0, "off: camera shake")
+	check(RACE.camera_depth(stretch) < depth, "off: the nitro stretch")
+	check(Background.shown_hill(1500.0, depth) != 0.0, "off: the hill shift")
+	eq(FxLayer.rain_shown(Weather.RAIN_DROPS), Weather.RAIN_DROPS, "off: every rain streak")
+	Settings.reduce_motion = true
+	eq(Settings.screen_shake, 10, "the shake slider left as it was")
+	eq(Settings.shake_amount(4.0), 0.0, "on: no camera shake")
+	eq(RACE.camera_depth(stretch), depth, "on: no nitro stretch")
+	eq(Background.shown_hill(1500.0, depth), 0.0, "on: no hill shift")
+	eq(FxLayer.rain_shown(Weather.RAIN_DROPS), 0, "on: no rain streaks")
+	eq(Settings.flash_amount(0.8), 0.8, "flashes are the flash slider's")
+	_clean()
+
+
+func test_reduce_motion_in_a_race() -> void:
+	_clean()
+	# Palm Coast's rolling hills move the scenery
+	var r := race(true, false, 0, false)
+	var moved := false
+	for i in 900:
+		drive(r, 1)
+		moved = moved or r.background.hill != 0.0
+	check(moved, "off: the scenery rides the hills")
+	Settings.reduce_motion = true
+	var still := true
+	for i in 900:
+		drive(r, 1)
+		still = still and r.background.hill == 0.0 and r.road.position == Vector2.ZERO
+	check(still, "on: the scenery and the camera hold still")
+	_clean()
+
+
+func test_reduce_motion_row_saves() -> void:
+	_clean()
+	var o := OptionsScreen.new()
+	o.go_to(OptionsScreen.Row.REDUCE_MOTION)
+	eq(o.page, OptionsScreen.Page.ACCESSIBILITY, "on Accessibility")
+	eq(OptionsScreen.value_text(OptionsScreen.Row.REDUCE_MOTION), "OFF", "off")
+	o.change(OptionsScreen.Row.REDUCE_MOTION, 1, true)
+	eq(OptionsScreen.value_text(OptionsScreen.Row.REDUCE_MOTION), "ON", "on")
+	Settings.reset()
+	Settings.load_settings()
+	check(Settings.reduce_motion, "saved")
+	o.free()
 	_clean()
 
 

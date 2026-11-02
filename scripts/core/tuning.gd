@@ -108,6 +108,8 @@ const TABLE := {
 	"scoring/near_miss": [1, 0, 10, 1, "points for a near miss"],
 	"scoring/near_miss_room": [0.0, -0.3, 0.5, 0.05, "road half-widths between the two cars' sides that count as near"],
 	"scoring/near_miss_speed": [0.6, 0.0, 1.0, 0.05, "share of top speed a near miss needs, at least"],
+	"scoring/chain_window": [2.0, 0.5, 5.0, 0.1, "seconds after a near miss the next one chains (x2, x3...)"],
+	"scoring/chain_max": [5, 1, 10, 1, "most a chain multiplies a near miss's points by"],
 	"scoring/air": [1, 0, 10, 1, "points for AIR"],
 	"scoring/big_air": [2, 0, 10, 1, "points for BIG AIR"],
 	"scoring/air_time": [0.5, 0.1, 2.0, 0.1, "seconds off the ground for AIR"],

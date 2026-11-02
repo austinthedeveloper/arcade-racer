@@ -159,7 +159,14 @@ func _summary(field: Array[Dictionary]) -> void:
 		_text(Vector2(98, y), "of %d" % field.size(), 12, Color(1, 1, 1, 0.75))
 	else:
 		_text(Vector2(16, y), "FINISH", 28, GOLD)
-	_text(Vector2(16, y + 22), "TIME  " + Hud.clock_text(race.race_time), 14, Color.WHITE)
+	var time_text := "TIME  " + Hud.clock_text(race.race_time)
+	_text(Vector2(16, y + 22), time_text, 14, Color.WHITE)
+	# The medal this run earned (MP-9), beside the time
+	var medal := Medals.earned(race.stage_index, Settings.difficulty, race.player_finish)
+	if medal != Medals.Medal.NONE:
+		var mx := 16 + UiText.width(time_text, 14) + 12
+		Medals.draw(self, Vector2(mx, y + 17), medal, 6.0)
+		_text(Vector2(mx + 10, y + 21), Medals.medal_name(medal), 9, Medals.color(medal))
 	var best := best_line(race.new_best or race.new_best_time, race.best_before)
 	if best != "":
 		var lit: bool = race.new_best or race.new_best_time
@@ -223,7 +230,7 @@ func _field_panel(field: Array[Dictionary]) -> void:
 		if not strips.is_empty():
 			CarSprites.draw_player(self, strips, Vector2(band.position.x + 24, band.end.y - 2), 34.0, 0.0, false)
 		_text(Vector2(band.position.x + 46, y + 12), r["name"], 9, Color.WHITE)
-		_text(Vector2(band.position.x + 46, y + 22), String(Cars.find(r["car"])["name"]).to_upper(), 7, Color(1, 1, 1, 0.7))
+		_text(Vector2(band.position.x + 46, y + 22), String(Cars.find(r["car"])["name"]).to_upper(), 8, Color(1, 1, 1, 0.7))
 		var t: float = r["time"]
 		var tt := Hud.clock_text(t) if t >= 0.0 else "RACING"
 		var tw := _font.get_string_size(tt, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x

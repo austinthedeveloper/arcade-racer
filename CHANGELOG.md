@@ -21,11 +21,47 @@ the release workflow puts that section at the top of the GitHub Release notes
   applies at once (the HUD says TUNED), save and load presets, and slow the race down, jump
   along the stage, give yourself a power-up, set the clock or send a wave of traffic. Changes
   are kept for the next run and logged.
+- Keyboard steering feel (AC-11): Options > Controls sets how fast a held steering key reaches
+  full lock and how fast the steering comes back when you let go, each from SNAPPIEST to
+  SMOOTHEST. STANDARD steers exactly as before.
+- Reduce motion (AC-13): one switch in Options > Accessibility turns off the camera shake, the
+  nitro view stretch, the scenery rising and dipping with the hills, and the rain streaks.
+- Auto-pause (AC-15): switching to another window, or sending a phone browser tab to the
+  background, pauses the race. Online races carry on, as they always do.
+- Gamepad rumble (WH-13): the pad you drive with rumbles on crashes, bumps, landings, nitro and
+  off the road. Options > Controls > RUMBLE sets how strongly, 0 for none.
+- Medals (MP-9): every stage has bronze, silver and gold times, a little tighter on Hard and a
+  little looser on Easy. Your best time's medal hangs on each postcard on the stage map, stage
+  select shows the chosen stage's times beside its postcard, and the results show the medal a
+  run earned.
+- Stage intro card (PR-16): during the countdown a card slides in with the stage's name, its
+  weather, its length (in miles or kilometres, after the units option), and your best time and
+  medal there, and slides away before GO.
+- Stats page (MP-11): STATS on the title shows your races, wins, crashes, near misses and
+  distance driven, with your favourite car and stage. Kept in your save; a save from an earlier
+  version starts with the races and wins its best times show.
+- Near-miss chains (RC-15): near misses within two seconds of each other chain, and the burst
+  says so (NEAR MISS x2, x3...). Each one in a chain scores more, up to five times the points;
+  a two-second gap or a crash breaks it.
+- Callout pacing (PR-15): CHECKPOINT and TIME EXTENDED now come up as one burst with both
+  lines, the same burst won't pop up again within three seconds (a growing near-miss chain
+  still does), and winning shows FINISH! first, then 1ST PLACE.
+- HUD legibility (PR-14): no HUD text is smaller than 8 pixels any more (the MPH label and the
+  car names on the results were 7), and the key hints in the corner are a little brighter.
+- Rival cards and radar (RC-18): before GO, a card for each rival on the grid shows the
+  driver, their car and how they drive (clean, aggressive or erratic). In the race, small arrows
+  over your car point up for a rival less than a second ahead and down for one less than a
+  second behind, placed by where they are across the road.
 
 ### Changed
 
 - Rivals keep to their own side of an undivided road and pass on the other side only with
   room; a rival stuck on the tail of a car pulls out to pass it.
+- Rain stops under cover (WS-12): on Thunderhead the rain lets up as you pass under an
+  overpass, and thunder heard from under one (or in any tunnel or covered bridge) comes
+  muffled and quieter.
+- Skyline's harbor (WS-14): the city's lights reflected in the water now stay right under the
+  towers they reflect through every bend and hill, instead of sliding off to one side.
 - Fairer traffic (RC-14): no car waits just over a jump or a big blind hilltop, just inside a
   tunnel or covered bridge, or right ahead of where you start, and nothing coming the other way
   meets the grid. A car you knock off the road comes back in a lane with room.

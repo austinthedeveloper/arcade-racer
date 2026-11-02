@@ -153,7 +153,7 @@ func _events() -> void:
 	if _player.landed:
 		Audio.play("land")
 	if race.fx.thunder:
-		Audio.play("thunder")
+		Audio.play("thunder", 1.0, 0, Weather.thunder_muffled(race.fx.shelter))  # under cover: muffled (WS-12)
 	if state == race.State.RACING and race.time_left < Cfg.LOW_TIME:
 		var s := ceili(race.time_left)
 		if s != _tick:
@@ -306,6 +306,8 @@ func _announce(dt: float) -> void:
 	var c: Dictionary = race.callouts.current
 	if not c.is_empty() and not is_same(c, _callout):
 		announcer.say(CALLOUT_LINES.get(c["kind"], ""))
+		if c.get("line2", "") == Callouts.TEXT[Callouts.Kind.TIME_EXTENDED]:  # one burst, both lines (PR-15)
+			announcer.say(CALLOUT_LINES[Callouts.Kind.TIME_EXTENDED])
 	_callout = c
 	var line := announcer.update(dt)
 	if line != "":

@@ -212,9 +212,22 @@ func test_mode_select_leads_on_and_back() -> void:
 	eq(g.screen, g.Screen.TITLE, "and those go back to the title")
 
 
+func test_stats_on_the_title_opens_the_stats_page_and_back() -> void:
+	var g := _game()
+	g.menu.handle(menu_input(false, false, 1))
+	g.menu.handle(menu_input(false, false, 1))
+	eq(TitleScreen.items()[g.menu.index], "STATS", "two right: STATS")
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.STATS, "the stats page")
+	check(g.menu is StatsScreen, "drawn by StatsScreen")
+	g.menu.handle(menu_input(false, true))
+	eq(g.screen, g.Screen.TITLE, "back: the title")
+	eq(TitleScreen.items()[g.menu.index], "STATS", "on STATS")
+
+
 func test_quit_on_the_title_closes_the_game() -> void:
-	eq(TitleScreen.items(false), ["START", "OPTIONS", "QUIT"], "START, OPTIONS, QUIT")
-	eq(TitleScreen.items(true), ["START", "OPTIONS"], "no QUIT in a browser")
+	eq(TitleScreen.items(false), ["START", "OPTIONS", "STATS", "QUIT"], "START, OPTIONS, STATS, QUIT")
+	eq(TitleScreen.items(true), ["START", "OPTIONS", "STATS"], "no QUIT in a browser")
 	var g := _game()
 	var quits := [0]
 	g.on_quit = func() -> void: quits[0] += 1
