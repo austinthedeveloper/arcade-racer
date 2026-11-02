@@ -582,7 +582,7 @@ func _physics_process(dt: float) -> void:
 	fx.position = road.position
 	road.camera_z = player.position
 	var rise := track.height_at(player.position + Background.HILL_AHEAD) - player.road_y
-	background.hill = Background.hill_shift(rise, road.camera_depth)
+	background.hill = Background.shown_hill(rise, road.camera_depth)
 	_flow(dt)
 	if _results_shot and state == State.RACING and race_time > 1.0:
 		_stage_results_shot()

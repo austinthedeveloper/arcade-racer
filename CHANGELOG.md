@@ -24,6 +24,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Keyboard steering feel (AC-11): Options > Controls sets how fast a held steering key reaches
   full lock and how fast the steering comes back when you let go, each from SNAPPIEST to
   SMOOTHEST. STANDARD steers exactly as before.
+- Reduce motion (AC-13): one switch in Options > Accessibility turns off the camera shake, the
+  nitro view stretch, the scenery rising and dipping with the hills, and the rain streaks.
 
 ### Changed
 

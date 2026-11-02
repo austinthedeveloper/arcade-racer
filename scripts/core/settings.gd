@@ -25,7 +25,8 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 6: [audio] radio (missing: shuffle). 7: [accessibility] subtitles (missing: on).
 ## 8: [play] manual_gears (missing: automatic).
 ## 9: [controls] key_steer_in, key_steer_out (missing: STANDARD, as every earlier build).
-const VERSION := 9
+## 10: [accessibility] reduce_motion (missing: off).
+const VERSION := 10
 ## Keyboard steering feel (AC-11): how fast a held key turns in and a released one comes back,
 ## snappy to smooth. Each multiplies its rate (shares of full lock per second); STANDARD is
 ## the rate every earlier build had.
@@ -59,6 +60,9 @@ var radio: int = Radio.SHUFFLE  # the station races start on (Radio)
 var screen_shake := 10  # 0..EFFECT_STEPS; scales camera shake and the nitro FOV stretch
 var flash := 10  # 0..EFFECT_STEPS; scales flashes and blinking warnings
 var subtitles := true  # the announcer's words on screen (Announcer)
+## Reduce motion (AC-13): no camera shake, nitro view stretch, hill shift of the scenery or
+## rain streaks, whatever the screen shake option says (shake_amount, motion_reduced).
+var reduce_motion := false
 var units: int = Units.MPH  # the speedometer's
 var fullscreen := false  # windowed by default
 var integer_scale := false  # whole-number scaling of the 640x360 view (borders round it)
@@ -97,6 +101,7 @@ func reset() -> void:
 	screen_shake = EFFECT_STEPS
 	flash = EFFECT_STEPS
 	subtitles = true
+	reduce_motion = false
 	units = Units.MPH
 	fullscreen = false
 	integer_scale = false
@@ -131,6 +136,7 @@ func load_settings() -> void:
 		screen_shake = clampi(int(cfg.get_value("accessibility", "screen_shake", screen_shake)), 0, EFFECT_STEPS)
 		flash = clampi(int(cfg.get_value("accessibility", "flash", flash)), 0, EFFECT_STEPS)
 		subtitles = bool(cfg.get_value("accessibility", "subtitles", subtitles))
+		reduce_motion = bool(cfg.get_value("accessibility", "reduce_motion", reduce_motion))
 		units = clampi(int(cfg.get_value("display", "units", units)), 0, Units.size() - 1)
 		fullscreen = bool(cfg.get_value("display", "fullscreen", fullscreen))
 		integer_scale = bool(cfg.get_value("display", "integer_scale", integer_scale))
@@ -142,7 +148,7 @@ func load_settings() -> void:
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -198,6 +204,11 @@ static func _v8_to_v9(cfg: ConfigFile) -> void:
 	cfg.set_value("controls", "key_steer_out", STEER_FEEL_STANDARD)
 
 
+## Version 10 added reduce motion, off: everything moving as before.
+static func _v9_to_v10(cfg: ConfigFile) -> void:
+	cfg.set_value("accessibility", "reduce_motion", false)
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -221,6 +232,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("accessibility", "screen_shake", screen_shake)
 	cfg.set_value("accessibility", "flash", flash)
 	cfg.set_value("accessibility", "subtitles", subtitles)
+	cfg.set_value("accessibility", "reduce_motion", reduce_motion)
 	cfg.set_value("display", "units", units)
 	cfg.set_value("display", "fullscreen", fullscreen)
 	cfg.set_value("display", "integer_scale", integer_scale)
@@ -250,9 +262,17 @@ func key_steer_rates() -> Vector2:
 
 
 ## A camera effect (shake in pixels, the nitro FOV stretch) after the screen shake option:
-## the designed amount at 10, none at 0, never more than designed.
+## the designed amount at 10, none at 0, never more than designed. None with reduce motion.
 func shake_amount(designed: float) -> float:
+	if reduce_motion:
+		return 0.0
 	return designed * clampi(screen_shake, 0, EFFECT_STEPS) / float(EFFECT_STEPS)
+
+
+## A moving effect after reduce motion: `designed` (pixels, streaks), or none with it on.
+## The hill shift (Background.shown_hill) and rain (FxLayer.rain_shown) read it.
+func motion_amount(designed: float) -> float:
+	return 0.0 if reduce_motion else designed
 
 
 ## A flash's strength (alpha, or how far a blink goes) after the flash option, as above.

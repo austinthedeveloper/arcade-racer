@@ -237,6 +237,22 @@ func test_settings_v8_to_v9_adds_keyboard_steering_feel() -> void:
 	_clean()
 
 
+func test_settings_v9_to_v10_adds_reduce_motion() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v9.cfg")
+	eq(Settings.migrate(cfg), 9, "from version 9")
+	eq([CfgVersion.of(cfg), cfg.get_value("accessibility", "reduce_motion")], [Settings.VERSION, false], "migrated on: off")
+	_clean()
+	_load_settings("settings_v9.cfg")
+	eq(Settings.reduce_motion, false, "v9 loads with everything moving")
+	eq([Settings.key_steer_in, Settings.key_steer_out, Settings.screen_shake], [1, 5, 3], "the rest as saved")
+	Settings.reduce_motion = true
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.reduce_motion], [Settings.VERSION, true], "saved and loaded back")
+	_clean()
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")
