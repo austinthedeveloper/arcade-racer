@@ -106,6 +106,13 @@ var _start_distance := 0.0  # where the player started this run, for the miles d
 
 var background: Background
 var road: RoadRenderer
+## The layer the HUD, the results, the pause menu and the photo flash are on: hidden for the
+## frame a photo is taken (begin_photo).
+var ui_layer: CanvasLayer
+var photo: Photo  # the photo key's flash (PR-21)
+var photo_taking := false  # the HUD is hidden for a photo being taken
+var last_photo := ""  # the last photo's path ("" when it couldn't be saved)
+var _touch_was_visible := false
 var fx: FxLayer  # between the road and the HUD
 var hud: Hud
 ## The F1 input overlay, F2 calibration wizard and F3 tuning panel. The game passes in its
@@ -129,6 +136,7 @@ var _staged := false  # this race was staged for a screenshot: nothing it does i
 var _drive_x := NAN  # --drive-x=X: start on this line and autodrive holds it (road half-widths; past 1 is off the road)
 var _lightning_at := NAN  # --lightning-at=SECONDS: a full lightning strike then, on a stage with lightning (screenshots)
 var _screenshot_frames: Array[int] = []
+var _photo_frames: Array[int] = []  # --photo-at=N,M: the photo key pressed on those frames (into --shot-dir)
 var _screenshot_dir := ""
 var _gas_since := NAN  # when the gas went down, in seconds from GO (Launch.grade)
 var _frame := 0  # physics ticks since this race (re)started
@@ -150,6 +158,7 @@ func _ready() -> void:
 	fx = FxLayer.new()
 	add_child(fx)
 	var layer := CanvasLayer.new()
+	ui_layer = layer
 	add_child(layer)
 	hud = Hud.new()
 	hud.race = self
@@ -169,6 +178,8 @@ func _ready() -> void:
 		debug_panel = DebugPanel.new()
 		layer.add_child(debug_panel)
 	debug_panel.race = self
+	photo = Photo.new()
+	layer.add_child(photo)  # over the rest of the layer
 	audio = RaceAudio.new(self)
 	add_child(audio)
 	if not InputRouter.driver_unplugged.is_connected(driver_unplugged):
@@ -501,6 +512,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(dt: float) -> void:
+	if InputRouter.state.photo_pressed and not demo:
+		take_photo()
 	var inp: DriveInput = Settings.drive_input(InputRouter.state)
 	if _autodrive or demo:
 		inp = _autodrive_input()
@@ -656,6 +669,47 @@ func _physics_process(dt: float) -> void:
 	_frame += 1
 	if _screenshot_frames.has(_frame):
 		_save_screenshot(_frame)
+	if _photo_frames.has(_frame):
+		take_photo()
+
+
+## The photo key (PR-21): hides the HUD for this frame, grabs the frame once it is drawn and
+## saves it (finish_photo). Not while one is being taken already.
+func take_photo() -> void:
+	if not begin_photo():
+		return
+	if not is_inside_tree():
+		finish_photo(null)
+		return
+	await RenderingServer.frame_post_draw
+	var tex := get_viewport().get_texture()
+	finish_photo(tex.get_image() if tex != null else null)
+
+
+## Hides the HUD layer (the HUD, the pause menu, the results) and the touch controls for the
+## photo's frame. Returns false when a photo is already being taken.
+func begin_photo() -> bool:
+	if photo_taking:
+		return false
+	photo_taking = true
+	ui_layer.visible = false
+	_touch_was_visible = TouchControls.current != null and TouchControls.current.visible
+	if _touch_was_visible:
+		TouchControls.current.visible = false
+	return true
+
+
+## The photo's frame, `img`, grabbed: saves it (Photo.save), puts the HUD back, sounds the
+## shutter and flashes. Returns the photo's path, "" when there was nothing to save.
+func finish_photo(img: Image) -> String:
+	photo_taking = false
+	ui_layer.visible = true
+	if _touch_was_visible and TouchControls.current != null:
+		TouchControls.current.visible = true
+	last_photo = Photo.save(img)
+	Audio.play("shutter")
+	photo.flash()
+	return last_photo
 
 
 ## Camera shake (pixels, as designed) after a tick: a crash sets it, a landing, a takeoff
@@ -1020,8 +1074,12 @@ func _parse_dev_args() -> void:
 			_callout_shot_count = int(spec.get_slice(":", 1)) if spec.contains(":") else 0
 		elif arg.begins_with("--time-left="):
 			_time_left_shot = float(arg.get_slice("=", 1))
+		elif arg.begins_with("--photo-at="):
+			for f in arg.get_slice("=", 1).split(","):
+				_photo_frames.append(int(f))
 		elif arg.begins_with("--shot-dir="):
 			_screenshot_dir = arg.get_slice("=", 1)
+			Photo.dir = _screenshot_dir
 
 
 func _autodrive_input() -> DriveInput:

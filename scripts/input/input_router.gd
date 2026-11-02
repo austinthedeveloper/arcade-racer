@@ -48,7 +48,7 @@ var _parked: Dictionary = {}  # guid -> an unplugged joypad's unsaved profile, f
 var _kb_steer := 0.0
 var _pad_steer: Dictionary = {}
 var _prev := {"nitro": false, "pause": false, "restart": false, "confirm": false, "horn": false, "radio": false,
-	"shift_up": false, "shift_down": false}
+	"shift_up": false, "shift_down": false, "photo": false}
 var _prev_menu := {"confirm": false, "back": false}
 
 
@@ -71,7 +71,7 @@ func _physics_process(dt: float) -> void:
 	var throttle := 0.0
 	var brake := 0.0
 	var down := {"nitro": false, "pause": false, "restart": false, "confirm": false, "horn": false, "radio": false,
-		"shift_up": false, "shift_down": false}
+		"shift_up": false, "shift_down": false, "photo": false}
 
 	# Keyboard: digital steering ramps in, and snaps back faster than it ramps (key_steer)
 	var kb_target := Input.get_action_strength("steer_right") - Input.get_action_strength("steer_left")
@@ -85,6 +85,7 @@ func _physics_process(dt: float) -> void:
 	down["confirm"] = Input.is_action_pressed("confirm")
 	down["horn"] = Input.is_action_pressed("horn")
 	down["radio"] = Input.is_action_pressed("radio")
+	down["photo"] = Input.is_action_pressed("photo")
 	down["shift_up"] = Input.is_action_pressed("shift_up")
 	down["shift_down"] = Input.is_action_pressed("shift_down")
 	if kb_target != 0.0 or throttle > 0.0 or brake > 0.0:
@@ -123,6 +124,7 @@ func _physics_process(dt: float) -> void:
 	state.confirm_pressed = down["confirm"] and not _prev["confirm"]
 	state.horn = down["horn"]
 	state.radio_pressed = down["radio"] and not _prev["radio"]
+	state.photo_pressed = down["photo"] and not _prev["photo"]
 	state.shift_up_pressed = down["shift_up"] and not _prev["shift_up"]
 	state.shift_down_pressed = down["shift_down"] and not _prev["shift_down"]
 	_prev = down
@@ -188,6 +190,7 @@ func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
 		"pause": prof.pressed("pause", device),
 		"horn": prof.pressed("horn", device),
 		"radio": prof.pressed("radio", device),
+		"photo": prof.pressed("photo", device),
 		"shift_up": prof.pressed("shift_up", device),
 		"shift_down": prof.pressed("shift_down", device),
 		"restart": Input.is_joy_button_pressed(device, JOY_BUTTON_BACK),
@@ -226,6 +229,7 @@ func _read_wheel(device: int, prof: DeviceProfile) -> Dictionary:
 		"pause": prof.pressed("pause", device),
 		"horn": prof.pressed("horn", device),
 		"radio": prof.pressed("radio", device),
+		"photo": prof.pressed("photo", device),
 		"shift_up": prof.pressed("shift_up", device),
 		"shift_down": prof.pressed("shift_down", device),
 		"active": absf(steer) > 0.05 or throttle > 0.05 or brake > 0.05 or nitro,

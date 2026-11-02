@@ -7,6 +7,12 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Photo key (PR-21): F12 saves a picture of the race without the HUD to the game's
+  screenshots folder, with a shutter click and a flash (Options > Accessibility > FLASH tones
+  it down). Bind it to a pad or wheel button on the remap screen as PHOTO.
+
 ## [0.4.0] - 2026-11-02
 
 ### Added
