@@ -8,7 +8,7 @@ A player and developer guide is on the [wiki](https://github.com/austinthedevelo
 
 ## Running it
 
-Download the latest build from [Releases](https://github.com/austinthedeveloper/arcade-racer/releases) (Windows, macOS, Web), or run it from source:
+Download the latest build from [Releases](https://github.com/austinthedeveloper/arcade-racer/releases) (Windows, macOS, Web), play the latest in the browser at https://sundownrun.z13.web.core.windows.net/, or run it from source:
 
 1. Install **Godot 4.7** (standard build, not .NET).
 2. Open Godot, choose **Import**, and pick `project.godot` in this folder.
@@ -206,7 +206,7 @@ To publish, rename **Unreleased** in `CHANGELOG.md` to the version and date, bum
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-`.github/workflows/release.yml` runs the tests, exports the builds and creates the GitHub Release with the zips, that version's `CHANGELOG.md` section (`tools/changelog.py`; a tag without one stops the workflow) and download notes. Running the workflow by hand (Actions > Release > Run workflow) builds the zips as a workflow artifact without publishing. The builds are not code-signed or notarized, so Windows SmartScreen and macOS Gatekeeper warn on first launch; the release notes say how to get past that. The Linux x86_64 zip is not a supported platform and is for testing only (CI smoke-runs it headlessly; a Steam Deck test may follow).
+`.github/workflows/release.yml` runs the tests, exports the builds and creates the GitHub Release with the zips, that version's `CHANGELOG.md` section (`tools/changelog.py`; a tag without one stops the workflow) and download notes. A tag's Web build also goes to https://sundownrun.z13.web.core.windows.net/ (the `web` job, `tools/deploy_web.sh`; setup in docs/10-releases.md). Running the workflow by hand (Actions > Release > Run workflow) builds the zips as a workflow artifact without publishing. The builds are not code-signed or notarized, so Windows SmartScreen and macOS Gatekeeper warn on first launch; the release notes say how to get past that. The Linux x86_64 zip is not a supported platform and is for testing only (CI smoke-runs it headlessly; a Steam Deck test may follow).
 
 ### Updates
 

@@ -7,8 +7,12 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-02
+
 ### Added
 
+- Play in the browser: every release from now on is also at
+  https://sundownrun.z13.web.core.windows.net/, always the latest version.
 - Oncoming traffic (RC-11): on Palm Coast, Redrock, Timberline, Bayou and Harvest the left
   lanes carry traffic coming the other way, drawn from the front with its headlights on (CP-6).
   Meeting one head-on is a longer spin than running into the back of a car; a ram plate knocks

@@ -43,6 +43,7 @@ python3 tools/manifest.py .                         # rewrite assets/sprites/man
 python3 tools/make_lod_sprites.py .                 # redo the roadside sprites' reduced copies (lod/, CP-9) and the manifest
 python3 tools/make_audio.py                         # rebuild the placeholder sounds (assets/audio/README.md)
 tools/export.sh 0.1.0                               # Windows/macOS/Web zips in build/release (needs export templates)
+tools/deploy_web.sh build/release/SundownRun-0.4.0-web.zip   # the Web build to Azure (az login; a tag's release does it)
 ```
 
 The sprite tools share `tools/spritelib.py` and need `pip install -r tools/requirements.txt`. Their

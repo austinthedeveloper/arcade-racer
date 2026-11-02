@@ -67,6 +67,31 @@ zips upload as downloads (`butler push` from the release workflow, with an itch 
 secret). The updater keeps reading GitHub, so an itch download updates itself too. Steam comes
 after that, if ever: a $100 app fee, a Steamworks account and its review.
 
+## Web: Azure Storage static website (2026-11-02)
+
+From 0.4.0 every tag's Web build is playable at https://sundownrun.z13.web.core.windows.net/, which Austin asked for on
+2026-11-02. The release workflow's `web` job runs after the GitHub Release, unzips the Web zip
+and uploads it with `tools/deploy_web.sh`, replacing the last version. Only the latest release
+is online. The page is cached with `no-cache`, so a returning player gets the new version on
+their next visit.
+
+- **Azure:** resource group `sundownrun` (East US), storage account `sundownrun` (Standard LRS,
+  static website on, index and 404 page `index.html`, no public blob access). Costs cents a
+  month at this traffic.
+- **Sign-in:** the Entra app `sundownrun-web-deploy` has *Storage Blob Data Contributor* on that
+  account and nothing else. GitHub signs in as it with OIDC: its federated credential trusts
+  `repo:austinthedeveloper/arcade-racer:environment:web`, and the repository's `web`
+  environment admits `v*` tags only. There are no secrets; the client, tenant and subscription
+  IDs and the account name are variables on that environment.
+- **No special headers needed:** the Web preset is single-threaded (`test_export` checks this),
+  so no COOP/COEP headers are needed. Azure doesn't compress files on the fly, so the deploy
+  script gzips the `.wasm` and `.js` itself.
+- **By hand:** `az login`, then `tools/deploy_web.sh build/release/SundownRun-<version>-web.zip`.
+  Your own account needs the same role on the storage account; Austin's has it.
+- **Revisit when:** players want older versions (upload to `v/<version>/` as well), a custom
+  domain (Azure Front Door or a CNAME, which needs HTTPS through Front Door), or itch.io takes
+  over the web build.
+
 ### itch.io page draft
 
 Ready for when the page is made. Screenshots: the Palm Coast start, Neon Strip at night, a

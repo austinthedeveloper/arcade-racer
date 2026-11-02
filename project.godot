@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Sundown Run"
 config/description="Sprite-based pseudo-3D arcade racer"
-config/version="0.3.1"
+config/version="0.4.0"
 run/main_scene="res://scenes/main.tscn"
 run/main_loop_type="BootTree"
 config/features=PackedStringArray("4.7", "GL Compatibility")
