@@ -230,7 +230,7 @@ func _field_panel(field: Array[Dictionary]) -> void:
 		if not strips.is_empty():
 			CarSprites.draw_player(self, strips, Vector2(band.position.x + 24, band.end.y - 2), 34.0, 0.0, false)
 		_text(Vector2(band.position.x + 46, y + 12), r["name"], 9, Color.WHITE)
-		_text(Vector2(band.position.x + 46, y + 22), String(Cars.find(r["car"])["name"]).to_upper(), 7, Color(1, 1, 1, 0.7))
+		_text(Vector2(band.position.x + 46, y + 22), String(Cars.find(r["car"])["name"]).to_upper(), 8, Color(1, 1, 1, 0.7))
 		var t: float = r["time"]
 		var tt := Hud.clock_text(t) if t >= 0.0 else "RACING"
 		var tw := _font.get_string_size(tt, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x

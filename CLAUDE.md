@@ -13,7 +13,7 @@ godot --headless --path . --import                  # once in a fresh clone or w
 godot --path .                                      # play
 godot --path . -- --autodrive --screenshots=200,700 --shot-dir=/tmp/shots   # hands-off run with screenshots (race flags skip the menus)
 godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screenshots=300 --shot-dir=/tmp/shots   # start partway in, in another car
-godot --path . -- --autodrive --callout=near_miss --screenshots=300 --shot-dir=/tmp/shots   # hold a starburst callout up after GO (Callouts.IDS); --time-left=9 for the low clock
+godot --path . -- --autodrive --callout=near_miss --screenshots=300 --shot-dir=/tmp/shots   # hold a starburst callout up after GO (Callouts.IDS; near_miss:3 for a chain); --time-left=9 for the low clock
 godot --path . -- --autodrive --stage=7 --at-segment=300 --lightning-at=5 --screenshots=303 --shot-dir=/tmp/shots   # force a full lightning strike on Thunderhead at 5 s
 godot --path . -- --autodrive --stage=2 --mirror --screenshots=300 --shot-dir=/tmp/shots   # race the stage mirrored (WS-6), locked or not
 godot --path . -- --save-file=/tmp/save.cfg --mode=single_race --mirror --screen=stages --menu-shot=/tmp/s.png   # stage select on another save, in a mode (ModeSelect.Item), MIRROR on
