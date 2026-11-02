@@ -18,6 +18,8 @@ const CARD := Vector2(56, 32)
 const CARD_STEM := 12.0  # pin to postcard edge
 const BIG := Rect2(10, 196, 144, 81)  # the chosen stage's postcard, in the bay
 const BAND := Rect2(0, 296, 640, 42)  # stage name and tour line, above the footer
+## The chosen stage's medal times (MP-9) and best, beside the big postcard.
+const MEDAL_PANEL := Rect2(164, 212, 112, 70)
 
 var _cards: Array[Texture2D] = []
 var _map: Texture2D
@@ -79,6 +81,7 @@ func _draw() -> void:
 		_postcard(i)
 	_pins()
 	_big()
+	_medal_panel()
 	_band()
 	_footer(hints(true))
 
@@ -110,6 +113,9 @@ func _postcard(i: int) -> void:
 	var tab := Rect2(r.position, Vector2(11, 11))
 	draw_rect(tab, Color(0, 0, 0, 0.7))
 	_text_centered(Vector2(tab.get_center().x, tab.end.y - 2), str(i + 1), 9, GOLD if chosen else Color.WHITE)
+	var medal := Medals.held(i) if open else Medals.Medal.NONE
+	if medal != Medals.Medal.NONE:
+		Medals.draw(self, medal_spot(i), medal, 5.0)
 
 
 func _pins() -> void:
@@ -120,6 +126,44 @@ func _pins() -> void:
 		draw_circle(PINS[i], rad, GOLD if open else Color(0.5, 0.5, 0.58))
 		if i == index:
 			draw_circle(PINS[i], rad * 0.45, Color.WHITE)
+
+
+## Where stage `i`'s medal hangs on its small postcard: the top right corner.
+static func medal_spot(i: int) -> Vector2:
+	var r := card_rect(i)
+	return Vector2(r.end.x - 6, r.position.y + 9)
+
+
+## The medal panel's rows: gold, silver and bronze times for the difficulty `level`, the one
+## `best` earns lit, then the best time itself (MP-9).
+static func medal_rows(stage: int, level: int, best: float) -> Array[Dictionary]:
+	var held := Medals.earned(stage, level, best)
+	var out: Array[Dictionary] = []
+	for m: int in [Medals.Medal.GOLD, Medals.Medal.SILVER, Medals.Medal.BRONZE]:
+		out.append({"medal": m, "text": "%s  %s" % [Medals.medal_name(m), Hud.clock_text(Medals.time_for(stage, level, m))],
+			"lit": m == held})
+	out.append({"medal": -1, "text": "BEST  " + (Hud.clock_text(best) if not is_inf(best) else "-:--.--"), "lit": not is_inf(best)})
+	return out
+
+
+func _medal_panel() -> void:
+	if not Unlocks.stage_unlocked(index):
+		return
+	_panel(MEDAL_PANEL, 0.82)
+	var x := MEDAL_PANEL.position.x + 6
+	var y := MEDAL_PANEL.position.y + 11
+	_text(Vector2(x, y), "MEDALS  " + Difficulty.NAMES[Settings.difficulty], 8, GOLD)
+	var rows := medal_rows(index, Settings.difficulty, SaveData.stage_best(index))
+	for i in rows.size():
+		var row: Dictionary = rows[i]
+		var ry := y + 14 + i * 13
+		var m: int = row["medal"]
+		var col := Color.WHITE if row["lit"] else Color(1, 1, 1, 0.55)
+		if m >= 0:
+			Medals.draw(self, Vector2(x + 5, ry - 3), m, 4.0)
+			if row["lit"]:
+				col = Medals.color(m)
+		_text(Vector2(x + 14, ry), row["text"], 9, col)
 
 
 ## The chosen stage's postcard, big.

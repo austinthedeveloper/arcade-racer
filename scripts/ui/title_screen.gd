@@ -1,7 +1,7 @@
 class_name TitleScreen
 extends MenuScreen
 ## Attract screen: the logo over the Palm Coast sunset, with START (on to mode select),
-## OPTIONS and QUIT side by side. A browser tab can't be quit, so the web build has no QUIT.
+## OPTIONS, STATS (MP-11) and QUIT side by side. A browser tab can't be quit, so the web build has no QUIT.
 
 const LOGO := "res://assets/sprites/ui/logo.png"
 const PILL_STEP := 160.0
@@ -26,7 +26,7 @@ static func start_prompt() -> String:
 
 ## The title's choices: QUIT too, except in a browser.
 static func items(web := OS.has_feature("web")) -> Array[String]:
-	var out: Array[String] = ["START", "OPTIONS"]
+	var out: Array[String] = ["START", "OPTIONS", "STATS"]
 	if not web:
 		out.append("QUIT")
 	return out
@@ -47,6 +47,8 @@ func handle(m: MenuInput) -> void:
 				game.show_mode_select()
 			"OPTIONS":
 				game.show_options()
+			"STATS":
+				game.show_stats()
 			"QUIT":
 				game.quit()
 

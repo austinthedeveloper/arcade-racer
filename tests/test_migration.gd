@@ -220,6 +220,55 @@ func test_settings_v7_to_v8_adds_manual_gears() -> void:
 	_clean()
 
 
+func test_settings_v8_to_v9_adds_keyboard_steering_feel() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v8.cfg")
+	eq(Settings.migrate(cfg), 8, "from version 8")
+	eq([CfgVersion.of(cfg), cfg.get_value("controls", "key_steer_in"), cfg.get_value("controls", "key_steer_out")],
+		[Settings.VERSION, Settings.STEER_FEEL_STANDARD, Settings.STEER_FEEL_STANDARD], "migrated on: standard both ways")
+	_clean()
+	_load_settings("settings_v8.cfg")
+	eq(Settings.key_steer_rates(), Vector2(5.0, 9.0), "v8 steers as it did")
+	eq([Settings.manual_gears, Settings.subtitles, Settings.radio], [true, false, 2], "the rest as saved")
+	Settings.key_steer_in = 0
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.key_steer_in], [Settings.VERSION, 0], "saved and loaded back")
+	_clean()
+
+
+func test_settings_v9_to_v10_adds_reduce_motion() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v9.cfg")
+	eq(Settings.migrate(cfg), 9, "from version 9")
+	eq([CfgVersion.of(cfg), cfg.get_value("accessibility", "reduce_motion")], [Settings.VERSION, false], "migrated on: off")
+	_clean()
+	_load_settings("settings_v9.cfg")
+	eq(Settings.reduce_motion, false, "v9 loads with everything moving")
+	eq([Settings.key_steer_in, Settings.key_steer_out, Settings.screen_shake], [1, 5, 3], "the rest as saved")
+	Settings.reduce_motion = true
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.reduce_motion], [Settings.VERSION, true], "saved and loaded back")
+	_clean()
+
+
+func test_settings_v10_to_v11_adds_rumble() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v10.cfg")
+	eq(Settings.migrate(cfg), 10, "from version 10")
+	eq([CfgVersion.of(cfg), cfg.get_value("controls", "rumble")], [Settings.VERSION, Settings.EFFECT_STEPS], "migrated on: as designed")
+	_clean()
+	_load_settings("settings_v10.cfg")
+	eq(Settings.rumble, Settings.EFFECT_STEPS, "v10 loads with rumble on")
+	eq([Settings.reduce_motion, Settings.key_steer_in], [true, 1], "the rest as saved")
+	Settings.rumble = 4
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.rumble], [Settings.VERSION, 4], "saved and loaded back")
+	_clean()
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")
@@ -272,6 +321,37 @@ func test_save_v1_to_v2_opens_the_mirror_of_every_stage_won() -> void:
 	eq(SaveData.loaded_version, 2, "version 2")
 	eq(v2[2], ["car_mesa", "mirror_palm_coast", "mirror_redrock"], "its mirrors as saved")
 	eq([v2[0], v2[1], v2[3]], [v1[0], v1[1], v1[3]], "the rest as before")
+	_clean()
+
+
+func test_save_v2_to_v3_seeds_the_stats_from_the_bests() -> void:
+	_clean()
+	var v2 := _load_save("save_v2.cfg")
+	eq(SaveData.loaded_version, 2, "version 2")
+	eq(SaveData.stats, {"races": 2, "wins": 1, "crashes": 0, "near_misses": 0, "miles": 0.0,
+		"cars": {"car_vega": 1, "car_mesa": 1}, "stages": {"palm_coast": 1, "neon": 1}},
+		"a race per best on file, a win per 1st; crashes, near misses and miles unknown")
+	var v0 := _load_save("save_v0.cfg")
+	eq(SaveData.stats["races"], 2, "an unversioned save migrates all the way")
+	eq([v0[0], v0[1], v0[3]], [v2[0], v2[1], v2[3]], "the rest as before")
+	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "version", 2)
+	cfg.set_value("best", "palm_coast/car_vega", "nonsense")
+	eq(SaveData.migrate(cfg), 2, "from version 2")
+	eq([cfg.get_value("stats", "races"), cfg.get_value("stats", "cars")], [0, {}], "a bad best counts nothing")
+	_clean()
+
+
+func test_save_v3_loads() -> void:
+	_clean()
+	var v3 := _load_save("save_v3.cfg")
+	eq(SaveData.loaded_version, 3, "version 3")
+	eq(SaveData.stats, {"races": 14, "wins": 5, "crashes": 9, "near_misses": 31, "miles": 52.5,
+		"cars": {"car_mesa": 4, "car_vega": 10}, "stages": {"neon": 6, "palm_coast": 8}}, "the stats as saved")
+	eq(v3[2], ["car_mesa", "mirror_palm_coast", "mirror_redrock"], "the rest as saved")
+	SaveData.save()
+	SaveData.load_save()
+	eq(SaveData.stats["cars"], {"car_mesa": 4, "car_vega": 10}, "and saved back")
 	_clean()
 
 

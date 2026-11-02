@@ -165,9 +165,32 @@ func test_thunder_after_lightning() -> void:
 	r.fx.set_weather(r.track.theme, 1.0)
 	step(r, 60 + int(Weather.THUNDER_NEAR * 60.0) + 2)
 	eq(count("thunder"), 1, "thunder a beat after the flash")
+	var p: AudioStreamPlayer = audio_node().player_of("thunder")
+	check(p != null and p.bus == "SFX", "out in the open, as it is")
 	var palm := fresh_race()
 	step(palm, 600)
 	eq(count("thunder"), 0, "none on a clear stage")
+
+
+func test_thunder_is_muffled_under_cover() -> void:
+	# WS-12: the same strike heard from under a Thunderhead overpass
+	var r := race(false, false, 6, false)
+	var cover := Weather.shelters(r.track)
+	r.player.move_to((cover[0].x + cover[0].y) * 0.5, r.track)
+	audio_node().history.clear()
+	r.fx.set_weather(r.track.theme, 1.0)
+	step(r, 60 + int(Weather.THUNDER_NEAR * 60.0) + 2)
+	eq(count("thunder"), 1, "thunder still rolls under the overpass")
+	var p: AudioStreamPlayer = audio_node().player_of("thunder")
+	check(p != null, "on a pool player")
+	if p != null:
+		eq(p.bus, audio_node().MUFFLED_BUS, "through the low-pass")
+		eq(p.volume_db, SoundBank.volume_db("thunder") + audio_node().MUFFLE_DB, "and quieter")
+	var bus := AudioServer.get_bus_index(audio_node().MUFFLED_BUS)
+	check(bus >= 0, "the muffled bus exists")
+	if bus >= 0:
+		check(AudioServer.get_bus_effect(bus, 0) is AudioEffectLowPassFilter, "with a low-pass on it")
+		eq(AudioServer.get_bus_send(bus), "SFX", "under the effects volume")
 
 
 func test_whooshes_pan_to_the_passed_cars_side() -> void:

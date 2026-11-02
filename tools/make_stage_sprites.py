@@ -44,10 +44,11 @@ def layers(prefix):
     }
 
 
-def layer(file, key=None, rows=None):
+def layer(file, key=None, rows=None, width=None):
     """A background layer cut from `file`: its `rows` (top, bottom) only when given, keyed
-    by `key` ("sheet": spritelib.key_sheet, "sky": key_sky, None: opaque)."""
-    return {"file": file, "key": key, "rows": rows}
+    by `key` ("sheet": spritelib.key_sheet, "sky": key_sky, None: opaque), `width` pixels
+    per half strip when given (LAYER_WIDTH otherwise)."""
+    return {"file": file, "key": key, "rows": rows, "width": width}
 
 
 # Per stage: background (sky, far and near layers) and roadside sheets.
@@ -213,11 +214,13 @@ STAGES = {
     },
     "skyline": {
         # The v2 composite has no layers (its v1 layers have the lookalike landmarks): the
-        # generic v1 sunset sky, the v2 city with its sky keyed out, and v2's harbor water
+        # generic v1 sunset sky, the v2 city with its sky keyed out, and v2's harbor water.
+        # The water holds the city's reflections, so it is cut at the city's scale (the far
+        # width) and the game moves the two together (WS-14, the theme's "reflection")
         "background": {
             "sky": layer("skyline_l1_sky_A_v1.png"),
             "far": layer("skyline_composite_A_v2.png", key="sky", rows=(0, 568)),
-            "near": layer("skyline_composite_A_v2.png", rows=(566, 640)),
+            "near": layer("skyline_composite_A_v2.png", rows=(566, 640), width=LAYER_WIDTH["far"]),
         },
         "sheets": [
             ("skyline_buildings_A_v1.png", 220, [
@@ -300,7 +303,7 @@ def key_sky(img):
     return Image.fromarray(a)
 
 
-def cut_layer(path, kind, key=None, rows=None):
+def cut_layer(path, kind, key=None, rows=None, width=None):
     """One background layer as a seamless strip: the art then its mirror image."""
     img = Image.open(path).convert("RGBA")
     if rows:
@@ -315,7 +318,7 @@ def cut_layer(path, kind, key=None, rows=None):
     else:
         top, bottom = content_rows(img)
         img = img.crop((0, top, img.width, bottom))
-        img = pixelate_down(img, LAYER_WIDTH[kind] / img.width)
+        img = pixelate_down(img, (width or LAYER_WIDTH[kind]) / img.width)
     a = np.array(img)
     colors = Image.fromarray(a[..., :3]).quantize(colors=LAYER_COLORS, method=Image.MEDIANCUT)
     a[..., :3] = np.array(colors.convert("RGB"))
@@ -334,7 +337,7 @@ def build_background(stage, spec, concept_dir, project_dir):
     os.makedirs(out_dir, exist_ok=True)
     for kind in LAYERS:
         cut = spec[kind]
-        strip = cut_layer(os.path.join(concept_dir, "backgrounds", cut["file"]), kind, cut["key"], cut["rows"])
+        strip = cut_layer(os.path.join(concept_dir, "backgrounds", cut["file"]), kind, cut["key"], cut["rows"], cut["width"])
         out = os.path.join(out_dir, "%s_%s.png" % (stage, kind))
         img = Image.fromarray(strip)
         (img.convert("RGB") if kind == "sky" else img).save(out)
