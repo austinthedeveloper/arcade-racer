@@ -65,6 +65,8 @@ func test_feed_rect() -> void:
 	var r := _rect("feed")
 	check(r.size.y >= 3 * 16, "three bonuses")
 	check(r.size.x >= UiText.width("CLEAN SECTION +3", 12), "the longest bonus fits")
+	var longest_chain := Scoring.chain_label(10) + " +%d" % Scoring.chain_points(10)
+	check(r.size.x >= UiText.width(longest_chain, 12), "a long near-miss chain fits: " + longest_chain)
 
 
 func test_speedo_rect() -> void:

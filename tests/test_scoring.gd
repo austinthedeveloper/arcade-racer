@@ -21,6 +21,46 @@ func test_near_miss() -> void:
 	check(Scoring.near_miss(0.0, fast, half * 2.6 - 0.05, 1.6), "a wide truck's side")
 
 
+func test_near_miss_chain_rules() -> void:
+	var window := Tuning.v("scoring/chain_window")
+	eq(Scoring.chain_after(0, 0.5), 1, "the first starts a chain")
+	eq(Scoring.chain_after(1, window - 0.1), 2, "the next within the window: x2")
+	eq(Scoring.chain_after(2, window), 3, "x3 right at its edge")
+	eq(Scoring.chain_after(3, window + 0.1), 1, "too late: it starts over")
+	var pts := Tuning.i("scoring/near_miss")
+	eq([Scoring.chain_points(1), Scoring.chain_points(2), Scoring.chain_points(3)], [pts, pts * 2, pts * 3], "points scale with the chain")
+	eq(Scoring.chain_points(99), pts * Tuning.i("scoring/chain_max"), "up to chain_max")
+	eq(Scoring.chain_label(1), "NEAR MISS", "one is plain")
+	eq(Scoring.chain_label(3), "NEAR MISS x3", "a chain says so")
+
+
+func test_a_near_miss_chain_and_its_break() -> void:
+	var t := flat_track()
+	var s := Scoring.new()
+	var p := PlayerCar.new()
+	p.reset(2000.0)
+	var pts := Tuning.i("scoring/near_miss")
+	for i in 3:  # three, a second apart
+		s.near_miss_scored()
+		for k in 60:
+			s.watch(DT, p, t)
+	eq(s.chain, 3, "a chain of three")
+	eq(s.bonuses.map(func(b: Dictionary) -> int: return b["points"]), [pts, pts * 2, pts * 3], "1x, 2x, 3x")
+	eq(s.bonuses[-1]["chain"], 3, "the bonus knows its chain")
+	eq(s.feed[-1]["name"], "NEAR MISS x3", "the feed shows it")
+	eq(s.summary(), [{"name": "NEAR MISS", "count": 3, "points": pts * 6}] as Array[Dictionary], "one row in the tally")
+	for k in roundi(Tuning.v("scoring/chain_window") / DT):
+		s.watch(DT, p, t)
+	eq(s.chain, 0, "broken after the window")
+	s.near_miss_scored()
+	eq(s.bonuses[-1]["points"], pts, "the next starts over")
+	eq(s.bonuses[-1]["chain"], 1, "at one")
+	s.near_miss_scored()
+	p.crashed = true
+	s.watch(DT, p, t)
+	eq(s.chain, 0, "a crash breaks it too")
+
+
 func test_air() -> void:
 	eq(Scoring.air_points(0.3), 0, "a hop")
 	eq(Scoring.air_points(Tuning.v("scoring/air_time")), Tuning.i("scoring/air"), "air")

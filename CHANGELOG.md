@@ -21,6 +21,9 @@ the release workflow puts that section at the top of the GitHub Release notes
   applies at once (the HUD says TUNED), save and load presets, and slow the race down, jump
   along the stage, give yourself a power-up, set the clock or send a wave of traffic. Changes
   are kept for the next run and logged.
+- Near-miss chains (RC-15): near misses within two seconds of each other chain, and the burst
+  says so (NEAR MISS x2, x3...). Each one in a chain scores more, up to five times the points;
+  a two-second gap or a crash breaks it.
 
 ### Changed
 

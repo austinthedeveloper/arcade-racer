@@ -127,6 +127,7 @@ var _frame := 0  # physics ticks since this race (re)started
 var _final_stretch := false  # FINAL STRETCH has come up this race
 var _led_at := -INF  # race time of the last 1ST PLACE callout
 var _callout_shot := Callouts.Kind.NONE  # --callout=ID: that starburst held up after GO (screenshots)
+var _callout_shot_count := 0  # --callout=ID:COUNT: with that count (NEAR MISS x3)
 var _time_left_shot := NAN  # --time-left=S: start with this much on the clock (low-time screenshots)
 ## The dev flags are for the race the game starts with; later races come from the menus.
 static var _dev_args_read := false
@@ -510,7 +511,7 @@ func _physics_process(dt: float) -> void:
 				state = State.RACING
 				_banner("GO!", "", 1.0, Callouts.Kind.GO)
 				if _callout_shot != Callouts.Kind.NONE:
-					callouts.push(_callout_shot, "", Callouts.HOLD)
+					callouts.push(_callout_shot, "", Callouts.HOLD, _callout_shot_count)
 				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
@@ -866,7 +867,8 @@ func _banner(text: String, sub: String, seconds: float, kind := Callouts.Kind.ME
 ## taking the lead (not more often than Callouts.LEAD_GAP).
 func _callouts_after_tick(earned: int, place_before: int) -> void:
 	for i in range(earned, score.bonuses.size()):
-		callouts.push(Callouts.for_bonus(score.bonuses[i]["name"]))
+		var b: Dictionary = score.bonuses[i]
+		callouts.push(Callouts.for_bonus(b["name"]), "", Callouts.SHOW_TIME, b.get("chain", 0))
 	if state != State.RACING:
 		return  # (the finish has its own)
 	if not _final_stretch and not free_drive and Callouts.in_final_stretch(player.distance, finish_distance):
@@ -913,8 +915,10 @@ func _parse_dev_args() -> void:
 		elif arg.begins_with("--screenshots="):
 			for f in arg.get_slice("=", 1).split(","):
 				_screenshot_frames.append(int(f))
-		elif arg.begins_with("--callout="):
-			_callout_shot = Callouts.IDS.get(arg.get_slice("=", 1), Callouts.Kind.NONE)
+		elif arg.begins_with("--callout="):  # ID, or ID:COUNT for a count (near_miss:3)
+			var spec := arg.get_slice("=", 1)
+			_callout_shot = Callouts.IDS.get(spec.get_slice(":", 0), Callouts.Kind.NONE)
+			_callout_shot_count = int(spec.get_slice(":", 1)) if spec.contains(":") else 0
 		elif arg.begins_with("--time-left="):
 			_time_left_shot = float(arg.get_slice("=", 1))
 		elif arg.begins_with("--shot-dir="):

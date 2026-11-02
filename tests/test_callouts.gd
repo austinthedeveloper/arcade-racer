@@ -45,6 +45,27 @@ func test_the_same_kind_counts_again() -> void:
 	eq(c.waiting[0]["count"], 2, "BIG AIR x2 waiting")
 
 
+func test_a_chain_sets_the_count() -> void:
+	var c := Callouts.new()
+	c.push(Callouts.Kind.NEAR_MISS, "", Callouts.SHOW_TIME, 3)
+	eq(Callouts.label(c.current), "NEAR MISS x3", "a new burst at the chain's length")
+	c.push(Callouts.Kind.NEAR_MISS, "", Callouts.SHOW_TIME, 4)
+	eq(c.current["count"], 4, "the one up takes the next length, not +1")
+	c.push(Callouts.Kind.NEAR_MISS, "", Callouts.SHOW_TIME, 1)
+	eq(Callouts.label(c.current), "NEAR MISS", "a fresh chain says so")
+
+
+func test_race_near_miss_chain_bursts() -> void:
+	var r := race(false, false)
+	drive(r, 200)
+	r.callouts.clear()
+	for i in 3:
+		var earned: int = r.score.bonuses.size()
+		r.score.near_miss_scored()
+		r._callouts_after_tick(earned, r.place)
+	eq(Callouts.label(r.callouts.current), "NEAR MISS x3", "the burst shows the chain")
+
+
 func test_messages_dont_merge() -> void:
 	var c := Callouts.new()
 	c.push_message("NITRO +1")

@@ -40,21 +40,22 @@ var waiting: Array[Dictionary] = []
 
 
 ## A starburst `kind` (not MESSAGE). The same kind up or waiting already counts again
-## instead (NEAR MISS x2), and the one up pops again.
-func push(kind: Kind, sub := "", seconds := SHOW_TIME) -> void:
+## instead (BIG AIR x2), and the one up pops again. `count` sets the count outright: a
+## near-miss chain (RC-15) says how long it is, NEAR MISS x3.
+func push(kind: Kind, sub := "", seconds := SHOW_TIME, count := 0) -> void:
 	if kind == Kind.NONE:
 		return
 	if not current.is_empty() and current["kind"] == kind and kind != Kind.MESSAGE:
-		current["count"] += 1
+		current["count"] = count if count > 0 else current["count"] + 1
 		current["sub"] = sub
 		current["age"] = 0.0
 		return
 	for w in waiting:
 		if w["kind"] == kind and kind != Kind.MESSAGE:
-			w["count"] += 1
+			w["count"] = count if count > 0 else w["count"] + 1
 			w["sub"] = sub
 			return
-	_queue({"kind": kind, "text": TEXT.get(kind, ""), "sub": sub, "seconds": seconds, "age": 0.0, "count": 1})
+	_queue({"kind": kind, "text": TEXT.get(kind, ""), "sub": sub, "seconds": seconds, "age": 0.0, "count": maxi(count, 1)})
 
 
 ## A plain message, e.g. FINISH! or a pickup. HOLD keeps it up until `clear`.
@@ -97,7 +98,8 @@ static func label(c: Dictionary) -> String:
 	return c["text"] if c["count"] <= 1 else "%s x%d" % [c["text"], c["count"]]
 
 
-## The starburst for a scoring bonus (Scoring.add's names), or NONE.
+## The starburst for a scoring bonus (Scoring.add's names), or NONE. Its count is the
+## bonus's "chain" when it has one.
 static func for_bonus(bonus_name: String) -> Kind:
 	match bonus_name:
 		"NEAR MISS":
