@@ -34,12 +34,12 @@ const PAD_DEFAULTS := {
 const KEYBOARD_FIXED := {
 	"steer_left": [KEY_LEFT, KEY_A], "steer_right": [KEY_RIGHT, KEY_D], "accelerate": [KEY_UP, KEY_W],
 	"brake": [KEY_DOWN, KEY_S], "restart": [KEY_R], "confirm": [KEY_ENTER, KEY_KP_ENTER], "back": [KEY_BACKSPACE],
-	"debug_input": [KEY_F1], "calibrate": [KEY_F2], "debug_panel": [KEY_F3],
+	"debug_input": [KEY_F1], "calibrate": [KEY_F2], "debug_panel": [KEY_F3], "copy_report": [KEY_F4],
 }
 const FIXED_NAMES := {
 	"steer_left": "STEER LEFT", "steer_right": "STEER RIGHT", "accelerate": "GAS", "brake": "BRAKE",
 	"restart": "RESTART", "confirm": "SELECT", "back": "BACK", "debug_input": "INPUT DEBUG", "calibrate": "CALIBRATE",
-	"debug_panel": "TUNING PANEL",
+	"debug_panel": "TUNING PANEL", "copy_report": "COPY REPORT",
 }
 ## A pad's buttons with a fixed job (InputRouter._read_pad): name -> buttons.
 const PAD_FIXED := {

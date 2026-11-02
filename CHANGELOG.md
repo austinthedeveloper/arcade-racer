@@ -9,6 +9,12 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
+- Crash reports (EQ-20): when something goes wrong, the game writes the error and its last 200
+  log lines to a report in its logs folder, and the title's version line offers F4 COPY REPORT
+  (or click it) to put the report on the clipboard for a bug report.
+- The browser version opens on a Sundown Run loading screen (EQ-23): a sunset, the name and a
+  bar showing how much has downloaded (percent and MB), in place of Godot's logo, and a plain
+  message if the browser can't run the game.
 - Photo key (PR-21): F12 saves a picture of the race without the HUD to the game's
   screenshots folder, with a shutter click and a flash (Options > Accessibility > FLASH tones
   it down). Bind it to a pad or wheel button on the remap screen as PHOTO.
