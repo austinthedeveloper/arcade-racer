@@ -74,6 +74,9 @@ const TRAFFIC_CRASH_DURATION := 0.6  # a crash into traffic is a short spin...
 const TRAFFIC_CRASH_KEEP := 0.7  # ...at this share of the car's speed, not a stop
 const CAR_LENGTH := 400.0  # world units along the road a car counts as beside you
 const SIDESWIPE_SPEED_LOSS := 0.05  # share of your speed a side-swipe scrubs off
+const HEAD_ON_DURATION := 1.0  # a head-on with oncoming traffic (RC-11) is a longer spin...
+const HEAD_ON_KEEP := 0.25  # ...at this share of your speed; the other car is knocked aside
+const ONCOMING_REACH := 3  # segments either side of the nose searched for oncoming traffic each tick
 
 # Race clock
 ## Seconds left when time runs low, the one threshold for all of it: the HUD's clock beats

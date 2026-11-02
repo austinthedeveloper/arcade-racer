@@ -42,6 +42,15 @@ func test_the_wake_of_a_semi() -> void:
 	check(not Draft.in_wake(me, t, [me]), "dropping back from it")
 
 
+func test_no_wake_from_an_oncoming_truck() -> void:
+	var t := flat_track()
+	var me := _car(4000.0, Cfg.MAX_SPEED * 0.8)
+	var semi := _big(t, me.position + Cfg.PLAYER_Z + 600.0, 0.25)
+	semi.oncoming = true
+	me.x = 0.25
+	check(not Draft.in_wake(me, t, [me]), "it is coming at you")
+
+
 func test_the_wake_of_a_racer() -> void:
 	var t := flat_track()
 	var me := _car(4000.0, Cfg.MAX_SPEED * 0.8)

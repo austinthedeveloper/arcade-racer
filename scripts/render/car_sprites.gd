@@ -1,7 +1,8 @@
 class_name CarSprites
 extends RefCounted
 ## Car sprites cut from the concept sheets (see tools/make_car_sprites.py): the player cars'
-## steering strips and the traffic vehicles, all seen from behind.
+## steering strips and the traffic vehicles, seen from behind, plus (CP-6) the front views
+## of the ones that come the other way and the light-state frames of the ones that signal.
 ##
 ## The player has one steering strip per pitch: level, plus optional nose-up (uphill) and
 ## nose-down (downhill) strips laid out the same way. A missing pitched strip falls back to
@@ -33,6 +34,33 @@ static func load_all() -> void:
 	var m: Dictionary = SpriteLibrary.manifest()["traffic"]
 	for id: String in m:
 		_add_traffic(id, SpriteLibrary.SPRITES + m[id]["file"], m[id]["world_per_px"])
+		if not traffic.has(id):
+			continue
+		if m[id].has("front"):
+			traffic[id]["front"] = load(SpriteLibrary.SPRITES + m[id]["front"])
+		var lights := {}
+		for state: String in m[id].get("lights", {}):
+			lights[state] = load(SpriteLibrary.SPRITES + m[id]["lights"][state])
+		traffic[id]["lights"] = lights
+
+
+## Whether traffic vehicle `id` has a front view, so it can come the other way.
+static func has_front(id: String) -> bool:
+	return traffic.has(id) and traffic[id].get("front") != null
+
+
+## Whether traffic vehicle `id` has both signal frames, so it can change lanes with a tell.
+static func signals(id: String) -> bool:
+	return traffic.has(id) and traffic[id]["lights"].has("left") and traffic[id]["lights"].has("right")
+
+
+## The frame to draw for vehicle `id`: its front view when `oncoming`, else its rear view in
+## light state `state` ("brake", "left", "right"; "" or one it lacks for lights off).
+static func traffic_texture(id: String, oncoming: bool, state: String = "") -> Texture2D:
+	var def: Dictionary = traffic[id]
+	if oncoming and def.get("front") != null:
+		return def["front"]
+	return def["lights"].get(state, def["tex"])
 
 
 ## A car's steering strips (Cars.LIST "strip"), loaded once per car: pitch row (-1 up, 0
@@ -135,9 +163,9 @@ static func steer_frame(steer: float) -> int:
 	return clampi(half + roundi(steer * half), 0, PLAYER_FRAMES - 1)
 
 
-static func draw_traffic(ci: CanvasItem, base: Vector2, w: float, id: String, tint: Color, fog: float) -> void:
-	var def: Dictionary = traffic[id]
-	var tex: Texture2D = def["tex"]
+static func draw_traffic(ci: CanvasItem, base: Vector2, w: float, id: String, tint: Color, fog: float,
+		oncoming := false, state := "") -> void:
+	var tex := traffic_texture(id, oncoming, state)
 	var h := w * tex.get_height() / float(tex.get_width())
 	if w >= 3.0:
 		_shadow(ci, base, w, 1.0 - fog)

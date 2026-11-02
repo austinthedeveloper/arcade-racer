@@ -52,7 +52,8 @@ func test_cars_move_and_change_segments() -> void:
 	for i in tr.cars.size():
 		var c: Traffic.TrafficCar = tr.cars[i]
 		var moved := fposmod(c.z - start[i], t.length)
-		near(moved, fposmod(c.speed * 10.0, t.length), 1.0, "car %d moved speed x time" % i)
+		var way := -1.0 if c.oncoming else 1.0
+		near(moved, fposmod(way * c.speed * 10.0, t.length), 1.0, "car %d moved speed x time, its way" % i)
 		check(c.segment == t.find_segment(c.z), "car %d listed in the right segment" % i)
 	eq(_count_in_segments(t), 15, "no car lost or doubled")
 
@@ -121,10 +122,178 @@ func test_traffic_moves_into_the_lanes_of_a_wider_road() -> void:
 	var seen := 0
 	for c in tr.cars:
 		var seg := c.segment
-		if seg.index > 450 and seg.index < 500:
+		if seg.index > 450 and seg.index < 500 and c.signal_dir == 0:
 			seen += 1
 			check(seg.lane_offsets().has(c.offset), "a boulevard car in one of its six lanes (%.3f)" % c.offset)
 			if absf(c.offset) > 1.0:
 				outer += 1
 	check(seen > 0, "cars on the boulevard")
 	check(outer > 0, "some in the outer lanes, past the usual road's edge")
+
+
+# --- Oncoming traffic and lane-change tells (RC-11, CP-6) -------------------------
+
+func test_an_undivided_road_has_oncoming_traffic_in_its_left_lanes() -> void:
+	var t := PalmCoast.build()
+	var tr := Traffic.new()
+	tr.spawn(t, 200)
+	var oncoming := 0
+	for c in tr.cars:
+		check(c.oncoming == (c.offset < 0.0), "%s at %.2f: oncoming only left of the middle" % [c.sprite, c.offset])
+		if c.oncoming:
+			oncoming += 1
+			check(CarSprites.has_front(c.sprite), "an oncoming %s has a front view" % c.sprite)
+			check(c.change_in == INF, "oncoming cars keep their lane")
+	check(oncoming > 50 and oncoming < 150, "about half oncoming (%d of 200)" % oncoming)
+
+
+func test_a_divided_road_has_none() -> void:
+	for t: Track in [NeonStrip.build(), Stages.build(Stages.count() - 1)]:
+		check(Traffic.divided(t), t.name + " is divided")
+		var tr := Traffic.new()
+		tr.spawn(t, 100)
+		check(tr.cars.all(func(c: Traffic.TrafficCar) -> bool: return not c.oncoming), t.name + ": all one way")
+
+
+func test_oncoming_traffic_on_a_mirrored_stage_keeps_to_the_other_side() -> void:
+	var t := PalmCoast.build()
+	t.mirrored = true
+	var tr := Traffic.new()
+	tr.spawn(t, 100)
+	for c in tr.cars:
+		check(c.oncoming == (c.offset > 0.0), "mirrored: oncoming on the right (%.2f)" % c.offset)
+
+
+## One car alone on a flat road, in lane `k` of 4, set to change lanes on the next tick.
+func _changer(t: Track, k: int, sprite := "sedan_tan") -> Traffic:
+	var tr := Traffic.new()
+	tr.spawn(t, 0)
+	var c := Traffic.TrafficCar.new()
+	c.z = 50.0 * Cfg.SEGMENT_LENGTH
+	c.speed = Cfg.MAX_SPEED * 0.4
+	c.sprite = sprite
+	c.lane_frac = (k + 0.5) / 4.0
+	c.offset = t.segments[0].lane_x(k) * t.side()
+	c.lane = c.offset
+	c.change_in = 0.001
+	c.segment = t.find_segment(c.z)
+	c.segment.cars.append(c)
+	tr.cars.append(c)
+	return tr
+
+
+func test_a_signalling_car_changes_lanes_after_the_delay() -> void:
+	var t := flat_track()
+	var tr := _changer(t, 2)
+	var c: Traffic.TrafficCar = tr.cars[0]
+	tr.update(DT, t)
+	eq(c.signal_dir, 1, "on an undivided road it can only go right, away from the oncoming lanes")
+	eq(Traffic.light_state(c), "right", "the right signal lights at once")
+	var ticks := 0
+	while c.signal_age < Traffic.SIGNAL_TIME - DT:
+		tr.update(DT, t)
+		ticks += 1
+		eq(c.offset, 0.25, "holds its lane while signalling")
+	check(ticks > 50, "signals for a second first")
+	var lit := 0
+	for i in 120:
+		tr.update(DT, t)
+		if Traffic.light_state(c) != "":
+			lit += 1
+	near(c.offset, 0.75, 0.001, "then moves over a lane")
+	eq(c.signal_dir, 0, "and the signal goes off")
+	eq(Traffic.light_state(c), "", "lights off")
+	check(lit > 0 and lit < 100, "it blinks on the way (%d lit ticks)" % lit)
+	check(c.change_in >= Traffic.CHANGE_EVERY[0], "and waits before the next change")
+
+
+func test_a_changer_never_moves_into_the_oncoming_lanes() -> void:
+	var t := flat_track()
+	var tr := _changer(t, 3)
+	var c: Traffic.TrafficCar = tr.cars[0]
+	for i in 60 * 120:
+		tr.update(DT, t)
+		check(c.lane_frac > 0.5, "stays on its side of the road")
+		if c.lane_frac < 0.5:
+			break
+
+
+func test_a_divided_road_lets_a_changer_use_every_lane() -> void:
+	var t := flat_track()
+	t.theme["divided"] = true
+	var tr := _changer(t, 1)
+	var c: Traffic.TrafficCar = tr.cars[0]
+	var seen := {}
+	for i in 60 * 240:
+		tr.update(DT, t)
+		seen[Traffic.lane_index(c.lane_frac, 4)] = true
+	eq(seen.size(), 4, "all four lanes over four minutes")
+
+
+func test_a_mirrored_stage_mirrors_the_signal() -> void:
+	var t := flat_track()
+	t.mirrored = true
+	var tr := _changer(t, 2)
+	var c: Traffic.TrafficCar = tr.cars[0]
+	tr.update(DT, t)
+	eq(c.signal_dir, -1, "the mirror image: left, toward the edge")
+	for i in 150:
+		tr.update(DT, t)
+	near(c.offset, -0.75, 0.001, "and moves left")
+
+
+func test_no_change_into_a_taken_lane() -> void:
+	var t := flat_track()
+	var tr := _changer(t, 2)
+	var c: Traffic.TrafficCar = tr.cars[0]
+	var other := Traffic.TrafficCar.new()
+	other.z = c.z + Cfg.SEGMENT_LENGTH
+	other.speed = c.speed
+	other.sprite = "semi"
+	other.lane_frac = 3.5 / 4.0
+	other.offset = 0.75
+	other.lane = 0.75
+	other.segment = t.find_segment(other.z)
+	other.segment.cars.append(other)
+	tr.cars.append(other)
+	tr.update(DT, t)
+	eq(c.signal_dir, 0, "the next lane is taken: no signal")
+	near(c.change_in, Traffic.CHANGE_RETRY, 0.001, "tries again shortly")
+
+
+func test_the_right_frame_per_state() -> void:
+	CarSprites.load_all()
+	var def: Dictionary = CarSprites.traffic["sedan_tan"]
+	eq(CarSprites.traffic_texture("sedan_tan", false), def["tex"], "lights off: the rear view")
+	for state in ["brake", "left", "right"]:
+		eq(CarSprites.traffic_texture("sedan_tan", false, state), def["lights"][state], state + " frame (TRF-10)")
+	eq(CarSprites.traffic_texture("semi", true), CarSprites.traffic["semi"]["front"], "oncoming: the front view")
+	eq(CarSprites.traffic_texture("semi", false, "left"), CarSprites.traffic["semi"]["tex"], "no signal frames: the rear view")
+	for id in Traffic.CARS:
+		if id != "sedan_beige":
+			check(CarSprites.signals(id), id + " can signal")
+	for id in Traffic.CARS:
+		if id != "sedan_tan":
+			check(CarSprites.has_front(id), id + " can come the other way")
+	var front: Texture2D = CarSprites.traffic["bus"]["front"]
+	eq(front.get_width(), CarSprites.traffic["bus"]["tex"].get_width(), "a front view is as wide as the rear")
+
+
+func test_signal_frames_differ_only_on_their_side() -> void:
+	CarSprites.load_all()
+	for id in Traffic.CARS:
+		if not CarSprites.signals(id) or id == "sedan_tan":
+			continue
+		var rear: Image = CarSprites.traffic[id]["tex"].get_image()
+		for side in ["left", "right"]:
+			var lit: Image = CarSprites.traffic[id]["lights"][side].get_image()
+			var changed := 0
+			var wrong_side := 0
+			for y in rear.get_height():
+				for x in rear.get_width():
+					if rear.get_pixel(x, y) != lit.get_pixel(x, y):
+						changed += 1
+						if (x < rear.get_width() / 2) != (side == "left"):
+							wrong_side += 1
+			check(changed > 2, "%s %s: some lamp lit" % [id, side])
+			eq(wrong_side, 0, "%s %s: only that side" % [id, side])

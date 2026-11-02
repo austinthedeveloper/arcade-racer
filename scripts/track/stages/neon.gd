@@ -18,6 +18,7 @@ static func theme() -> Dictionary:
 		"clock": [42, 45, 27, 26],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/neon_far.png",
 		"specials": ["taxi", "limo_white", "tuk_tuk"],
+		"divided": true,  # a divided highway or boulevard: no oncoming traffic (RC-11)
 		"traffic": 95,
 		"draw_distance": 220,  # segments; the busiest stage trades a little horizon for frame time (EQ-7)
 		"tunnel_lights": [Color("#ff3fb4"), Color("#2fe0ff")],  # neon tubes down the tunnel walls

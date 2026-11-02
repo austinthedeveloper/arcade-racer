@@ -117,6 +117,35 @@ func test_open_lane_steers_round_slower_traffic() -> void:
 	eq(AIDriver.clear_for(t, r.position + Cfg.PLAYER_Z, 0.25, r, [r]), 5, "the car blocks 5 segments ahead")
 
 
+func test_open_lane_steers_round_oncoming_traffic() -> void:
+	var t := flat_track()
+	var r := RivalCar.new()
+	r.reset(1000.0)
+	r.speed = Cfg.MAX_SPEED * 0.3
+	var car := Traffic.TrafficCar.new()
+	car.oncoming = true
+	car.z = r.position + Cfg.PLAYER_Z + 5 * Cfg.SEGMENT_LENGTH
+	car.offset = -0.25
+	car.speed = Cfg.MAX_SPEED * 0.4
+	car.segment = t.find_segment(car.z)
+	car.segment.cars.append(car)
+	eq(AIDriver.clear_for(t, r.position + Cfg.PLAYER_Z, -0.25, r, [r]), AIDriver.oncoming_gap(5, r.speed, car.speed),
+		"an oncoming car blocks, nearer for closing on it")
+	check(AIDriver.oncoming_gap(5, r.speed, car.speed) < 2, "much nearer")
+	eq(AIDriver.clear_for(t, r.position + Cfg.PLAYER_Z, 0.75, r, [r]), AIDriver.LOOKAHEAD, "two lanes over is clear")
+
+
+func test_on_an_undivided_road_a_rival_keeps_right() -> void:
+	var t := flat_track()
+	eq(AIDriver.keep_to_own_side(t, 1000.0, 0.0), 0.25, "the middle of the road: kept to the inner lane its way")
+	eq(AIDriver.keep_to_own_side(t, 1000.0, 0.6), 0.6, "already on its side")
+	t.mirrored = true
+	eq(AIDriver.keep_to_own_side(t, 1000.0, 0.0), -0.25, "mirrored: its side is the left")
+	t.mirrored = false
+	t.theme["divided"] = true
+	eq(AIDriver.keep_to_own_side(t, 1000.0, -0.5), -0.5, "a divided road is all its way")
+
+
 func test_open_lane_sees_slower_racers() -> void:
 	var t := flat_track()
 	var me := RivalCar.new()
@@ -140,13 +169,17 @@ func test_rivals_avoid_heavy_traffic() -> void:
 	var f := Rivals.new()
 	f.spawn(t, p, "car_vega")
 	var crashes := 0
+	var clean := 0
 	for i in 60 * 40:
 		tr.update(DT, t)
 		f.update(DT, t, p, true, 1e12)
 		for r in f.cars:
 			crashes += int(r.crashed)
-	# Was 3 before the erratic drivers (RC-4), who swerve into traffic now and then. Keep it here.
-	check(crashes <= 8, "rarely crash in double traffic (%d crashes in 40 s, 7 cars)" % crashes)
+			clean += int(r.crashed and r.driver.style == RivalProfile.Style.CLEAN)
+	# Was 3 before the erratic drivers (RC-4), who swerve into traffic now and then, and 8 before
+	# oncoming traffic (RC-11): erratic and aggressive drivers meet it head-on in the jams.
+	check(crashes <= 12, "rarely crash in double traffic (%d crashes in 40 s, 7 cars)" % crashes)
+	check(clean <= 2, "clean drivers pass only with room, oncoming traffic too (%d crashes)" % clean)
 
 
 func test_rivals_take_a_slippery_bend_slower() -> void:
@@ -366,6 +399,7 @@ func test_the_band_reaches_the_race() -> void:
 
 func test_an_aggressive_driver_blocks_a_faster_car_behind() -> void:
 	var t := flat_track()
+	t.theme["divided"] = true  # the middle of the road is fair game
 	var me := RivalCar.new(Cars.find("car_bruiser"), AIDriver.new(1, 0.0, RivalProfile.Style.AGGRESSIVE))
 	me.reset(4000.0)
 	me.speed = Cfg.MAX_SPEED * 0.7
@@ -387,6 +421,7 @@ func test_an_aggressive_driver_blocks_a_faster_car_behind() -> void:
 
 func test_an_erratic_driver_reacts_late() -> void:
 	var t := flat_track()
+	t.theme["divided"] = true  # the middle of the road is fair game
 	var me := RivalCar.new(Cars.find("car_sol"), AIDriver.new(1, 0.0, RivalProfile.Style.ERRATIC))
 	me.reset(4000.0)
 	me.speed = Cfg.MAX_SPEED * 0.9
@@ -406,6 +441,7 @@ func test_an_erratic_driver_reacts_late() -> void:
 
 func test_an_aggressive_driver_only_blocks_for_a_while() -> void:
 	var t := flat_track()
+	t.theme["divided"] = true  # the middle of the road is fair game
 	var me := RivalCar.new(Cars.find("car_bruiser"), AIDriver.new(1, 0.0, RivalProfile.Style.AGGRESSIVE))
 	me.reset(4000.0)
 	me.speed = Cfg.MAX_SPEED * 0.7
@@ -456,6 +492,7 @@ func test_a_bump_does_not_restart_the_block() -> void:
 	# Review on #116: the contact a block causes slows the chaser below the blocker, which
 	# used to zero the block clock, so the block started over once the chaser sped up.
 	var t := flat_track()
+	t.theme["divided"] = true  # the middle of the road is fair game
 	var me := RivalCar.new(Cars.find("car_bruiser"), AIDriver.new(1, 0.0, RivalProfile.Style.AGGRESSIVE))
 	me.reset(4000.0)
 	me.speed = Cfg.MAX_SPEED * 0.7

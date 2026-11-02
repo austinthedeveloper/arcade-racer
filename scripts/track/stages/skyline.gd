@@ -24,6 +24,7 @@ static func theme() -> Dictionary:
 		"clock": [42, 39, 34, 30],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"background": "res://assets/sprites/backgrounds/skyline_far.png",
 		"specials": ["double_decker", "trolley", "news_truck", "taxi"],
+		"divided": true,  # a divided highway or boulevard: no oncoming traffic (RC-11)
 		"traffic": 80,
 	}
 
