@@ -98,6 +98,9 @@ var pause_menu: PauseMenu
 ## The GUID of the joypad driving while it's unplugged (WH-7), or "". The pause menu says so.
 var unplugged := ""
 var _unplug_paused := false  # the unplugging paused the race, so plugging back in resumes it
+## Seconds left counting 3, 2, 1 after the joypad came back (WH-12), before the race resumes;
+## 0 when not counting. The pause menu shows the count (PauseMenu.counting).
+var replug_count := 0.0
 var results: ResultsScreen  # after the finish (RC-5)
 var new_best_time := false  # this finish set the best time for the stage and car
 var best_before := {}  # SaveData.best for the stage and car before this finish
@@ -375,6 +378,8 @@ func pause() -> void:
 
 func resume() -> void:
 	paused = false
+	replug_count = 0.0
+	pause_menu.counting = 0.0
 	pause_menu.close()
 	unplugged = ""  # resumed without it (the keyboard, or a restart): no waiting for it
 	_unplug_paused = false
@@ -427,16 +432,42 @@ func driver_unplugged(guid: String, joy_name: String, wheel: bool) -> void:
 	pause_menu.notice = PauseMenu.unplugged_notice(joy_name, wheel)
 
 
-## It's back (InputRouter.driver_replugged), with the same profile: the race carries on if
-## the unplugging paused it and the pause menu is still up (not the options over it).
-func driver_replugged(guid: String) -> void:
-	if guid != unplugged:
+## A joypad is back (InputRouter.driver_replugged, WH-12): the one that went (`same`), or a
+## different one in its place, which the notice says. If the unplugging paused the race and
+## the pause menu is still up (not the options over it), it counts 3, 2, 1 and carries on
+## (replug_tick); otherwise it stays paused as the player left it, the notice saying only
+## that a different device is driving.
+func driver_replugged(_guid: String, joy_name := "", wheel := false, same := true) -> void:
+	if unplugged == "":
 		return
+	unplugged = ""
 	if _unplug_paused and paused and pause_menu.visible:
-		resume()
+		replug_count = PauseMenu.REPLUG_COUNT
+		pause_menu.counting = replug_count
+		pause_menu.notice = PauseMenu.replugged_notice(joy_name, wheel, same)
+		Audio.play("beep")
 	else:
-		unplugged = ""
-		pause_menu.notice = []
+		var n: Array[String] = []
+		if not same:
+			n = PauseMenu.replugged_notice(joy_name, wheel, same)
+		pause_menu.notice = n
+
+
+## One tick of the replug countdown: a beep on each number, the race resumed at 0. Pause
+## (or back) stops it, and the pause menu takes over, still paused.
+func replug_tick(dt: float, stop: bool) -> void:
+	if stop:
+		replug_count = 0.0
+		pause_menu.counting = 0.0
+		pause_menu.open()
+		return
+	var shown := ceili(replug_count)
+	replug_count = maxf(0.0, replug_count - dt)
+	pause_menu.counting = replug_count
+	if replug_count <= 0.0:
+		resume()
+	elif ceili(replug_count) != shown:
+		Audio.play("beep")
 
 
 ## Back from the options the pause menu opened: the menu again, still paused.
@@ -528,7 +559,9 @@ func _physics_process(dt: float) -> void:
 		return
 	dt *= debug_panel.logic.slow_motion()
 	if paused:
-		if pause_menu.visible:  # (hidden while the options are up)
+		if replug_count > 0.0:  # the joypad back: 3, 2, 1 (WH-12)
+			replug_tick(dt, inp.pause_pressed or InputRouter.menu.back_pressed)
+		elif pause_menu.visible:  # (hidden while the options are up)
 			pause_action(pause_menu.choose(InputRouter.menu, inp.pause_pressed))
 		if online == null or not paused:
 			_redraw()

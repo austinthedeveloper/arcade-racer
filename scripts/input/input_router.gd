@@ -9,8 +9,10 @@ extends Node
 signal devices_changed
 ## The joypad driving (last_active_device) was unplugged; the race pauses (WH-7).
 signal driver_unplugged(guid: String, joy_name: String, wheel: bool)
-## That joypad is back (by its GUID, whatever device id it gets), with the same profile.
-signal driver_replugged(guid: String)
+## A joypad plugged in while that one is gone (WH-12): it drives now. `same` when it's the one
+## that went (by its GUID, whatever device id it gets, with the same profile); otherwise a
+## different device came back in its place, with its own profile.
+signal driver_replugged(guid: String, joy_name: String, wheel: bool, same: bool)
 
 const AXIS_COUNT := 10
 const BUTTON_COUNT := 24
@@ -437,7 +439,8 @@ func _on_joy_connection_changed(device: int, connected: bool) -> void:
 
 
 ## A joypad plugged in or unplugged. Unplugging the one driving says so (driver_unplugged);
-## plugging it back in, on any device id, says that (driver_replugged) and lets it drive again
+## plugging it, or any other joypad, back in, on any device id, says that (driver_replugged,
+## WH-12) and lets it drive
 ## with the profile it had: a saved one by its GUID, an unsaved one kept for it here.
 func joy_changed(device: int, connected: bool, guid: String, joy_name: String) -> void:
 	var driving := last_active_device == device
@@ -460,10 +463,13 @@ func joy_changed(device: int, connected: bool, guid: String, joy_name: String) -
 		var p: DeviceProfile = _saved.get(guid, _parked.get(guid))
 		var wheel := p.kind == DeviceProfile.Kind.WHEEL if p != null else looks_like_wheel(joy_name)
 		driver_unplugged.emit(guid, joy_name, wheel)
-	elif connected and guid != "" and guid == unplugged_driver:
+	elif connected and guid != "" and unplugged_driver != "":
+		var same := guid == unplugged_driver
 		unplugged_driver = ""
 		last_active_device = device
-		driver_replugged.emit(guid)
+		var p: DeviceProfile = _saved.get(guid, _transient.get(device))
+		var wheel := p.kind == DeviceProfile.Kind.WHEEL if p != null else looks_like_wheel(joy_name)
+		driver_replugged.emit(guid, joy_name, wheel, same)
 
 
 # --- Keyboard actions ----------------------------------------------------------

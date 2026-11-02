@@ -22,6 +22,10 @@ the release workflow puts that section at the top of the GitHub Release notes
   middle of its lane and round every bend, and brakes for the sharp ones. Steer to move over a
   lane; it won't let you drive off the road. With AUTO GAS too, the youngest drivers can race
   without touching a thing. Off by default.
+- Replug countdown (WH-12): plugging your wheel or pad back in after it came loose counts
+  3, 2, 1 before the race goes on, so you have a moment to get your hands back on it. Pause
+  stops the count. Plug in a different one and it drives instead, the screen saying it's a
+  different device with its own settings.
 
 ## [0.4.0] - 2026-11-02
 

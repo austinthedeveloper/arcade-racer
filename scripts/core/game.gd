@@ -70,6 +70,7 @@ func _ready() -> void:
 	var quick := false
 	var pause_shot := false
 	var unplug_shot := false
+	var replug_shot := ""  # --screen=replugged (a different wheel) or replugged:same
 	var debug_page := ""  # --screen=debug[:page]: the tuning panel, over a race given race flags
 	var car := DevArgs.value("--car")
 	if car != "":
@@ -87,6 +88,10 @@ func _ready() -> void:
 		elif arg == "--screen=unplugged":
 			pause_shot = true
 			unplug_shot = true
+		elif arg.begins_with("--screen=replugged"):
+			pause_shot = true
+			unplug_shot = true
+			replug_shot = arg.get_slice(":", 1) if arg.contains(":") else "different"
 		elif arg == "--screen=results":
 			quick = true  # a race, staged to a finish (race.gd)
 		elif arg.begins_with("--screen=debug"):
@@ -109,6 +114,8 @@ func _ready() -> void:
 			show_title()
 	if unplug_shot:
 		stage_unplug()
+		if replug_shot != "":
+			stage_replug(replug_shot == "same")
 	elif pause_shot:
 		race.pause()
 	if debug_page != "":
@@ -499,7 +506,8 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 
 # --- Dev helpers: `godot -- --screen=stages --menu-shot=/tmp/stages.png` -------------
 # (--screen=pause starts a race and pauses it; add --at-segment=N to pause further in.
-# --screen=unplugged pauses it as a wheel unplugged mid-race does.
+# --screen=unplugged pauses it as a wheel unplugged mid-race does; --screen=replugged then
+# plugs a different wheel in (replugged:same the same one), for the 3, 2, 1 that follows.
 # --car=car_mesa opens car select on that car. --screen=results stages a finish.
 # --mode=single_race (a ModeSelect.Item) picks the mode stage select is in; --mirror turns
 # its MIRROR toggle on.
@@ -548,6 +556,15 @@ func _open(which: String) -> void:
 static func stage_unplug() -> void:
 	InputRouter.last_active_device = STAGED_JOYPAD
 	InputRouter.joy_changed(STAGED_JOYPAD, false, "staged-wheel", "Logitech G29 Driving Force Racing Wheel")
+
+
+## The wheel back for --screen=replugged (WH-12): the same one, or (`same` false) a different
+## wheel on its id, so the race counts down 3, 2, 1 saying so.
+static func stage_replug(same: bool) -> void:
+	if same:
+		InputRouter.joy_changed(STAGED_JOYPAD, true, "staged-wheel", "Logitech G29 Driving Force Racing Wheel")
+	else:
+		InputRouter.joy_changed(STAGED_JOYPAD, true, "staged-wheel-2", "Thrustmaster T300RS Racing Wheel")
 
 
 ## An updater posed in `state_name` (an Updater.State, lower case) for the update screen's
