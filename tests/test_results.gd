@@ -10,6 +10,7 @@ func _menu(dir := 0) -> MenuInput:
 
 
 func _finish(r: Node, ahead: int) -> void:
+	r.instant_replay = false  # (test_replay has the replay between the spectacle and the results)
 	drive(r, 200, input(1.0))
 	for i in r.rivals.cars.size():
 		if i < ahead:

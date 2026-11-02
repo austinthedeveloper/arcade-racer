@@ -4,22 +4,41 @@ extends Node
 ## counters (MP-11). Kept apart from the
 ## options (Settings, settings.cfg) and the wheel profiles (InputRouter, input_profiles.cfg),
 ## so resetting one never touches the others.
+##
+## Player profiles (MP-10): up to MAX_PROFILES drivers, each a preset name (NAMES) and an
+## avatar (a car's showroom picture, by car id) picked from a list, each with its own save.
+## Profile 1's is save.cfg, the others save_2.cfg to save_4.cfg beside it (slot_path); a
+## profile is there when its file is (profile 1 always is). The save holds its own name and
+## avatar under [profile]; which profile is driving is kept in save_profiles.cfg (roster_path).
+## Each profile's Time Attack ghosts go in a folder of its own (ghost_dir).
 
 signal changed
 
 ## The save.cfg format (CfgVersion). A file with another number still loads: older ones are
 ## migrated, newer ones are read as far as the keys this build knows go.
 ## 0: no version field. 1: the same keys, versioned. 2: stage mirrors (WS-6) in the unlocks.
-## 3: [stats] (MP-11).
-const VERSION := 3
+## 3: [stats] (MP-11). 4: [profile] (MP-10): the save that was there becomes profile 1's.
+const VERSION := 4
+const MAX_PROFILES := 4
+## The names a profile can have (no typing: picked from this list).
+const NAMES: Array[String] = ["ACE", "BLAZE", "COMET", "DASH", "ECHO", "FLASH", "JET", "NOVA", "ROCKET",
+	"TURBO", "VIPER", "ZOOM"]
 ## The stats page's counters (MP-11), in [stats]: races run to the end (a finish or TIME UP),
 ## wins (1st against rivals), crashes, near misses, miles driven (any run, Free Drive and runs
 ## quit partway too), and races per car id and per stage id (Stages.POSTCARDS) for the
 ## favourites.
 const STAT_COUNTS := ["races", "wins", "crashes", "near_misses"]
 
-## Where progress is saved. Tests point this at a scratch file.
+## Profile 1's save; the other profiles' files and the roster are named after it. Tests and
+## --save-file point it elsewhere (use_base).
+var base_path := "user://save.cfg"
+## The profile driving (0 is profile 1).
+var slot := 0
+## Where the driving profile's progress is saved (slot_path of base_path and slot).
 var path := "user://save.cfg"
+## This profile's name (one of NAMES) and avatar (a car id, Cars.LIST).
+var profile_name: String = NAMES[0]
+var avatar := "car_vega"
 ## The furthest stage the tour has reached (index into Stages); stage 1 is always open.
 var furthest_stage := 0
 ## Unlock ids. Nothing unlocks yet; this is the storage for it.
@@ -35,8 +54,166 @@ var loaded_version := VERSION
 
 func _ready() -> void:
 	# Dev flag: --save-file=PATH reads (and saves) another save, for screenshots.
-	path = DevArgs.value("--save-file", path)
+	use_base(DevArgs.value("--save-file", base_path))
+
+
+## Profiles named after `base` (profile 1's save): the driving one from its roster, loaded.
+func use_base(base: String) -> void:
+	base_path = base
+	slot = clampi(int(_roster().get_value("profiles", "active", 0)), 0, MAX_PROFILES - 1)
+	if not has_profile(slot):
+		slot = 0
+	_use_slot()
+
+
+## The save file of profile `s` (0 is profile 1) for profile 1's `base`.
+static func slot_path(base: String, s: int) -> String:
+	return base if s == 0 else "%s_%d.%s" % [base.get_basename(), s + 1, base.get_extension()]
+
+
+## The file that says which profile is driving, beside profile 1's `base`.
+static func roster_path(base: String) -> String:
+	return "%s_profiles.cfg" % base.get_basename()
+
+
+## Profile `s`'s Time Attack ghosts (Ghost.dir), beside profile 1's `base`: profile 1's are
+## where they always were.
+static func ghost_dir(base: String, s: int) -> String:
+	return base.get_base_dir().path_join("ghosts" if s == 0 else "ghosts_%d" % (s + 1))
+
+
+## A profile's default name and avatar, before one is picked: a different name and car for each.
+static func default_identity(s: int) -> Dictionary:
+	return {"name": NAMES[s % NAMES.size()], "avatar": Cars.get_car(s)["id"]}
+
+
+## Whether profile `s` exists: profile 1 always does, the others once made (make_profile).
+func has_profile(s: int) -> bool:
+	return s == 0 or (s > 0 and s < MAX_PROFILES and FileAccess.file_exists(slot_path(base_path, s)))
+
+
+## Every profile's save file there is, profile 1's first (whether written yet or not).
+func profile_paths() -> Array[String]:
+	var out: Array[String] = []
+	for s in MAX_PROFILES:
+		if has_profile(s):
+			out.append(slot_path(base_path, s))
+	return out
+
+
+## The profiles, by slot: {"slot", "name", "avatar"} for each that exists.
+func profiles() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for s in MAX_PROFILES:
+		if has_profile(s):
+			out.append(profile_of(s))
+	return out
+
+
+## Profile `s`'s name and avatar: the loaded ones for the profile driving, else from its file.
+func profile_of(s: int) -> Dictionary:
+	if s == slot:
+		return {"slot": s, "name": profile_name, "avatar": avatar}
+	var cfg := ConfigFile.new()
+	cfg.load(slot_path(base_path, s))
+	var id := _identity(cfg, s)
+	id["slot"] = s
+	return id
+
+
+## A name and avatar from a save's [profile], checked against NAMES and Cars.LIST; the
+## slot's defaults for anything missing or unknown.
+static func _identity(cfg: ConfigFile, s: int) -> Dictionary:
+	var out := default_identity(s)
+	var n := str(cfg.get_value("profile", "name", out["name"]))
+	if NAMES.has(n):
+		out["name"] = n
+	var a := str(cfg.get_value("profile", "avatar", out["avatar"]))
+	if Cars.find(a)["id"] == a:
+		out["avatar"] = a
+	return out
+
+
+## The first slot with no profile yet, or -1 when all MAX_PROFILES are taken.
+func free_slot() -> int:
+	for s in MAX_PROFILES:
+		if not has_profile(s):
+			return s
+	return -1
+
+
+## The names no other profile than `s` has (a name is one driver's).
+func names_free_for(s: int) -> Array[String]:
+	var taken: Array[String] = []
+	for p in profiles():
+		if p["slot"] != s:
+			taken.append(p["name"])
+	var out: Array[String] = []
+	for n in NAMES:
+		if not taken.has(n):
+			out.append(n)
+	return out
+
+
+## Makes a new profile with this name and avatar (a fresh save written to its own file) in
+## slot `at` (-1: the first free one) and returns its slot, or -1 when that slot is taken or
+## there is no room. The profile driving stays as it is.
+func make_profile(new_name: String, new_avatar: String, at := -1) -> int:
+	var s := free_slot() if at < 0 else at
+	if s < 0 or s >= MAX_PROFILES or has_profile(s):
+		return -1
+	var cfg := ConfigFile.new()
+	CfgVersion.stamp(cfg, VERSION)
+	cfg.set_value("profile", "name", new_name)
+	cfg.set_value("profile", "avatar", new_avatar)
+	cfg.set_value("tour", "furthest_stage", 0)
+	if cfg.save(slot_path(base_path, s)) != OK:
+		push_error("Couldn't make a profile at %s" % slot_path(base_path, s))
+		return -1
+	return s
+
+
+## Renames profile `s` and changes its avatar, saved to its file.
+func set_identity(s: int, new_name: String, new_avatar: String) -> void:
+	if s == slot:
+		profile_name = new_name
+		avatar = new_avatar
+		save()
+		return
+	if not has_profile(s):
+		return
+	var p := slot_path(base_path, s)
+	var cfg := ConfigFile.new()
+	if cfg.load(p) != OK:
+		return
+	cfg.set_value("profile", "name", new_name)
+	cfg.set_value("profile", "avatar", new_avatar)
+	cfg.save(p)
+
+
+## Profile `s` drives from now on: its save loaded, remembered for the next start.
+func switch_to(s: int) -> void:
+	if not has_profile(s):
+		return
+	slot = s
+	var roster := _roster()
+	CfgVersion.stamp(roster, 1)
+	roster.set_value("profiles", "active", s)
+	roster.save(roster_path(base_path))
+	_use_slot()
+
+
+func _roster() -> ConfigFile:
+	var cfg := ConfigFile.new()
+	cfg.load(roster_path(base_path))
+	return cfg
+
+
+func _use_slot() -> void:
+	path = slot_path(base_path, slot)
+	Ghost.dir = ghost_dir(base_path, slot)
 	load_save()
+	changed.emit()
 
 
 ## Back to a fresh save (not written).
@@ -57,6 +234,9 @@ func load_save() -> void:
 	reset()
 	var cfg := ConfigFile.new()
 	var err := cfg.load(path)
+	var who := _identity(cfg, slot)  # (a missing or broken file: the slot's defaults)
+	profile_name = who["name"]
+	avatar = who["avatar"]
 	if err == ERR_FILE_NOT_FOUND:
 		return
 	if err != OK:
@@ -67,6 +247,9 @@ func load_save() -> void:
 		push_warning("Couldn't read %s (error %d); moved it to %s and started fresh" % [path, err, bad])
 		return
 	loaded_version = migrate(cfg)
+	who = _identity(cfg, slot)
+	profile_name = who["name"]
+	avatar = who["avatar"]
 	furthest_stage = clampi(int(cfg.get_value("tour", "furthest_stage", 0)), 0, Stages.count() - 1)
 	total_points = maxi(0, int(cfg.get_value("tour", "total_points", 0)))
 	var u = cfg.get_value("tour", "unlocks", [])
@@ -91,7 +274,7 @@ func load_save() -> void:
 
 ## Brings a loaded save.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -141,10 +324,22 @@ static func _v2_to_v3(cfg: ConfigFile) -> void:
 	cfg.set_value("stats", "stages", stages)
 
 
+## Version 4 adds player profiles (MP-10): the save there was is profile 1's, given
+## profile 1's default name and avatar (one already set is kept).
+static func _v3_to_v4(cfg: ConfigFile) -> void:
+	var id := default_identity(0)
+	if not cfg.has_section_key("profile", "name"):
+		cfg.set_value("profile", "name", id["name"])
+	if not cfg.has_section_key("profile", "avatar"):
+		cfg.set_value("profile", "avatar", id["avatar"])
+
+
 ## Writes the save. Over a file from a newer build, its other keys are kept (CfgVersion.to_write);
 ## `fresh` (resetting the save) writes only this build's keys.
 func save(fresh := false) -> void:
 	var cfg := CfgVersion.to_write(path, VERSION, fresh)
+	cfg.set_value("profile", "name", profile_name)
+	cfg.set_value("profile", "avatar", avatar)
 	cfg.set_value("tour", "furthest_stage", furthest_stage)
 	cfg.set_value("tour", "total_points", total_points)
 	cfg.set_value("tour", "unlocks", Array(unlocks))
@@ -157,6 +352,7 @@ func save(fresh := false) -> void:
 		cfg.set_value("stats", k, stats[k])
 	# Written whole to a side file and then renamed over the save, so a crash mid-write
 	# never leaves a cut-off save.
+	CfgVersion.backup_if_older(path, VERSION)  # (EQ-21)
 	var tmp := path + ".tmp"
 	var err := cfg.save(tmp)
 	if err == OK:

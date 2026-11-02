@@ -433,7 +433,7 @@ func test_reset_save_on_an_unmapped_pad_cancels_on_steer() -> void:
 	steer.right_pressed = true
 	o.handle(steer)
 	check(not o.confirming, "steering away cancels")
-	eq(o.row(), OptionsScreen.Row.BACK, "and moves on")
+	eq(o.row(), OptionsScreen.Row.RESTORE, "and moves on")
 	eq(SaveData.bests.size(), 1, "nothing erased")
 	o.go_to(OptionsScreen.Row.RESET_SAVE)
 	o.handle(gas)

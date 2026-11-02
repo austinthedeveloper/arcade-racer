@@ -29,6 +29,7 @@ static func stage_of(scenario: String) -> int:
 static func run(scenario: String, frames: int = FRAMES, mirror := false, after := Callable()) -> PackedStringArray:
 	var busy := scenario.ends_with("_traffic")  # traffic and rivals; the clear road has neither
 	var r := TestSuite.new_race(true, busy, stage_of(scenario), busy, mirror)
+	r.instant_replay = false  # (the traces run on past the line; the replay, RC-17, holds the world still)
 	var out := PackedStringArray()
 	var banner := ""
 	for f in frames:

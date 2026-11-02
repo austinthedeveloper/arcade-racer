@@ -45,6 +45,18 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Headlights at night (WS-17): on Neon Strip, Thunderhead and Skyline every car lights a pool
   of road ahead of it, the oncoming traffic's coming toward you, and the tail lights glow
   brighter in the dark.
+- The hubcap in the slot (CP-14): a mystery hubcap spins in the power-up slot for half a
+  second, then bursts open to show what it turned into.
+- Instant replay (RC-17): after the finish, the last six seconds before the line play back
+  once, every racer and the traffic as they were, before the results. Any key or button
+  skips it; Enter during the finish slow-down still goes straight to the results.
+- Save backups (EQ-21): before a new version updates your options, progress or wheel setups
+  to its format, it keeps a copy of each file as it was (a .bak beside it). Options > Game >
+  RESTORE BACKUP puts them back (it asks first).
+- Player profiles (MP-10): up to four drivers, each with a name and an avatar picked from a
+  list and a save of their own (progress, best times, stats, Time Attack ghosts). PROFILE on
+  the title picks who is driving or makes a new driver; the title shows who it is. Your save
+  so far becomes the first driver's.
 
 ## [0.4.0] - 2026-11-02
 

@@ -387,6 +387,7 @@ func _write_profiles() -> void:
 		(_saved[guid] as DeviceProfile).save_to(cfg)
 	if not keyboard.bindings.is_empty():
 		cfg.set_value(DeviceProfile.KEYBOARD_GUID, "bindings", keyboard.bindings)
+	CfgVersion.backup_if_older(profile_path, PROFILES_VERSION)  # (EQ-21)
 	cfg.save(profile_path)
 
 

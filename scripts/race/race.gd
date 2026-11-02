@@ -51,6 +51,19 @@ var recording: Ghost  # Time Attack: this run, tick by tick
 var ghost_now := Vector3.ZERO  # the ghost this tick: distance, x, steer (Ghost.at)
 var split := NAN  # Time Attack: seconds against the ghost at the last checkpoint (minus is ahead)
 var new_best := false  # Time Attack: this finish beat the ghost and replaced it
+## The instant replay (RC-17): after the finish spectacle, the last Replay.SECONDS before the
+## line once, from a trace of every car recorded while racing; any button skips it. Not in a
+## demo, online or in Free Drive (no finish). Tests that aren't about it turn it off.
+var instant_replay := true
+var replay_trace := Replay.new()
+var replaying := false
+var replay_frames: Array[PackedFloat32Array] = []
+var replay_index := 0  # the next frame to show
+var replay_player: PlayerCar  # stand-ins the road draws while the replay runs
+var replay_rivals: Array[RivalCar] = []
+var _replay_skip := false  # a key or button went down during the replay (_input)
+var _replay_done := false  # this finish's replay has run (or been skipped)
+var _traffic_before := PackedFloat32Array()  # the traffic as it was, put back after the replay
 ## What Enter does after a finish or TIME UP: on, another go, or back to the menus.
 enum After { NEXT_STAGE, RETRY, TOUR_OVER, TOUR_DONE, MENU }
 var tour_state: Tour  # the Grand Tour's standings and continue, kept stage to stage
@@ -149,6 +162,7 @@ var _final_stretch := false  # FINAL STRETCH has come up this race
 var _led_at := -INF  # race time of the last 1ST PLACE callout
 var _callout_shot := Callouts.Kind.NONE  # --callout=ID: that starburst held up after GO (screenshots)
 var _callout_shot_count := 0  # --callout=ID:COUNT: with that count (NEAR MISS x3)
+var _pickup_shot := -1  # --pickup=ID (PowerUps.IDS): the player takes that pickup at GO (screenshots)
 var _time_left_shot := NAN  # --time-left=S: start with this much on the clock (low-time screenshots)
 ## The dev flags are for the race the game starts with; later races come from the menus.
 static var _dev_args_read := false
@@ -272,6 +286,11 @@ func start_race() -> void:
 	finish_age = 0.0
 	_results_shown = false
 	results_age = -1.0
+	replay_trace = Replay.new()
+	replaying = false
+	replay_frames.clear()
+	replay_index = 0
+	_replay_done = false
 	player_finish = -1.0
 	touched_traffic = false
 	new_unlocks.clear()
@@ -542,6 +561,12 @@ func touch_driving() -> bool:
 	return not demo and not paused and not results.visible and not calibration.visible
 
 
+## Any key or button skips the instant replay (RC-17), mapped or not.
+func _input(event: InputEvent) -> void:
+	if replaying and Attract.is_wake_event(event):
+		_replay_skip = true
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("debug_input"):
 		debug_overlay.visible = not debug_overlay.visible
@@ -574,6 +599,9 @@ func _physics_process(dt: float) -> void:
 			_redraw()
 			return
 		inp = DriveInput.new()  # online the race runs on under the menu, the car coasting
+	if replaying:  # (the player's own buttons skip it, not the autodrive's)
+		_replay_tick(dt, Settings.drive_input(InputRouter.state))
+		return
 	if results.visible:
 		if inp.restart_pressed and online == null:  # R: in a tour, on as ever; otherwise the stage again
 			if tour:
@@ -593,6 +621,10 @@ func _physics_process(dt: float) -> void:
 				return
 	var over := state == State.TIME_UP or state == State.FINISHED
 	if state == State.FINISHED and not _results_shown and (inp.confirm_pressed or finish_age >= RESULTS_AFTER or _staged):
+		if not inp.confirm_pressed and not _staged and replay_offered() and not _replay_done and not replay_trace.frames.is_empty():
+			start_replay()  # after the finish spectacle, the replay first (RC-17)
+			_redraw()
+			return
 		_show_results()  # after the finish spectacle, or Enter for them now
 		if inp.confirm_pressed:
 			return
@@ -632,6 +664,8 @@ func _physics_process(dt: float) -> void:
 					callouts.push(_callout_shot, "", Callouts.HOLD, _callout_shot_count)
 					if _callout_shot == Callouts.Kind.CHECKPOINT and timed():  # as a checkpoint shows (PR-15)
 						callouts.push(Callouts.Kind.TIME_EXTENDED, "+%d SEC" % checkpoint_bonus)
+				if _pickup_shot >= 0:
+					take_pickup(_pickup_shot)
 				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
@@ -679,6 +713,8 @@ func _physics_process(dt: float) -> void:
 		_check_pickups()
 		if recording != null:
 			recording.record(player, track.side())
+		if replay_offered():
+			replay_trace.record([player] + rivals.cars, traffic.cars)
 		_check_progress()
 		_callouts_after_tick(earned, place_before)
 	if demo and demo_over():
@@ -813,9 +849,15 @@ func _check_pickups() -> void:
 	var p := power_ups.take(player.passed_segments(track), player.x)
 	if p == null:
 		return
+	take_pickup(p.kind)
+
+
+## The player takes a pickup of `kind` (a PowerUps.Kind): a mystery hubcap opens into another
+## kind, the HUD's slot shows it (Hud.slot_icon) and it takes effect.
+func take_pickup(kind: int) -> void:
 	picked_up = true
-	pickup = p.kind
-	pickup_gave = power_ups.open(p.kind, time_left)
+	pickup = kind
+	pickup_gave = power_ups.open(kind, time_left)
 	pickup_age = 0.0
 	_give(pickup_gave)
 
@@ -1028,6 +1070,68 @@ func _saves() -> bool:
 	return not _autodrive and not demo and _start_segment == 0 and not _staged and is_nan(_time_left_shot) and online == null
 
 
+## Whether this race shows the instant replay at its finish (RC-17).
+func replay_offered() -> bool:
+	return instant_replay and not demo and online == null and not free_drive
+
+
+## The instant replay starts (RC-17): stand-in cars for the field, put where the trace's frames
+## say tick by tick; the real ones and the traffic wait where the finish left them.
+func start_replay() -> void:
+	replay_frames = Replay.build(replay_trace.frames)
+	replay_index = 0
+	replaying = true
+	_replay_skip = false
+	replay_player = PlayerCar.new()
+	replay_rivals.clear()
+	for i in rivals.cars.size():
+		var r := RivalCar.remote_player(Cars.find(rivals.cars[i].car_id), i + 1)
+		r.profile = rivals.cars[i].profile
+		replay_rivals.append(r)
+	var keep := Replay.new()
+	keep.record([], traffic.cars)
+	_traffic_before = keep.frames[0]
+	road.player = replay_player
+	road.rivals = replay_rivals
+	road.ghost_strips = {}
+	fx.clear()
+	_show_replay_frame()
+
+
+## Puts the next frame of the replay on the road.
+func _show_replay_frame() -> void:
+	var cars: Array = [replay_player]
+	cars.append_array(replay_rivals)
+	Replay.apply(replay_frames[replay_index], cars, traffic.cars, track)
+	replay_index += 1
+	road.camera_z = replay_player.position
+
+
+## A tick of the replay: the next frame, until the finish frame has shown or a button skips it.
+func _replay_tick(dt: float, inp: DriveInput) -> void:
+	if _replay_skip or Replay.skips(inp, InputRouter.menu) or replay_index >= replay_frames.size():
+		end_replay()
+	else:
+		_show_replay_frame()
+		road.time += dt
+	_redraw()
+	_frame += 1
+	if _screenshot_frames.has(_frame):
+		_save_screenshot(_frame)
+
+
+## The replay is over (or skipped): the field back as the finish left it, then the results.
+func end_replay() -> void:
+	replaying = false
+	_replay_done = true
+	Replay.apply(_traffic_before, [], traffic.cars, track)
+	road.player = player
+	road.rivals = rivals.cars
+	road.ghost_strips = road.player_strips if ghost != null else {}
+	road.camera_z = player.position
+	_show_results()
+
+
 func _show_results() -> void:
 	_results_shown = true
 	results_age = 0.0
@@ -1128,6 +1232,8 @@ func _parse_dev_args() -> void:
 			var spec := arg.get_slice("=", 1)
 			_callout_shot = Callouts.IDS.get(spec.get_slice(":", 0), Callouts.Kind.NONE)
 			_callout_shot_count = int(spec.get_slice(":", 1)) if spec.contains(":") else 0
+		elif arg.begins_with("--pickup="):
+			_pickup_shot = PowerUps.IDS.find(arg.get_slice("=", 1))
 		elif arg.begins_with("--time-left="):
 			_time_left_shot = float(arg.get_slice("=", 1))
 		elif arg.begins_with("--photo-at="):

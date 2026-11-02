@@ -160,3 +160,87 @@ func test_autodriven_finishes_are_not_saved() -> void:
 	eq(SaveData.bests.size(), 0, "nothing saved")
 	check(not FileAccess.file_exists(TestSuite.SCRATCH_SAVE), "no file written")
 	_clean()
+
+
+# --- Player profiles (MP-10) ---
+
+func test_profile_files_sit_beside_profile_one() -> void:
+	eq(SaveData.slot_path("user://save.cfg", 0), "user://save.cfg", "profile 1: the save there always was")
+	eq(SaveData.slot_path("user://save.cfg", 2), "user://save_3.cfg", "profile 3")
+	eq(SaveData.roster_path("user://save.cfg"), "user://save_profiles.cfg", "who is driving")
+	eq(SaveData.ghost_dir("user://save.cfg", 0), "user://ghosts", "profile 1's ghosts where they were")
+	eq(SaveData.ghost_dir("user://save.cfg", 1), "user://ghosts_2", "profile 2's apart")
+	_clean()
+	eq(SaveData.profiles(), [{"slot": 0, "name": SaveData.NAMES[0], "avatar": Cars.LIST[0]["id"]}] as Array[Dictionary],
+		"a fresh start: profile 1 only")
+
+
+func test_switching_profiles_keeps_each_save_apart() -> void:
+	_clean()
+	SaveData.record_finish(0, "car_vega", 70.0, 1)
+	SaveData.set_identity(0, "BLAZE", "car_mesa")
+	var s := SaveData.make_profile("COMET", "car_sol")
+	eq(s, 1, "the second profile, in the next slot")
+	eq(SaveData.slot, 0, "making one doesn't switch to it")
+	eq(SaveData.profiles().map(func(p: Dictionary) -> String: return p["name"]), ["BLAZE", "COMET"], "both listed")
+	SaveData.switch_to(s)
+	eq([SaveData.slot, SaveData.path, SaveData.profile_name, SaveData.avatar],
+		[1, SaveData.slot_path(TestSuite.SCRATCH_SAVE, 1), "COMET", "car_sol"], "profile 2 driving")
+	eq([SaveData.furthest_stage, SaveData.bests.size(), SaveData.stats["races"]], [0, 0, 0], "with a fresh save of its own")
+	eq(Ghost.dir, SaveData.ghost_dir(TestSuite.SCRATCH_SAVE, 1), "and its own ghosts")
+	SaveData.record_finish(2, "car_sol", 99.0, 3)
+	SaveData.switch_to(0)
+	eq([SaveData.profile_name, SaveData.avatar, SaveData.best(0, "car_vega")["time"]], ["BLAZE", "car_mesa", 70.0],
+		"profile 1 again, its progress as it left it")
+	eq(SaveData.best(2, "car_sol"), {}, "not profile 2's")
+	SaveData.switch_to(1)
+	eq(SaveData.best(2, "car_sol")["time"], 99.0, "and profile 2's still its own")
+	# The next start drives as the profile last picked
+	SaveData.use_base(TestSuite.SCRATCH_SAVE)
+	eq([SaveData.slot, SaveData.profile_name], [1, "COMET"], "remembered")
+	SaveData.switch_to(3)
+	eq(SaveData.slot, 1, "no switching to a profile that isn't there")
+	_clean()
+	eq(Ghost.dir, SaveData.ghost_dir(TestSuite.SCRATCH_SAVE, 0), "")
+	TestSuite.use_scratch_ghosts()
+
+
+func test_four_profiles_at_most_and_a_name_each() -> void:
+	_clean()
+	eq(SaveData.names_free_for(0), SaveData.NAMES, "every name free")
+	for i in 3:
+		check(SaveData.make_profile(SaveData.names_free_for(-1)[0], "car_vega") > 0, "profile %d made" % (i + 2))
+	eq(SaveData.make_profile("ZOOM", "car_vega"), -1, "no fifth")
+	eq(SaveData.free_slot(), -1, "every slot taken")
+	var free := SaveData.names_free_for(0)
+	check(not free.has("BLAZE") and not free.has("COMET") and not free.has("DASH"), "the others' names taken")
+	check(free.has(SaveData.profile_name), "its own name still its own")
+	SaveData.set_identity(2, "ZOOM", "car_halo")
+	eq(SaveData.profile_of(2), {"slot": 2, "name": "ZOOM", "avatar": "car_halo"}, "another profile renamed in its file")
+	SaveData.switch_to(2)
+	eq([SaveData.profile_name, SaveData.avatar], ["ZOOM", "car_halo"], "and loaded so")
+	_clean()
+
+
+func test_a_profile_save_with_a_bad_name_or_avatar() -> void:
+	_clean()
+	var s := SaveData.make_profile("COMET", "car_sol")
+	var cfg := ConfigFile.new()
+	cfg.load(SaveData.slot_path(TestSuite.SCRATCH_SAVE, s))
+	cfg.set_value("profile", "name", "Robert'); DROP")
+	cfg.set_value("profile", "avatar", "car_nonesuch")
+	cfg.save(SaveData.slot_path(TestSuite.SCRATCH_SAVE, s))
+	eq(SaveData.profile_of(s), {"slot": s, "name": SaveData.default_identity(s)["name"], "avatar": SaveData.default_identity(s)["avatar"]},
+		"the slot's defaults, not what isn't on the list")
+	_clean()
+
+
+func test_reset_save_keeps_who_is_driving() -> void:
+	_clean()
+	SaveData.set_identity(0, "VIPER", "car_zenith")
+	SaveData.record_finish(0, "car_vega", 70.0, 1)
+	SaveData.reset()
+	SaveData.save(true)
+	SaveData.load_save()
+	eq([SaveData.bests.size(), SaveData.profile_name, SaveData.avatar], [0, "VIPER", "car_zenith"], "progress gone, the driver kept")
+	_clean()
