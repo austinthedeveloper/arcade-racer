@@ -26,7 +26,12 @@ This cuts `assets/concept/cars/car_vega_views_*.png` (the newest) into `build/mo
    `left.png`, `back.png` and `right.png` in the slots of the same names.
 2. Generate. If the result has the wrong proportions or a melted cabin, try again, or try
    `hero.png` alone (single image).
-3. Download it as **GLB** and save it as `assets/models/vega.glb`.
+3. Download it as **GLB**. Then shrink it for the repository (Tripo's are about 60 MB, almost
+   all mesh) into `assets/models/vega.glb`:
+
+   ```sh
+   blender -b --factory-startup -P tools/blender/prepare_model.py -- --model ~/Downloads/car.glb --out assets/models/vega.glb
+   ```
 
 Use a paid plan: the free tier's models are not for commercial use. Rodin or Meshy work too,
 with any model that comes out as `.glb`, `.fbx` or `.obj`.
@@ -45,9 +50,18 @@ straight frame is 180 px wide, cuts the colors to a small palette and darkens th
 together. If the car is facing the wrong way, pass `--forward=-y` (or `x`, `-x`): the axis its
 nose points along when it comes in.
 
+Tripo's Vega comes in nose toward the camera and needs `--forward=-y`. Its lamps are only
+painted on, so the render makes orange-to-amber texels glow (`GLOW_*` in the render script).
+
 `tools/blender/render_car.py` sets the look in its constants: `STEER_YAW` (the turn at each
 frame, matched to the sheets), `PITCH` (the hill tilt), the camera (`CAMERA_TILT`,
 `CAMERA_LENS`, `CAMERA_DISTANCE`) and the sun from the upper left. `tools/blender/blockout_vega.py`
 builds a rough Vega from boxes, to try the pipeline without a real model.
 
 Models in `assets/models/` stay out of the Godot project (`.gdignore`); only the strips ship.
+
+**The Vega trial (2026-11-02):** the rendered Vega has the right shape and turns convincingly,
+but in a race it looked duller and softer than the concept-sheet sprite, and its taillights
+barely showed, even with the lamp glow and extra saturation and contrast. The concept-sheet
+strips stay in the game. `build/car_renders/vega_ingame_compare.png` (made by hand) had four
+race frames side by side.

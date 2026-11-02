@@ -28,7 +28,7 @@ from spritelib import pixelate_down, rgba
 
 PITCHES = {"level": "_steer", "up": "_steer_up", "down": "_steer_down"}
 FRAMES = 7
-COLORS = 48  # palette per strip, after the downscale
+COLORS = 64  # palette for the three strips, after the downscale (48 loses the light bar)
 OUTLINE_DARKEN = 0.35  # edge pixels keep this much of their color
 ALPHA_CUT = 8  # render alpha below this is background
 

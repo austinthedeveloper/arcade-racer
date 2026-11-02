@@ -32,6 +32,6 @@ PYTHON=${PYTHON:-python3}
 out=build/car_renders/$car
 rm -rf "$out"
 "$BLENDER" -b --factory-startup -P tools/blender/render_car.py -- \
-	--model "$model" --out "$out" --forward "$forward" | grep -E "^rendered|Error|Traceback" || true
+	--model "$model" --out "$out" --forward="$forward" | grep -E "^rendered|Error|Traceback" || true
 [ -f "$out/level_3.png" ] || { echo "Blender wrote no frames"; exit 1; }
 "$PYTHON" tools/make_car_renders.py "$out" "$car" $install

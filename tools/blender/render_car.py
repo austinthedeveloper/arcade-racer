@@ -31,10 +31,22 @@ PITCH = {"level": 0.0, "up": 9.0, "down": -9.0}
 # Camera: behind the car and above it, looking down at CAMERA_TILT, at a long lens so the
 # perspective stays mild (the race draws the car flat, at one scale).
 CAMERA_DISTANCE = 13.0
-CAMERA_TILT = 11.0  # degrees below level
+CAMERA_TILT = 6.0  # degrees below level
 CAMERA_LENS = 135.0  # mm
 # Sun from the upper left, as the style guide sets (docs/03-art-direction.md)
 SUN_ROTATION = (50.0, 0.0, 35.0)  # degrees: elevation tilt, -, from the left and behind
+SUN_ENERGY = 5.0
+RIM_ENERGY = 2.0
+# Lamps glow: base-color texels that are orange to amber (green between these shares of the
+# red, red at least GLOW_MIN_RED, blue under GLOW_MAX_BLUE of the red) emit at GLOW_STRENGTH.
+# The body red has almost no green, and warm chrome has too much blue, so both stay out. An
+# AI-made model's lamps are only painted on, and the concept art lights them.
+GLOW_GREEN = (0.05, 0.9)
+GLOW_MIN_RED = 0.3
+GLOW_MAX_BLUE = 0.2
+GLOW_STRENGTH = 3.0
+# Sky light: low, so the faces away from the sun go dark like the concept art's lower panels
+AMBIENT = 0.25
 
 
 def args():
@@ -119,6 +131,50 @@ def bounds(meshes):
     return lo, hi
 
 
+def math_node(nodes, links, op, a, b=None):
+    n = nodes.new("ShaderNodeMath")
+    n.operation = op
+    for i, v in enumerate((a, b)):
+        if v is None:
+            continue
+        if isinstance(v, float):
+            n.inputs[i].default_value = v
+        else:
+            links.new(v, n.inputs[i])
+    return n.outputs[0]
+
+
+def add_lamp_glow(meshes):
+    """Every material whose Base Color comes from a texture emits where that texture is amber
+    (GLOW_*): the taillights."""
+    done = set()
+    for ob in meshes:
+        for slot in ob.material_slots:
+            mat = slot.material
+            if mat is None or mat.name in done or mat.node_tree is None:
+                continue
+            done.add(mat.name)
+            nodes, links = mat.node_tree.nodes, mat.node_tree.links
+            bsdf = next((n for n in nodes if n.type == "BSDF_PRINCIPLED"), None)
+            if bsdf is None or not bsdf.inputs["Base Color"].is_linked:
+                continue
+            color = bsdf.inputs["Base Color"].links[0].from_socket
+            rgb = nodes.new("ShaderNodeSeparateColor")
+            links.new(color, rgb.inputs[0])
+            r, g, b = rgb.outputs[0], rgb.outputs[1], rgb.outputs[2]
+            red = math_node(nodes, links, "MAXIMUM", r, 0.001)
+            share = math_node(nodes, links, "DIVIDE", g, red)
+            mask = math_node(nodes, links, "MULTIPLY",
+                             math_node(nodes, links, "GREATER_THAN", share, GLOW_GREEN[0]),
+                             math_node(nodes, links, "LESS_THAN", share, GLOW_GREEN[1]))
+            mask = math_node(nodes, links, "MULTIPLY", mask, math_node(nodes, links, "GREATER_THAN", r, GLOW_MIN_RED))
+            mask = math_node(nodes, links, "MULTIPLY", mask, math_node(nodes, links, "LESS_THAN",
+                                                                          math_node(nodes, links, "DIVIDE", b, red),
+                                                                          GLOW_MAX_BLUE))
+            links.new(color, bsdf.inputs["Emission Color"])
+            links.new(math_node(nodes, links, "MULTIPLY", mask, GLOW_STRENGTH), bsdf.inputs["Emission Strength"])
+
+
 def setup_camera(size):
     cam_data = bpy.data.cameras.new("camera")
     cam_data.lens = CAMERA_LENS
@@ -134,14 +190,14 @@ def setup_camera(size):
 
 def setup_lights():
     sun_data = bpy.data.lights.new("sun", "SUN")
-    sun_data.energy = 4.0
+    sun_data.energy = SUN_ENERGY
     sun_data.angle = math.radians(8)
     sun = bpy.data.objects.new("sun", sun_data)
     sun.rotation_euler = Euler([math.radians(a) for a in SUN_ROTATION])
     bpy.context.scene.collection.objects.link(sun)
     # A cool rim from behind-right, for the glossy edge the concept art has
     rim_data = bpy.data.lights.new("rim", "SUN")
-    rim_data.energy = 1.5
+    rim_data.energy = RIM_ENERGY
     rim_data.color = (0.75, 0.85, 1.0)
     rim = bpy.data.objects.new("rim", rim_data)
     rim.rotation_euler = Euler((math.radians(60), 0.0, math.radians(-150)))
@@ -149,7 +205,7 @@ def setup_lights():
     world = bpy.data.worlds.new("sky")
     bg = world.node_tree.nodes["Background"]
     bg.inputs["Color"].default_value = (0.55, 0.62, 0.75, 1.0)
-    bg.inputs["Strength"].default_value = 0.6
+    bg.inputs["Strength"].default_value = AMBIENT
     bpy.context.scene.world = world
 
 
@@ -176,6 +232,7 @@ def main():
     clear_scene()
     meshes = import_model(os.path.abspath(a.model))
     holder, size = normalize(meshes, a.forward)
+    add_lamp_glow(meshes)
     setup_camera(size)
     setup_lights()
     setup_render(a.size, a.engine)
