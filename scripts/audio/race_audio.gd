@@ -93,7 +93,7 @@ func _new_race() -> void:
 	_tick = 0
 	_draft_time = 0.0
 	_gaps.clear()
-	station = Radio.start_station(Settings.radio, _rng.randi())
+	station = Radio.start_station(Settings.radio, _rng.randi(), Radio.for_theme(race.track.theme))
 	Audio.play_music(Radio.cue(station))
 	announcer.reset()
 	announcer.say("ready")

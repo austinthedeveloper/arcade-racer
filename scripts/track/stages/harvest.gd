@@ -17,6 +17,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#66625c"), Color("#605c56")],
 		"lane": Color("#f6efd8"),
 		"clock": [48, 38, 25, 19],  # seconds on ARCADE: start, then each checkpoint (WS-11)
+		"station": "station_rock",  # the radio station SHUFFLE starts on here (Radio, PR-19)
 		"background": "res://assets/sprites/backgrounds/harvest_far.png",
 		"specials": ["tractor", "combine", "pickup_red"],
 	}

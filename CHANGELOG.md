@@ -14,6 +14,10 @@ the release workflow puts that section at the top of the GitHub Release notes
   it down). Bind it to a pad or wheel button on the remap screen as PHOTO.
 - What's new (PR-17): the first time the game starts after an update, the title lists what
   the new version added, changed and fixed. Enter puts it away; it doesn't come back.
+- A station per stage (PR-19): with the radio on SHUFFLE, each stage starts on its own
+  station: rock through Redrock, Timberline and Harvest, synthwave on Neon Strip and Skyline,
+  funk on Palm Coast and the Bayou, techno into Thunderhead. A station you pick still plays
+  everywhere, and the radio button still changes it mid-race.
 
 ## [0.4.0] - 2026-11-02
 

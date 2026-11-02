@@ -22,6 +22,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#34323e"), Color("#302e3a")],
 		"lane": Color("#f2f0f6"),
 		"clock": [42, 39, 34, 30],  # seconds on ARCADE: start, then each checkpoint (WS-11)
+		"station": "station_synthwave",  # the radio station SHUFFLE starts on here (Radio, PR-19)
 		"background": "res://assets/sprites/backgrounds/skyline_far.png",
 		"reflection": true,  # the near strip is the harbor reflecting the city: they move together (WS-14)
 		"specials": ["double_decker", "trolley", "news_truck", "taxi"],

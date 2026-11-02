@@ -91,7 +91,7 @@ func _draw() -> void:
 func _radio(r: Rect2) -> void:
 	_panel(r, 0.6)
 	var setting: int = Settings.radio
-	var station := "A different station each race" if setting == Radio.SHUFFLE else Radio.station_name(setting)
+	var station := "Each stage's own station" if setting == Radio.SHUFFLE else Radio.station_name(setting)
 	_text(Vector2(r.position.x + 12, r.position.y + 15), "RADIO  " + Radio.setting_name(setting), 10, GOLD)
 	_text(Vector2(r.position.x + 12, r.position.y + 31), station, 10, Color(1, 1, 1, 0.85))
 	var key := "%s: change" % InputRouter.keyboard.binding_text("radio")

@@ -57,7 +57,7 @@ const HELP := [
 	"Choose the keys and buttons for nitro, pause and more, on each device.",
 	"Wheel range, steering lock, deadzone and linearity, for each wheel.",
 	"Back to %s.",
-	"The station races start on, or a different one each race. M changes it while you drive.",
+	"The station races start on, or on SHUFFLE each stage's own. M changes it while you drive.",
 	"The announcer's words at the top of the screen.",
 	"Shift up and down yourself (E / Q, or buttons set in Remap) for a bit more top speed.",
 	"Keyboard: how fast a held steering key reaches full lock. Snappy is quick, smooth is gentle.",
