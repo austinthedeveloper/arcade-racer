@@ -32,6 +32,8 @@ tools/shots.sh --update                             # rewrite tests/shots/ after
 tools/car_angles.sh [--car=car_mesa]                # every car x steering frame x slope on the road -> build/car_angles/car_angles.html (needs a display, PIL)
 python3 tools/roadmap_sync.py [--fix-board --write-docs]   # docs/roadmap vs GitHub issues and project 4; fixes board status, ticks rows
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
+python3 tools/make_model_inputs.py vega               # the views to upload to Tripo for a car's 3D model (tools/README.md)
+tools/render_car.sh vega [--install]                 # a car's strips from assets/models/vega.glb via Blender, compare.html beside the sheets
 python3 tools/make_stage_sprites.py assets/concept . neon      # rebuild a stage's background + roadside sprites (shared: race furniture)
 python3 tools/make_ui_sprites.py assets/concept .   # rebuild the logo, title backdrop, stage postcards, car pictures
 python3 tools/make_icon.py assets/concept .         # rebuild the game icon (icon.png, icon.ico, icon.icns)

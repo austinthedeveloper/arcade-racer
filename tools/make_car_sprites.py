@@ -175,6 +175,12 @@ def make_player(sheet_path, out_path, level_h=None, max_ratio=None):
     if level_h and max_ratio and max(f.height for f in frames) > level_h * max_ratio:
         squash = level_h * max_ratio / max(f.height for f in frames)
         frames = [f.resize((f.width, max(1, round(f.height * squash))), Image.NEAREST) for f in frames]
+    return save_strip(frames, out_path)
+
+
+def save_strip(frames, out_path):
+    """The seven steering frames on equal cells in one strip, as CarSprites reads it.
+    Returns the cell height."""
     cell_w = max(f.width for f in frames)
     cell_h = max(f.height for f in frames)
     strip = Image.new("RGBA", (cell_w * 7, cell_h), (0, 0, 0, 0))
