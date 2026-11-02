@@ -119,6 +119,53 @@ func test_player_cars_are_solid() -> void:
 		check(frac > OPEN_FRAME.get(id, 0.98), "%s rear is solid (%.0f%%)" % [id, frac * 100.0])
 
 
+func test_right_turns_show_the_right_flank() -> void:
+	# Regression: the Bruiser's sheet drew its right turns from the left again, so steering
+	# right showed the left flank. Each right-turn frame looks more like its left-turn frame
+	# mirrored than like that frame as it is (the gentlest turns are too close to straight).
+	for i in Cars.count():
+		var id: String = Cars.get_car(i)["strip"]
+		var strip: Dictionary = CarSprites.strips(id)[0]
+		var img: Image = strip["tex"].get_image()
+		var cell: Vector2i = Vector2i(strip["cell"])
+		for left in [0, 1]:
+			var l := img.get_region(Rect2i(Vector2i(cell.x * left, 0), cell))
+			var r := img.get_region(Rect2i(Vector2i(cell.x * (CarSprites.PLAYER_FRAMES - 1 - left), 0), cell))
+			var same := _difference(l, r)
+			l.flip_x()
+			var mirrored := _difference(l, r)
+			check(mirrored < same, "%s frame %d mirrors its left turn (%.3f vs %.3f as is)" % [id, left, mirrored, same])
+
+
+func test_bruiser_blower_is_on_the_middle_of_the_roof() -> void:
+	# The sheet drew it off to the car's left, where it stayed through every turn. The
+	# intake is all that shows above the roof in the straight frame.
+	var frame := _straight_frame("bruiser")
+	var body := frame.get_used_rect()
+	var top := Rect2i(body.position, Vector2i(body.size.x, 4)).get_area()
+	var sum := 0.0
+	var n := 0
+	for y in range(body.position.y, body.position.y + 4):
+		for x in range(body.position.x, body.end.x):
+			if frame.get_pixel(x, y).a > 0.5:
+				sum += x
+				n += 1
+	check(n > 0 and n < top / 4, "only the intake pokes up (%d pixels)" % n)
+	var middle := body.position.x + body.size.x / 2.0
+	check(absf(sum / maxi(n, 1) - middle) < body.size.x * 0.05, "intake centered (%.1f vs %.1f)" % [sum / maxi(n, 1), middle])
+
+
+## Mean channel difference (alpha included) between two images of one size.
+static func _difference(a: Image, b: Image) -> float:
+	var d := 0.0
+	for y in a.get_height():
+		for x in a.get_width():
+			var p := a.get_pixel(x, y)
+			var q := b.get_pixel(x, y)
+			d += absf(p.r - q.r) + absf(p.g - q.g) + absf(p.b - q.b) + absf(p.a - q.a)
+	return d / (a.get_width() * a.get_height())
+
+
 ## The player's straight-ahead frame of a car strip.
 static func _straight_frame(id: String) -> Image:
 	var strip: Dictionary = CarSprites.strips(id)[0]

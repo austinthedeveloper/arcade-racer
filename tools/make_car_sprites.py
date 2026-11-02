@@ -20,7 +20,7 @@ import os
 import sys
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageOps
 
 import manifest
 from spritelib import cli_args, hue, key_sheet, pixelate_down, recolor_hue, rgba, slice_row, sprite_dir
@@ -161,12 +161,51 @@ GARAGE = [
 ]
 # Which sheet frame fills each of the seven steering cells, by frame count
 STEER_CELLS = {7: [0, 1, 2, 3, 4, 5, 6], 3: [0, 0, 1, 1, 1, 2, 2], 1: [0] * 7}
+# Sheets whose right-hand frames were drawn showing the left flank again: their right turns
+# are the left ones mirrored (sheet frames 2, 1, 0) instead.
+MIRROR_RIGHT = {"car_bruiser_steer_sheet_A_v2.png"}
+# The Bruiser sheet draws its blower off to the car's left, so a mirrored right turn would
+# swap it over. Per sheet frame: the polygon cleared off the frame (the blower, left of the
+# roof pillar and above the mirror) and the box of its intake, which goes back centered on
+# the roof (shifted so the straight frame's is in the middle) and behind it.
+BLOWERS = {
+    "car_bruiser_steer_sheet_A_v2.png": {
+        0: ([(30, 0), (100, 0), (100, 10), (84, 12), (79, 25), (75, 45), (30, 45)], (38, 0, 83, 17)),
+        1: ([(25, 0), (95, 0), (95, 13), (78, 14), (66, 18), (68, 30), (68, 48), (25, 48)], (33, 0, 82, 19)),
+        2: ([(30, 0), (95, 0), (95, 12), (80, 13), (66, 18), (61, 25), (60, 48), (30, 48)], (36, 0, 84, 19)),
+        3: ([(30, 0), (95, 0), (95, 12), (82, 13), (70, 21), (64, 32), (57, 47), (30, 47)], (42, 0, 93, 19)),
+    },
+}
+
+
+def center_blower(frames, spec):
+    """Each frame in `spec` with its blower cleared and its intake put back over the middle
+    of the roof, behind the body."""
+    x0, _, x1, _ = spec[len(frames) // 2][1]
+    shift = round(frames[len(frames) // 2].width / 2 - (x0 + x1) / 2)
+    out = list(frames)
+    for i, (poly, box) in spec.items():
+        scoop = np.array(frames[i].crop(box))
+        clear = Image.new("L", frames[i].size, 0)
+        ImageDraw.Draw(clear).polygon(poly, fill=255)
+        a = rgba(frames[i])
+        a[np.array(clear) > 0] = 0
+        behind = a[box[1]:box[3], box[0] + shift:box[2] + shift]
+        empty = behind[..., 3] == 0
+        behind[empty] = scoop[empty]
+        out[i] = Image.fromarray(a)
+    return out
 
 
 def make_player(sheet_path, out_path, level_h=None, max_ratio=None):
     frames = slice_sheet(sheet_path)
     if len(frames) not in STEER_CELLS:
         sys.exit("%s: expected 7, 3 or 1 frames, found %d" % (sheet_path, len(frames)))
+    name = os.path.basename(sheet_path)
+    if name in BLOWERS:
+        frames = center_blower(frames, BLOWERS[name])
+    if name in MIRROR_RIGHT:
+        frames = frames[:len(frames) // 2 + 1] + [ImageOps.mirror(f) for f in reversed(frames[:len(frames) // 2])]
     # Sheets run hard left .. straight .. hard right: steering left shows the left flank.
     # Every strip is scaled so its straight frame is the same width.
     scale = PLAYER_BODY_WIDTH / frames[len(frames) // 2].width
