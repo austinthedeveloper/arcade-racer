@@ -40,6 +40,10 @@ TOOLS = [
     ("make_lod_sprites.py", "."),
 ]
 
+# Color levels a pixel may be off by and still match: the same pinned libraries round a few
+# of the FX smoke's pixels one level apart on macOS and on CI's Linux.
+TOLERANCE = 1
+
 # What the tools write: anything else that changes is not theirs.
 OUTPUTS = ("assets/sprites/", "icon.png", "icon.ico", "icon.icns")
 IMAGE_EXTS = (".png", ".ico", ".icns")
@@ -81,8 +85,9 @@ def frames(data):
 
 
 def pixel_diff(old, new):
-    """How two image files' bytes differ as pictures: None when every pixel matches, else a
-    short description (size change, or how many pixels differ and by how much at most)."""
+    """How two image files' bytes differ as pictures: None when every pixel matches (to within
+    TOLERANCE), else a short description (size change, or how many pixels differ and by how
+    much at most)."""
     a, b = frames(old), frames(new)
     if len(a) != len(b):
         return "%d pictures, was %d" % (len(b), len(a))
@@ -90,8 +95,8 @@ def pixel_diff(old, new):
         if fa.shape != fb.shape:
             return "size %dx%d, was %dx%d" % (fb.shape[1], fb.shape[0], fa.shape[1], fa.shape[0])
         d = np.abs(fa.astype(int) - fb.astype(int))
-        if d.max():
-            return "%d of %d pixels differ, by up to %d" % ((d.max(axis=2) > 0).sum(), d.shape[0] * d.shape[1], d.max())
+        if d.max() > TOLERANCE:
+            return "%d of %d pixels differ, by up to %d" % ((d.max(axis=2) > TOLERANCE).sum(), d.shape[0] * d.shape[1], d.max())
     return None
 
 
