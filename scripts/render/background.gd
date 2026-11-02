@@ -81,10 +81,21 @@ func _draw_layer(tex: Texture2D, layer: String, alpha: float, of_theme: Dictiona
 	var tw := float(tex.get_width())
 	var y0 := layer_bottom(layer, hill, of_theme) - tex.get_height()
 	var x0 := layer_x(offset, layer, tw, of_theme)
-	var tint := Color(1, 1, 1, alpha)
+	var tint := Color(Sundown.light_of(of_theme), alpha)  # the stage's light at its hour (WS-16)
 	var size := Vector2(-tw if mirrored else tw, tex.get_height())
 	draw_texture_rect(tex, Rect2(Vector2(x0, y0), size), false, tint)
 	draw_texture_rect(tex, Rect2(Vector2(x0 + tw, y0), size), false, tint)
+
+
+## Where `layer`'s first strip copy is on screen now (x, y, width, height), or an empty rect
+## for a layer this stage hasn't (the wet road's reflections, WS-13, read it).
+func layer_rect(layer: String) -> Rect2:
+	var tex: Texture2D = textures.get(layer)
+	if tex == null:
+		return Rect2()
+	var tw := float(tex.get_width())
+	var th := float(tex.get_height())
+	return Rect2(layer_x(offset, layer, tw, theme), layer_bottom(layer, hill, theme) - th, tw, th)
 
 
 ## A sky color `key` of `of_theme`, `k` of the way to `next`'s (its own with no next).

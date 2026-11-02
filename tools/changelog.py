@@ -5,9 +5,13 @@ A pre-release tag (0.2.0-alpha) uses its own section if there is one, else its b
 version's (0.2.0). Exits 1 when the version has no section or it is empty, so the
 release workflow stops before building a release nobody described.
 
+--json prints {"version": ..., "notes": ...} instead: tools/export.sh bundles that as
+assets/whats_new.json, which the title screen shows once after an update (WhatsNew, PR-17).
+
 Usage:
-    python3 tools/changelog.py 0.2.0 [path/to/CHANGELOG.md]
+    python3 tools/changelog.py [--json] 0.2.0 [path/to/CHANGELOG.md]
 """
+import json
 import os
 import re
 import sys
@@ -40,18 +44,20 @@ def notes(text, version):
 
 
 def main():
-    if len(sys.argv) < 2:
+    as_json = "--json" in sys.argv[1:]
+    args = [a for a in sys.argv[1:] if a != "--json"]
+    if not args:
         print(__doc__.strip())
         return 2
-    version = sys.argv[1].lstrip("v")
-    path = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(__file__), "..", "CHANGELOG.md")
+    version = args[0].lstrip("v")
+    path = args[1] if len(args) > 1 else os.path.join(os.path.dirname(__file__), "..", "CHANGELOG.md")
     with open(path, encoding="utf-8") as f:
         body = notes(f.read(), version)
     if body is None:
         print("CHANGELOG.md has no section for %s: rename Unreleased to [%s] - <date>" % (version, version),
               file=sys.stderr)
         return 1
-    print(body)
+    print(json.dumps({"version": version, "notes": body}, indent=1) if as_json else body)
     return 0
 
 

@@ -20,6 +20,7 @@ godot --path . -- --save-file=/tmp/save.cfg --mode=single_race --mirror --screen
 python3 tools/colorblind.py /tmp/shots/frame_00300.png --all   # the shot as seen with protanopia, deuteranopia, tritanopia (+ a sheet)
 godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, modes, options, stages, cars, stats, pause, unplugged, results, demo, update (update:failed etc.); options:audio etc. for an options page; --car=car_mesa opens car select on it)
 godot --path . --resolution 1600x900 -- --settings-file=/tmp/opts.cfg --profiles-file=/tmp/prof.cfg --screen=options:display --shot-as-window --menu-shot=/tmp/d.png   # other options and binding files; the shot laid out as the window shows it (also --screen=remap, --screen=wheel, and race --screenshots)
+godot --path . -- --log-dir=/tmp/logs --screen=title --menu-shot=/tmp/t.png   # the crash log (EQ-20) in another folder: a crash_report.txt there puts F4 COPY REPORT on the title
 godot --path . -- --screen=online:lobby --touch --menu-shot=/tmp/o.png   # the online lobby (online:menu, code, guest, error) on an in-memory relay, touch controls up
 godot --headless --path . -s res://tools/online_probe.gd -- --relay=ws://127.0.0.1:8080   # host + guest through a relay (npm start in ../snes/pickleball-relay); no --relay: the live one
 godot --path . -- --online=host --stage=1 --autodrive --room-file=/tmp/room   # then in another: --online=join:$(cat /tmp/room) --autodrive; two windows race, print the finishes, quit (--races=2 on both: a rematch first, ON-9)
@@ -45,6 +46,7 @@ python3 tools/make_drawn_props.py .                 # redraw Palm Coast's six ha
 python3 tools/manifest.py .                         # rewrite assets/sprites/manifest.json after editing a world height or collide fraction
 python3 tools/make_lod_sprites.py .                 # redo the roadside sprites' reduced copies (lod/, CP-9) and the manifest
 python3 tools/make_audio.py                         # rebuild the placeholder sounds (assets/audio/README.md)
+python3 tools/check_sprites.py                      # rebuild every sprite and fail on a pixel that differs from the repo (CI; pinned libraries)
 tools/export.sh 0.1.0                               # Windows/macOS/Web zips in build/release (needs export templates)
 tools/deploy_web.sh build/release/SundownRun-0.4.0-web.zip   # the Web build to Azure (az login; a tag's release does it)
 ```
@@ -52,6 +54,8 @@ tools/deploy_web.sh build/release/SundownRun-0.4.0-web.zip   # the Web build to 
 The sprite tools share `tools/spritelib.py` and need `pip install -r tools/requirements.txt`. Their
 specs (`STAGES`, `TRAFFIC`, `SPANS`, `DRAWN`) are the source of each sprite's world height, collide
 fraction and scale; every tool rewrites `assets/sprites/manifest.json`, which the game loads.
+The libraries are pinned and CI rebuilds every sprite (`tools/check_sprites.py`): after changing a
+tool, commit everything a full rebuild writes, not only the sprites you meant to change.
 
 ## Tests
 

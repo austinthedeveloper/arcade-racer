@@ -23,7 +23,10 @@ mkdir -p build/windows build/macos build/web build/linux build/release
 # project.godot, put back afterwards.
 cp export_presets.cfg build/export_presets.cfg.orig
 cp project.godot build/project.godot.orig
-trap 'cp build/export_presets.cfg.orig export_presets.cfg; cp build/project.godot.orig project.godot' EXIT
+trap 'cp build/export_presets.cfg.orig export_presets.cfg; cp build/project.godot.orig project.godot; rm -f assets/whats_new.json' EXIT
+# What's new (PR-17): this version's CHANGELOG.md section, for the title to show once after
+# an update. A version without one (a local test export) bundles none.
+python3 tools/changelog.py --json "$version" >assets/whats_new.json 2>/dev/null || rm -f assets/whats_new.json
 sed -i.bak -e "s/^config\/version=.*/config\/version=\"$version\"/" project.godot
 rm -f project.godot.bak
 sed -i.bak -e "s/^application\/short_version=.*/application\/short_version=\"$version\"/" \

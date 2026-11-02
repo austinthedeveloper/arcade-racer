@@ -30,6 +30,7 @@ func _initialize() -> void:
 	TestSuite.use_scratch_settings(_settings)
 	TestSuite.use_scratch_save(root.get_node("SaveData"))
 	TestSuite.use_scratch_ghosts()
+	TestSuite.use_scratch_logs()  # never the player's user://logs/
 	Tuning.use_defaults()  # never the player's user://tuning.cfg
 	_game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(_game)
@@ -191,7 +192,7 @@ func _next(wait_frames: int = 0) -> void:
 
 func _tick() -> void:
 	_frame += 1
-	if _frame > 3800:  # first, so a script error in a step can't hang the run
+	if _frame > 3800 + 5 * (Replay.KEEP + 30):  # (five finishes sit through the instant replay, RC-17) first, so a script error in a step can't hang the run
 		printerr("  FAIL e2e timed out at step %d" % _step)
 		quit(1)
 		return
@@ -277,7 +278,7 @@ func _tick() -> void:
 			# Jump to the finish line (driving there takes over a minute)
 			_check(_race.state == _race.State.RACING, "racing again")
 			p.distance = _race.finish_distance + 1.0
-			_next(150)  # past the finish spectacle, to the results
+			_next(150 + Replay.KEEP + 30)  # past the finish spectacle and the instant replay (RC-17), to the results
 		11:
 			_check(_race.state == _race.State.FINISHED, "crossing the line finishes the stage")
 			_send("accelerate", false)
@@ -294,7 +295,7 @@ func _tick() -> void:
 			_race.next_checkpoint = _race.checkpoint_distances.size()
 			_race.player.distance = _race.finish_distance + 1.0
 			_mark = _race.tour_state.points.get("YOU", 0)
-			_next(150)  # past the finish spectacle, to the results
+			_next(150 + Replay.KEEP + 30)  # past the finish spectacle and the instant replay (RC-17), to the results
 		14:
 			_check(_race.state == _race.State.FINISHED and _race.after == _race.After.NEXT_STAGE,
 				"the second stage finishes on the podium: " + _race.banner_sub)
@@ -455,7 +456,7 @@ func _tick() -> void:
 		48:
 			_check(_race.state == _race.State.RACING, "racing")
 			_race.player.distance = _race.finish_distance + 1.0
-			_next(150)  # past the finish spectacle, to the results
+			_next(150 + Replay.KEEP + 30)  # past the finish spectacle and the instant replay (RC-17), to the results
 		49:
 			_send("accelerate", false)
 			_check(_race.state == _race.State.FINISHED and "menu" in _race.banner_sub,
@@ -489,7 +490,7 @@ func _tick() -> void:
 		58:
 			_check(_race.state == _race.State.RACING and _race.rivals.cars.is_empty(), "racing alone")
 			_race.player.distance = _race.finish_distance + 1.0
-			_next(150)  # past the finish spectacle, to the results
+			_next(150 + Replay.KEEP + 30)  # past the finish spectacle and the instant replay (RC-17), to the results
 		59:
 			_send("accelerate", false)
 			_check(_race.state == _race.State.FINISHED and "NEW BEST" in _race.banner_sub,
@@ -505,7 +506,7 @@ func _tick() -> void:
 		65:
 			_check(_race.ghost != null and _race.ghost_now.x > 0.0, "the ghost of the first run drives along")
 			_race.player.distance = _race.finish_distance + 1.0
-			_next(150)  # past the finish spectacle, to the results
+			_next(150 + Replay.KEEP + 30)  # past the finish spectacle and the instant replay (RC-17), to the results
 		66:
 			_send("accelerate", false)
 			_check(_race.state == _race.State.FINISHED and "vs best" in _race.banner_sub,

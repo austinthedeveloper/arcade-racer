@@ -379,10 +379,10 @@ func test_reset_options_leaves_save_and_profiles() -> void:
 
 func test_reset_save_asks_then_leaves_options_and_profiles() -> void:
 	_fill_all_three()
-	var settings_before := _file(TestSuite.SCRATCH_SETTINGS)
 	var profiles_before := _file(TestSuite.SCRATCH_PROFILES)
 	var keep := _as_device(DriveInput.Kind.KEYBOARD)
 	var g := _game()
+	var settings_before := _file(TestSuite.SCRATCH_SETTINGS)  # (after the title marks what's new seen)
 	g.show_options()
 	var o: OptionsScreen = g.menu
 	o.go_to(OptionsScreen.Row.RESET_SAVE)
@@ -433,7 +433,7 @@ func test_reset_save_on_an_unmapped_pad_cancels_on_steer() -> void:
 	steer.right_pressed = true
 	o.handle(steer)
 	check(not o.confirming, "steering away cancels")
-	eq(o.row(), OptionsScreen.Row.BACK, "and moves on")
+	eq(o.row(), OptionsScreen.Row.RESTORE, "and moves on")
 	eq(SaveData.bests.size(), 1, "nothing erased")
 	o.go_to(OptionsScreen.Row.RESET_SAVE)
 	o.handle(gas)
@@ -481,7 +481,7 @@ func test_option_pages() -> void:
 	o.handle(confirm)
 	eq(o.page, OptionsScreen.Page.DISPLAY, "confirm on the page bar: next page")
 	eq(o.rows(), [OptionsScreen.Row.PAGE, OptionsScreen.Row.FULLSCREEN, OptionsScreen.Row.INTEGER_SCALE,
-		OptionsScreen.Row.VSYNC, OptionsScreen.Row.SCANLINES, OptionsScreen.Row.UNITS, OptionsScreen.Row.BACK], "Display rows")
+		OptionsScreen.Row.VSYNC, OptionsScreen.Row.SCANLINES, OptionsScreen.Row.UNITS, OptionsScreen.Row.CAMERA, OptionsScreen.Row.BACK], "Display rows")
 	o.handle(up)
 	o.handle(confirm)
 	eq(g.screen, g.Screen.TITLE, "BACK from any page")

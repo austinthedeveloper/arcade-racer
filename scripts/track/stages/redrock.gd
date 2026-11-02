@@ -5,6 +5,7 @@ extends RefCounted
 
 static func theme() -> Dictionary:
 	return {
+		"hour": 13.5,  # the time of day it is drawn at: early afternoon, the sun high (Sundown, WS-16)
 		"sky_top": Color("#1996fd"),
 		"sky_bottom": Color("#ddf0fd"),
 		"fog": Color("#f6e3c4"),
@@ -16,6 +17,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#4a4a53"), Color("#44444d")],
 		"lane": Color("#f4f4f4"),
 		"clock": [27, 32, 38, 22],  # seconds on ARCADE: start, then each checkpoint (WS-11)
+		"station": "station_rock",  # the radio station SHUFFLE starts on here (Radio, PR-19)
 		"background": "res://assets/sprites/backgrounds/redrock_far.png",
 		"specials": ["jeep_red", "tow_truck", "pickup_red"],
 	}

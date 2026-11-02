@@ -95,6 +95,7 @@ var _firework_due := 0.0  # seconds to the next burst
 var spawned := 0  # this tick, against SPAWN_CAP
 var dropped := 0  # spawns refused for the cap or a full pool, since the race started
 var player: PlayerCar
+var view: int = CameraView.View.CHASE_NEAR  # the camera view (WS-15): where the car is on screen, or not
 var time := 0.0
 var weather := {}  # the stage's (Weather.of), {} for clear skies
 var storm: Array[Vector3] = []  # its lightning (Weather.strikes), none without
@@ -233,9 +234,11 @@ func shelter_for(p: PlayerCar, track: Track) -> float:
 ## Starts the particles for this tick's triggers (triggers) at the car's wheels and exhausts.
 func react(p: PlayerCar, track: Track) -> void:
 	var steady := _tick % EMIT_EVERY == 0
-	var base := car_base(p)
-	var w := car_width()
-	for t in triggers(p, _last_speed, _last_nitro):
+	var base := car_base(p, view)
+	var w := car_width(view)
+	# From the bumper the car isn't on screen, nor what its wheels throw up
+	var shown := triggers(p, _last_speed, _last_nitro) if CameraView.car_shown(view) else PackedStringArray()
+	for t in shown:
 		match t:
 			"smoke":
 				if steady:
@@ -338,14 +341,14 @@ func count(effect: String) -> int:
 	return n
 
 
-## The player car's base (middle of its bottom edge) on screen, lifted when it's in the air.
-static func car_base(p: PlayerCar) -> Vector2:
-	var s := Tuning.v("camera/depth") / Cfg.PLAYER_Z
-	return Vector2(Cfg.SCREEN_W * 0.5, Cfg.HORIZON_Y + s * (Tuning.v("camera/height") - p.air_height) * Cfg.PROJ)
+## The player car's base (middle of its bottom edge) on screen in camera `view`, lifted when
+## it's in the air.
+static func car_base(p: PlayerCar, view: int = CameraView.View.CHASE_NEAR) -> Vector2:
+	return CameraView.car_base(view, Tuning.v("camera/depth"), p.air_height)
 
 
-static func car_width() -> float:
-	return Cfg.CAR_WIDTH * Tuning.v("camera/depth") / Cfg.PLAYER_Z * Cfg.PROJ
+static func car_width(view: int = CameraView.View.CHASE_NEAR) -> float:
+	return CameraView.car_width(view, Tuning.v("camera/depth"))
 
 
 static func exhaust(base: Vector2, w: float, side: float) -> Vector2:
@@ -398,10 +401,10 @@ func _draw() -> void:
 	for q in particles:
 		if q.alive:
 			_draw_particle(q)
-	var f := nitro_frame(player.nitro_time, player.nitro_duration, time)
+	var f := nitro_frame(player.nitro_time, player.nitro_duration, time) if CameraView.car_shown(view) else 0
 	if f > 0:
-		var base := car_base(player)
-		var w := car_width()
+		var base := car_base(player, view)
+		var w := car_width(view)
 		var tex := texture("nitro_%d" % f)
 		var size := Vector2(tex.get_width(), tex.get_height()) * (w / 180.0) * NITRO_SCALE
 		for side in [-1.0, 1.0]:

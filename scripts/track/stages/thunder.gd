@@ -9,6 +9,8 @@ const WORKS_WIDTH := 0.6  # the road's half-width through the road works (Track.
 
 static func theme() -> Dictionary:
 	return {
+		"hour": 16.0,  # the time of day it is drawn at: afternoon, under the storm (Sundown, WS-16)
+		"headlights": true,  # a dark stage: pools of light ahead of the cars, tail lights aglow (WS-17)
 		"sky_top": Color("#1b2140"),
 		"sky_bottom": Color("#6d6f96"),
 		"fog": Color("#59607e"),
@@ -21,6 +23,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#3c3e46"), Color("#373941")],  # rain-soaked asphalt
 		"lane": Color("#e6e6ea"),
 		"clock": [21, 36, 29, 24],  # seconds on ARCADE: start, then each checkpoint (WS-11)
+		"station": "station_techno",  # the radio station SHUFFLE starts on here (Radio, PR-19)
 		"background": "res://assets/sprites/backgrounds/thunder_far.png",
 		"specials": ["tanker", "cement_mixer", "dump_truck"],
 		"divided": true,  # a divided highway or boulevard: no oncoming traffic (RC-11)

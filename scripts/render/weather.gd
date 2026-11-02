@@ -135,9 +135,54 @@ const MUFFLE_FROM := 0.5
 
 
 ## A road color `c` wet by `wet` (0..1), reflecting `sky` more the farther off it is (`far`,
-## 0 at the car to 1 at the draw distance), as wet asphalt does at a low angle.
-static func wet_color(c: Color, sky: Color, wet: float, far: float) -> Color:
-	return c.lerp(sky, clampf(wet, 0.0, 1.0) * sqrt(clampf(far, 0.0, 1.0)))
+## 0 at the car to 1 at the draw distance), as wet asphalt does at a low angle. `sheen`
+## multiplies how far it goes (world/wet_sheen, WS-13); `gloss` is the share of that left
+## right under the car (world/wet_gloss).
+static func wet_color(c: Color, sky: Color, wet: float, far: float, sheen := 1.0, gloss := 0.0) -> Color:
+	var k := lerpf(clampf(gloss, 0.0, 1.0), 1.0, sqrt(clampf(far, 0.0, 1.0)))
+	return c.lerp(sky, clampf(clampf(wet, 0.0, 1.0) * sheen * k, 0.0, 1.0))
+
+
+## Reflections in the wet road (WS-13): where in a background strip a road point reflects.
+## The strip sits on screen at `layer` (Background.layer_rect: x, y, width, height); a point
+## `p` on the road below the `horizon` row shows the strip's point as far above the horizon
+## as `p` is below it, divided by `stretch` (the reflection drawn out down the road into
+## streaks), as a texture coordinate. `mirrored`: the strip is drawn flipped (WS-6). The row
+## is kept inside the strip (half a texel in), so the near road never wraps to its other edge.
+static func reflect_uv(p: Vector2, horizon: float, layer: Rect2, stretch: float, mirrored := false) -> Vector2:
+	var src_y := horizon - (p.y - horizon) / maxf(stretch, 0.01)
+	var v := clampf((src_y - layer.position.y) / layer.size.y, 0.5 / layer.size.y, 1.0 - 0.5 / layer.size.y)
+	var u := (p.x - layer.position.x) / layer.size.x
+	return Vector2(1.0 - u if mirrored else u, v)
+
+
+## How strongly the reflections show on a segment: `alpha` (world/reflect_alpha) for a road
+## `wet` (0..1), fainter near the car (`far` 0) than off at a low angle (`far` 1), and gone
+## into the `fog`.
+static func reflect_strength(alpha: float, wet: float, far: float, fog: float) -> float:
+	return clampf(alpha * sqrt(clampf(wet, 0.0, 1.0)) * lerpf(0.5, 1.0, sqrt(clampf(far, 0.0, 1.0))) * (1.0 - fog), 0.0, 1.0)
+
+
+## A puddle on segment `index` (WS-13), or Vector4.ZERO for none: x its center and y its
+## half-width across the road (road half-widths, as on an unmirrored road: multiply x by
+## Track.side), z and w where it starts and ends along the segment (0..1). `share` of the
+## segments have one (world/puddle_share). The same segment always gets the same puddle.
+static func puddle(index: int, share: float) -> Vector4:
+	var h := hash(index * 7919 + 104729)
+	if float(h % 1000) / 1000.0 >= share:
+		return Vector4.ZERO
+	var a := float((h / 1000) % 1000) / 1000.0
+	var b := float((h / 1000000) % 1000) / 1000.0
+	var start := 0.1 + 0.3 * b
+	return Vector4(lerpf(-0.7, 0.7, a), lerpf(0.12, 0.28, b), start, start + 0.45)
+
+
+## A puddle's highlight color: the sky it reflects, lightened, at `glint` (world/puddle_glint)
+## for a puddle `fog` into the fog, shimmering a little with the rain (`t` seconds, `index`
+## its segment).
+static func puddle_color(sky: Color, glint: float, fog: float, t: float, index: int) -> Color:
+	var shimmer := 0.85 + 0.15 * sin(t * 7.0 + index * 1.7)
+	return Color(sky.lightened(0.35), clampf(glint * shimmer * (1.0 - fog), 0.0, 1.0))
 
 
 ## The covered stretches of `track` (cover above), as world z ranges: x where the roof starts,

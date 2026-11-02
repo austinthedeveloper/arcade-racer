@@ -7,30 +7,31 @@ extends MenuScreen
 ## A button work as a pad's. An unmapped pad has no up/down, so left/right picks the row and
 ## button 1 changes it (on the page bar, the next page).
 ## The two reset rows leave the wheel profiles alone; resetting the save asks first.
+## RESTORE BACKUP (EQ-21) puts back the files as they were before the last migration, and asks first.
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
 	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP,
-	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE }
+	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE, RESTORE, CAMERA, CO_PILOT }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
 ## The rows between the page bar and BACK on each page.
 const PAGE_ROWS := [
 	[Row.AUTO_GAS, Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.RESET_OPTIONS,
-		Row.RESET_SAVE],
-	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
+		Row.RESET_SAVE, Row.RESTORE],
+	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS, Row.CAMERA],
 	[Row.MUSIC, Row.SFX, Row.RADIO],
 	[Row.CALIBRATE, Row.WHEEL, Row.REMAP, Row.KEY_STEER_IN, Row.KEY_STEER_OUT, Row.RUMBLE],
-	[Row.SCREEN_SHAKE, Row.FLASH, Row.REDUCE_MOTION, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.GEARS],
+	[Row.SCREEN_SHAKE, Row.FLASH, Row.REDUCE_MOTION, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.CO_PILOT, Row.GEARS],
 ]
 ## Shown on a page with no rows yet.
 const PAGE_EMPTY := ["", "", "", "", ""]
 ## The most rows any page has, page bar and BACK included: the panel's height.
-const SLOTS := 11
+const SLOTS := 12
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
-	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE"]
+	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE", "RESTORE BACKUP", "CAMERA VIEW", "CO-PILOT"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -57,18 +58,23 @@ const HELP := [
 	"Choose the keys and buttons for nitro, pause and more, on each device.",
 	"Wheel range, steering lock, deadzone and linearity, for each wheel.",
 	"Back to %s.",
-	"The station races start on, or a different one each race. M changes it while you drive.",
+	"The station races start on, or on SHUFFLE each stage's own. M changes it while you drive.",
 	"The announcer's words at the top of the screen.",
 	"Shift up and down yourself (E / Q, or buttons set in Remap) for a bit more top speed.",
 	"Keyboard: how fast a held steering key reaches full lock. Snappy is quick, smooth is gentle.",
 	"Keyboard: how fast the steering comes back to center when you let go.",
 	"No camera shake, nitro view stretch, rising and dipping scenery or rain streaks.",
 	"Gamepad rumble on crashes, bumps, landings, nitro and off the road. 0 turns it off.",
+	"Options, progress and wheel setups as they were before this version changed them.",
+	"Where the race is seen from: close behind, further back, or low on the bumper. V changes it while you drive.",
+	"Steers for you, in your lane and round every bend. Steer to change lanes.",
 ]
 ## The rows that show ON or OFF.
 const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES,
-	Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.SUBTITLES, Row.REDUCE_MOTION]
+	Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.SUBTITLES, Row.REDUCE_MOTION, Row.CO_PILOT]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
+const RESTORE_CONFIRM_HELP := "Select again to put the backups back. Any other key cancels."
+const NO_BACKUP_HELP := "No backups: nothing has been updated from an older version."
 ## Rows the race only reads when a stage starts.
 const NEXT_RACE := [Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS, Row.GEARS]
 const ROW_H := 20.0
@@ -77,7 +83,7 @@ const TOP := 56.0
 var back_name := "the title screen"  # where BACK goes, for its help line
 var in_race := false  # opened from the pause menu: some rows only change the next race
 var page := 0  # a Page
-var confirming := false  # RESET SAVE DATA was selected once; selecting it again erases
+var confirming := false  # RESET SAVE DATA or RESTORE BACKUP was selected once; selecting it again runs it
 var done_row := -1  # a reset row that has just run, shown as DONE until the cursor moves
 
 
@@ -152,6 +158,45 @@ func select_reset_save() -> bool:
 	return true
 
 
+## The files RESTORE BACKUP puts back (EQ-21): the options, the save and the wheel profiles,
+## each that has a backup from before a migration (CfgVersion.backup_if_older).
+static func backups() -> Array[String]:
+	var out: Array[String] = []
+	var files: Array[String] = [Settings.path]
+	files.append_array(SaveData.profile_paths())  # (every player profile's save, MP-10)
+	files.append(InputRouter.profile_path)
+	for p: String in files:
+		if CfgVersion.has_backup(p):
+			out.append(p)
+	return out
+
+
+## Puts every backup back over its file and loads them all again. Returns how many it restored.
+static func restore_backups() -> int:
+	var n := 0
+	for p in backups():
+		n += int(CfgVersion.restore(p))
+	Settings.load_settings()
+	SaveData.load_save()
+	InputRouter.load_profiles()
+	return n
+
+
+## Selecting RESTORE BACKUP: with no backups, nothing; the first time asks, the second puts
+## them back. Returns true when it restored.
+func select_restore() -> bool:
+	if backups().is_empty():
+		return false
+	if not confirming:
+		confirming = true
+		done_row = -1
+		return false
+	confirming = false
+	restore_backups()
+	done_row = Row.RESTORE
+	return true
+
+
 ## Changes the row by `dir` and saves. `wrap` (confirm) cycles round; left/right stops at
 ## the ends. Returns false for rows that hold no value.
 func change(row: int, dir: int, wrap: bool) -> bool:
@@ -183,6 +228,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.flash = _step(s.flash, dir, s.EFFECT_STEPS + 1, wrap)
 		Row.UNITS:
 			s.units = _step(s.units, dir, s.Units.size(), wrap)
+		Row.CAMERA:
+			s.camera_view = _step(s.camera_view, dir, CameraView.View.size(), wrap)
 		Row.FULLSCREEN:
 			s.fullscreen = not s.fullscreen
 		Row.INTEGER_SCALE:
@@ -195,6 +242,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.steer_assist = not s.steer_assist
 		Row.BRAKE_ASSIST:
 			s.brake_assist = not s.brake_assist
+		Row.CO_PILOT:
+			s.co_pilot = not s.co_pilot
 		Row.SUBTITLES:
 			s.subtitles = not s.subtitles
 		Row.GEARS:
@@ -237,6 +286,8 @@ static func value_text(row: int) -> String:
 			return str(s.rumble)
 		Row.UNITS:
 			return s.UNIT_NAMES[s.units]
+		Row.CAMERA:
+			return CameraView.name_of(s.camera_view)
 		Row.FULLSCREEN:
 			return "FULLSCREEN" if s.fullscreen else "WINDOWED"
 		Row.GEARS:
@@ -272,6 +323,8 @@ static func toggled(row: int) -> bool:
 			return s.steer_assist
 		Row.BRAKE_ASSIST:
 			return s.brake_assist
+		Row.CO_PILOT:
+			return s.co_pilot
 		Row.SUBTITLES:
 			return s.subtitles
 		Row.REDUCE_MOTION:
@@ -283,8 +336,10 @@ static func toggled(row: int) -> bool:
 func row_text(row: int) -> String:
 	if row == done_row:
 		return "DONE"
-	if row == Row.RESET_SAVE and confirming:
+	if (row == Row.RESET_SAVE or row == Row.RESTORE) and confirming and row == rows()[index]:
 		return "SURE?"
+	if row == Row.RESTORE and backups().is_empty():
+		return "NONE"
 	return value_text(row)
 
 
@@ -342,6 +397,8 @@ func handle(m: MenuInput) -> void:
 			Row.RESET_SAVE:
 				select_reset_save()
 				Audio.play("beep")
+			Row.RESTORE:
+				Audio.play("beep" if select_restore() or confirming else "tick")
 			Row.BACK:
 				Audio.play("beep")
 				game.close_options()
@@ -357,6 +414,8 @@ func help_text() -> String:
 	var r := row()
 	if r == Row.BACK:
 		return HELP[r] % back_name
+	if r == Row.RESTORE and backups().is_empty():
+		return NO_BACKUP_HELP
 	if in_race and NEXT_RACE.has(r):
 		return HELP[r] + " From the next race."
 	return HELP[r]
@@ -395,10 +454,10 @@ func _draw() -> void:
 				_text(Vector2(right - 178, y + mid + 5), value_text(row), 10, col)
 			Row.CALIBRATE, Row.WHEEL, Row.REMAP, Row.BACK:
 				pass
-			Row.RESET_OPTIONS, Row.RESET_SAVE:
+			Row.RESET_OPTIONS, Row.RESET_SAVE, Row.RESTORE:
 				var t := row_text(row)
 				var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-				var warn := Color("#ff5d5d") if row == Row.RESET_SAVE and confirming else Color("#5dff8a")
+				var warn := Color("#ff5d5d") if t == "SURE?" else (Color(1, 1, 1, 0.45) if t == "NONE" else Color("#5dff8a"))
 				_text(Vector2(right - 60 - tw / 2.0, y + mid + 5), t, 12, warn)
 			_:
 				var t := value_text(row)
@@ -409,7 +468,7 @@ func _draw() -> void:
 				if on and not wheel:
 					_small_arrow(Vector2(right - 120, y + mid), -1)
 					_small_arrow(Vector2(right, y + mid), 1)
-	var help: String = CONFIRM_HELP if confirming else help_text()
+	var help: String = (RESTORE_CONFIRM_HELP if row() == Row.RESTORE else CONFIRM_HELP) if confirming else help_text()
 	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, panel.end.y + 20), help, 10, Color(1, 1, 1, 0.85))
 	_footer(options_hints())
 

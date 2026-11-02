@@ -4,7 +4,8 @@ extends RefCounted
 
 ## This run's own scratch folder (EQ-18): parallel runs in other worktrees share user://,
 ## so every file a test writes goes under the process id. begin_run makes it, end_run removes it.
-static var run_dir: String = "user://test_runs/%d/" % OS.get_process_id()
+const TEST_RUNS := "user://test_runs/"
+static var run_dir: String = TEST_RUNS + "%d/" % OS.get_process_id()
 static var SCRATCH_PROFILES: String = scratch("input_profiles.cfg")
 static var SCRATCH_SETTINGS: String = scratch("settings.cfg")
 static var SCRATCH_SAVE: String = scratch("save.cfg")
@@ -32,8 +33,13 @@ static func end_run() -> void:
 	remove_tree(run_dir)
 
 
-## Deletes a user:// folder and everything in it.
+## Deletes a folder under TEST_RUNS and everything in it. Any other path is refused: when a
+## script in the runner's compile chain fails to compile, the statics above can be empty, and
+## an empty path is the project folder.
 static func remove_tree(dir: String) -> void:
+	if not is_test_run_path(dir):
+		push_error("remove_tree refused a path outside %s: '%s'" % [TEST_RUNS, dir])
+		return
 	if not DirAccess.dir_exists_absolute(dir):
 		return
 	for d in DirAccess.get_directories_at(dir):
@@ -43,29 +49,40 @@ static func remove_tree(dir: String) -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir))
 
 
+## Whether `dir` is strictly inside TEST_RUNS, with no way back out of it.
+static func is_test_run_path(dir: String) -> bool:
+	return dir.begins_with(TEST_RUNS) and dir.length() > TEST_RUNS.length() and not ".." in dir
+
+
 ## Points the InputRouter at an empty profile file of the tests' own.
 static func use_scratch_profiles(router: Node) -> void:
 	router.profile_path = SCRATCH_PROFILES
-	if FileAccess.file_exists(SCRATCH_PROFILES):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SCRATCH_PROFILES))
+	for f in [SCRATCH_PROFILES, SCRATCH_PROFILES + CfgVersion.BACKUP]:
+		if FileAccess.file_exists(f):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
 	router.load_profiles()
 
 
 ## Points the Settings autoload at an empty options file of the tests' own (all defaults).
 static func use_scratch_settings(settings: Node) -> void:
 	settings.path = SCRATCH_SETTINGS
-	if FileAccess.file_exists(SCRATCH_SETTINGS):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SCRATCH_SETTINGS))
+	for f in [SCRATCH_SETTINGS, SCRATCH_SETTINGS + CfgVersion.BACKUP]:
+		if FileAccess.file_exists(f):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
 	settings.load_settings()
 
 
-## Points the SaveData autoload at an empty save file of the tests' own (a fresh save).
+## Points the SaveData autoload at an empty save file of the tests' own (a fresh save), with
+## no other profiles (MP-10): profile 1 driving.
 static func use_scratch_save(save_data: Node) -> void:
-	save_data.path = SCRATCH_SAVE
-	for f in [SCRATCH_SAVE, SCRATCH_SAVE + ".bad", SCRATCH_SAVE + ".tmp"]:
+	var files: Array[String] = [save_data.roster_path(SCRATCH_SAVE)]
+	for s: int in save_data.MAX_PROFILES:
+		var p: String = save_data.slot_path(SCRATCH_SAVE, s)
+		files.append_array([p, p + ".bad", p + ".tmp", p + CfgVersion.BACKUP])
+	for f in files:
 		if FileAccess.file_exists(f):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
-	save_data.load_save()
+	save_data.use_base(SCRATCH_SAVE)
 
 
 ## Points Time Attack ghosts (Ghost.dir) at an empty folder of the tests' own.
@@ -75,6 +92,12 @@ static func use_scratch_ghosts() -> void:
 	if d != null:
 		for f in d.get_files():
 			d.remove(f)
+
+
+## Installs the crash log (CrashLog, EQ-20) into this run's scratch folder before any main
+## scene does, so the game's own install keeps out of the player's user://logs/.
+static func use_scratch_logs() -> void:
+	CrashLog.install(scratch("logs/"))
 
 
 ## A straight, flat track `segments` long, for driving tests.

@@ -64,6 +64,19 @@ var recording: Ghost  # Time Attack: this run, tick by tick
 var ghost_now := Vector3.ZERO  # the ghost this tick: distance, x, steer (Ghost.at)
 var split := NAN  # Time Attack: seconds against the ghost at the last checkpoint (minus is ahead)
 var new_best := false  # Time Attack: this finish beat the ghost and replaced it
+## The instant replay (RC-17): after the finish spectacle, the last Replay.SECONDS before the
+## line once, from a trace of every car recorded while racing; any button skips it. Not in a
+## demo, online or in Free Drive (no finish). Tests that aren't about it turn it off.
+var instant_replay := true
+var replay_trace := Replay.new()
+var replaying := false
+var replay_frames: Array[PackedFloat32Array] = []
+var replay_index := 0  # the next frame to show
+var replay_player: PlayerCar  # stand-ins the road draws while the replay runs
+var replay_rivals: Array[RivalCar] = []
+var _replay_skip := false  # a key or button went down during the replay (_input)
+var _replay_done := false  # this finish's replay has run (or been skipped)
+var _traffic_before := PackedFloat32Array()  # the traffic as it was, put back after the replay
 ## What Enter does after a finish or TIME UP: on, another go, or back to the menus.
 enum After { NEXT_STAGE, RETRY, TOUR_OVER, TOUR_DONE, MENU }
 var tour_state: Tour  # the Grand Tour's standings and continue, kept stage to stage
@@ -75,6 +88,8 @@ var pickup := -1  # the last pickup taken (PowerUps.Kind), for the HUD
 var pickup_gave := -1  # what it gave (a mystery hubcap opens into another kind)
 var pickup_age := 99.0  # seconds since it was taken
 var picked_up := false  # true for the tick a pickup is taken
+var view: int = CameraView.View.CHASE_NEAR  # the camera view (WS-15, set_view)
+var hour := Sundown.DEFAULT_HOUR  # the time of day the stage is shown at (Sundown, WS-16)
 var horn := false  # the horn button held this tick (RaceAudio sounds it; traffic ahead gives way, RC-13)
 var ram_flash := 0.0  # seconds left on the ram plate's impact flash
 ## Gamepad rumble (WH-13): what it sent last tick (ZERO for nothing) and how many it has sent.
@@ -111,6 +126,9 @@ var pause_menu: PauseMenu
 ## The GUID of the joypad driving while it's unplugged (WH-7), or "". The pause menu says so.
 var unplugged := ""
 var _unplug_paused := false  # the unplugging paused the race, so plugging back in resumes it
+## Seconds left counting 3, 2, 1 after the joypad came back (WH-12), before the race resumes;
+## 0 when not counting. The pause menu shows the count (PauseMenu.counting).
+var replug_count := 0.0
 var results: ResultsScreen  # after the finish (RC-5)
 var new_best_time := false  # this finish set the best time for the stage and car
 var best_before := {}  # SaveData.best for the stage and car before this finish
@@ -119,6 +137,13 @@ var _start_distance := 0.0  # where the player started this run, for the miles d
 
 var background: Background
 var road: RoadRenderer
+## The layer the HUD, the results, the pause menu and the photo flash are on: hidden for the
+## frame a photo is taken (begin_photo).
+var ui_layer: CanvasLayer
+var photo: Photo  # the photo key's flash (PR-21)
+var photo_taking := false  # the HUD is hidden for a photo being taken
+var last_photo := ""  # the last photo's path ("" when it couldn't be saved)
+var _touch_was_visible := false
 var fx: FxLayer  # between the road and the HUD
 var hud: Hud
 ## The F1 input overlay, F2 calibration wizard and F3 tuning panel. The game passes in its
@@ -142,6 +167,7 @@ var _staged := false  # this race was staged for a screenshot: nothing it does i
 var _drive_x := NAN  # --drive-x=X: start on this line and autodrive holds it (road half-widths; past 1 is off the road)
 var _lightning_at := NAN  # --lightning-at=SECONDS: a full lightning strike then, on a stage with lightning (screenshots)
 var _screenshot_frames: Array[int] = []
+var _photo_frames: Array[int] = []  # --photo-at=N,M: the photo key pressed on those frames (into --shot-dir)
 var _screenshot_dir := ""
 var _gas_since := NAN  # when the gas went down, in seconds from GO (Launch.grade)
 var _frame := 0  # physics ticks since this race (re)started
@@ -149,6 +175,7 @@ var _final_stretch := false  # FINAL STRETCH has come up this race
 var _led_at := -INF  # race time of the last 1ST PLACE callout
 var _callout_shot := Callouts.Kind.NONE  # --callout=ID: that starburst held up after GO (screenshots)
 var _callout_shot_count := 0  # --callout=ID:COUNT: with that count (NEAR MISS x3)
+var _pickup_shot := -1  # --pickup=ID (PowerUps.IDS): the player takes that pickup at GO (screenshots)
 var _time_left_shot := NAN  # --time-left=S: start with this much on the clock (low-time screenshots)
 ## The dev flags are for the race the game starts with; later races come from the menus.
 static var _dev_args_read := false
@@ -160,9 +187,11 @@ func _ready() -> void:
 	add_child(background)
 	road = RoadRenderer.new()
 	add_child(road)
+	road.background = background
 	fx = FxLayer.new()
 	add_child(fx)
 	var layer := CanvasLayer.new()
+	ui_layer = layer
 	add_child(layer)
 	hud = Hud.new()
 	hud.race = self
@@ -182,6 +211,8 @@ func _ready() -> void:
 		debug_panel = DebugPanel.new()
 		layer.add_child(debug_panel)
 	debug_panel.race = self
+	photo = Photo.new()
+	layer.add_child(photo)  # over the rest of the layer
 	audio = RaceAudio.new(self)
 	add_child(audio)
 	if not InputRouter.driver_unplugged.is_connected(driver_unplugged):
@@ -202,6 +233,9 @@ func start_race() -> void:
 	InputRouter.speed_factor = 0.0
 	_frame = 0
 	track = Stages.build(stage_index, mirror)
+	# The sun drops stage by stage in a Grand Tour; a single race keeps the stage's own hour
+	hour = Sundown.apply(track, stage_index, Stages.count(), tour)
+	CarSprites.shadow_length = Sundown.shadow_length(Sundown.lit_hour(track.theme))
 	player = PlayerCar.new()
 	var car := Cars.find(car_id)
 	player.setup(car)
@@ -265,6 +299,11 @@ func start_race() -> void:
 	finish_age = 0.0
 	_results_shown = false
 	results_age = -1.0
+	replay_trace = Replay.new()
+	replaying = false
+	replay_frames.clear()
+	replay_index = 0
+	_replay_done = false
 	player_finish = -1.0
 	touched_traffic = false
 	new_unlocks.clear()
@@ -313,6 +352,7 @@ func start_race() -> void:
 	fx.clear()
 	fx.set_weather(track.theme, _lightning_at)
 	fx.player = player
+	set_view(Settings.camera_view)
 
 
 ## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
@@ -382,6 +422,8 @@ func pause() -> void:
 
 func resume() -> void:
 	paused = false
+	replug_count = 0.0
+	pause_menu.counting = 0.0
 	pause_menu.close()
 	unplugged = ""  # resumed without it (the keyboard, or a restart): no waiting for it
 	_unplug_paused = false
@@ -434,16 +476,42 @@ func driver_unplugged(guid: String, joy_name: String, wheel: bool) -> void:
 	pause_menu.notice = PauseMenu.unplugged_notice(joy_name, wheel)
 
 
-## It's back (InputRouter.driver_replugged), with the same profile: the race carries on if
-## the unplugging paused it and the pause menu is still up (not the options over it).
-func driver_replugged(guid: String) -> void:
-	if guid != unplugged:
+## A joypad is back (InputRouter.driver_replugged, WH-12): the one that went (`same`), or a
+## different one in its place, which the notice says. If the unplugging paused the race and
+## the pause menu is still up (not the options over it), it counts 3, 2, 1 and carries on
+## (replug_tick); otherwise it stays paused as the player left it, the notice saying only
+## that a different device is driving.
+func driver_replugged(_guid: String, joy_name := "", wheel := false, same := true) -> void:
+	if unplugged == "":
 		return
+	unplugged = ""
 	if _unplug_paused and paused and pause_menu.visible:
-		resume()
+		replug_count = PauseMenu.REPLUG_COUNT
+		pause_menu.counting = replug_count
+		pause_menu.notice = PauseMenu.replugged_notice(joy_name, wheel, same)
+		Audio.play("beep")
 	else:
-		unplugged = ""
-		pause_menu.notice = []
+		var n: Array[String] = []
+		if not same:
+			n = PauseMenu.replugged_notice(joy_name, wheel, same)
+		pause_menu.notice = n
+
+
+## One tick of the replug countdown: a beep on each number, the race resumed at 0. Pause
+## (or back) stops it, and the pause menu takes over, still paused.
+func replug_tick(dt: float, stop: bool) -> void:
+	if stop:
+		replug_count = 0.0
+		pause_menu.counting = 0.0
+		pause_menu.open()
+		return
+	var shown := ceili(replug_count)
+	replug_count = maxf(0.0, replug_count - dt)
+	pause_menu.counting = replug_count
+	if replug_count <= 0.0:
+		resume()
+	elif ceili(replug_count) != shown:
+		Audio.play("beep")
 
 
 ## Back from the options the pause menu opened: the menu again, still paused.
@@ -511,6 +579,12 @@ func touch_driving() -> bool:
 	return not demo and not paused and not results.visible and not calibration.visible
 
 
+## Any key or button skips the instant replay (RC-17), mapped or not.
+func _input(event: InputEvent) -> void:
+	if replaying and Attract.is_wake_event(event):
+		_replay_skip = true
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("debug_input"):
 		debug_overlay.visible = not debug_overlay.visible
@@ -519,23 +593,33 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(dt: float) -> void:
+	if InputRouter.state.photo_pressed and not demo:
+		take_photo()
 	var inp: DriveInput = Settings.drive_input(InputRouter.state)
 	if _autodrive or demo:
 		inp = _autodrive_input()
 	else:
-		inp = Assists.apply(inp, player, track, Settings.steer_assist, Settings.brake_assist)
+		if Settings.co_pilot:  # (AC-14: in place of the steering assist, and braking for the bends)
+			inp = Assists.co_pilot(inp, player, track)
+		inp = Assists.apply(inp, player, track, Settings.steer_assist and not Settings.co_pilot,
+			Settings.brake_assist or Settings.co_pilot)
 	horn = inp.horn
 	if calibration.visible or debug_panel.visible:  # (the tuning panel holds the race still)
 		_redraw()
 		return
 	dt *= debug_panel.logic.slow_motion()
 	if paused:
-		if pause_menu.visible:  # (hidden while the options are up)
+		if replug_count > 0.0:  # the joypad back: 3, 2, 1 (WH-12)
+			replug_tick(dt, inp.pause_pressed or InputRouter.menu.back_pressed)
+		elif pause_menu.visible:  # (hidden while the options are up)
 			pause_action(pause_menu.choose(InputRouter.menu, inp.pause_pressed))
 		if online == null or not paused:
 			_redraw()
 			return
 		inp = DriveInput.new()  # online the race runs on under the menu, the car coasting
+	if replaying:  # (the player's own buttons skip it, not the autodrive's)
+		_replay_tick(dt, Settings.drive_input(InputRouter.state))
+		return
 	if results.visible:
 		if inp.restart_pressed and online == null:  # R: in a tour, on as ever; otherwise the stage again
 			if tour:
@@ -560,6 +644,10 @@ func _physics_process(dt: float) -> void:
 				return
 	var over := state == State.TIME_UP or state == State.FINISHED
 	if state == State.FINISHED and not _results_shown and (inp.confirm_pressed or (finish_age >= RESULTS_AFTER and watching == null) or _staged):
+		if not inp.confirm_pressed and not _staged and replay_offered() and not _replay_done and not replay_trace.frames.is_empty():
+			start_replay()  # after the finish spectacle, the replay first (RC-17)
+			_redraw()
+			return
 		_show_results()  # after the finish spectacle, or Enter for them now
 		if inp.confirm_pressed:
 			return
@@ -576,6 +664,12 @@ func _physics_process(dt: float) -> void:
 	if inp.radio_pressed and not over:
 		audio.next_station()
 		callouts.push_message(Radio.station_name(audio.station), Radio.genre(audio.station), RADIO_SHOW)
+	if inp.view_pressed and not demo:
+		Settings.camera_view = CameraView.next(Settings.camera_view)
+		Settings.save()  # remembered in Options (WS-15)
+		callouts.push_message(CameraView.name_of(Settings.camera_view), "VIEW", RADIO_SHOW)
+	if view != Settings.camera_view:  # the VIEW button, or Options from the pause menu
+		set_view(Settings.camera_view)
 
 	banner_time = maxf(0.0, banner_time - dt)
 	_watch_launch(inp)
@@ -593,6 +687,8 @@ func _physics_process(dt: float) -> void:
 					callouts.push(_callout_shot, "", Callouts.HOLD, _callout_shot_count)
 					if _callout_shot == Callouts.Kind.CHECKPOINT and timed():  # as a checkpoint shows (PR-15)
 						callouts.push(Callouts.Kind.TIME_EXTENDED, "+%d SEC" % checkpoint_bonus)
+				if _pickup_shot >= 0:
+					take_pickup(_pickup_shot)
 				race_time += dt  # the cars drive on the GO tick, and the rivals' clock counts it
 		State.RACING:
 			race_time += dt
@@ -642,6 +738,8 @@ func _physics_process(dt: float) -> void:
 		_check_pickups()
 		if recording != null:
 			recording.record(player, track.side())
+		if replay_offered():
+			replay_trace.record([player] + rivals.cars, traffic.cars)
 		_check_progress()
 		_callouts_after_tick(earned, place_before)
 	if demo and demo_over():
@@ -673,7 +771,7 @@ func _physics_process(dt: float) -> void:
 	fx.position = road.position
 	cam = follow(watch_target(rivals.cars) if online != null and state == State.FINISHED and player_finish >= 0.0
 		and online.phase != OnlineSession.Phase.CLOSED else null)
-	road.camera_z = cam.position
+	road.camera_z = CameraView.camera_z(view, cam.position, track.length)
 	var rise := track.height_at(cam.position + Background.HILL_AHEAD) - cam.road_y
 	background.hill = Background.shown_hill(rise, road.camera_depth)
 	_flow(dt)
@@ -683,6 +781,54 @@ func _physics_process(dt: float) -> void:
 	_frame += 1
 	if _screenshot_frames.has(_frame):
 		_save_screenshot(_frame)
+	if _photo_frames.has(_frame):
+		take_photo()
+
+
+## The photo key (PR-21): hides the HUD for this frame, grabs the frame once it is drawn and
+## saves it (finish_photo). Not while one is being taken already.
+func take_photo() -> void:
+	if not begin_photo():
+		return
+	if not is_inside_tree():
+		finish_photo(null)
+		return
+	await RenderingServer.frame_post_draw
+	var tex := get_viewport().get_texture()
+	finish_photo(tex.get_image() if tex != null else null)
+
+
+## Hides the HUD layer (the HUD, the pause menu, the results) and the touch controls for the
+## photo's frame. Returns false when a photo is already being taken.
+func begin_photo() -> bool:
+	if photo_taking:
+		return false
+	photo_taking = true
+	ui_layer.visible = false
+	_touch_was_visible = TouchControls.current != null and TouchControls.current.visible
+	if _touch_was_visible:
+		TouchControls.current.visible = false
+	return true
+
+
+## The photo's frame, `img`, grabbed: saves it (Photo.save), puts the HUD back, sounds the
+## shutter and flashes. Returns the photo's path, "" when there was nothing to save.
+func finish_photo(img: Image) -> String:
+	photo_taking = false
+	ui_layer.visible = true
+	if _touch_was_visible and TouchControls.current != null:
+		TouchControls.current.visible = true
+	last_photo = Photo.save(img)
+	Audio.play("shutter")
+	photo.flash()
+	return last_photo
+
+
+## The camera view (WS-15, CameraView) the road and the FX layer draw from. Display only.
+func set_view(v: int) -> void:
+	view = clampi(v, 0, CameraView.View.size() - 1)
+	road.view = view
+	fx.view = view
 
 
 ## Camera shake (pixels, as designed) after a tick: a crash sets it, a landing, a takeoff
@@ -730,9 +876,15 @@ func _check_pickups() -> void:
 	var p := power_ups.take(player.passed_segments(track), player.x)
 	if p == null:
 		return
+	take_pickup(p.kind)
+
+
+## The player takes a pickup of `kind` (a PowerUps.Kind): a mystery hubcap opens into another
+## kind, the HUD's slot shows it (Hud.slot_icon) and it takes effect.
+func take_pickup(kind: int) -> void:
 	picked_up = true
-	pickup = p.kind
-	pickup_gave = power_ups.open(p.kind, time_left)
+	pickup = kind
+	pickup_gave = power_ups.open(kind, time_left)
 	pickup_age = 0.0
 	_give(pickup_gave)
 
@@ -1043,6 +1195,68 @@ func _saves() -> bool:
 	return not _autodrive and not demo and _start_segment == 0 and not _staged and is_nan(_time_left_shot) and online == null
 
 
+## Whether this race shows the instant replay at its finish (RC-17).
+func replay_offered() -> bool:
+	return instant_replay and not demo and online == null and not free_drive
+
+
+## The instant replay starts (RC-17): stand-in cars for the field, put where the trace's frames
+## say tick by tick; the real ones and the traffic wait where the finish left them.
+func start_replay() -> void:
+	replay_frames = Replay.build(replay_trace.frames)
+	replay_index = 0
+	replaying = true
+	_replay_skip = false
+	replay_player = PlayerCar.new()
+	replay_rivals.clear()
+	for i in rivals.cars.size():
+		var r := RivalCar.remote_player(Cars.find(rivals.cars[i].car_id), i + 1)
+		r.profile = rivals.cars[i].profile
+		replay_rivals.append(r)
+	var keep := Replay.new()
+	keep.record([], traffic.cars)
+	_traffic_before = keep.frames[0]
+	road.player = replay_player
+	road.rivals = replay_rivals
+	road.ghost_strips = {}
+	fx.clear()
+	_show_replay_frame()
+
+
+## Puts the next frame of the replay on the road.
+func _show_replay_frame() -> void:
+	var cars: Array = [replay_player]
+	cars.append_array(replay_rivals)
+	Replay.apply(replay_frames[replay_index], cars, traffic.cars, track)
+	replay_index += 1
+	road.camera_z = replay_player.position
+
+
+## A tick of the replay: the next frame, until the finish frame has shown or a button skips it.
+func _replay_tick(dt: float, inp: DriveInput) -> void:
+	if _replay_skip or Replay.skips(inp, InputRouter.menu) or replay_index >= replay_frames.size():
+		end_replay()
+	else:
+		_show_replay_frame()
+		road.time += dt
+	_redraw()
+	_frame += 1
+	if _screenshot_frames.has(_frame):
+		_save_screenshot(_frame)
+
+
+## The replay is over (or skipped): the field back as the finish left it, then the results.
+func end_replay() -> void:
+	replaying = false
+	_replay_done = true
+	Replay.apply(_traffic_before, [], traffic.cars, track)
+	road.player = player
+	road.rivals = rivals.cars
+	road.ghost_strips = road.player_strips if ghost != null else {}
+	road.camera_z = player.position
+	_show_results()
+
+
 func _show_results() -> void:
 	_results_shown = true
 	results_age = 0.0
@@ -1143,10 +1357,16 @@ func _parse_dev_args() -> void:
 			var spec := arg.get_slice("=", 1)
 			_callout_shot = Callouts.IDS.get(spec.get_slice(":", 0), Callouts.Kind.NONE)
 			_callout_shot_count = int(spec.get_slice(":", 1)) if spec.contains(":") else 0
+		elif arg.begins_with("--pickup="):
+			_pickup_shot = PowerUps.IDS.find(arg.get_slice("=", 1))
 		elif arg.begins_with("--time-left="):
 			_time_left_shot = float(arg.get_slice("=", 1))
+		elif arg.begins_with("--photo-at="):
+			for f in arg.get_slice("=", 1).split(","):
+				_photo_frames.append(int(f))
 		elif arg.begins_with("--shot-dir="):
 			_screenshot_dir = arg.get_slice("=", 1)
+			Photo.dir = _screenshot_dir
 
 
 func _autodrive_input() -> DriveInput:
