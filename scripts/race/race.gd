@@ -162,7 +162,7 @@ func _ready() -> void:
 	if not _dev_args_read:
 		_dev_args_read = true
 		_parse_dev_args()
-	Touch.race = self
+	TouchControls.set_race(self)
 	start_race()
 
 

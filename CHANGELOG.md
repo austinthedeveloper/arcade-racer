@@ -7,6 +7,13 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-01
+
+### Fixed
+
+- A game that updated itself from 0.2.0 to 0.3.0 showed a blank screen when a race started.
+  0.3.1 fixes it: updated games and fresh downloads both race.
+
 ## [0.3.0] - 2026-11-01
 
 ### Added

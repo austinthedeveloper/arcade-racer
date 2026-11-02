@@ -245,7 +245,7 @@ Throttle/brake: triggers and pedals are analog; keyboard and face buttons are di
 
 ### 4.8 Touch (ON-4, ON-5, added 2026-11-01)
 
-The `Touch` autoload (`TouchControls`, a CanvasLayer over everything) draws on-screen buttons and
+`TouchControls` (a CanvasLayer over everything, added to the root by InputRouter at start: not an autoload, as an update keeps the installed game's autoloads) draws on-screen buttons and
 holds InputMap actions down with `Input.action_press`, as their keys would, so InputRouter, the
 menus and the race read touch like a keyboard. Two layouts: driving (`steer_left`,
 `steer_right`, `accelerate`, `brake`, `nitro`, `pause`) while the race is on screen

@@ -59,6 +59,7 @@ func _ready() -> void:
 	profile_path = DevArgs.value("--profiles-file", profile_path)
 	_register_actions()
 	load_profiles()
+	TouchControls.add_to(get_tree().root)
 	for d in Input.get_connected_joypads():
 		_joys[d] = [Input.get_joy_guid(d), Input.get_joy_name(d)]
 	if not Input.joy_connection_changed.is_connected(_on_joy_connection_changed):  # (tests make it first)

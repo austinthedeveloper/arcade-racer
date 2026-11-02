@@ -79,7 +79,7 @@ func _draw() -> void:
 	var p: PlayerCar = race.player
 	var w := float(Cfg.SCREEN_W)
 
-	var lay := layout(Touch.shown and race.touch_driving())
+	var lay := layout(TouchControls.showing() and race.touch_driving())
 	_draw_timer(lay["timer"])
 	if not race.rivals.cars.is_empty():
 		_draw_position(lay["position"], race.place, race.rivals.cars.size() + 1)

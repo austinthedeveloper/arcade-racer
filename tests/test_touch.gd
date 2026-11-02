@@ -115,3 +115,20 @@ func test_touch_works_a_menu() -> void:
 	check(router.menu.confirm_pressed, "OK confirms")
 	t.release_all()
 	router._physics_process(DT)
+
+
+func test_input_router_puts_the_controls_up_once() -> void:
+	# Not an autoload (an updated game keeps its installed autoloads): InputRouter adds it
+	var root := Node.new()
+	_nodes.append(root)
+	var was := TouchControls.current
+	TouchControls.current = null
+	TouchControls.add_to(root)
+	var first := TouchControls.current
+	TouchControls.add_to(root)
+	check(first != null and TouchControls.current == first, "one")
+	eq(first.name, "Touch", "as Touch (on the root next frame)")
+	check(not TouchControls.showing(), "hidden until a touch")
+	first.free()  # (its deferred add goes to a root freed with the test)
+	TouchControls.current = was
+
