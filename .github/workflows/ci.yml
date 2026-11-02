@@ -104,6 +104,16 @@ jobs:
           test -s build/linux/SundownRun.x86_64
           if grep -q "ERROR:" build/export.log; then exit 1; fi
 
+      - name: Web build within its .pck budget (EQ-23)
+        # The real Web export (with web/shell.html, the loading screen); test_export then
+        # checks its .pck against WEB_PCK_BUDGET and the estimate it checks on every run.
+        run: |
+          mkdir -p build/web
+          godot --headless --path . --export-release Web build/web/index.html 2>&1 | tee build/web-export.log
+          test -s build/web/index.pck
+          if grep -q "ERROR:" build/web-export.log; then exit 1; fi
+          SUNDOWN_WEB_PCK="$PWD/build/web/index.pck" tools/test.sh test_export.test_the_web_pck_fits_its_budget
+
       - name: Run the exported build headless
         run: |
           # --autodrive (a user arg, after --) starts a race by itself. --quit-after
