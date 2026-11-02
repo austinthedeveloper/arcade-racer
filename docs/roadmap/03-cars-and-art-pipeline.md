@@ -31,7 +31,7 @@ on level road and on hills to one review page.
 | CP-11 | **UI art.** Analog speedo and tach, flame icons, position numeral, callout banners with starbursts, final logo, map art for stage select. From the round 2 UI concepts, text added in engine. | M | 5, 6 | PR-6 | Each HUD element has a sprite; menu screenshots updated |
 | CP-12 | **Legal pass.** Every car, traffic vehicle and landmark checked against the "no lookalikes" rule once more at production size (Cyclone v2 still awaits Austin's review); fonts confirmed license-safe. | S | 6 | CP-2 | A short checklist in `docs/`; any failure gets a reroll prompt |
 | CP-13 | **Driver portraits.** A face and a name per car for the rival cards (RC-18) and the results screen, generated from a prompt template and cut by `make_ui_sprites.py`. | S | 3 | RC-18 | Twelve portraits in the manifest; a screenshot of the rival cards |
-| CP-14 | **The hubcap in the slot.** A mystery pickup shows the spinning hubcap in the power-up slot for half a second before the reveal frames show what it turned into. | S | 1 | | `test_power_ups` checks the slot's icon over time; a screenshot mid-reveal |
+| CP-14 ✓ | **The hubcap in the slot.** A mystery pickup shows the spinning hubcap in the power-up slot for half a second before the reveal frames show what it turned into. | S | 1 | | `test_power_ups` checks the slot's icon over time; a screenshot mid-reveal |
 
 ## Open decisions
 

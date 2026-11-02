@@ -7,6 +7,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-02
+
 ### Added
 
 - Crash reports (EQ-20): when something goes wrong, the game writes the error and its last 200

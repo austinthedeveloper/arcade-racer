@@ -30,7 +30,7 @@ for rows; a wheel steers through rows and presses gas to change a value.
 | AC-11 ✓ | **Keyboard steering feel.** How fast a held key reaches full lock and how fast it returns, as two options (snappy to smooth). | S | 1 | | `test_drive_input` covers both rates; the defaults match today |
 | AC-12 | **UI scale.** Normal and Large for the HUD and the menus, for TVs across the room and small hands. | M | 2 | PR-6 | `Hud.layout` and the menus take a scale; a test that nothing overlaps at Large; screenshots |
 | AC-13 ✓ | **Reduce motion.** One toggle: no parallax hill shift, no nitro FOV stretch, no rain streaks, no camera shake. | S | 1 | AC-2, WS-3 | A test that each effect reads the toggle |
-| AC-14 | **Co-pilot.** Full steering assist that keeps the car in its lane and round the bends, with the player's steering nudging it, for the youngest drivers. Off by default. | S | 2 | AC-3 | An autodrive-free race finishes with co-pilot on and no steering input |
+| AC-14 ✓ | **Co-pilot.** Full steering assist that keeps the car in its lane and round the bends, with the player's steering nudging it, for the youngest drivers. Off by default. | S | 2 | AC-3 | An autodrive-free race finishes with co-pilot on and no steering input |
 | AC-15 ✓ | **Auto-pause.** The race pauses when the window loses focus, and when a phone's browser tab goes to the background. | S | 1 | PR-12 | Test through the window focus notification |
 
 ## Open decisions
