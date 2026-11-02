@@ -29,6 +29,10 @@ the release workflow puts that section at the top of the GitHub Release notes
   still does), and winning shows FINISH! first, then 1ST PLACE.
 - HUD legibility (PR-14): no HUD text is smaller than 8 pixels any more (the MPH label and the
   car names on the results were 7), and the key hints in the corner are a little brighter.
+- Rival cards and radar (RC-18): before GO, a card for each rival on the grid shows the
+  driver, their car and how they drive (clean, aggressive or erratic). In the race, small arrows
+  over your car point up for a rival less than a second ahead and down for one less than a
+  second behind, placed by where they are across the road.
 
 ### Changed
 

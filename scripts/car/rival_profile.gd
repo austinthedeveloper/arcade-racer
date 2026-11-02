@@ -16,6 +16,11 @@ enum Style {
 @export var lane_bias := 0.0  ## its own spot across the road, added to the racing line
 
 
+## What a rival card calls a style (RC-18).
+static func style_name(s: Style) -> String:
+	return ["CLEAN", "AGGRESSIVE", "ERRATIC"][s]
+
+
 static func make(driver_name: String, car: String, s: Style, p: float, bias: float) -> RivalProfile:
 	var r := RivalProfile.new()
 	r.driver = driver_name

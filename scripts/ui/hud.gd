@@ -1,7 +1,8 @@
 class_name Hud
 extends Control
 ## In-race HUD: timer, place, route progress, nitro flames, power-up, slipstream, an analog
-## speedometer with a tach, and the callouts. Drawn in code; where each goes is `layout`.
+## speedometer with a tach, the callouts, and the rivals: a card each before GO and a radar
+## arrow for one close by (RC-18). Drawn in code; where each goes is `layout`.
 ## In an attract-mode demo: the logo and PRESS START instead.
 
 const LOGO := "res://assets/sprites/ui/logo.png"
@@ -10,6 +11,12 @@ const CALLOUT_Y := 120.0  # the middle of the callouts
 const LINE2_SIZE := 18  # a starburst's second headline (TIME EXTENDED under CHECKPOINT)
 const SUB_SIZE := 11  # and its small line
 const LINE_GAP := 4.0  # pixels between a starburst's lines
+const CARD_SIZE := Vector2(150, 22)  # a rival's card before GO (RC-18)
+const CARD_GAP := 2.0
+const PORTRAIT := Vector2(18, 18)  # the card's portrait slot (initials until CP-13's portraits)
+const RADAR_TIME := 1.0  # seconds behind or ahead a rival gets a radar arrow
+const RADAR_REACH := 2.0  # road half-widths either side the radar strip spans
+const RADAR_ARROW := Vector2(9, 7)  # an arrow's width and height
 const GOLD := Color("#ffd23a")
 const DIAL_START := PI * 0.75  # the speedometer's zero, bottom left...
 const DIAL_SWEEP := PI * 1.5  # ...round to top speed at the bottom right
@@ -96,6 +103,10 @@ func _draw() -> void:
 	_power_up_fx()
 	_draw_speedo(lay["speedo"], p)
 	_draw_slipstream(lay["slipstream"], p)
+	if race.counting_down() and not race.rivals.cars.is_empty():
+		_draw_cards(lay["cards"])
+	elif race.state == race.State.RACING:
+		_draw_radar(lay["radar"], p)
 	if Tuning.any_tuned():
 		_draw_tuned(lay["tuned"])
 
@@ -153,6 +164,7 @@ static func layout(touch := false) -> Dictionary:
 		lay["speedo"] = Rect2(w / 2.0 - 53, h - 98, 106, 92)
 		lay["slipstream"] = Rect2(w / 2.0 - 53, h - 112, 106, 10)
 		lay["device"] = Rect2()
+		lay["cards"] = Rect2(w / 2.0 - CARD_SIZE.x - 3, 150, CARD_SIZE.x * 2 + 6, 4 * (CARD_SIZE.y + CARD_GAP) - CARD_GAP)
 		return lay
 	return {
 		"timer": Rect2(6, 6, 92, 58),
@@ -167,7 +179,97 @@ static func layout(touch := false) -> Dictionary:
 		"device": Rect2(6, h - 30, 280, 26),
 		"subtitle": Rect2(w / 2.0 - 160, 46, 320, 18),
 		"tuned": Rect2(w / 2.0 + 118, 10, 40, 13),
+		"cards": Rect2(6, 120, CARD_SIZE.x, Rivals.COUNT * (CARD_SIZE.y + CARD_GAP) - CARD_GAP),
+		"radar": Rect2(w / 2.0 - 90, 192, 180, 16),
 	}
+
+
+## The rival cards' places in `area` (layout's "cards"): down a column, then the next column.
+static func card_rects(area: Rect2, count: int) -> Array[Rect2]:
+	var rows := maxi(1, floori((area.size.y + CARD_GAP) / (CARD_SIZE.y + CARD_GAP)))
+	var out: Array[Rect2] = []
+	for i in count:
+		var col := i / rows
+		out.append(Rect2(area.position + Vector2(col * (CARD_SIZE.x + 6), (i % rows) * (CARD_SIZE.y + CARD_GAP)), CARD_SIZE))
+	return out
+
+
+## Where a card's parts go: the portrait slot, then the name and the car-and-style line by it.
+static func card_parts(card: Rect2) -> Dictionary:
+	var slot := Rect2(card.position + Vector2(3, 2), PORTRAIT)
+	var text_x := slot.end.x + 5
+	return {"portrait": slot, "name": Vector2(text_x, card.position.y + 10), "line": Vector2(text_x, card.position.y + 19),
+		"text_width": card.end.x - 3 - text_x}
+
+
+## A card's words: the driver, the car and the style (an online player is ONLINE).
+static func card_text(profile: RivalProfile, remote: bool) -> Dictionary:
+	var car: Dictionary = Cars.find(profile.car_id)
+	return {"name": profile.driver, "car": String(car.get("name", "")).to_upper(),
+		"style": "ONLINE" if remote else RivalProfile.style_name(profile.style),
+		"initials": "".join(Array(profile.driver.split(" ", false)).map(func(w: String) -> String: return w.left(1))).left(2).to_upper()}
+
+
+## The radar (RC-18): an arrow for each rival within RADAR_TIME of you at your speed, ahead
+## (pointing up) or behind (pointing down), across `area` by where it is across the road.
+## `others` are [distance, x] for each rival still racing. Returns {"at", "ahead", "near"}
+## ("at" the arrow's middle, "near" 1 alongside down to 0 at RADAR_TIME), nearest last.
+static func radar(area: Rect2, distance: float, x: float, speed: float, others: Array) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for o: Array in others:
+		var gap: float = o[0] - distance
+		var secs := absf(gap) / maxf(speed, 1.0)
+		if secs > RADAR_TIME:
+			continue
+		var across := clampf((o[1] - x) / RADAR_REACH, -1.0, 1.0)
+		var ax := area.get_center().x + across * (area.size.x - RADAR_ARROW.x) / 2.0
+		out.append({"at": Vector2(roundf(ax), area.get_center().y), "ahead": gap >= 0.0, "near": 1.0 - secs / RADAR_TIME})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["near"] < b["near"])
+	return out
+
+
+## A radar arrow centered on `at`: a triangle pointing up for a rival ahead, down for behind.
+static func radar_arrow(at: Vector2, ahead: bool, size := RADAR_ARROW) -> PackedVector2Array:
+	var hw := size.x / 2.0
+	var hh := size.y / 2.0
+	if ahead:
+		return PackedVector2Array([at + Vector2(0, -hh), at + Vector2(hw, hh), at + Vector2(-hw, hh)])
+	return PackedVector2Array([at + Vector2(-hw, -hh), at + Vector2(hw, -hh), at + Vector2(0, hh)])
+
+
+## Before GO, a card per rival (RC-18), front of the grid first: a portrait slot with the
+## driver's initials (portraits come with CP-13), the name, and the car and style under it.
+func _draw_cards(area: Rect2) -> void:
+	var order: Array = race.rivals.cars.filter(func(r: RivalCar) -> bool: return r.profile != null)
+	order.sort_custom(func(a: RivalCar, b: RivalCar) -> bool: return a.distance > b.distance)
+	var rects := card_rects(area, order.size())
+	for i in order.size():
+		var r: RivalCar = order[i]
+		var card: Rect2 = rects[i]
+		var parts := card_parts(card)
+		var words := card_text(r.profile, r.remote)
+		draw_rect(card, Color(0.04, 0.03, 0.1, 0.72))
+		draw_rect(Rect2(card.position, Vector2(2, card.size.y)), PALETTE["rival"])
+		var slot: Rect2 = parts["portrait"]
+		draw_rect(slot, Color(0, 0, 0, 0.6))
+		draw_rect(slot, Color(PALETTE["rival"], 0.8), false, 1.0)
+		_text_centered(Vector2(slot.get_center().x, slot.end.y - 5), words["initials"], 8, Color(1, 1, 1, 0.8))
+		_text(parts["name"], words["name"], 9, Color.WHITE)
+		var line: Vector2 = parts["line"]
+		_text(line, words["car"], 8, Color(1, 1, 1, 0.75))
+		_text(line + Vector2(UiText.width(words["car"] + "  ", 8), 0), words["style"], 8, GOLD)
+
+
+## The radar arrows over the car (RC-18), brighter the closer the rival.
+func _draw_radar(area: Rect2, p: PlayerCar) -> void:
+	var others: Array = []
+	for r: RivalCar in race.rivals.cars:
+		if not r.finished:
+			others.append([r.distance, r.x])
+	for a in radar(area, p.distance, p.x, p.speed, others):
+		var alpha := lerpf(0.55, 1.0, a["near"])
+		draw_colored_polygon(radar_arrow(a["at"] + Vector2(0, 1), a["ahead"], RADAR_ARROW + Vector2(4, 4)), Color(0, 0, 0, 0.7 * alpha))
+		draw_colored_polygon(radar_arrow(a["at"], a["ahead"]), Color(PALETTE["rival"], alpha))
 
 
 ## TUNED: the debug panel (F3) has changed something from the defaults, so this isn't the

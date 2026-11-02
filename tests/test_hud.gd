@@ -182,3 +182,68 @@ func test_no_text_under_the_minimum() -> void:
 	check(Hud.LINE2_SIZE >= UiText.MIN_SIZE and Hud.SUB_SIZE >= UiText.MIN_SIZE, "a burst's other lines")
 	eq(Hud.text_size(7), UiText.MIN_SIZE, "a smaller size is drawn at the minimum")
 	eq(Hud.text_size(12), 12, "bigger ones as asked")
+
+
+func test_rival_cards_layout() -> void:
+	# RC-18: a card per rival before GO, in its own corner of the screen
+	for touch in [false, true]:
+		var lay := Hud.layout(touch)
+		var area: Rect2 = lay["cards"]
+		check(SCREEN.encloses(area), "cards on screen (touch %s)" % touch)
+		for n in lay:
+			if n != "cards" and n != "radar":  # (the radar only shows after GO)
+				check(not area.intersects(lay[n]), "cards clear of %s (touch %s)" % [n, touch])
+		var rects := Hud.card_rects(area, Rivals.COUNT)
+		eq(rects.size(), Rivals.COUNT, "one each")
+		for i in rects.size():
+			check(area.encloses(rects[i]), "card %d inside (touch %s): %s" % [i, touch, rects[i]])
+			for j in range(i + 1, rects.size()):
+				check(not rects[i].intersects(rects[j]), "cards %d and %d apart" % [i, j])
+	check(Hud.layout()["cards"].position.y > Hud.layout()["position"].end.y, "under the place")
+
+
+func test_rival_card_parts_fit() -> void:
+	var card := Rect2(Vector2(6, 120), Hud.CARD_SIZE)
+	var parts := Hud.card_parts(card)
+	var slot: Rect2 = parts["portrait"]
+	check(card.encloses(slot), "the portrait slot inside")
+	check(slot.size.x >= 16 and slot.size.y >= 16, "room for a portrait (CP-13)")
+	check((parts["name"] as Vector2).x > slot.end.x, "the words right of it")
+	for prof in RivalProfile.roster():
+		var words := Hud.card_text(prof, false)
+		check(UiText.width(words["name"], 9) <= parts["text_width"], "fits: " + words["name"])
+		var line: String = words["car"] + "  " + words["style"]
+		check(UiText.width(line, 8) <= parts["text_width"], "fits: " + line)
+		check(words["initials"].length() == 2, "initials: " + words["initials"])
+	var big := Hud.card_text(RivalProfile.roster()[4], false)
+	eq([big["name"], big["style"], big["initials"]], ["Big Jo Harlan", "AGGRESSIVE", "BJ"], "Big Jo's card")
+	eq(big["car"], String(Cars.find("car_mesa")["name"]).to_upper(), "his car")
+	eq(Hud.card_text(RivalProfile.roster()[0], true)["style"], "ONLINE", "an online player")
+
+
+func test_radar_arrows() -> void:
+	var area: Rect2 = Hud.layout()["radar"]
+	var speed := 5000.0
+	var arrows := Hud.radar(area, 10000.0, 0.0, speed, [
+		[10000.0 + speed * 0.5, 0.0],  # half a second ahead, in line with you
+		[10000.0 - speed * 0.25, -1.0],  # a quarter behind, on the left
+		[10000.0 + speed * 1.5, 0.0],  # too far ahead
+		[10000.0 - speed * 3.0, 0.5],  # too far behind
+	])
+	eq(arrows.size(), 2, "the two within a second")
+	var ahead: Dictionary = arrows[0]
+	var behind: Dictionary = arrows[1]
+	check(ahead["ahead"] and not behind["ahead"], "one ahead, one behind, nearest last")
+	near(ahead["at"].x, area.get_center().x, 0.5, "in line: in the middle")
+	check(behind["at"].x < area.get_center().x, "the one on the left to the left")
+	near(ahead["near"], 0.5, 0.001, "half a second: half near")
+	for a in arrows:
+		var box := Rect2(a["at"] - Hud.RADAR_ARROW / 2.0, Hud.RADAR_ARROW)
+		check(area.grow(0.5).encloses(box), "the arrow inside the strip")
+	var far_left := Hud.radar(area, 0.0, 1.0, speed, [[0.0, -3.0]])
+	check(area.grow(0.5).encloses(Rect2(far_left[0]["at"] - Hud.RADAR_ARROW / 2.0, Hud.RADAR_ARROW)), "pinned at the edge")
+	eq(Hud.radar(area, 0.0, 0.0, 0.0, [[50.0, 0.0]]).size(), 0, "standing still, only a car alongside counts")
+	var up := Hud.radar_arrow(Vector2(100, 100), true)
+	var down := Hud.radar_arrow(Vector2(100, 100), false)
+	check(up[0].y < up[1].y and down[2].y > down[0].y, "up for ahead, down for behind")
+	check(area.end.y < 215.0, "over the car's roof")
