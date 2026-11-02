@@ -21,16 +21,25 @@ const TUBE_HEIGHT := 1250.0
 const TUBE_THICK := 70.0
 const TUBE_EVERY := 4
 
+## The background strips the wet road reflects (WS-13), back to front.
+const REFLECT_LAYERS := ["sky", "far"]
+const REFLECT_MIN := 0.02  # fainter than this, a reflection isn't drawn
+
 const BEHIND_SEGMENTS := 1  # segments behind the player whose cars are drawn (over it)
 const THIN_RUN := 1.0  # pixels: far segments thinner than this together are drawn as one band (EQ-7)
 
 var track: Track
+## The Background, whose strips the wet road reflects (WS-13). Untyped on purpose: Background
+## reads the Settings autoload, which a script run with -s (the test runner) can't see yet
+## when this file compiles.
+var background: Node2D
 var player: PlayerCar
 var player_strips: Dictionary = {}  # the player car's CarSprites.strips
 var rivals: Array[RivalCar] = []
 var ghost := Vector3.ZERO  # Time Attack's ghost: distance, x, steer (Ghost.at)
 var ghost_strips: Dictionary = {}  # its car's strips; empty for no ghost
 var camera_z := 0.0
+var view: int = CameraView.View.CHASE_NEAR  # the camera view (WS-15): where camera_z and the car sit
 var camera_depth := Tuning.v("camera/depth")  # the race eases it down for the nitro stretch
 var flash := 1.0  # the FLASHING option's share of the designed blink (Settings.flash_amount(1.0))
 var time := 0.0
@@ -44,8 +53,13 @@ var _pts := PackedVector2Array()
 var _cols := PackedColorArray()
 var _idx := PackedInt32Array()
 var _fog_color := Color.WHITE
+var _light := Color.WHITE  # the sprites' tint for the stage's hour (Sundown, WS-16), this frame
+var _glow := 0.0  # the tail lights' glow in the dark (Headlights, WS-17), this frame; 0 by day
+var _lamps: Array[Vector3] = []  # the cars whose headlights light the road this frame: z, x, direction
 var _wet := 0.0  # the stage's wet road (Weather "wet"), this frame
 var _wet_sky := Color.WHITE  # and the sky it reflects
+var _horizon := float(Cfg.HORIZON_Y)  # the background's horizon row this frame (reflections mirror on it)
+var _reflect: Array = []  # [texture, layer rect] per background strip the wet road reflects, this frame
 var _covered: Array[Dictionary] = []  # _covered_theme: the darkened colors, per depth step
 var _covered_from: Dictionary = {}  # and the theme they were made from
 var _font: Font
@@ -56,6 +70,7 @@ var _rivals_behind: Array = []  # rivals in the player's segment but behind it, 
 
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
+	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED  # the reflections run on round the strips
 
 
 func _draw() -> void:
@@ -64,14 +79,19 @@ func _draw() -> void:
 	var theme := track.theme
 	var here := StageFlow.palette(track, flow_share) if flow else theme
 	_fog_color = here["fog"]
+	_light = sprite_light(theme)
+	var night := Headlights.on(theme)
+	_glow = Tuning.v("world/tail_glow") if night else 0.0
 	var fog_density: float = here.get("fog_density", Cfg.FOG_DENSITY)
 	_wet = Weather.of(theme).get("wet", 0.0)
 	_wet_sky = here.get("sky_bottom", _fog_color)
+	_reflect = reflect_layers(background) if _wet > 0.0 else []
+	_horizon = Cfg.HORIZON_Y + (float(background.get("hill")) if background != null else 0.0)
 	var segs := track.segments
 	var count := segs.size()
 	var base := track.find_segment(camera_z)
 	var base_percent := fposmod(camera_z, Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH
-	var cam_y := player.road_y + Tuning.v("camera/height")
+	var cam_y := player.road_y + CameraView.height(view)
 	var cam_x := player.x * Cfg.ROAD_WIDTH
 	var x := 0.0
 	var dx := -base.curve * base_percent
@@ -110,6 +130,7 @@ func _draw() -> void:
 			drawn.append(seg)
 
 	var at := player_slot(drawn, player_seg)
+	_lamps = lamps(drawn, player.position + Cfg.PLAYER_Z, player.x) if night else ([] as Array[Vector3])
 	# Far off, a segment is a sliver of a pixel: a run of them with nothing standing on them
 	# is drawn as one band, from the run's far edge to its nearest segment (thin_run). The
 	# next segment is visible whenever one is held back, so it always gets drawn.
@@ -128,12 +149,12 @@ func _draw() -> void:
 			_draw_player()
 	if at < 0:
 		_draw_player()
-	else:
+	elif CameraView.car_shown(view):
 		# Cars just behind the player, over the player's car; nearer the camera than that
-		# they would fill the screen, so they aren't drawn
+		# they would fill the screen, so they aren't drawn (from the bumper, they're behind it)
 		for r: RivalCar in _rivals_behind:
-			_draw_rival(drawn[at], r, Color.WHITE.lerp(_fog_color, drawn[at].fog))
-		for i in range(at - 1, behind_from(at) - 1, -1):
+			_draw_rival(drawn[at], r, _light.lerp(_fog_color, drawn[at].fog))
+		for i in range(at - 1, behind_from(at, CameraView.behind_segments(view, BEHIND_SEGMENTS)) - 1, -1):
 			_draw_cars(drawn[i])
 
 
@@ -142,6 +163,12 @@ func _draw() -> void:
 ## stage (`wrapped`: the road looped round to the start, which stands in for the next stage).
 static func segment_shade(handover: float, fade: float, wrapped: bool) -> float:
 	return 1.0 if wrapped else lerpf(handover, 1.0, fade)
+
+
+## The tint the sprites and cars take on a stage shown at its hour (Sundown.light_of): a
+## world/sprite_tint share of the stage's.
+static func sprite_light(theme: Dictionary) -> Color:
+	return Color.WHITE.lerp(Sundown.light_of(theme), Tuning.v("world/sprite_tint"))
 
 
 ## Segments drawn ahead of the camera on a stage: its theme's "draw_distance" (a busy stage
@@ -166,9 +193,9 @@ func _stands_on(seg: Segment, player_here: bool) -> bool:
 
 
 ## The nearest slot in `drawn` whose cars are still drawn when the player is at slot `at`:
-## BEHIND_SEGMENTS behind it at most.
-static func behind_from(at: int) -> int:
-	return maxi(0, at - BEHIND_SEGMENTS)
+## `behind` (BEHIND_SEGMENTS; more from further back, CameraView.behind_segments) at most.
+static func behind_from(at: int, behind := BEHIND_SEGMENTS) -> int:
+	return maxi(0, at - behind)
 
 
 ## Where in the near-to-far `drawn` list the player's segment is, or -1.
@@ -185,10 +212,16 @@ static func behind(z: float, player_z: float, length: float) -> bool:
 
 
 func _project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float) -> void:
+	project(seg, cx1, cx2, cam_y, cz, camera_depth)
+
+
+## Projects a segment's ends onto the screen for a camera at track position `cz`, `cam_y` up,
+## `cx1` and `cx2` across from each end's road center (world units), with camera `depth`.
+static func project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float, depth: float) -> void:
 	seg.cam_z1 = seg.w1.z - cz
 	seg.cam_z2 = seg.w2.z - cz
-	seg.scale1 = camera_depth / maxf(seg.cam_z1, 1.0)
-	seg.scale2 = camera_depth / maxf(seg.cam_z2, 1.0)
+	seg.scale1 = depth / maxf(seg.cam_z1, 1.0)
+	seg.scale2 = depth / maxf(seg.cam_z2, 1.0)
 	var half_w := Cfg.SCREEN_W * 0.5
 	seg.s1 = Vector2(half_w - seg.scale1 * cx1 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale1 * (seg.w1.y - cam_y) * Cfg.PROJ)
 	seg.s2 = Vector2(half_w - seg.scale2 * cx2 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale2 * (seg.w2.y - cam_y) * Cfg.PROJ)
@@ -234,11 +267,17 @@ func _draw_segment(seg: Segment, theme: Dictionary, far: Segment, depth: float) 
 	_quad(Vector2(x1 - w1 - r1, y1), Vector2(x1 - w1, y1), Vector2(x2 - w2, y2), Vector2(x2 - w2 - r2, y2), rumble)
 	_quad(Vector2(x1 + w1, y1), Vector2(x1 + w1 + r1, y1), Vector2(x2 + w2 + r2, y2), Vector2(x2 + w2, y2), rumble)
 
-	# Asphalt, catching the sky when it's wet (not under cover)
+	# Asphalt, catching the sky when it's wet (not under cover), with puddles on the near road
+	# (WS-13)
 	var asphalt: Color = theme["road"][b]
-	if _wet > 0.0 and not seg.covered:
-		asphalt = Weather.wet_color(asphalt, _wet_sky, _wet, depth)
-	_quad(Vector2(x1 - w1, y1), Vector2(x1 + w1, y1), Vector2(x2 + w2, y2), Vector2(x2 - w2, y2), _fogged(asphalt, fog))
+	var wet := _wet > 0.0 and not seg.covered
+	if wet:
+		asphalt = Weather.wet_color(asphalt, _wet_sky, _wet, depth, Tuning.v("world/wet_sheen"), Tuning.v("world/wet_gloss"))
+	var road_pts := PackedVector2Array([Vector2(x1 - w1, y1), Vector2(x1 + w1, y1), Vector2(x2 + w2, y2), Vector2(x2 - w2, y2)])
+	_quad_pts(road_pts, _fogged(asphalt, fog))
+	var ahead := depth * draw_distance(track.theme)  # segments from the camera
+	if wet and is_same(far, seg) and ahead < Tuning.v("world/puddle_reach"):
+		_puddle(seg, theme["road"][b])
 
 	# Dashed lane markings on alternate bands, this segment's lanes
 	if b == 0:
@@ -254,16 +293,121 @@ func _draw_segment(seg: Segment, theme: Dictionary, far: Segment, depth: float) 
 			lx1 += lane_w1
 			lx2 += lane_w2
 
+	if not _lamps.is_empty() and is_same(far, seg) and ahead < Headlights.REACH_SEGMENTS:
+		_headlight_pools(seg)
+
 	if not lights.is_empty() and seg.index % TUBE_EVERY != TUBE_EVERY - 1:
 		_tunnel_lights(seg, lights)
 
-	RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), _idx, _pts, _cols)
+	_flush()
+	# The sky and the skyline reflected over it all, lane markings too (they shine wet as well);
+	# only so far off, where the fog hasn't swallowed them, as each one is another draw (WS-13)
+	if wet and ahead < Tuning.v("world/reflect_reach"):
+		_reflections(road_pts, Weather.reflect_strength(Tuning.v("world/reflect_alpha"), _wet, depth, fog))
+
+
+## Draws the triangles gathered so far and starts afresh.
+func _flush() -> void:
+	if not _idx.is_empty():
+		RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), _idx, _pts, _cols)
+	_pts.clear()
+	_cols.clear()
+	_idx.clear()
+
+
+## The cars whose headlights light the road this frame (WS-17), as (z, x, direction): the
+## player's at `player_z`, `player_x`, and the rivals' and traffic's in the `drawn` segments
+## within Headlights.REACH_SEGMENTS, the oncoming traffic's pointing back at the camera.
+func lamps(drawn: Array[Segment], player_z: float, player_x: float) -> Array[Vector3]:
+	var out: Array[Vector3] = [Vector3(player_z, player_x, 1.0)]
+	for r in rivals:
+		out.append(Vector3(r.position + Cfg.PLAYER_Z, r.x, 1.0))
+	for i in mini(drawn.size(), Headlights.REACH_SEGMENTS):
+		for car in drawn[i].cars:
+			out.append(Vector3(car.z, car.offset, -1.0 if car.oncoming else 1.0))
+	return out
+
+
+## The headlight pools lying on a segment: each car's (_lamps) slice of its pool, from its x
+## (it follows the car across the road), widening and fading out ahead of it.
+func _headlight_pools(seg: Segment) -> void:
+	var fade := 1.0 - seg.fog
+	for lamp in _lamps:
+		var sl := Headlights.slice(seg.w1.z, lamp.x, lamp.z, track.length)
+		if sl.x < 0.0:
+			continue
+		var a := Headlights.pool(lamp.y, sl.z)
+		var b := Headlights.pool(lamp.y, sl.w)
+		var strength := (a.z + b.z) * 0.5 * fade
+		if strength < 0.01:
+			continue
+		_quad_pts(road_trapezoid(seg, Vector3(sl.x, a.x - a.y, a.x + a.y), Vector3(sl.y, b.x - b.y, b.x + b.y)),
+			Color(Headlights.COLOR, strength))
+
+
+## The background strips the wet road reflects (REFLECT_LAYERS), as [texture, screen rect]
+## pairs, for the ones this stage has; none without a background.
+static func reflect_layers(bg: Node2D) -> Array:
+	var out: Array = []
+	if bg == null:
+		return out
+	for layer: String in REFLECT_LAYERS:
+		var rect: Rect2 = bg.call("layer_rect", layer)
+		if rect.has_area():
+			out.append([bg.get("textures")[layer], rect])
+	return out
+
+
+## The reflections on a stretch of wet road (its four corners, `pts`) at `alpha`.
+func _reflections(pts: PackedVector2Array, alpha: float) -> void:
+	if _reflect.is_empty() or alpha < REFLECT_MIN:
+		return
+	var mirrored: bool = background.get("mirrored")
+	var stretch := Tuning.v("world/reflect_stretch")
+	var c := Color(Sundown.light_of(track.theme), alpha)  # the strips in the stage's light (WS-16)
+	var cols := PackedColorArray([c, c, c, c])
+	for r: Array in _reflect:
+		var uvs := PackedVector2Array()
+		for p in pts:
+			uvs.append(Weather.reflect_uv(p, _horizon, r[1], stretch, mirrored))
+		draw_primitive(pts, cols, uvs, r[0])
+
+
+## A puddle on a near segment (Weather.puddle), if it has one: a dark wet patch with the sky's
+## highlight in it, across the road by Track.side like anything placed on it.
+func _puddle(seg: Segment, road: Color) -> void:
+	var p := Weather.puddle(seg.index, Tuning.v("world/puddle_share"))
+	if p == Vector4.ZERO:
+		return
+	var center := p.x * track.side() * seg.width
+	var half := p.y * seg.width
+	_quad_pts(road_patch(seg, center - half, center + half, p.z, p.w), _fogged(road.darkened(0.4), seg.fog))
+	var glint := Weather.puddle_color(_wet_sky, Tuning.v("world/puddle_glint"), seg.fog, time, seg.index)
+	_quad_pts(road_patch(seg, center - half * 0.6, center + half * 0.6, lerpf(p.z, p.w, 0.3), lerpf(p.z, p.w, 0.6)), glint)
+
+
+## A patch of a segment's road on screen: from `left` to `right` across it (road half-widths of
+## the usual road from its center, as a car's offset) and from `near` to `far` along it
+## (0..1): near left, near right, far right, far left.
+static func road_patch(seg: Segment, left: float, right: float, near: float, far: float) -> PackedVector2Array:
+	return road_trapezoid(seg, Vector3(near, left, right), Vector3(far, left, right))
+
+
+## A patch of a segment's road on screen that can widen along it: `near` and `far` are each
+## (where along the segment 0..1, left, right; across as in road_patch). Near left, near
+## right, far right, far left.
+static func road_trapezoid(seg: Segment, near: Vector3, far: Vector3) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for at: Vector2 in [Vector2(near.x, near.y), Vector2(near.x, near.z), Vector2(far.x, far.z), Vector2(far.x, far.y)]:
+		var s := lerpf(seg.scale1, seg.scale2, at.x)
+		out.append(Vector2(lerpf(seg.s1.x, seg.s2.x, at.x) + s * at.y * Cfg.ROAD_WIDTH * Cfg.PROJ, lerpf(seg.s1.y, seg.s2.y, at.x)))
+	return out
 
 
 ## A segment's sprites, pickups and spans, and its cars too when `cars` (the segments
 ## nearer than the player draw theirs after it, with _draw_cars).
 func _draw_objects(seg: Segment, cars := true) -> void:
-	var tint := Color.WHITE.lerp(_fog_color, seg.fog)
+	var tint := _light.lerp(_fog_color, seg.fog)
 	for sp in seg.sprites:
 		var def: Dictionary = SpriteLibrary.defs.get(sp["id"], {})
 		if def.is_empty():
@@ -305,7 +449,7 @@ func _draw_objects(seg: Segment, cars := true) -> void:
 
 ## A segment's traffic and rivals.
 func _draw_cars(seg: Segment) -> void:
-	var tint := Color.WHITE.lerp(_fog_color, seg.fog)
+	var tint := _light.lerp(_fog_color, seg.fog)
 	for car in seg.cars:
 		var p: float = car.percent
 		var s := lerpf(seg.scale1, seg.scale2, p)
@@ -317,7 +461,7 @@ func _draw_cars(seg: Segment) -> void:
 		if car.flung > 0.0:
 			# Rammed: arcs up and off the road
 			cy -= sin((1.0 - car.flung / Tuning.v("traffic/fling_time")) * PI) * w * 0.9
-		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog, car.oncoming, Traffic.light_state(car))
+		CarSprites.draw_traffic(self, Vector2(cx, cy), w, car.sprite, tint, seg.fog, car.oncoming, Traffic.light_state(car), _glow)
 
 	for r: RivalCar in _rivals_in.get(seg.index, []):
 		_draw_rival(seg, r, tint)
@@ -426,7 +570,7 @@ func _draw_rival(seg: Segment, r: RivalCar, tint: Color) -> void:
 		steer = sin(r.crash_time * 20.0) * 2.0
 		lift += sin(r.crash_time / r.crash_length * PI) * w * 0.3
 	CarSprites.draw_player(self, r.strips, Vector2(roundf(cx), roundf(cy)), w, steer, r.braking,
-		roundf(lift), r.pitch, 1.0, tint)
+		roundf(lift), r.pitch, 1.0, tint, _glow * (1.0 - seg.fog))
 
 
 ## Where the ghost is on the track (its distance from the start line, wrapped).
@@ -448,10 +592,12 @@ func _draw_ghost(seg: Segment) -> void:
 
 
 func _draw_player() -> void:
+	if not CameraView.car_shown(view):
+		return
 	var p := player
-	var s := camera_depth / Cfg.PLAYER_Z
-	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
-	var y := Cfg.HORIZON_Y + s * Tuning.v("camera/height") * Cfg.PROJ
+	var s := camera_depth / CameraView.distance(view)
+	var w := CameraView.car_width(view, camera_depth)
+	var y := CameraView.car_base(view, camera_depth).y
 	var lift := p.air_height * s * Cfg.PROJ
 	var steer := p.shown_steer()
 	if p.crash_time > 0.0:
@@ -465,7 +611,7 @@ func _draw_player() -> void:
 	if p.ghost_time > 0.0:
 		alpha = ghost_alpha(p.ghost_time, time, flash)
 	CarSprites.draw_player(self, player_strips, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking,
-		roundf(lift), p.pitch, alpha)
+		roundf(lift), p.pitch, alpha, _light, _glow)
 
 
 ## The ghosted player's see-through alpha: it blinks brighter in its last second, by as much

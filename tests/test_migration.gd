@@ -269,6 +269,55 @@ func test_settings_v10_to_v11_adds_rumble() -> void:
 	_clean()
 
 
+func test_settings_v11_to_v12_adds_whats_new_and_the_co_pilot() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v11.cfg")
+	eq(Settings.migrate(cfg), 11, "from version 11")
+	eq([CfgVersion.of(cfg), cfg.get_value("news", "seen"), cfg.get_value("play", "co_pilot")], [Settings.VERSION, "", false],
+		"migrated on: no notes seen, so this build's show; the co-pilot off")
+	_clean()
+	_load_settings("settings_v11.cfg")
+	eq([Settings.whats_new_seen, Settings.had_file, Settings.co_pilot], ["", true, false],
+		"v11 loads, an install that ran before, steering itself")
+	eq([Settings.rumble, Settings.reduce_motion, Settings.key_steer_in], [6, true, 1], "the rest as saved")
+	Settings.whats_new_seen = "0.5.0"
+	Settings.co_pilot = true
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.whats_new_seen, Settings.co_pilot], [Settings.VERSION, "0.5.0", true],
+		"saved and loaded back")
+	Settings.reset()
+	eq(Settings.whats_new_seen, "0.5.0", "resetting the options keeps it seen")
+	_clean()
+	eq([Settings.whats_new_seen, Settings.had_file], ["", false], "no file: none seen, a fresh install")
+
+
+func test_settings_v12_loads() -> void:
+	_clean()
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v12.cfg")
+	eq(Settings.migrate(cfg), 12, "version 12: nothing to migrate")
+	_load_settings("settings_v12.cfg")
+	eq([Settings.loaded_version, Settings.whats_new_seen, Settings.co_pilot], [12, "0.4.0", true], "its keys as saved")
+	eq([Settings.rumble, Settings.reduce_motion, Settings.radio], [6, true, 2], "the rest as saved")
+
+
+func test_settings_v12_to_v13_adds_the_camera_view() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v12.cfg")
+	eq(Settings.migrate(cfg), 12, "from version 12")
+	eq([CfgVersion.of(cfg), cfg.get_value("display", "camera_view")], [Settings.VERSION, CameraView.View.CHASE_NEAR], "migrated on: chase near, as ever")
+	_clean()
+	_load_settings("settings_v12.cfg")
+	eq(Settings.camera_view, CameraView.View.CHASE_NEAR, "v12 loads in chase near")
+	eq([Settings.rumble, Settings.reduce_motion], [6, true], "the rest as saved")
+	Settings.camera_view = CameraView.View.BUMPER
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.camera_view], [Settings.VERSION, CameraView.View.BUMPER], "saved and loaded back")
+	_clean()
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")

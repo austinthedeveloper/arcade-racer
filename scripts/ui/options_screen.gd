@@ -11,7 +11,7 @@ extends MenuScreen
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
 	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP,
-	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE, RESTORE }
+	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE, RESTORE, CAMERA, CO_PILOT }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -19,10 +19,10 @@ const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
 const PAGE_ROWS := [
 	[Row.AUTO_GAS, Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.RESET_OPTIONS,
 		Row.RESET_SAVE, Row.RESTORE],
-	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS],
+	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS, Row.CAMERA],
 	[Row.MUSIC, Row.SFX, Row.RADIO],
 	[Row.CALIBRATE, Row.WHEEL, Row.REMAP, Row.KEY_STEER_IN, Row.KEY_STEER_OUT, Row.RUMBLE],
-	[Row.SCREEN_SHAKE, Row.FLASH, Row.REDUCE_MOTION, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.GEARS],
+	[Row.SCREEN_SHAKE, Row.FLASH, Row.REDUCE_MOTION, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.CO_PILOT, Row.GEARS],
 ]
 ## Shown on a page with no rows yet.
 const PAGE_EMPTY := ["", "", "", "", ""]
@@ -31,7 +31,7 @@ const SLOTS := 12
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
-	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE", "RESTORE BACKUP"]
+	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE", "RESTORE BACKUP", "CAMERA VIEW", "CO-PILOT"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -58,7 +58,7 @@ const HELP := [
 	"Choose the keys and buttons for nitro, pause and more, on each device.",
 	"Wheel range, steering lock, deadzone and linearity, for each wheel.",
 	"Back to %s.",
-	"The station races start on, or a different one each race. M changes it while you drive.",
+	"The station races start on, or on SHUFFLE each stage's own. M changes it while you drive.",
 	"The announcer's words at the top of the screen.",
 	"Shift up and down yourself (E / Q, or buttons set in Remap) for a bit more top speed.",
 	"Keyboard: how fast a held steering key reaches full lock. Snappy is quick, smooth is gentle.",
@@ -66,10 +66,12 @@ const HELP := [
 	"No camera shake, nitro view stretch, rising and dipping scenery or rain streaks.",
 	"Gamepad rumble on crashes, bumps, landings, nitro and off the road. 0 turns it off.",
 	"Options, progress and wheel setups as they were before this version changed them.",
+	"Where the race is seen from: close behind, further back, or low on the bumper. V changes it while you drive.",
+	"Steers for you, in your lane and round every bend. Steer to change lanes.",
 ]
 ## The rows that show ON or OFF.
 const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES,
-	Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.SUBTITLES, Row.REDUCE_MOTION]
+	Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.SUBTITLES, Row.REDUCE_MOTION, Row.CO_PILOT]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
 const RESTORE_CONFIRM_HELP := "Select again to put the backups back. Any other key cancels."
 const NO_BACKUP_HELP := "No backups: nothing has been updated from an older version."
@@ -226,6 +228,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.flash = _step(s.flash, dir, s.EFFECT_STEPS + 1, wrap)
 		Row.UNITS:
 			s.units = _step(s.units, dir, s.Units.size(), wrap)
+		Row.CAMERA:
+			s.camera_view = _step(s.camera_view, dir, CameraView.View.size(), wrap)
 		Row.FULLSCREEN:
 			s.fullscreen = not s.fullscreen
 		Row.INTEGER_SCALE:
@@ -238,6 +242,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.steer_assist = not s.steer_assist
 		Row.BRAKE_ASSIST:
 			s.brake_assist = not s.brake_assist
+		Row.CO_PILOT:
+			s.co_pilot = not s.co_pilot
 		Row.SUBTITLES:
 			s.subtitles = not s.subtitles
 		Row.GEARS:
@@ -280,6 +286,8 @@ static func value_text(row: int) -> String:
 			return str(s.rumble)
 		Row.UNITS:
 			return s.UNIT_NAMES[s.units]
+		Row.CAMERA:
+			return CameraView.name_of(s.camera_view)
 		Row.FULLSCREEN:
 			return "FULLSCREEN" if s.fullscreen else "WINDOWED"
 		Row.GEARS:
@@ -315,6 +323,8 @@ static func toggled(row: int) -> bool:
 			return s.steer_assist
 		Row.BRAKE_ASSIST:
 			return s.brake_assist
+		Row.CO_PILOT:
+			return s.co_pilot
 		Row.SUBTITLES:
 			return s.subtitles
 		Row.REDUCE_MOTION:

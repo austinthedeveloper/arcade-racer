@@ -9,6 +9,8 @@ const BOULEVARD_WIDTH := 1.5  # the road's half-width downtown (Track.set_width)
 
 static func theme() -> Dictionary:
 	return {
+		"hour": 20.0,  # the time of day it is drawn at: sunset (Sundown, WS-16)
+		"headlights": true,  # a dark stage: pools of light ahead of the cars, tail lights aglow (WS-17)
 		"sky_top": Color("#24124a"),
 		"sky_bottom": Color("#f2875a"),
 		"fog": Color("#5b3f78"),
@@ -22,6 +24,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#34323e"), Color("#302e3a")],
 		"lane": Color("#f2f0f6"),
 		"clock": [42, 39, 34, 30],  # seconds on ARCADE: start, then each checkpoint (WS-11)
+		"station": "station_synthwave",  # the radio station SHUFFLE starts on here (Radio, PR-19)
 		"background": "res://assets/sprites/backgrounds/skyline_far.png",
 		"reflection": true,  # the near strip is the harbor reflecting the city: they move together (WS-14)
 		"specials": ["double_decker", "trolley", "news_truck", "taxi"],

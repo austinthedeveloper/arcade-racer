@@ -57,10 +57,11 @@ seamless; the engine loops are pitch-shifted, so a steady single-note recording 
 | `time_up` | sfx | no | The clock runs out |
 | `thunder` | sfx | no | A beat after a lightning flash, on a stage with lightning (Thunderhead) |
 | `radio_tune` | sfx | no | Changing radio station (in the race or on car select) |
-| `station_rock` | music | yes | 98.3 THE CANYON: rock, E minor, 144 bpm |
-| `station_synthwave` | music | yes | 104.7 NEON FM: synthwave, A minor, 100 bpm |
-| `station_funk` | music | yes | 92.1 SOUL STOP: funk, E, 104 bpm |
-| `station_techno` | music | yes | 107.9 PULSE: techno, F minor, 128 bpm |
+| `shutter` | sfx | no | The photo key (F12, or a button bound to PHOTO) saving a picture |
+| `station_rock` | music | yes | 98.3 THE CANYON: rock, E minor, 144 bpm. On SHUFFLE, Redrock, Timberline and Harvest start on it |
+| `station_synthwave` | music | yes | 104.7 NEON FM: synthwave, A minor, 100 bpm. Neon Strip and Skyline |
+| `station_funk` | music | yes | 92.1 SOUL STOP: funk, E, 104 bpm. Palm Coast and Bayou |
+| `station_techno` | music | yes | 107.9 PULSE: techno, F minor, 128 bpm. Thunderhead |
 
 ## The announcer
 

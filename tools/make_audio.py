@@ -961,6 +961,18 @@ def radio_tune():
     return shot(finish(out))
 
 
+def shutter():
+    """The photo key (PR-21): a camera shutter, the blades snapping open and shut a beat apart,
+    each a click of metal over a puff of air, and the mirror's soft thump under the first."""
+    out = silence(0.25)
+    for k, (at, pitch) in enumerate(((0.0, 1.0), (0.065, 0.82))):
+        click = modal([(3400.0 * pitch, 0.012, 1.0), (5200.0 * pitch, 0.008, 0.6), (7900.0 * pitch, 0.005, 0.3)], 0.05)
+        puff = decay(biquad(noise(int(0.05 * RATE)), "bandpass", 4200.0 * pitch, 0.9), 0.008)
+        add_at(out, mix((click, 1.0), (puff, 0.6)), int(at * RATE), 1.0 if k == 0 else 0.8)
+    add_at(out, decay(tone("sine", 140.0, 0.12, to=90.0), 0.02), 0, 0.5)
+    return shot(finish(trim(reverb(out, 0.15, 0.6, 0.15))))
+
+
 # --- The announcer (Announcer.LINES, read from scripts/audio/announcer.gd) ---
 #
 # Not words: patter in each line's rhythm, the way a cartoon character talks. Each
@@ -1089,6 +1101,7 @@ FILES = {
     "music/station_synthwave.wav": at_music_rate(station_synthwave),
     "music/station_funk.wav": at_music_rate(station_funk),
     "music/station_techno.wav": at_music_rate(station_techno),
+    "sfx/shutter.wav": shutter,  # after the music, so adding it moved only the announcer's lines
 }
 
 

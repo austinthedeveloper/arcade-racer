@@ -9,8 +9,10 @@ extends Node
 signal devices_changed
 ## The joypad driving (last_active_device) was unplugged; the race pauses (WH-7).
 signal driver_unplugged(guid: String, joy_name: String, wheel: bool)
-## That joypad is back (by its GUID, whatever device id it gets), with the same profile.
-signal driver_replugged(guid: String)
+## A joypad plugged in while that one is gone (WH-12): it drives now. `same` when it's the one
+## that went (by its GUID, whatever device id it gets, with the same profile); otherwise a
+## different device came back in its place, with its own profile.
+signal driver_replugged(guid: String, joy_name: String, wheel: bool, same: bool)
 
 const AXIS_COUNT := 10
 const BUTTON_COUNT := 24
@@ -48,7 +50,7 @@ var _parked: Dictionary = {}  # guid -> an unplugged joypad's unsaved profile, f
 var _kb_steer := 0.0
 var _pad_steer: Dictionary = {}
 var _prev := {"nitro": false, "pause": false, "restart": false, "confirm": false, "horn": false, "radio": false,
-	"shift_up": false, "shift_down": false}
+	"shift_up": false, "shift_down": false, "view": false, "photo": false}
 var _prev_menu := {"confirm": false, "back": false}
 
 
@@ -71,7 +73,7 @@ func _physics_process(dt: float) -> void:
 	var throttle := 0.0
 	var brake := 0.0
 	var down := {"nitro": false, "pause": false, "restart": false, "confirm": false, "horn": false, "radio": false,
-		"shift_up": false, "shift_down": false}
+		"shift_up": false, "shift_down": false, "view": false, "photo": false}
 
 	# Keyboard: digital steering ramps in, and snaps back faster than it ramps (key_steer)
 	var kb_target := Input.get_action_strength("steer_right") - Input.get_action_strength("steer_left")
@@ -85,6 +87,8 @@ func _physics_process(dt: float) -> void:
 	down["confirm"] = Input.is_action_pressed("confirm")
 	down["horn"] = Input.is_action_pressed("horn")
 	down["radio"] = Input.is_action_pressed("radio")
+	down["view"] = Input.is_action_pressed("view")
+	down["photo"] = Input.is_action_pressed("photo")
 	down["shift_up"] = Input.is_action_pressed("shift_up")
 	down["shift_down"] = Input.is_action_pressed("shift_down")
 	if kb_target != 0.0 or throttle > 0.0 or brake > 0.0:
@@ -123,6 +127,8 @@ func _physics_process(dt: float) -> void:
 	state.confirm_pressed = down["confirm"] and not _prev["confirm"]
 	state.horn = down["horn"]
 	state.radio_pressed = down["radio"] and not _prev["radio"]
+	state.view_pressed = down["view"] and not _prev["view"]
+	state.photo_pressed = down["photo"] and not _prev["photo"]
 	state.shift_up_pressed = down["shift_up"] and not _prev["shift_up"]
 	state.shift_down_pressed = down["shift_down"] and not _prev["shift_down"]
 	_prev = down
@@ -188,6 +194,8 @@ func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
 		"pause": prof.pressed("pause", device),
 		"horn": prof.pressed("horn", device),
 		"radio": prof.pressed("radio", device),
+		"view": prof.pressed("view", device),
+		"photo": prof.pressed("photo", device),
 		"shift_up": prof.pressed("shift_up", device),
 		"shift_down": prof.pressed("shift_down", device),
 		"restart": Input.is_joy_button_pressed(device, JOY_BUTTON_BACK),
@@ -226,6 +234,8 @@ func _read_wheel(device: int, prof: DeviceProfile) -> Dictionary:
 		"pause": prof.pressed("pause", device),
 		"horn": prof.pressed("horn", device),
 		"radio": prof.pressed("radio", device),
+		"view": prof.pressed("view", device),
+		"photo": prof.pressed("photo", device),
 		"shift_up": prof.pressed("shift_up", device),
 		"shift_down": prof.pressed("shift_down", device),
 		"active": absf(steer) > 0.05 or throttle > 0.05 or brake > 0.05 or nitro,
@@ -434,7 +444,8 @@ func _on_joy_connection_changed(device: int, connected: bool) -> void:
 
 
 ## A joypad plugged in or unplugged. Unplugging the one driving says so (driver_unplugged);
-## plugging it back in, on any device id, says that (driver_replugged) and lets it drive again
+## plugging it, or any other joypad, back in, on any device id, says that (driver_replugged,
+## WH-12) and lets it drive
 ## with the profile it had: a saved one by its GUID, an unsaved one kept for it here.
 func joy_changed(device: int, connected: bool, guid: String, joy_name: String) -> void:
 	var driving := last_active_device == device
@@ -457,16 +468,19 @@ func joy_changed(device: int, connected: bool, guid: String, joy_name: String) -
 		var p: DeviceProfile = _saved.get(guid, _parked.get(guid))
 		var wheel := p.kind == DeviceProfile.Kind.WHEEL if p != null else looks_like_wheel(joy_name)
 		driver_unplugged.emit(guid, joy_name, wheel)
-	elif connected and guid != "" and guid == unplugged_driver:
+	elif connected and guid != "" and unplugged_driver != "":
+		var same := guid == unplugged_driver
 		unplugged_driver = ""
 		last_active_device = device
-		driver_replugged.emit(guid)
+		var p: DeviceProfile = _saved.get(guid, _transient.get(device))
+		var wheel := p.kind == DeviceProfile.Kind.WHEEL if p != null else looks_like_wheel(joy_name)
+		driver_replugged.emit(guid, joy_name, wheel, same)
 
 
 # --- Keyboard actions ----------------------------------------------------------
 
 ## The fixed keys (DeviceProfile.KEYBOARD_FIXED); the remappable ones (nitro, pause, horn,
-## radio, shift_up and shift_down, and view, which has no effect in play yet) come from the
+## radio, shift_up and shift_down, and view, the camera view) come from the
 ## keyboard's bindings in apply_keyboard_bindings.
 func _register_actions() -> void:
 	for action: String in DeviceProfile.KEYBOARD_FIXED:

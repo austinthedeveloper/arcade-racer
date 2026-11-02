@@ -100,6 +100,83 @@ func test_wet_road_catches_the_sky() -> void:
 	eq(Weather.wet_color(road, sky, 0.0, 1.0), road, "dry")
 	eq(Weather.wet_color(road, sky, 0.35, 0.0), road, "under the car, as it is")
 	check(Weather.wet_color(road, sky, 0.35, 0.8).b > Weather.wet_color(road, sky, 0.35, 0.2).b, "more sky farther off")
+	# WS-13: a stronger sheen, a little gloss under the car
+	check(Weather.wet_color(road, sky, 0.35, 0.5, 1.6).b > Weather.wet_color(road, sky, 0.35, 0.5).b, "sheen: more sky")
+	check(Weather.wet_color(road, sky, 0.35, 0.0, 1.0, 0.2) != road, "gloss: some under the car")
+	eq(Weather.wet_color(road, sky, 1.0, 1.0, 3.0), sky, "never past the sky")
+
+
+## WS-13: the reflection rows, on the debug panel's WORLD page.
+func test_reflection_rows_are_tunable() -> void:
+	for key in ["world/wet_sheen", "world/wet_gloss", "world/reflect_alpha", "world/reflect_reach",
+			"world/reflect_stretch", "world/puddle_share", "world/puddle_glint", "world/puddle_reach"]:
+		check(Tuning.TABLE.has(key), key + " is a tuning row")
+		check(Tuning.keys_in("world").has(key), key + " on the WORLD page")
+	check(Tuning.v("world/wet_sheen") > 1.0, "a stronger sheen than before")
+	check(Tuning.v("world/reflect_alpha") > 0.0 and Tuning.v("world/puddle_share") > 0.0, "reflections and puddles on")
+
+
+## WS-13: a road point under the horizon shows the strip's point as far above it, drawn out
+## by the stretch; mirrored, the strip's other side.
+func test_reflections_mirror_on_the_horizon() -> void:
+	var horizon := 151.0
+	var strip := Rect2(-100.0, 51.0, 800.0, 200.0)  # 100 rows above the horizon, 100 below
+	var uv := Weather.reflect_uv(Vector2(300.0, horizon + 20.0), horizon, strip, 1.0)
+	near(uv.x, 0.5, 0.0001, "straight down: the same column")
+	near(uv.y, (horizon - 20.0 - 51.0) / 200.0, 0.0001, "as far above as below")
+	var streak := Weather.reflect_uv(Vector2(300.0, horizon + 20.0), horizon, strip, 2.0)
+	near(streak.y, (horizon - 10.0 - 51.0) / 200.0, 0.0001, "stretched: half as far up")
+	check(streak.y > uv.y, "a streak reaches down the road from nearer the horizon")
+	near(Weather.reflect_uv(Vector2(300.0, horizon + 20.0), horizon, strip, 1.0, true).x, 0.5, 0.0001, "mirrored, the middle stays")
+	near(Weather.reflect_uv(Vector2(100.0, horizon), horizon, strip, 1.0, true).x, 1.0 - 0.25, 0.0001, "mirrored, the other side")
+	var bottom := Weather.reflect_uv(Vector2(300.0, 2000.0), horizon, strip, 1.0)
+	check(bottom.y > 0.0 and bottom.y < 1.0, "never off the strip's top: no wrap")
+	# Strength: none dry or in the fog, more off at a low angle
+	eq(Weather.reflect_strength(0.5, 0.0, 0.5, 0.0), 0.0, "dry: none")
+	eq(Weather.reflect_strength(0.5, 0.35, 0.5, 1.0), 0.0, "in the fog: none")
+	check(Weather.reflect_strength(0.5, 0.35, 0.8, 0.0) > Weather.reflect_strength(0.5, 0.35, 0.1, 0.0), "stronger farther off")
+	check(Weather.reflect_strength(0.5, 0.35, 0.0, 0.0) > 0.0, "some under the car")
+
+
+## WS-13: puddles are a plain function of the segment, on the road, about the share asked for.
+func test_puddles() -> void:
+	var n := 0
+	for i in 1000:
+		var p := Weather.puddle(i, 0.3)
+		eq(p, Weather.puddle(i, 0.3), "the same segment, the same puddle")
+		if p == Vector4.ZERO:
+			continue
+		n += 1
+		check(absf(p.x) + p.y <= 1.0, "on the road")
+		check(p.z >= 0.0 and p.w <= 1.0 and p.z < p.w, "within its segment")
+	check(n > 220 and n < 380, "about the share (%d of 1000)" % n)
+	for i in 50:
+		eq(Weather.puddle(i, 0.0), Vector4.ZERO, "share 0: none")
+	var glint := Weather.puddle_color(Color("#6d6f96"), 0.65, 0.0, 0.0, 3)
+	check(glint.v > Color("#6d6f96").v and glint.a > 0.0, "a highlight brighter than the sky")
+	eq(Weather.puddle_color(Color("#6d6f96"), 0.65, 1.0, 0.0, 3).a, 0.0, "gone in the fog")
+
+
+## WS-13: a puddle's patch sits on its segment's road, by its offset; the reflections read the
+## stage's strips, none without a background.
+func test_puddle_patch_and_reflected_strips() -> void:
+	var seg := Segment.new()
+	seg.s1 = Vector2(320.0, 300.0)
+	seg.s2 = Vector2(330.0, 280.0)
+	seg.scale1 = 0.001
+	seg.scale2 = 0.0008
+	var pts := RoadRenderer.road_patch(seg, -0.5, 0.5, 0.0, 1.0)
+	near(pts[0].x, 320.0 - 0.001 * 0.5 * Cfg.ROAD_WIDTH * Cfg.PROJ, 0.001, "near left")
+	near(pts[1].x, 320.0 + 0.001 * 0.5 * Cfg.ROAD_WIDTH * Cfg.PROJ, 0.001, "near right")
+	eq(pts[2].y, 280.0, "far edge")
+	eq(RoadRenderer.reflect_layers(null), [], "no background: nothing to reflect")
+	var bg := Background.new()
+	bg.set_theme(Thunderhead.theme())
+	var layers := RoadRenderer.reflect_layers(bg)
+	eq(layers.size(), RoadRenderer.REFLECT_LAYERS.size(), "the sky and the far strip")
+	var rect: Rect2 = layers[0][1]
+	near(rect.end.y, Background.layer_bottom("sky", 0.0, Thunderhead.theme()), 0.001, "where the sky strip is drawn")
+	bg.free()
 
 
 func test_fx_layer_runs_the_storm() -> void:

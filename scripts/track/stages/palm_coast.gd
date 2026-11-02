@@ -8,6 +8,7 @@ const BOULEVARD_WIDTH := 1.5  # the road's half-width through town (Track.set_wi
 
 static func theme() -> Dictionary:
 	return {
+		"hour": 15.0,  # the time of day it is drawn at: afternoon (Sundown, WS-16)
 		"sky_top": Color("#2b9fd8"),
 		"sky_bottom": Color("#ffd98a"),
 		"fog": Color("#f3dcaa"),
@@ -19,6 +20,7 @@ static func theme() -> Dictionary:
 		"road": [Color("#6e6e79"), Color("#686873")],
 		"lane": Color("#f0f0f0"),
 		"clock": [42, 39, 36, 27],  # seconds on ARCADE: start, then each checkpoint (WS-11)
+		"station": "station_funk",  # the radio station SHUFFLE starts on here (Radio, PR-19)
 		"background": "res://assets/sprites/backgrounds/palm_coast_far.png",
 		"specials": ["surf_van", "golf_cart", "ice_cream_truck"],
 	}

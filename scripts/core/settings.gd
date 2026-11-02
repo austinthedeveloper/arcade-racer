@@ -27,7 +27,10 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 9: [controls] key_steer_in, key_steer_out (missing: STANDARD, as every earlier build).
 ## 10: [accessibility] reduce_motion (missing: off).
 ## 11: [controls] rumble (missing: as designed, EFFECT_STEPS).
-const VERSION := 11
+## 12: [news] seen, the last version whose notes the title showed (WhatsNew; missing: none,
+## so an update from an older build shows its notes); [play] co_pilot (missing: off).
+## 13: [display] camera_view (missing: CameraView.View.CHASE_NEAR, the only view before).
+const VERSION := 13
 ## Keyboard steering feel (AC-11): how fast a held key turns in and a released one comes back,
 ## snappy to smooth. Each multiplies its rate (shares of full lock per second); STANDARD is
 ## the rate every earlier build had.
@@ -50,6 +53,7 @@ var difficulty: int = Difficulty.Level.NORMAL
 var carry_time := false  # Grand Tour: clock left at a finish carries into the next stage
 var steer_assist := false  # Assists: keyboard and gamepad steering pulls toward the lane
 var brake_assist := false  # Assists: brakes into corners taken too fast
+var co_pilot := false  # Assists.co_pilot (AC-14): the steering done for you, nudged by the player's
 var manual_gears := false  # the player shifts (PlayerCar.shift); automatic by default
 var key_steer_in: int = STEER_FEEL_STANDARD  # into STEER_FEEL_NAMES: a held key's turn in
 var key_steer_out: int = STEER_FEEL_STANDARD  # and a released key's return to center
@@ -66,14 +70,18 @@ var subtitles := true  # the announcer's words on screen (Announcer)
 ## rain streaks, whatever the screen shake option says (shake_amount, motion_reduced).
 var reduce_motion := false
 var units: int = Units.MPH  # the speedometer's
+var camera_view: int = CameraView.View.CHASE_NEAR  # the race's camera (WS-15): the VIEW button steps it
 var fullscreen := false  # windowed by default
 var integer_scale := false  # whole-number scaling of the 640x360 view (borders round it)
 var vsync := true
 var scanlines := false  # a CRT-style overlay (SCANLINE_SHADER)
+## The last version whose notes the title showed (WhatsNew, PR-17); "" for none yet.
+var whats_new_seen := ""
 ## The overlay apply_display() shows or hides; made on first use.
 var scanline_layer: CanvasLayer
 ## The version of the file last loaded (VERSION when there was no file).
 var loaded_version := VERSION
+var had_file := false  # the last load found a file (a game that ran before: WhatsNew)
 
 
 func _ready() -> void:
@@ -82,7 +90,7 @@ func _ready() -> void:
 	load_settings()
 
 
-## Back to the defaults (not saved).
+## Back to the defaults (not saved). What's new stays seen (whats_new_seen is not an option).
 func reset() -> void:
 	auto_gas = false
 	traffic = Traffic.NORMAL
@@ -92,6 +100,7 @@ func reset() -> void:
 	carry_time = false
 	steer_assist = false
 	brake_assist = false
+	co_pilot = false
 	manual_gears = false
 	key_steer_in = STEER_FEEL_STANDARD
 	key_steer_out = STEER_FEEL_STANDARD
@@ -106,6 +115,7 @@ func reset() -> void:
 	subtitles = true
 	reduce_motion = false
 	units = Units.MPH
+	camera_view = CameraView.View.CHASE_NEAR
 	fullscreen = false
 	integer_scale = false
 	vsync = true
@@ -116,9 +126,11 @@ func reset() -> void:
 
 func load_settings() -> void:
 	reset()
+	whats_new_seen = ""
 	loaded_version = VERSION
 	var cfg := ConfigFile.new()
-	if cfg.load(path) == OK:
+	had_file = cfg.load(path) == OK
+	if had_file:
 		loaded_version = migrate(cfg)
 		auto_gas = bool(cfg.get_value("play", "auto_gas", auto_gas))
 		traffic = clampi(int(cfg.get_value("play", "traffic", traffic)), 0, Traffic.size() - 1)
@@ -128,6 +140,7 @@ func load_settings() -> void:
 		carry_time = bool(cfg.get_value("play", "carry_time", carry_time))
 		steer_assist = bool(cfg.get_value("play", "steer_assist", steer_assist))
 		brake_assist = bool(cfg.get_value("play", "brake_assist", brake_assist))
+		co_pilot = bool(cfg.get_value("play", "co_pilot", co_pilot))
 		manual_gears = bool(cfg.get_value("play", "manual_gears", manual_gears))
 		key_steer_in = clampi(int(cfg.get_value("controls", "key_steer_in", key_steer_in)), 0, STEER_FEEL_NAMES.size() - 1)
 		key_steer_out = clampi(int(cfg.get_value("controls", "key_steer_out", key_steer_out)), 0, STEER_FEEL_NAMES.size() - 1)
@@ -142,17 +155,19 @@ func load_settings() -> void:
 		subtitles = bool(cfg.get_value("accessibility", "subtitles", subtitles))
 		reduce_motion = bool(cfg.get_value("accessibility", "reduce_motion", reduce_motion))
 		units = clampi(int(cfg.get_value("display", "units", units)), 0, Units.size() - 1)
+		camera_view = clampi(int(cfg.get_value("display", "camera_view", camera_view)), 0, CameraView.View.size() - 1)
 		fullscreen = bool(cfg.get_value("display", "fullscreen", fullscreen))
 		integer_scale = bool(cfg.get_value("display", "integer_scale", integer_scale))
 		vsync = bool(cfg.get_value("display", "vsync", vsync))
 		scanlines = bool(cfg.get_value("display", "scanlines", scanlines))
+		whats_new_seen = str(cfg.get_value("news", "seen", whats_new_seen))
 	apply_volumes()
 	apply_display()
 
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11, _v11_to_v12, _v12_to_v13])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -218,6 +233,18 @@ static func _v10_to_v11(cfg: ConfigFile) -> void:
 	cfg.set_value("controls", "rumble", EFFECT_STEPS)
 
 
+## Version 12 added what the title's what's new last showed: nothing, so the first start on
+## this build after an older one shows its notes. And the co-pilot, off as before.
+static func _v11_to_v12(cfg: ConfigFile) -> void:
+	cfg.set_value("news", "seen", "")
+	cfg.set_value("play", "co_pilot", false)
+
+
+## Version 13 added the camera view (WS-15): chase near, the one view every earlier build had.
+static func _v12_to_v13(cfg: ConfigFile) -> void:
+	cfg.set_value("display", "camera_view", CameraView.View.CHASE_NEAR)
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -230,6 +257,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("play", "carry_time", carry_time)
 	cfg.set_value("play", "steer_assist", steer_assist)
 	cfg.set_value("play", "brake_assist", brake_assist)
+	cfg.set_value("play", "co_pilot", co_pilot)
 	cfg.set_value("play", "manual_gears", manual_gears)
 	cfg.set_value("controls", "key_steer_in", key_steer_in)
 	cfg.set_value("controls", "key_steer_out", key_steer_out)
@@ -244,10 +272,12 @@ func save(fresh := false) -> void:
 	cfg.set_value("accessibility", "subtitles", subtitles)
 	cfg.set_value("accessibility", "reduce_motion", reduce_motion)
 	cfg.set_value("display", "units", units)
+	cfg.set_value("display", "camera_view", camera_view)
 	cfg.set_value("display", "fullscreen", fullscreen)
 	cfg.set_value("display", "integer_scale", integer_scale)
 	cfg.set_value("display", "vsync", vsync)
 	cfg.set_value("display", "scanlines", scanlines)
+	cfg.set_value("news", "seen", whats_new_seen)
 	CfgVersion.backup_if_older(path, VERSION)  # (EQ-21)
 	cfg.save(path)
 	apply_volumes()

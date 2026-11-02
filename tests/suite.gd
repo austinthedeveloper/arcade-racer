@@ -4,7 +4,8 @@ extends RefCounted
 
 ## This run's own scratch folder (EQ-18): parallel runs in other worktrees share user://,
 ## so every file a test writes goes under the process id. begin_run makes it, end_run removes it.
-static var run_dir: String = "user://test_runs/%d/" % OS.get_process_id()
+const TEST_RUNS := "user://test_runs/"
+static var run_dir: String = TEST_RUNS + "%d/" % OS.get_process_id()
 static var SCRATCH_PROFILES: String = scratch("input_profiles.cfg")
 static var SCRATCH_SETTINGS: String = scratch("settings.cfg")
 static var SCRATCH_SAVE: String = scratch("save.cfg")
@@ -32,8 +33,13 @@ static func end_run() -> void:
 	remove_tree(run_dir)
 
 
-## Deletes a user:// folder and everything in it.
+## Deletes a folder under TEST_RUNS and everything in it. Any other path is refused: when a
+## script in the runner's compile chain fails to compile, the statics above can be empty, and
+## an empty path is the project folder.
 static func remove_tree(dir: String) -> void:
+	if not is_test_run_path(dir):
+		push_error("remove_tree refused a path outside %s: '%s'" % [TEST_RUNS, dir])
+		return
 	if not DirAccess.dir_exists_absolute(dir):
 		return
 	for d in DirAccess.get_directories_at(dir):
@@ -41,6 +47,11 @@ static func remove_tree(dir: String) -> void:
 	for f in DirAccess.get_files_at(dir):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(dir.path_join(f)))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir))
+
+
+## Whether `dir` is strictly inside TEST_RUNS, with no way back out of it.
+static func is_test_run_path(dir: String) -> bool:
+	return dir.begins_with(TEST_RUNS) and dir.length() > TEST_RUNS.length() and not ".." in dir
 
 
 ## Points the InputRouter at an empty profile file of the tests' own.
@@ -81,6 +92,12 @@ static func use_scratch_ghosts() -> void:
 	if d != null:
 		for f in d.get_files():
 			d.remove(f)
+
+
+## Installs the crash log (CrashLog, EQ-20) into this run's scratch folder before any main
+## scene does, so the game's own install keeps out of the player's user://logs/.
+static func use_scratch_logs() -> void:
+	CrashLog.install(scratch("logs/"))
 
 
 ## A straight, flat track `segments` long, for driving tests.
