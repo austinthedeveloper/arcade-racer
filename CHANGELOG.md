@@ -21,6 +21,15 @@ the release workflow puts that section at the top of the GitHub Release notes
   applies at once (the HUD says TUNED), save and load presets, and slow the race down, jump
   along the stage, give yourself a power-up, set the clock or send a wave of traffic. Changes
   are kept for the next run and logged.
+- Keyboard steering feel (AC-11): Options > Controls sets how fast a held steering key reaches
+  full lock and how fast the steering comes back when you let go, each from SNAPPIEST to
+  SMOOTHEST. STANDARD steers exactly as before.
+- Reduce motion (AC-13): one switch in Options > Accessibility turns off the camera shake, the
+  nitro view stretch, the scenery rising and dipping with the hills, and the rain streaks.
+- Auto-pause (AC-15): switching to another window, or sending a phone browser tab to the
+  background, pauses the race. Online races carry on, as they always do.
+- Gamepad rumble (WH-13): the pad you drive with rumbles on crashes, bumps, landings, nitro and
+  off the road. Options > Controls > RUMBLE sets how strongly, 0 for none.
 - Medals (MP-9): every stage has bronze, silver and gold times, a little tighter on Hard and a
   little looser on Easy. Your best time's medal hangs on each postcard on the stage map, stage
   select shows the chosen stage's times beside its postcard, and the results show the medal a
@@ -36,6 +45,11 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 - Rivals keep to their own side of an undivided road and pass on the other side only with
   room; a rival stuck on the tail of a car pulls out to pass it.
+- Rain stops under cover (WS-12): on Thunderhead the rain lets up as you pass under an
+  overpass, and thunder heard from under one (or in any tunnel or covered bridge) comes
+  muffled and quieter.
+- Skyline's harbor (WS-14): the city's lights reflected in the water now stay right under the
+  towers they reflect through every bend and hill, instead of sliding off to one side.
 
 ## [0.3.1] - 2026-11-01
 
