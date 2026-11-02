@@ -48,11 +48,15 @@ const PALETTE := {
 	"slip_boost": Color("#fff2a8"),
 	"tach": Color("#5dff8a"),
 	"tach_red": Color("#ff3a3a"),
+	"net_good": Color("#5dff8a"),
+	"net_fair": Color("#ffb21a"),
+	"net_poor": Color("#c81e28"),
+	"net_unknown": Color("#8a8a9a"),
 }
 const MUST_DIFFER := [
 	["clock", "clock_low"], ["panel", "lead_panel"], ["lead_panel", "lead_text"], ["you", "rival"],
 	["rival", "ghost"], ["nitro_lit", "nitro_spent"], ["ahead", "behind"], ["slip_meter", "slip_boost"],
-	["tach", "tach_red"],
+	["tach", "tach_red"], ["net_good", "net_poor"], ["net_fair", "net_poor"],
 ]
 ## Simulated luminance contrast every MUST_DIFFER pair keeps (1 is none; text on a page
 ## asks 4.5, a pair of states on one gauge much less).
@@ -141,6 +145,8 @@ func _draw() -> void:
 		pass  # the results screen has the place, time, tally and standings
 	elif ended and race.tour and (race.after == race.After.TOUR_DONE or race.after == race.After.TOUR_OVER):
 		_tour_standings(Vector2(w / 2.0, 182), "FINAL STANDINGS" if race.after == race.After.TOUR_DONE else "TOUR OVER")
+	elif watching_shown():
+		_draw_watch(Vector2(w / 2.0, 150))
 	elif race.state == race.State.FINISHED:
 		var end_y := _score_tally(Vector2(w / 2.0, 182))
 		if race.tour and race.tour_state.points.has(Tour.YOU):
@@ -155,10 +161,58 @@ func _draw() -> void:
 	if race.counting_down():
 		_text_centered(Vector2(w / 2.0, 130), str(ceili(race.countdown)), 64, Color("#ffd23a"))
 		StageIntro.draw(self, race.countdown_elapsed(), lay["intro"], intro_text())
-	if not race.callouts.current.is_empty() and not race.results.visible:
+	if not race.callouts.current.is_empty() and not race.results.visible and not watching_shown():
 		_draw_callout(race.callouts.current, Vector2(w / 2.0, CALLOUT_Y))
 	if Settings.subtitles:
 		_draw_subtitle(lay["subtitle"], race.audio.announcer.subtitle())
+	if race.notice_time > 0.0:
+		_draw_notice(Vector2(w / 2.0, 72), race.notice, notice_alpha(race.notice_time))
+
+
+## The connection dot (ON-12), top right of the time panel: green, amber or red for the
+## relay's round trip, with the milliseconds beside it (not the color alone); a grey ring
+## before the first comes back. Red is a ring too, blinking where flashing is allowed.
+func _draw_net(c: Vector2, ms: float) -> void:
+	var q := OnlineSession.quality(ms)
+	var col := net_color(q)
+	draw_circle(c, 4.5, Color(0, 0, 0, 0.8))
+	if q == OnlineSession.Quality.UNKNOWN:
+		draw_arc(c, 3.0, 0.0, TAU, 12, col, 1.5)
+		return
+	if q == OnlineSession.Quality.POOR and int(time * 3.0) % 2 == 0 and Settings.flash_amount(1.0) > 0.5:
+		draw_arc(c, 3.0, 0.0, TAU, 12, col, 1.5)
+	else:
+		draw_circle(c, 3.5, col)
+	var label := "%d" % roundi(ms)
+	_text(Vector2(c.x - 7 - UiText.width(label, 8), c.y + 3), label, 8, Color(1, 1, 1, 0.75))
+
+
+## The dot's color for a quality (OnlineSession.Quality).
+static func net_color(q: int) -> Color:
+	match q:
+		OnlineSession.Quality.GOOD:
+			return PALETTE["net_good"]
+		OnlineSession.Quality.FAIR:
+			return PALETTE["net_fair"]
+		OnlineSession.Quality.POOR:
+			return PALETTE["net_poor"]
+	return PALETTE["net_unknown"]
+
+
+## An online notice (ON-11), "P2 DROPPED OUT": a dark pill with a red dot, under the route bar
+## and the subtitle, fading out over its last half second.
+func _draw_notice(center: Vector2, text: String, a: float) -> void:
+	var tw := UiText.width(text, 11)
+	var r := Rect2(center.x - tw / 2.0 - 18, center.y - 10, tw + 30, 20)
+	draw_rect(r, Color(0.04, 0.03, 0.1, 0.8 * a))
+	draw_rect(Rect2(r.position.x, r.position.y, 2, r.size.y), Color(PALETTE["behind"], a))
+	draw_circle(Vector2(r.position.x + 10, center.y), 3.5, Color(PALETTE["behind"], a))
+	_text(Vector2(r.position.x + 20, center.y + 4), text, 11, Color(1, 1, 1, a))
+
+
+## A notice's alpha with `left` seconds to go: whole, then fading over the last half second.
+static func notice_alpha(left: float) -> float:
+	return clampf(left / 0.5, 0.0, 1.0)
 
 
 ## The stage intro card's text (PR-16) for this race.
@@ -356,6 +410,8 @@ func _draw_timer(r: Rect2) -> void:
 		_text(r.position + Vector2(6, 36), clock_text(race.race_time), 20, Color.WHITE)
 		var tag: String = "FREE DRIVE" if race.free_drive else "ONLINE  " + race.online.link.room
 		_text(r.position + Vector2(6, 52), tag, 9, Color(1, 1, 1, 0.8))
+		if race.online != null:
+			_draw_net(Vector2(r.end.x - 9, r.position.y + 9), race.online.round_trip_ms())
 	elif race.time_attack:
 		_text(r.position + Vector2(6, 34), clock_text(race.race_time), 20, Color.WHITE)
 		var best: Ghost = race.ghost
@@ -622,6 +678,41 @@ static func unlock_line(ids: Array[String]) -> String:
 ## Where a racer `distance` along the stage sits on the progress bar.
 static func progress_x(bar: Rect2, distance: float, finish_distance: float) -> float:
 	return bar.position.x + bar.size.x * clampf(distance / finish_distance, 0.0, 1.0)
+
+
+## Whether the live standings are up (ON-10): watching, once the finish's own moment is over.
+func watching_shown() -> bool:
+	return race.state == race.State.FINISHED and race.watching != null and race.finish_age >= race.RESULTS_AFTER
+
+
+## The live standings while watching after the finish online (ON-10): "WATCHING P2" over
+## the field in race order, times for those in and RACING for the rest, the car the camera
+## follows marked.
+func _draw_watch(top: Vector2) -> void:
+	var watched: RivalCar = race.watching
+	var rows := watch_rows(race)
+	var panel := Rect2(top.x - 110, top.y - 14, 220, 34 + 13 * rows.size())
+	draw_rect(panel, Color(0, 0, 0, 0.6))
+	draw_rect(Rect2(panel.position, Vector2(panel.size.x, 2)), Color(GOLD, 0.8))
+	_text_centered(Vector2(top.x, top.y), "WATCHING  " + watched.profile.driver, 11, GOLD)
+	for i in rows.size():
+		var r: Dictionary = rows[i]
+		var y := top.y + 16 + i * 13
+		var on: bool = not r["you"] and r["name"] == watched.profile.driver
+		var col := Color("#5dff8a") if r["you"] else (GOLD if on else Color.WHITE)
+		if on:
+			draw_colored_polygon(PackedVector2Array([Vector2(panel.position.x + 6, y - 7), Vector2(panel.position.x + 11, y - 4),
+				Vector2(panel.position.x + 6, y - 1)]), GOLD)
+		_text(Vector2(panel.position.x + 14, y), "%d  %s" % [r["place"], r["name"]], 10, col)
+		var t: float = r["time"]
+		var tt := clock_text(t) if t >= 0.0 else "RACING"
+		_text(Vector2(panel.end.x - 10 - UiText.width(tt, 10), y), tt, 10, col if t >= 0.0 else Color(1, 1, 1, 0.6))
+	_text_centered(Vector2(top.x, panel.end.y - 6), "Enter: results", 8, Color(1, 1, 1, 0.6))
+
+
+## The live standings' rows (ResultsScreen.rows) for race `r` (race.gd): everyone in race order.
+static func watch_rows(r: Node) -> Array[Dictionary]:
+	return ResultsScreen.rows(r.rivals.standings(r.player, r.player_finish), r.player, r.player_finish, r.car_id)
 
 
 ## The tour's standings, most points first, the player picked out.

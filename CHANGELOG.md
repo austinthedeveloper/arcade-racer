@@ -57,6 +57,23 @@ the release workflow puts that section at the top of the GitHub Release notes
   list and a save of their own (progress, best times, stats, Time Attack ghosts). PROFILE on
   the title picks who is driving or makes a new driver; the title shows who it is. Your save
   so far becomes the first driver's.
+- Rematch online (ON-9): after an online race the room stays open. The results show READY
+  and a count of who's in ("READY 1 / 2"); the host picks the next stage there with up and
+  down, and the next race starts as soon as everyone is ready. The host can also START NOW
+  without waiting for the rest.
+- Watch after the line (ON-10): finish an online race ahead of someone and the camera follows
+  the leader of those still racing, with live standings ("WATCHING P2"), until the last car is
+  in; then the results come up. Enter brings them up sooner.
+- Connection quality (ON-12): a dot by the clock in an online race shows the round trip
+  through the server, green under 150 ms, amber under 300 ms and red beyond (or when the room
+  goes quiet), with the milliseconds beside it. If the server ever offers regions, ONLINE
+  shows a SERVER picker under HOST and JOIN; today's server has one region, so it doesn't.
+
+### Changed
+
+- Disconnects online (ON-11): a player who drops out shows a notice ("P2 DROPPED OUT") and
+  their car fades off the road instead of vanishing. The host leaving (or your connection
+  going) now ends the race there with the results so far, instead of leaving you racing alone.
 
 ## [0.4.0] - 2026-11-02
 

@@ -7,10 +7,18 @@ extends RefCounted
 ## the menus and in the race; the online screen and the race read what came in.
 ##
 ## Messages (Arrays, the op first):
-##   guest to host: [HELLO, car], [CAR, state...], [READY], [FIN, time]
+##   guest to host: [HELLO, car], [CAR, state...], [READY], [FIN, time], [AGAIN, on]
 ##   host to guests: [LOBBY, stage, mirror, players], [START, stage, mirror, players], [GO],
-##     [CAR, slot, state...], [FIN, slot, time], [GONE, slot], [NOPE, reason]
-## Slots: the host is 0, guest n is n + 1. A car's state is CarState.
+##     [CAR, slot, state...], [FIN, slot, time], [GONE, slot], [NOPE, reason], [AGAIN, slots]
+##   both ways: [PING, sent], answered [PONG, sent] (the round trip through the relay, ON-12)
+## Slots: the host is 0, guest n is n + 1. A car's state is CarState. A game ignores an op it
+## doesn't know, so a newer one's messages don't trouble an older one.
+##
+## The room's phases: DIALING, then LOBBY until the host starts, LOADING until every game has
+## the stage (or READY_WAIT), RACING from the GO. After a race the room stays open (ON-9): from
+## the results each player says AGAIN (ready), the host picks the next stage, and once everyone
+## in the room is ready the host starts it (LOADING again). The host can also start it without
+## waiting for the rest (start).
 
 enum Phase { DIALING, LOBBY, LOADING, RACING, CLOSED }
 
@@ -30,6 +38,18 @@ const CAR := "CAR"
 const FIN := "FIN"
 const GONE := "GONE"
 const NOPE := "NOPE"
+const AGAIN := "AGAIN"
+const PING := "PING"
+const PONG := "PONG"
+## Connection quality (ON-12): a PING every PING_EVERY seconds each way; the round trip shown
+## is the worst of the room's (the host's to each guest, a guest's to the host), and one not
+## heard from in STALE seconds counts as at least that slow. Under GOOD_MS green, under
+## FAIR_MS amber, else red (not gameplay numbers, so not Tuning's).
+const PING_EVERY := 1.0
+const STALE := 3.0
+const GOOD_MS := 150
+const FAIR_MS := 300
+enum Quality { UNKNOWN, GOOD, FAIR, POOR }
 ## Where each slot starts, across the road (times Track.side): four abreast, clear of contact.
 const GRID_X: Array[float] = [-0.25, 0.25, -0.75, 0.75]
 
@@ -48,10 +68,17 @@ var racers: Array[int] = []  # the slots in this race, from its START
 var cars := {}  # slot -> [CarState Array, seconds since it came in]: the others' latest
 var finishes := {}  # slot -> race seconds that player finished in
 var gone: Array[int] = []  # slots that left during this race (the race drops their cars)
+## Slots ready for the next race (ON-9), said from the results: the host's word, on a guest.
+var again := {}
 
 var _ticks := 0
 var _loaded := {}  # the host's: slots whose games have the stage loaded
 var _wait := 0.0
+## The pings' clock, in seconds: real time (frames hitch, or run fast headless), or a test's.
+var clock: Callable = func() -> float: return Time.get_ticks_msec() / 1000.0
+var _ping_at := -INF
+var _rtt := {}  # the other end's slot (a guest's: the host, 0) -> its last round trip, seconds
+var _heard := {}  # and the clock when that came back
 var _hello := false  # a guest's HELLO is sent (once: the relay cuts off a game sending 200 a second)
 
 
@@ -110,6 +137,9 @@ func poll(dt: float) -> void:
 		phase = Phase.CLOSED
 		link.close()
 		return
+	if phase != Phase.DIALING and clock.call() - _ping_at >= PING_EVERY:
+		_ping_at = clock.call()
+		link.send_to(NetLink.ALL if hosting() else NetLink.HOST, [PING, clock.call()])
 	if hosting() and phase == Phase.LOADING:
 		_wait += dt
 		if _wait >= READY_WAIT or racers.all(func(s: int) -> bool: return _loaded.has(s) or not players.has(s)):
@@ -139,9 +169,10 @@ func choose(stage_index: int, mirrored: bool) -> void:
 	_send_lobby()
 
 
-## The host starts a race on the stage picked, with everyone in the room.
+## The host starts a race on the stage picked, with everyone in the room: from the lobby, or
+## after a race (everyone ready, or the host not waiting for the rest).
 func start() -> void:
-	if not hosting() or phase != Phase.LOBBY:
+	if not hosting() or not (phase == Phase.LOBBY or phase == Phase.RACING):
 		return
 	_new_race()
 	phase = Phase.LOADING
@@ -170,12 +201,17 @@ func _host_got(guest: int, msg: Array) -> void:
 			elif phase == Phase.LOADING or phase == Phase.RACING:
 				link.send_to(guest, [NOPE, "A RACE IS UNDER WAY: TRY AGAIN SOON"])
 		NetLink.LEFT:
+			_rtt.erase(s)
+			_heard.erase(s)
 			if players.erase(s):
 				_dropped(s)
 				for other: int in slots():
 					if other != 0:
 						link.send_to(other - 1, [GONE, s])
 				_send_lobby()
+				if again.erase(s):
+					_send_again()
+				_check_again()  # (the one left may have been the last not ready)
 		HELLO:
 			if phase == Phase.LOBBY and s < MAX_PLAYERS:
 				players[s] = String(msg[1])
@@ -193,6 +229,37 @@ func _host_got(guest: int, msg: Array) -> void:
 		FIN:
 			finishes[s] = float(msg[1])
 			link.send_to(NetLink.ALL, [FIN, s, float(msg[1])])
+		AGAIN:
+			if players.has(s) and phase == Phase.RACING and msg.size() >= 2:
+				_set_again(s, bool(msg[1]))
+		PING:
+			if msg.size() >= 2:
+				link.send_to(guest, [PONG, msg[1]])
+		PONG:
+			if players.has(s) and msg.size() >= 2:
+				_answered(s, float(msg[1]))
+
+
+## Who's ready for the next race, to every guest.
+func _send_again() -> void:
+	var ready_slots: Array = again.keys()
+	ready_slots.sort()
+	link.send_to(NetLink.ALL, [AGAIN, ready_slots])
+
+
+func _set_again(s: int, on: bool) -> void:
+	if on:
+		again[s] = true
+	else:
+		again.erase(s)
+	_send_again()
+	_check_again()
+
+
+## The host: everyone in the room ready after a race starts the next.
+func _check_again() -> void:
+	if hosting() and phase == Phase.RACING and not players.is_empty() and players.keys().all(func(s: int) -> bool: return again.has(s)):
+		start()
 
 
 # --- A guest -------------------------------------------------------------------------
@@ -225,6 +292,17 @@ func _guest_got(msg: Array) -> void:
 			_dropped(int(msg[1]))
 		NOPE:
 			error = String(msg[1])
+		PING:
+			if msg.size() >= 2:
+				link.send_to(NetLink.HOST, [PONG, msg[1]])
+		PONG:
+			if msg.size() >= 2:
+				_answered(0, float(msg[1]))
+		AGAIN:
+			if msg.size() >= 2 and msg[1] is Array:
+				again.clear()
+				for s: Variant in msg[1]:
+					again[int(s)] = true
 
 
 # --- Both ----------------------------------------------------------------------------
@@ -238,6 +316,7 @@ func _new_race() -> void:
 	cars.clear()
 	finishes.clear()
 	gone.clear()
+	again.clear()
 	_ticks = 0
 
 
@@ -274,6 +353,60 @@ func finish(seconds: float) -> void:
 		link.send_to(NetLink.ALL, [FIN, 0, seconds])
 	else:
 		link.send_to(NetLink.HOST, [FIN, seconds])
+
+
+## A PONG from `s` for the PING sent at `sent`.
+func _answered(s: int, sent: float) -> void:
+	_rtt[s] = maxf(0.0, clock.call() - sent)
+	_heard[s] = clock.call()
+
+
+## The room's round trip through the relay (ON-12) in milliseconds: the worst of the host's to
+## each guest, or a guest's to the host; one gone quiet for STALE counts as at least that
+## long. -1 before any has come back.
+func round_trip_ms() -> float:
+	var worst := -1.0
+	for s: int in _rtt:
+		var since: float = clock.call() - float(_heard[s])
+		var t: float = _rtt[s] if since <= STALE else maxf(_rtt[s], since)
+		worst = maxf(worst, t * 1000.0)
+	return worst
+
+
+## How a round trip of `ms` (round_trip_ms) rates: GOOD, FAIR or POOR, UNKNOWN under 0.
+static func quality(ms: float) -> int:
+	if ms < 0.0:
+		return Quality.UNKNOWN
+	if ms < GOOD_MS:
+		return Quality.GOOD
+	if ms < FAIR_MS:
+		return Quality.FAIR
+	return Quality.POOR
+
+
+## After a race (ON-9): this player ready for the next one (`on`), or not after all. Once the
+## whole room is, the host starts it.
+func ready_again(on := true) -> void:
+	if phase != Phase.RACING:
+		return
+	if hosting():
+		_set_again(0, on)
+		return
+	if on:
+		again[slot] = true  # (shown at once; the host's count follows)
+	else:
+		again.erase(slot)
+	link.send_to(NetLink.HOST, [AGAIN, on])
+
+
+## How many in the room are ready for the next race.
+func ready_count() -> int:
+	return players.keys().filter(func(s: int) -> bool: return again.has(s)).size()
+
+
+## Whether this game's player is ready for the next race.
+func is_ready_again() -> bool:
+	return again.has(slot)
 
 
 ## Back from a race's results to the lobby (the host can start the next).

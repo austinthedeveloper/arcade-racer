@@ -54,6 +54,9 @@ func _initialize() -> void:
 	_guest.finish(70.25)
 	if not await _until(func() -> bool: return _host.finishes.get(1, 0.0) == 70.25, "the guest's finish"):
 		return
+	if not await _until(func() -> bool: return _host.round_trip_ms() >= 0.0 and _guest.round_trip_ms() >= 0.0, "a round trip each way"):
+		return
+	print("round trip (ON-12): host %d ms, guest %d ms" % [_host.round_trip_ms(), _guest.round_trip_ms()])
 	_guest.leave()
 	_guest = null  # (closed now, by its own choice)
 	if not await _until(func() -> bool: return _host.players.size() == 1, "the guest leaving"):
