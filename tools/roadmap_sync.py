@@ -9,6 +9,9 @@ closed. This reports where the two disagree and can fix the parts that are mecha
                                                  # the status block in docs/roadmap/00-overview.md
     python3 tools/roadmap_sync.py --fix-board    # set the project Status to Done for closed
                                                  # issues (and back to Todo for reopened ones)
+    python3 tools/roadmap_sync.py --create-issues   # open an issue for every row that has none
+                                                    # (labels, milestone, project fields), in the
+                                                    # shape of the first batch (2026-10-31)
 
 Needs the gh CLI, signed in. Exits 1 when the report finds a mismatch.
 """
@@ -25,6 +28,12 @@ OWNER = "austinthedeveloper"
 REPO = OWNER + "/arcade-racer"
 PROJECT = 4
 DONE_MARK = " ✓"
+## Every cell of a row: id, tick, name, description, size, month, needs, done when.
+FULL_ROW = re.compile(r"^\| ([A-Z]{2}-\d+)( ✓)? \| \*\*(.+?)\.\*\* ?(.*?) \| *([^|]*?) *\| *([^|]*?) *\| *([^|]*?) *\| *(.*?) *\|$")
+GROUPS = {"RC": "racing core", "WS": "world and stages", "CP": "cars and art pipeline",
+          "WH": "input and wheels", "PR": "presentation and audio", "MP": "modes and progression",
+          "AC": "options and accessibility", "EQ": "engineering and quality", "ON": "online and mobile"}
+MONTHS = ["Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027", "Apr 2027"]
 ROW = re.compile(r"^\| ([A-Z]{2}-\d+)( ✓)? \| \*\*(.+?)\.\*\*.*?\| *(\S*) *\|")
 CELL = re.compile(r"^\| [A-Z]{2}-\d+(?: ✓)? \|")
 BEGIN, END = "<!-- roadmap-status:begin -->", "<!-- roadmap-status:end -->"
@@ -156,13 +165,92 @@ def fix_board(by_id, items, project_id, field_id, options):
             print("board: %s #%d %s -> %s" % (fid, issue["number"], item["status"], want))
 
 
+def doc_rows():
+    """Every row's cells, in doc order: dicts with id, name, desc, size, month, needs, done, doc."""
+    rows = []
+    for name in sorted(os.listdir(DOCS)):
+        if not re.match(r"0[1-9]-.*\.md$", name):
+            continue
+        with open(os.path.join(DOCS, name)) as f:
+            for line in f:
+                m = FULL_ROW.match(line.rstrip("\n"))
+                if m:
+                    rows.append({"id": m.group(1), "name": m.group(3), "desc": m.group(4), "size": m.group(5),
+                                 "month": m.group(6), "needs": m.group(7), "done": m.group(8), "doc": name})
+    return rows
+
+
+def first_month(month):
+    """The month number a row starts in (its Month cell: "1", "2, 3", "Stretch"), or 0."""
+    m = re.search(r"\d", month)
+    return int(m.group()) if m else 0
+
+
+def needs_text(needs, by_id):
+    """"WS-1, EQ-16" -> "WS-1 (#28), EQ-16 (#101)" (an id without an issue yet stays bare)."""
+    if not needs.strip():
+        return "nothing"
+    return re.sub(r"([A-Z]{2}-\d+)", lambda m: "%s (#%d)" % (m.group(1), by_id[m.group(1)]["number"])
+                  if m.group(1) in by_id else m.group(1), needs)
+
+
+def issue_body(row, by_id):
+    month = first_month(row["month"])
+    when = "%s (%s)" % (row["month"], MONTHS[month - 1]) if month else row["month"]
+    group = GROUPS[row["id"].split("-")[0]]
+    return ("**Group:** %s · **Size:** %s · **Month:** %s\n**Source:** [docs/roadmap/%s](https://github.com/%s/blob/main/docs/roadmap/%s)\n\n"
+            "%s\n\n**Needs:** %s\n\n**Done when:** %s\n") % (
+        group[0].upper() + group[1:], row["size"], when, row["doc"], REPO, row["doc"], row["desc"],
+        needs_text(row["needs"], by_id), row["done"])
+
+
+def create_issues(by_id, items, project_id):
+    """An issue, labels, milestone and board item for every row without an issue; then the
+    bodies that named a row created after them get its number."""
+    fields = {f["name"]: f for f in gh("project", "field-list", str(PROJECT), "--owner", OWNER, "--format", "json")["fields"]}
+    milestones = {int(m["title"][1]): m["title"] for m in gh("api", "repos/%s/milestones?state=all" % REPO)}
+    created = []
+    for row in doc_rows():
+        if row["id"] in by_id:
+            continue
+        prefix = row["id"].split("-")[0]
+        month = first_month(row["month"])
+        args = ["issue", "create", "--repo", REPO, "--title", "%s %s" % (row["id"], row["name"]),
+                "--body", issue_body(row, by_id), "--label", "%s: %s" % (prefix, GROUPS[prefix]),
+                "--label", "size: %s" % row["size"], "--label", "roadmap"]
+        if month in milestones:
+            args += ["--milestone", milestones[month]]
+        url = subprocess.run(["gh"] + args, check=True, capture_output=True, text=True).stdout.strip()
+        number = int(url.rsplit("/", 1)[1])
+        by_id[row["id"]] = {"number": number, "title": "%s %s" % (row["id"], row["name"]), "name": row["name"], "closed": False}
+        item = gh("project", "item-add", str(PROJECT), "--owner", OWNER, "--url", url, "--format", "json")
+        values = {"Status": "Todo" if month == 1 else "Backlog", "Size": row["size"],
+                  "Group": "%s: %s" % (prefix, GROUPS[prefix]), "Month": MONTHS[month - 1] if month else None}
+        for field, value in values.items():
+            option = next((o["id"] for o in fields[field].get("options", []) if o["name"] == value), None)
+            if option:
+                subprocess.run(["gh", "project", "item-edit", "--id", item["id"], "--project-id", project_id,
+                                "--field-id", fields[field]["id"], "--single-select-option-id", option],
+                               check=True, capture_output=True)
+        created.append(row)
+        print("created #%d %s %s" % (number, row["id"], row["name"]))
+    for row in created:  # a dependency created later in the run has its number now
+        if re.search(r"[A-Z]{2}-\d+(?! \()", needs_text(row["needs"], {})) and row["needs"].strip():
+            subprocess.run(["gh", "issue", "edit", str(by_id[row["id"]]["number"]), "--repo", REPO,
+                            "--body", issue_body(row, by_id)], check=True, capture_output=True)
+
+
 def main():
     args = set(sys.argv[1:])
-    if args - {"--write-docs", "--fix-board"}:
+    if args - {"--write-docs", "--fix-board", "--create-issues"}:
         sys.exit(__doc__)
     features = doc_features()
     by_id = issues()
     items, project_id, field_id, options = board()
+    if "--create-issues" in args:
+        create_issues(by_id, items, project_id)
+        by_id = issues()
+        items = board()[0]
     if "--fix-board" in args:
         fix_board(by_id, items, project_id, field_id, options)
         items = board()[0]

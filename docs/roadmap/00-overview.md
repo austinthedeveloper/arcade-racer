@@ -68,6 +68,27 @@ always a build to play.
 | **5. Mar 2027** | Sound and wheels | Sound pack (PR-1), music radio (PR-2), wind and whooshes (PR-3), announcer (PR-4), force feedback extension (WH-3, EQ-11), known-wheel profiles (WH-4), Windows wheel pass (WH-5), remapping (WH-2), paint colors (CP-4), remaining car roll-out (CP-2), sprite LOD (CP-9) | v0.6.0 |
 | **6. Apr 2027** | Modes and polish | Time Attack with ghost (MP-5), Free Drive (MP-6), mirror mode (WS-6), map stage select and turntable (PR-8, CP-10), attract mode (PR-11), assists (AC-3), subtitles (AC-5), manual gears (RC-10), balancing (WS-11), signing and notarization (EQ-9), web and Linux checks (EQ-10, EQ-13), legal art pass (CP-12) | v0.7.0, the 1.0 candidate |
 
+## Re-plan after the first month (2026-11-01)
+
+The six-month table above was overtaken in two days: by 2026-11-01, 75 of the 87 features were
+closed and v0.3.1 was out, with online races and touch controls (the ON group) on top. What is
+left of the first list is the art pipeline (CP-1 to CP-6, CP-10 to CP-12), the wheel hardware
+work (WH-3 to WH-5, WH-8, EQ-11), oncoming traffic (RC-11), the Web and phone checks (EQ-10,
+ON-6, ON-7) and EQ-7's numbers on other machines. A second batch of 58 stories (IDs from RC-13,
+WS-12, CP-13, WH-11, PR-14, MP-9, AC-11, EQ-15 and ON-8) was added the same day; the months
+below replace the table above for everything still open. The month and milestone fields on
+GitHub follow this table.
+
+| Month | Theme | Headline items | Release |
+|---|---|---|---|
+| **1. Nov 2026** | Tune, fix, and the second batch | The tuning registry, debug panel and adopt tool (EQ-15 to EQ-17), the bugs found in the first batch (WS-12, WS-14, WH-11, EQ-18, EQ-19), horn, fair traffic, chains and catch-up nitro (RC-13 to RC-16), medals (MP-9), rumble (WH-13), legibility and callout pacing (PR-14, PR-15), reduce motion and auto-pause (AC-13, AC-15), Austin's TMX and phone sessions (WH-15, WH-4, ON-6, WH-8), the Web check (EQ-10), the legal pass (CP-12) | v0.4.0 |
+| **2. Dec 2026** | Scenes, modes and the online room | Sundown across the tour, headlights, camera views (WS-15 to WS-17), hazards, replay, rival cards, traffic density (RC-17 to RC-20), profiles and stats (MP-10, MP-11), engine notes, stations, intro cards, what's new (PR-16 to PR-19), UI scale and co-pilot (AC-12, AC-14), rematch, watching, disconnects, quality (ON-9 to ON-12), crash log, backups, soak test, Web load (EQ-20 to EQ-23), crash frames, traffic fronts and oncoming traffic (CP-3, CP-6, RC-11), UI art (CP-11), force feedback and its build (WH-3, EQ-11), the Windows wheel pass (WH-5), native mobile (ON-7) | v0.5.0 |
+| **3. Jan 2027** | Production cars and the long tail | The 3D-to-sprite pipeline and roll-out (CP-1, CP-2, CP-4, CP-5, CP-10), portraits (CP-13), animated scenery and the grandstand (WS-18, WS-19), stickers, survival, the daily run (MP-12 to MP-14), the attract tour (PR-20), AI rivals online (ON-13) | v0.6.0 |
+
+Open decision for Austin: whether CP-1 and CP-2 (re-rendering the twelve cars from 3D models,
+the two largest items left) are still worth it now that the concept-sheet cars have shipped in
+three releases, or whether CP-3 to CP-5 should work from the sheets instead.
+
 ## Dependency chain
 
 The order above follows these dependencies. Moving an item earlier means moving what it needs.

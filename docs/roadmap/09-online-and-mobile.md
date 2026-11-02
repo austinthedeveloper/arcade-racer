@@ -41,6 +41,12 @@ and 11). Not yet checked on a phone (ON-6); the relay needs its `sundown-run` ch
 | ON-5 ✓ | **Touch menus.** The same overlay in the menus: a D-pad, OK and BACK, so every screen (letter grid included) works by touch. | S | 1 | ON-4 | `test_touch` drives a menu by touch; a menu screenshot with the overlay |
 | ON-6 | **Phone browser pass.** The Web build on an iPhone and an Android phone: landscape, full screen on the first tap, sound after the first tap, a frame rate check. Notes in the README. | S | 1 | ON-4 | A short table in the README of what was checked on which phone |
 | ON-7 | **Native mobile builds.** Android and iOS export presets, touch controls on by default, release zips. | M | Stretch | ON-6 | An APK from `tools/export.sh` that installs and races |
+| ON-8 | **Names and avatars online.** Players show their profile's preset name and avatar (MP-10) instead of P1 to P4. | S | 2 | MP-10 | `test_online` carries the name in the hello; a screenshot of the lobby |
+| ON-9 | **Rematch.** After a finish the room stays open: the host picks the next stage, the results screen shows a READY count, and the race starts when all are in. | S | 2 | ON-3 | Lobby state machine test; a two-window run of two races |
+| ON-10 | **Watch after the line.** A player who has finished follows the leader still racing, with live standings, until the last car is in or the host moves on. | S | 2 | ON-3 | Test the camera target after a finish; a screenshot |
+| ON-11 | **Disconnects.** A player who drops shows a notice and their car fades out; the host leaving ends the race with the results so far. | S | 1 | ON-3 | `test_online` covers both; a screenshot of the notice |
+| ON-12 | **Connection quality.** A dot on the HUD for the relay round trip (green, amber, red) and a region picker when the relay offers one. | S | 2 | ON-1 | Test the dot's color thresholds; a screenshot |
+| ON-13 | **AI rivals online.** The host drives the rivals and sends their states, so a two-player room still has a field. Open decision in this doc. | M | 3 | ON-3, RC-1 | A two-window run with rivals finishing in the same order on both |
 
 ## Open decisions
 
