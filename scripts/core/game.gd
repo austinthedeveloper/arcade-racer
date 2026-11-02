@@ -5,7 +5,7 @@ extends Node
 ## --online=host or --online=join:CODE straight into a room (online_from_flags).
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -367,6 +367,11 @@ func show_stats() -> void:
 	_set_menu(StatsScreen.new(), Screen.STATS)
 
 
+## Who is driving (MP-10), from PROFILE on the title.
+func show_profiles() -> void:
+	_set_menu(ProfileScreen.new(), Screen.PROFILES)
+
+
 func show_stage_select() -> void:
 	var s := StageSelect.new()
 	s.index = stage_index
@@ -497,7 +502,7 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # its MIRROR toggle on.
 # --screen=debug opens the F3 tuning panel (debug:camera, debug:actions etc. for a page:
 # Tuning.AREAS, actions, presets), over the title, or over a race given race flags.
-# --screen=stats opens the stats page (MP-11).
+# --screen=stats opens the stats page (MP-11); --screen=profiles the driver picker (MP-10).
 # --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
 # a download; update:checking, update:failed, update:full and update:ready the other states.)
 
@@ -517,6 +522,8 @@ func _open(which: String) -> void:
 			show_mode_select()
 		"stats":
 			show_stats()
+		"profiles":
+			show_profiles()
 		_ when which.begins_with("online"):
 			show_online()
 			(menu as OnlineScreen).stage_shot(which.get_slice(":", 1) if which.contains(":") else "menu")

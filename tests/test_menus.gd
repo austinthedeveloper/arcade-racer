@@ -226,8 +226,8 @@ func test_stats_on_the_title_opens_the_stats_page_and_back() -> void:
 
 
 func test_quit_on_the_title_closes_the_game() -> void:
-	eq(TitleScreen.items(false), ["START", "OPTIONS", "STATS", "QUIT"], "START, OPTIONS, STATS, QUIT")
-	eq(TitleScreen.items(true), ["START", "OPTIONS", "STATS"], "no QUIT in a browser")
+	eq(TitleScreen.items(false), ["START", "OPTIONS", "STATS", "PROFILE", "QUIT"], "START, OPTIONS, STATS, PROFILE, QUIT")
+	eq(TitleScreen.items(true), ["START", "OPTIONS", "STATS", "PROFILE"], "no QUIT in a browser")
 	var g := _game()
 	var quits := [0]
 	g.on_quit = func() -> void: quits[0] += 1
@@ -435,3 +435,55 @@ func test_a_demo_that_runs_out_goes_back_to_the_title() -> void:
 	eq(g.screen, g.Screen.TITLE, "the title")
 	check(g.race == null, "demo dropped")
 	eq(g.stage_index, 0, "the player's stage pick is untouched")
+
+
+static func _menu_y(dir: int) -> MenuInput:
+	var m := MenuInput.new()
+	m.up_pressed = dir < 0
+	m.down_pressed = dir > 0
+	return m
+
+
+# MP-10: PROFILE on the title opens the driver picker; an empty slot is named and made,
+# then drives, and the title says who is driving.
+func test_profile_on_the_title_picks_who_is_driving() -> void:
+	TestSuite.use_scratch_save(SaveData)
+	SaveData.record_finish(0, "car_vega", 70.0, 1)
+	var g := _game()
+	eq(TitleScreen.driver_text(), ["DRIVER  P1", SaveData.NAMES[0]] as Array[String], "profile 1 driving")
+	g.menu.index = TitleScreen.items().find("PROFILE")
+	g.menu.handle(menu_input(true))
+	eq(g.screen, g.Screen.PROFILES, "the driver picker")
+	var p: ProfileScreen = g.menu
+	eq([p.row(), p.card], [ProfileScreen.Row.CARDS, 0], "on the cards, at the driver")
+	p.handle(menu_input(false, false, 1))
+	eq(p.card, 1, "right: the next slot")
+	check(not SaveData.has_profile(1), "empty")
+	eq(p.identity(1)["name"], SaveData.names_free_for(1)[0], "offered a name no one has")
+	p.handle(_menu_y(1))
+	eq(p.row(), ProfileScreen.Row.NAME, "down: NAME")
+	p.handle(menu_input(false, false, 1))
+	var picked: String = p.identity(1)["name"]
+	eq(picked, SaveData.names_free_for(1)[1], "right: the next free name")
+	p.handle(_menu_y(1))
+	p.handle(menu_input(false, false, -1))
+	eq(p.identity(1)["avatar"], Cars.LIST[0]["id"], "AVATAR left: the car before")
+	check(not SaveData.has_profile(1), "nothing made yet")
+	p.handle(_menu_y(-1))
+	p.handle(_menu_y(-1))
+	p.handle(menu_input(true))
+	eq(g.screen, g.Screen.TITLE, "select: back to the title")
+	eq(TitleScreen.items()[g.menu.index], "PROFILE", "on PROFILE")
+	eq([SaveData.slot, SaveData.profile_name, SaveData.avatar], [1, picked, Cars.LIST[0]["id"]], "the new driver driving")
+	eq(SaveData.bests.size(), 0, "on a save of their own")
+	eq(TitleScreen.driver_text(), ["DRIVER  P2", picked] as Array[String], "and the title says so")
+	g.show_profiles()
+	g.menu.handle(menu_input(false, false, -1))
+	g.menu.handle(menu_input(true))
+	eq([SaveData.slot, SaveData.best(0, "car_vega")["time"]], [0, 70.0], "back to profile 1, its progress there")
+	g.show_profiles()
+	g.menu.handle(menu_input(false, true))
+	eq(g.screen, g.Screen.TITLE, "back leaves it as it was")
+	eq(SaveData.slot, 0, "still profile 1")
+	TestSuite.use_scratch_save(SaveData)
+	TestSuite.use_scratch_ghosts()

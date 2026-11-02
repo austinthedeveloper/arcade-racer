@@ -588,3 +588,41 @@ func test_the_restore_row_asks_first() -> void:
 	eq(SaveData.total_points, 250, "the save before the change")
 	o.free()
 	_clean()
+
+
+# --- Player profiles (MP-10) ---
+
+func test_save_v3_to_v4_makes_it_profile_one() -> void:
+	_clean()
+	var v3 := _load_save("save_v3.cfg")
+	eq(SaveData.loaded_version, 3, "version 3")
+	eq([SaveData.slot, SaveData.profile_name, SaveData.avatar], [0, SaveData.NAMES[0], Cars.LIST[0]["id"]],
+		"the save there was is profile 1's, with profile 1's name and avatar")
+	eq(SaveData.profiles().size(), 1, "the only profile")
+	SaveData.save()
+	var cfg := ConfigFile.new()
+	cfg.load(TestSuite.SCRATCH_SAVE)
+	eq([CfgVersion.of(cfg), cfg.get_value("profile", "name"), cfg.get_value("profile", "avatar")],
+		[SaveData.VERSION, SaveData.NAMES[0], Cars.LIST[0]["id"]], "written with its [profile]")
+	SaveData.load_save()
+	eq([SaveData.furthest_stage, SaveData.total_points, Array(SaveData.unlocks), SaveData.bests], [v3[0], v3[1], v3[2], v3[3]],
+		"its progress as it was")
+	var named := ConfigFile.new()
+	CfgVersion.stamp(named, 3)
+	named.set_value("profile", "name", "ZOOM")
+	SaveData.migrate(named)
+	eq([named.get_value("profile", "name"), named.get_value("profile", "avatar")], ["ZOOM", Cars.LIST[0]["id"]],
+		"a name already there is kept")
+	var v0 := _load_save("save_v0.cfg")
+	eq([SaveData.profile_name, v0[1]], [SaveData.NAMES[0], 250], "an unversioned save migrates all the way")
+	_clean()
+
+
+func test_save_v4_loads() -> void:
+	_clean()
+	var v4 := _load_save("save_v4.cfg")
+	eq(SaveData.loaded_version, 4, "version 4")
+	eq([SaveData.profile_name, SaveData.avatar], ["NOVA", "car_mesa"], "its name and avatar")
+	eq([v4[0], v4[1], SaveData.stats["races"]], [3, 250, 14], "and its progress")
+	check(not CfgVersion.has_backup(TestSuite.SCRATCH_SAVE), "current: no backup")
+	_clean()

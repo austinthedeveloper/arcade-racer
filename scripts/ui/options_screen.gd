@@ -160,7 +160,10 @@ func select_reset_save() -> bool:
 ## each that has a backup from before a migration (CfgVersion.backup_if_older).
 static func backups() -> Array[String]:
 	var out: Array[String] = []
-	for p: String in [Settings.path, SaveData.path, InputRouter.profile_path]:
+	var files: Array[String] = [Settings.path]
+	files.append_array(SaveData.profile_paths())  # (every player profile's save, MP-10)
+	files.append(InputRouter.profile_path)
+	for p: String in files:
 		if CfgVersion.has_backup(p):
 			out.append(p)
 	return out

@@ -61,13 +61,17 @@ static func use_scratch_settings(settings: Node) -> void:
 	settings.load_settings()
 
 
-## Points the SaveData autoload at an empty save file of the tests' own (a fresh save).
+## Points the SaveData autoload at an empty save file of the tests' own (a fresh save), with
+## no other profiles (MP-10): profile 1 driving.
 static func use_scratch_save(save_data: Node) -> void:
-	save_data.path = SCRATCH_SAVE
-	for f in [SCRATCH_SAVE, SCRATCH_SAVE + ".bad", SCRATCH_SAVE + ".tmp", SCRATCH_SAVE + CfgVersion.BACKUP]:
+	var files: Array[String] = [save_data.roster_path(SCRATCH_SAVE)]
+	for s: int in save_data.MAX_PROFILES:
+		var p: String = save_data.slot_path(SCRATCH_SAVE, s)
+		files.append_array([p, p + ".bad", p + ".tmp", p + CfgVersion.BACKUP])
+	for f in files:
 		if FileAccess.file_exists(f):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
-	save_data.load_save()
+	save_data.use_base(SCRATCH_SAVE)
 
 
 ## Points Time Attack ghosts (Ghost.dir) at an empty folder of the tests' own.
