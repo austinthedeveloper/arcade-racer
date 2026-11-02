@@ -17,6 +17,7 @@ func _initialize() -> void:
 	TestSuite.use_scratch_settings(root.get_node("Settings"))
 	TestSuite.use_scratch_save(root.get_node("SaveData"))
 	TestSuite.use_scratch_ghosts()
+	TestSuite.use_scratch_logs()  # never the player's user://logs/
 	Tuning.use_defaults()  # never the player's user://tuning.cfg
 	root.get_node("Audio")._ready()  # its buses, before the autoloads' own _ready (a filtered run)
 	SpriteLibrary.load_all()

@@ -51,6 +51,9 @@ var _options_back_name := "the title screen"
 
 
 func _ready() -> void:
+	# Errors and the last log lines to user://logs/ (EQ-20; --log-dir=DIR elsewhere). The test
+	# runners install theirs into scratch first, so this one is then kept out.
+	CrashLog.install(DevArgs.value("--log-dir", CrashLog.DIR))
 	_layer = CanvasLayer.new()
 	_layer.layer = 2  # over the race, for options from its pause menu
 	add_child(_layer)

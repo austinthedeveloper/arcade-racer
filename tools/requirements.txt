@@ -1,3 +1,6 @@
-pillow
-numpy
-scipy
+# The sprite tools' libraries, pinned (EQ-19): another Pillow resamples some sprites a
+# level or two differently, and the "Reproducible sprites" CI job (tools/check_sprites.py)
+# fails on a single pixel. Change a pin only with a full rebuild committed beside it.
+pillow==13.0.0
+numpy==2.5.4
+scipy==1.18.1
