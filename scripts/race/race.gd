@@ -75,6 +75,7 @@ var results_age := -1.0  # seconds since the results came up, -1 before (StageFl
 var launch: Launch.Grade = Launch.Grade.PENDING  # how the player's start went
 var score := Scoring.new()
 var place := 1  # the player's place in the field (Rivals.standings)
+var difficulty := Difficulty.of(Difficulty.Level.NORMAL)  # this race's (Settings.difficulty)
 var player_finish := -1.0  # race time the player finished in, -1 still racing
 var touched_traffic := false  # the player has touched a traffic car this stage (Unlocks secret)
 var new_unlocks: Array[String] = []  # car ids (and a stage's mirror_id) this finish opened, for the HUD
@@ -208,8 +209,9 @@ func start_race() -> void:
 		tour_state = Tour.new()
 		tour_state.start_stage = stage_index
 	rivals = Rivals.new()
+	difficulty = Difficulty.of(Settings.difficulty)
 	rivals.spawn(track, player, car_id, 0 if _no_rivals or time_attack or free_drive or online != null else Rivals.COUNT,
-		Rivals.SEED + stage_index, Difficulty.of(Settings.difficulty), tour_state.drivers if tour else [])
+		Rivals.SEED + stage_index, difficulty, tour_state.drivers if tour else [])
 	_shown.clear()
 	if online != null:
 		for s: int in online.racers:
@@ -644,6 +646,17 @@ func _check_pickups() -> void:
 	_give(pickup_gave)
 
 
+## Catch-up nitro at a checkpoint (RC-16): a charge back in the last places, on a difficulty
+## that gives it (Difficulty.catch_up_nitro). Not online, where each racer has their own.
+func _catch_up() -> void:
+	if online != null:
+		return
+	var back := mini(difficulty.catch_up_nitro(place, rivals.cars.size() + 1), player.nitro_max - player.nitro_charges)
+	if back > 0:
+		player.nitro_charges += back
+		callouts.push_message("NITRO +%d" % back, "Catch-up")
+
+
 ## What a pickup (or the debug panel) gives: a PowerUps.Kind other than MYSTERY.
 func _give(kind: int) -> void:
 	match kind:
@@ -676,6 +689,7 @@ func _check_progress() -> void:
 			callouts.push(Callouts.Kind.CHECKPOINT)
 			callouts.push(Callouts.Kind.TIME_EXTENDED, "+%d SEC" % checkpoint_bonus)
 			checkpoint_bonus = Settings.race_time(clock[next_checkpoint + 1]) if next_checkpoint + 1 < clock.size() else 0.0
+			_catch_up()
 	if player.distance >= finish_distance:
 		state = State.FINISHED
 		finish_age = 0.0

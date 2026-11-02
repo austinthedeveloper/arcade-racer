@@ -44,6 +44,59 @@ func test_checkpoints_extend_time_once_each() -> void:
 	eq(r.banner, "CHECKPOINT!", "banner")
 
 
+# --- Catch-up nitro (RC-16) ------------------------------------------------------
+
+func test_catch_up_nitro_per_difficulty_and_place() -> void:
+	var field := Rivals.COUNT + 1
+	var want := {Difficulty.Level.EASY: [0, 0, 0, 0, 0, 0, 1, 1], Difficulty.Level.NORMAL: [0, 0, 0, 0, 0, 0, 1, 1],
+		Difficulty.Level.HARD: [0, 0, 0, 0, 0, 0, 0, 0]}
+	for level: int in want:
+		var got := []
+		for place in range(1, field + 1):
+			got.append(Difficulty.of(level).catch_up_nitro(place, field))
+		eq(got, want[level], Difficulty.NAMES[level] + ": a nitro back in 7th and 8th only" if level != Difficulty.Level.HARD else "HARD: never")
+	eq(Difficulty.of(Difficulty.Level.NORMAL).catch_up_nitro(1, 1), 0, "racing alone: none")
+	eq(Difficulty.of(Difficulty.Level.NORMAL).catch_up_nitro(2, 2), 1, "last of two")
+
+
+## The player reaching the first checkpoint in `place`, with `charges` nitros, on `level`.
+func _checkpoint_in(place: int, level: int, charges := 0) -> Node:
+	var r := race(false, false)
+	drive(r, 181)
+	r.difficulty = Difficulty.of(level)
+	r.player.nitro_charges = charges
+	r.place = place
+	r.player.distance = r.checkpoint_distances[0] + 1.0
+	r._check_progress()
+	return r
+
+
+func test_a_checkpoint_in_the_last_two_places_gives_a_nitro_back() -> void:
+	for level: int in [Difficulty.Level.EASY, Difficulty.Level.NORMAL]:
+		for place in [7, 8]:
+			var r := _checkpoint_in(place, level)
+			eq(r.player.nitro_charges, 1, "%s, %d of 8: one charge back" % [Difficulty.NAMES[level], place])
+			var said: bool = r.callouts.waiting.any(func(c: Dictionary) -> bool: return c.get("text", "") == "NITRO +1")
+			check(said, "and the HUD says so")
+		var ahead := _checkpoint_in(6, level)
+		eq(ahead.player.nitro_charges, 0, Difficulty.NAMES[level] + ", 6th: nothing")
+		var full := _checkpoint_in(8, level, 99)
+		eq(full.player.nitro_charges, 99, "a full tank (or more) gets nothing")
+		var one_short := _checkpoint_in(8, level, full.player.nitro_max - 1)
+		eq(one_short.player.nitro_charges, one_short.player.nitro_max, "and never past full")
+	var hard := _checkpoint_in(8, Difficulty.Level.HARD)
+	eq(hard.player.nitro_charges, 0, "HARD, last: nothing")
+
+
+func test_catch_up_nitro_comes_once_per_checkpoint() -> void:
+	var r := _checkpoint_in(8, Difficulty.Level.NORMAL)
+	r._check_progress()
+	eq(r.player.nitro_charges, 1, "not again until the next checkpoint")
+	r.player.distance = r.checkpoint_distances[1] + 1.0
+	r._check_progress()
+	eq(r.player.nitro_charges, 2, "and again at the next")
+
+
 func test_crossing_the_finish_ends_the_race() -> void:
 	var r := race(false, false)
 	drive(r, 181)

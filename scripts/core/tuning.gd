@@ -99,6 +99,7 @@ const TABLE := {
 	"power_ups/clock_bonus": [3.0, 0.0, 10.0, 1.0, "seconds a clock pickup adds"],
 	"power_ups/ram_time": [5.0, 1.0, 15.0, 0.5, "seconds the ram plate lasts"],
 	"power_ups/ghost_time": [4.0, 1.0, 15.0, 0.5, "seconds the ghost lasts"],
+	"power_ups/catch_up_places": [2, 0, 7, 1, "the last this many places get a nitro back at each checkpoint (easy and normal)"],
 	"power_ups/reach": [0.3, 0.1, 1.0, 0.05, "road half-widths from a pickup's center that take it"],
 	"scoring/near_miss": [1, 0, 10, 1, "points for a near miss"],
 	"scoring/near_miss_room": [0.0, -0.3, 0.5, 0.05, "road half-widths between the two cars' sides that count as near"],

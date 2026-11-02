@@ -33,6 +33,8 @@ the release workflow puts that section at the top of the GitHub Release notes
   stops along the way are busy; Redrock's open desert and Timberline's snowy summit are empty;
   causeways, bridges, the wheat fields, the switchbacks and the road works are quiet. Nothing
   drives up to the grid from behind during the countdown any more.
+- Catch-up nitro (RC-16): reach a checkpoint in the last two places on easy or normal and you
+  get one nitro charge back (NITRO +1). Hard gives nothing.
 
 ## [0.3.1] - 2026-11-01
 
