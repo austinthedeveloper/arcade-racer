@@ -63,6 +63,10 @@ var pickup_age := 99.0  # seconds since it was taken
 var picked_up := false  # true for the tick a pickup is taken
 var horn := false  # the horn button held this tick (RaceAudio sounds it; play ignores it)
 var ram_flash := 0.0  # seconds left on the ram plate's impact flash
+## Gamepad rumble (WH-13): what it sent last tick (ZERO for nothing) and how many it has sent.
+var rumble := Rumble.new()
+var last_rumble := Vector3.ZERO
+var rumble_sent := 0
 var traffic: Traffic
 var rivals := Rivals.new()
 var state := State.COUNTDOWN
@@ -343,6 +347,7 @@ func _setback_prompt() -> String:
 
 func pause() -> void:
 	paused = true
+	rumble.stop(InputRouter.last_active_device)  # (the keyboard's -1: nothing to stop)
 	pause_menu.has_options = not options_requested.get_connections().is_empty()
 	pause_menu.open()
 
@@ -353,6 +358,14 @@ func resume() -> void:
 	unplugged = ""  # resumed without it (the keyboard, or a restart): no waiting for it
 	_unplug_paused = false
 	pause_menu.notice = []
+
+
+## The rumble option while a gamepad drives (WH-13): 0 for the keyboard, a wheel, the attract
+## demo, an autodriven run, or under the pause menu (online, the race runs on beneath it).
+func rumble_level() -> int:
+	if demo or _autodrive or paused or InputRouter.state.kind != DriveInput.Kind.GAMEPAD:
+		return 0
+	return Settings.rumble
 
 
 ## Auto-pause (AC-15): the window losing focus, the app going to the background (a phone
@@ -608,6 +621,10 @@ func _physics_process(dt: float) -> void:
 	road.time += sim
 	fx.flash_share = road.flash
 	fx.update(sim, player, track)
+	last_rumble = rumble.tick(sim, player, rumble_level())
+	if last_rumble != Vector3.ZERO:
+		rumble_sent += 1
+		Rumble.send(InputRouter.last_active_device, last_rumble)
 	fx.position = road.position
 	road.camera_z = player.position
 	var rise := track.height_at(player.position + Background.HILL_AHEAD) - player.road_y

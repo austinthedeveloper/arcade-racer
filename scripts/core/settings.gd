@@ -26,7 +26,8 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 8: [play] manual_gears (missing: automatic).
 ## 9: [controls] key_steer_in, key_steer_out (missing: STANDARD, as every earlier build).
 ## 10: [accessibility] reduce_motion (missing: off).
-const VERSION := 10
+## 11: [controls] rumble (missing: as designed, EFFECT_STEPS).
+const VERSION := 11
 ## Keyboard steering feel (AC-11): how fast a held key turns in and a released one comes back,
 ## snappy to smooth. Each multiplies its rate (shares of full lock per second); STANDARD is
 ## the rate every earlier build had.
@@ -52,6 +53,7 @@ var brake_assist := false  # Assists: brakes into corners taken too fast
 var manual_gears := false  # the player shifts (PlayerCar.shift); automatic by default
 var key_steer_in: int = STEER_FEEL_STANDARD  # into STEER_FEEL_NAMES: a held key's turn in
 var key_steer_out: int = STEER_FEEL_STANDARD  # and a released key's return to center
+var rumble := 10  # 0..EFFECT_STEPS; a gamepad's rumble (Rumble), 0 off
 var attack_traffic := false  # Time Attack and Free Drive with traffic (picked on stage select)
 var unlock_all := false  # every car and stage open (Unlocks), for testing and accessibility
 var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
@@ -93,6 +95,7 @@ func reset() -> void:
 	manual_gears = false
 	key_steer_in = STEER_FEEL_STANDARD
 	key_steer_out = STEER_FEEL_STANDARD
+	rumble = EFFECT_STEPS
 	unlock_all = false
 	attack_traffic = false
 	music_volume = 10
@@ -128,6 +131,7 @@ func load_settings() -> void:
 		manual_gears = bool(cfg.get_value("play", "manual_gears", manual_gears))
 		key_steer_in = clampi(int(cfg.get_value("controls", "key_steer_in", key_steer_in)), 0, STEER_FEEL_NAMES.size() - 1)
 		key_steer_out = clampi(int(cfg.get_value("controls", "key_steer_out", key_steer_out)), 0, STEER_FEEL_NAMES.size() - 1)
+		rumble = clampi(int(cfg.get_value("controls", "rumble", rumble)), 0, EFFECT_STEPS)
 		unlock_all = bool(cfg.get_value("play", "unlock_all", unlock_all))
 		attack_traffic = bool(cfg.get_value("play", "attack_traffic", attack_traffic))
 		music_volume = clampi(int(cfg.get_value("audio", "music", music_volume)), 0, VOLUME_STEPS)
@@ -148,7 +152,7 @@ func load_settings() -> void:
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -209,6 +213,11 @@ static func _v9_to_v10(cfg: ConfigFile) -> void:
 	cfg.set_value("accessibility", "reduce_motion", false)
 
 
+## Version 11 added gamepad rumble, as designed (no earlier build rumbled; this is the default).
+static func _v10_to_v11(cfg: ConfigFile) -> void:
+	cfg.set_value("controls", "rumble", EFFECT_STEPS)
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -224,6 +233,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("play", "manual_gears", manual_gears)
 	cfg.set_value("controls", "key_steer_in", key_steer_in)
 	cfg.set_value("controls", "key_steer_out", key_steer_out)
+	cfg.set_value("controls", "rumble", rumble)
 	cfg.set_value("play", "unlock_all", unlock_all)
 	cfg.set_value("play", "attack_traffic", attack_traffic)
 	cfg.set_value("audio", "music", music_volume)

@@ -253,6 +253,22 @@ func test_settings_v9_to_v10_adds_reduce_motion() -> void:
 	_clean()
 
 
+func test_settings_v10_to_v11_adds_rumble() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v10.cfg")
+	eq(Settings.migrate(cfg), 10, "from version 10")
+	eq([CfgVersion.of(cfg), cfg.get_value("controls", "rumble")], [Settings.VERSION, Settings.EFFECT_STEPS], "migrated on: as designed")
+	_clean()
+	_load_settings("settings_v10.cfg")
+	eq(Settings.rumble, Settings.EFFECT_STEPS, "v10 loads with rumble on")
+	eq([Settings.reduce_motion, Settings.key_steer_in], [true, 1], "the rest as saved")
+	Settings.rumble = 4
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.rumble], [Settings.VERSION, 4], "saved and loaded back")
+	_clean()
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")

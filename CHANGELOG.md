@@ -28,6 +28,8 @@ the release workflow puts that section at the top of the GitHub Release notes
   nitro view stretch, the scenery rising and dipping with the hills, and the rain streaks.
 - Auto-pause (AC-15): switching to another window, or sending a phone browser tab to the
   background, pauses the race. Online races carry on, as they always do.
+- Gamepad rumble (WH-13): the pad you drive with rumbles on crashes, bumps, landings, nitro and
+  off the road. Options > Controls > RUMBLE sets how strongly, 0 for none.
 
 ### Changed
 
