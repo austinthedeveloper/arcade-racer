@@ -30,7 +30,7 @@ func test_the_wake_of_a_semi() -> void:
 	me.x = 0.75
 	check(not Draft.in_wake(me, t, [me]), "a lane over")
 	me.x = 0.25
-	semi.z = nose + Draft.LENGTH + 50.0
+	semi.z = nose + Tuning.v("draft/length") + 50.0
 	check(not Draft.in_wake(me, t, [me]), "too far back")
 	semi.sprite = "sedan_beige"
 	semi.z = nose + 600.0
@@ -64,10 +64,10 @@ func test_the_wake_of_a_racer() -> void:
 
 func test_the_meter_fills_in_the_wake_and_empties_out_of_it() -> void:
 	var me := _car(0.0, 0.0)
-	for i in roundi(Draft.FILL_TIME / DT * 0.5):
+	for i in roundi(Tuning.v("draft/fill_time") / DT * 0.5):
 		Draft.update(me, DT, true)
 	near(me.draft, 0.5, 0.02, "half full after half the fill time")
-	for i in roundi(Draft.DECAY_TIME / DT * 0.25):
+	for i in roundi(Tuning.v("draft/decay_time") / DT * 0.25):
 		Draft.update(me, DT, false)
 	near(me.draft, 0.25, 0.02, "empties out of the wake")
 	for i in 600:
@@ -79,11 +79,11 @@ func test_a_full_meter_boosts_top_speed() -> void:
 	var t := flat_track()
 	var plain := _car(0.0, 0.0)
 	var drafted := _car(0.0, 0.0)
-	for i in roundi(Draft.FILL_TIME / DT) + 1:
+	for i in roundi(Tuning.v("draft/fill_time") / DT) + 1:
 		Draft.update(drafted, DT, true)
 	check(drafted.draft_time > 0.0, "the boost starts")
 	eq(drafted.draft, 0.0, "the meter resets")
-	for i in roundi(Draft.BOOST_TIME / DT) - 5:
+	for i in roundi(Tuning.v("draft/boost_time") / DT) - 5:
 		plain.update(DT, input(1.0), t, true)
 		drafted.update(DT, input(1.0), t, true)
 		Draft.update(drafted, DT, false)
@@ -110,7 +110,7 @@ func test_the_race_drafts() -> void:
 	p.speed = semi.speed
 	r.traffic.cars.append(semi)
 	var filled := false
-	for i in int(Draft.FILL_TIME * 60.0) + 10:
+	for i in int(Tuning.v("draft/fill_time") * 60.0) + 10:
 		p.speed = semi.speed  # sitting in behind it
 		drive(r, 1, input(0.0))
 		filled = filled or p.draft_time > 0.0

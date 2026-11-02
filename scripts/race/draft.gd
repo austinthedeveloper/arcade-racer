@@ -1,18 +1,9 @@
 class_name Draft
 extends RefCounted
 ## Slipstream: sitting close behind a racer or a big vehicle fills a meter; a full meter gives a
-## few seconds of extra top speed.
-
-const LENGTH := 1200.0  # world units behind a car its wake reaches
-const WIDTH := 0.35  # road half-widths either side of its center
-const MIN_SPEED := 0.5  # share of Cfg.MAX_SPEED below which a racer leaves no wake to sit in
-## Big vehicles run at 0.25 to 0.4 of top speed (Traffic.BIG_SPEED): their wake counts while you
-## keep up with one, at this share of its speed or more.
-const KEEP_UP := 0.8
-const FILL_TIME := 1.5  # seconds in the wake to fill the meter
-const DECAY_TIME := 1.0  # seconds out of it to empty
-const BOOST_TIME := 3.0
-const SPEED_MULT := 1.08  # on top speed while the boost runs
+## few seconds of extra top speed. Its numbers are Tuning's "draft" area. Big vehicles run at
+## 0.25 to 0.4 of top speed (Traffic.BIG_SPEED): their wake counts while you keep up with one,
+## at draft/keep_up of its speed or more.
 
 
 ## Whether `me` sits in the wake of a racer or a big vehicle (Traffic.BIG) ahead.
@@ -21,18 +12,18 @@ static func in_wake(me: PlayerCar, track: Track, racers: Array) -> bool:
 		return false
 	var nose := me.position + Cfg.PLAYER_Z
 	for other: PlayerCar in racers:
-		if other == me or me.speed < Cfg.MAX_SPEED * MIN_SPEED:
+		if other == me or me.speed < Cfg.MAX_SPEED * Tuning.v("draft/min_speed"):
 			continue
 		var ahead := wrapf(other.position - me.position, -track.length * 0.5, track.length * 0.5)
-		if ahead > 0.0 and ahead < LENGTH and absf(other.x - me.x) < WIDTH:
+		if ahead > 0.0 and ahead < Tuning.v("draft/length") and absf(other.x - me.x) < Tuning.v("draft/width"):
 			return true
 	var here := track.find_segment(nose).index
-	for k in ceili(LENGTH / Cfg.SEGMENT_LENGTH) + 1:
+	for k in ceili(Tuning.v("draft/length") / Cfg.SEGMENT_LENGTH) + 1:
 		for car: Traffic.TrafficCar in track.segments[(here + k) % track.segments.size()].cars:
-			if not Traffic.BIG.has(car.sprite) or not car.solid() or car.oncoming or me.speed < car.speed * KEEP_UP:
+			if not Traffic.BIG.has(car.sprite) or not car.solid() or car.oncoming or me.speed < car.speed * Tuning.v("draft/keep_up"):
 				continue
 			var ahead := wrapf(car.z - nose, -track.length * 0.5, track.length * 0.5)
-			if ahead > 0.0 and ahead < LENGTH and absf(car.offset - me.x) < WIDTH:
+			if ahead > 0.0 and ahead < Tuning.v("draft/length") and absf(car.offset - me.x) < Tuning.v("draft/width"):
 				return true
 	return false
 
@@ -43,7 +34,7 @@ static func update(me: PlayerCar, dt: float, wake: bool) -> void:
 	if me.draft_time > 0.0:
 		me.draft = 0.0
 		return
-	me.draft = clampf(me.draft + (dt / FILL_TIME if wake else -dt / DECAY_TIME), 0.0, 1.0)
+	me.draft = clampf(me.draft + (dt / Tuning.v("draft/fill_time") if wake else -dt / Tuning.v("draft/decay_time")), 0.0, 1.0)
 	if me.draft >= 1.0:
 		me.draft = 0.0
-		me.draft_time = BOOST_TIME
+		me.draft_time = Tuning.v("draft/boost_time")

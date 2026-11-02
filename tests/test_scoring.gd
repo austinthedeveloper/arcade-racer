@@ -23,14 +23,14 @@ func test_near_miss() -> void:
 
 func test_air() -> void:
 	eq(Scoring.air_points(0.3), 0, "a hop")
-	eq(Scoring.air_points(Scoring.AIR_TIME), Scoring.AIR, "air")
-	eq(Scoring.air_points(Scoring.BIG_AIR_TIME + 0.2), Scoring.BIG_AIR, "big air")
+	eq(Scoring.air_points(Tuning.v("scoring/air_time")), Tuning.i("scoring/air"), "air")
+	eq(Scoring.air_points(Tuning.v("scoring/big_air_time") + 0.2), Tuning.i("scoring/big_air"), "big air")
 
 
 func test_clean_section_and_no_crash() -> void:
-	eq(Scoring.clean_section_points(0), Scoring.CLEAN_SECTION, "untouched")
+	eq(Scoring.clean_section_points(0), Tuning.i("scoring/clean_section"), "untouched")
 	eq(Scoring.clean_section_points(1), 0, "one bump spoils it")
-	eq(Scoring.no_crash_points(0), Scoring.NO_CRASH, "no crash")
+	eq(Scoring.no_crash_points(0), Tuning.i("scoring/no_crash"), "no crash")
 	eq(Scoring.no_crash_points(2), 0, "crashed")
 
 
@@ -45,7 +45,7 @@ func test_the_tally() -> void:
 	s.checkpoint()
 	s.contacts = 1
 	s.finish(2, true)
-	eq(s.total(), 4 + Scoring.CLEAN_SECTION + Scoring.NO_CRASH + 15, "a clean first section, no crashes and 2nd place")
+	eq(s.total(), 4 + Tuning.i("scoring/clean_section") + Tuning.i("scoring/no_crash") + 15, "a clean first section, no crashes and 2nd place")
 
 
 func test_watch_counts_contacts_air_and_drafts() -> void:
@@ -119,7 +119,7 @@ func test_missing_oncoming_traffic_is_a_near_miss() -> void:
 func test_the_feed_fades_after_the_finish() -> void:
 	# Review on #118: the feed only aged while racing, so the finish's bonuses stayed up.
 	var r := race(true, false, 0)
-	r.score.add("NO CRASHES", Scoring.NO_CRASH)
+	r.score.add("NO CRASHES", Tuning.i("scoring/no_crash"))
 	r.state = r.State.FINISHED
 	drive(r, roundi(Scoring.FEED_TIME / DT) + 2, input(0.0))
 	eq(r.score.feed.size(), 0, "gone after FEED_TIME")

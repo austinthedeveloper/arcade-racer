@@ -12,14 +12,10 @@ const GRID_FRONT := 2200.0  # world units the front of the grid is ahead of the 
 const GRID_STEP := 250.0
 const GRID_X := 0.5
 ## Rubber band: rivals ahead of the player ease off and rivals behind get a little more, in
-## full at BAND_RANGE away. BAND_MAX caps either way, whatever a difficulty asks for.
-const BAND_RANGE := 4000.0
-const BAND_MAX := 0.08
+## full at ai/band_range away (Tuning). ai/band_max caps either way, whatever a difficulty asks for.
 const BAND_EASE := 0.05  # normal difficulty: most a rival ahead gives up...
 const BAND_BOOST := 0.04  # ...and most a rival behind gains
 const CONTACT_LENGTH := 300.0  # world units along the road two racers touch within
-const CONTACT_SLOWDOWN := 0.97  # the car behind drops to this share of the one in front's speed
-const SIDE_PUSH_LOSS := 0.02  # share of speed a racer-to-racer side contact scrubs off, once
 
 var cars: Array[RivalCar] = []
 var band_ease := BAND_EASE
@@ -91,12 +87,12 @@ func update(dt: float, track: Track, player: PlayerCar, racing: bool, finish_dis
 
 
 ## A rival's top speed multiplier `gap` world units ahead of the player (negative: behind):
-## easing off by up to `ease` ahead, gaining up to `boost` behind, never more than BAND_MAX.
+## easing off by up to `ease` ahead, gaining up to `boost` behind, never more than ai/band_max.
 static func band(gap: float, ease: float, boost: float) -> float:
-	var t := clampf(gap / BAND_RANGE, -1.0, 1.0)
+	var t := clampf(gap / Tuning.v("ai/band_range"), -1.0, 1.0)
 	if t > 0.0:
-		return 1.0 - t * clampf(ease, 0.0, BAND_MAX)
-	return 1.0 - t * clampf(boost, 0.0, BAND_MAX)
+		return 1.0 - t * clampf(ease, 0.0, Tuning.v("ai/band_max"))
+	return 1.0 - t * clampf(boost, 0.0, Tuning.v("ai/band_max"))
 
 
 func everyone(player: PlayerCar) -> Array:
@@ -160,7 +156,7 @@ func finished_count() -> int:
 ## drives right through the others.
 static func resolve_contacts(racers: Array, track: Track) -> void:
 	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
-	var reach := half_car * 2.0 * Cfg.HIT_OVERLAP
+	var reach := half_car * 2.0 * Tuning.v("crashes/hit_overlap")
 	var was_rubbing := {}
 	for r: PlayerCar in racers:
 		was_rubbing[r] = r.rubbing
@@ -179,7 +175,7 @@ static func resolve_contacts(racers: Array, track: Track) -> void:
 				# Ran into the back of it
 				var front := b if dz > 0.0 else a
 				var back := a if dz > 0.0 else b
-				back.speed = minf(back.speed, front.speed * CONTACT_SLOWDOWN)
+				back.speed = minf(back.speed, front.speed * Tuning.v("ai/contact_slowdown"))
 				back.move_to(front.position - CONTACT_LENGTH, track)
 				back.bumped = true
 			else:
@@ -188,8 +184,8 @@ static func resolve_contacts(racers: Array, track: Track) -> void:
 				a.x += side * push
 				b.x -= side * push
 				if not (was_rubbing[a] and was_rubbing[b]):
-					a.speed *= 1.0 - SIDE_PUSH_LOSS
-					b.speed *= 1.0 - SIDE_PUSH_LOSS
+					a.speed *= 1.0 - Tuning.v("ai/side_push_loss")
+					b.speed *= 1.0 - Tuning.v("ai/side_push_loss")
 				a.rubbing = true
 				b.rubbing = true
 				a.bumped = true

@@ -41,6 +41,7 @@ var _swallow := 0
 
 var calibration: CalibrationWizard
 var debug_overlay: InputDebugOverlay
+var debug_panel: DebugPanel
 var _layer: CanvasLayer
 var _menu_shot := ""
 ## Where the options screen goes back to (close_options): the title unless whoever opened
@@ -53,16 +54,20 @@ func _ready() -> void:
 	_layer = CanvasLayer.new()
 	_layer.layer = 2  # over the race, for options from its pause menu
 	add_child(_layer)
+	Tuning.boot(DevArgs.value("--tuning-file", Tuning.PATH))
 	debug_overlay = InputDebugOverlay.new()
 	calibration = CalibrationWizard.new()
+	debug_panel = DebugPanel.new()
 	var top := CanvasLayer.new()
 	top.layer = 3
 	add_child(top)
 	top.add_child(debug_overlay)
 	top.add_child(calibration)
+	top.add_child(debug_panel)
 	var quick := false
 	var pause_shot := false
 	var unplug_shot := false
+	var debug_page := ""  # --screen=debug[:page]: the tuning panel, over a race given race flags
 	var car := DevArgs.value("--car")
 	if car != "":
 		car_index = maxi(0, Cars.LIST.find(Cars.find(car)))
@@ -80,6 +85,8 @@ func _ready() -> void:
 			unplug_shot = true
 		elif arg == "--screen=results":
 			quick = true  # a race, staged to a finish (race.gd)
+		elif arg.begins_with("--screen=debug"):
+			debug_page = arg.get_slice(":", 1) if arg.contains(":") else Tuning.AREAS[0]
 		elif arg.begins_with("--screen="):
 			_open(arg.get_slice("=", 1))
 		elif arg.begins_with("--menu-shot="):
@@ -100,6 +107,10 @@ func _ready() -> void:
 		stage_unplug()
 	elif pause_shot:
 		race.pause()
+	if debug_page != "":
+		if menu == null and race == null:
+			show_title()
+		debug_panel.open(maxi(0, DebugPanel.page_named(debug_page)))
 	if _menu_shot != "":
 		_save_menu_shot(300 if quick else (240 if is_demo() else 30))  # a demo gets going first
 
@@ -116,7 +127,7 @@ func _physics_process(dt: float) -> void:
 		if woke:
 			end_demo()
 		return
-	if screen == Screen.RACE or menu == null or calibration.visible:
+	if screen == Screen.RACE or menu == null or calibration.visible or debug_panel.visible:
 		return
 	if _swallow > 0:
 		_swallow -= 1
@@ -344,6 +355,7 @@ func start_online_race() -> void:
 	race.online = online
 	race.debug_overlay = debug_overlay
 	race.calibration = calibration
+	race.debug_panel = debug_panel
 	race.quit_requested.connect(_on_race_quit)
 	race.race_over.connect(_on_race_over)
 	race.options_requested.connect(_on_race_options)
@@ -403,6 +415,7 @@ func _spawn_race(stage: int, car: int, demo: bool) -> void:
 	race.mirror = not demo and mirror_for(stage)
 	race.debug_overlay = debug_overlay
 	race.calibration = calibration
+	race.debug_panel = debug_panel
 	race.quit_requested.connect(_on_race_quit)
 	race.race_over.connect(_on_race_over)
 	race.options_requested.connect(_on_race_options)
@@ -477,6 +490,8 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # --car=car_mesa opens car select on that car. --screen=results stages a finish.
 # --mode=single_race (a ModeSelect.Item) picks the mode stage select is in; --mirror turns
 # its MIRROR toggle on.
+# --screen=debug opens the F3 tuning panel (debug:camera, debug:actions etc. for a page:
+# Tuning.AREAS, actions, presets), over the title, or over a race given race flags.
 # --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
 # a download; update:checking, update:failed, update:full and update:ready the other states.)
 

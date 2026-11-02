@@ -16,10 +16,6 @@ const MYSTERY_WEIGHTS := [0.3, 0.25, 0.25, 0.2, 0.0]
 ## earlier than the clock flashes (Cfg.LOW_TIME), so the help comes before the panic
 const LOW_TIME_LEAD := 2.0
 const LOW_TIME := Cfg.LOW_TIME + LOW_TIME_LEAD
-const CLOCK_BONUS := 3.0
-const RAM_TIME := 5.0
-const GHOST_TIME := 4.0
-const REACH := 0.3  # road half-widths between the car's center and a pickup's that take it
 const WORLD_H := 560.0  # world height of a pickup sprite
 
 class Pickup:
@@ -90,7 +86,7 @@ static func mystery(r: float, time_left: float) -> int:
 func take(segments: Array[Segment], x: float) -> Pickup:
 	for seg in segments:
 		for p in seg.pickups:
-			if not p.taken and absf(x - p.offset) < REACH:
+			if not p.taken and absf(x - p.offset) < Tuning.v("power_ups/reach"):
 				p.taken = true
 				return p
 	return null

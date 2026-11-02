@@ -9,7 +9,7 @@ func test_countdown_then_go() -> void:
 	eq(r.player.speed, 0.0, "the car waits")
 	drive(r, 110, input(1.0))
 	eq(r.state, r.State.COUNTDOWN, "still counting at 2.8 s")
-	check(r.player.speed > 0.0 and r.player.speed <= Launch.ROLL_SPEED, "rolling slowly to the line")
+	check(r.player.speed > 0.0 and r.player.speed <= Tuning.v("launch/roll_speed"), "rolling slowly to the line")
 	drive(r, 20, input(1.0))
 	eq(r.state, r.State.RACING, "racing after 3 s")
 	eq(r.banner, "GO!", "GO banner")
@@ -232,13 +232,13 @@ func test_autodrive_shifts_with_manual_gears() -> void:
 
 func test_launch_window_edges() -> void:
 	var G := Launch.Grade
-	eq(Launch.grade(-Launch.WINDOW_BEFORE - 0.01, 0.0), G.BOG, "just too early bogs")
-	eq(Launch.grade(-Launch.WINDOW_BEFORE, 0.0), G.LAUNCH, "the first moment of the window")
+	eq(Launch.grade(-Tuning.v("launch/window_before") - 0.01, 0.0), G.BOG, "just too early bogs")
+	eq(Launch.grade(-Tuning.v("launch/window_before"), 0.0), G.LAUNCH, "the first moment of the window")
 	eq(Launch.grade(0.0, 0.0), G.LAUNCH, "on GO")
-	eq(Launch.grade(Launch.WINDOW_AFTER, Launch.WINDOW_AFTER), G.LAUNCH, "the last moment of the window")
-	eq(Launch.grade(Launch.WINDOW_AFTER + 0.01, 0.2), G.NONE, "just too late is a plain start")
+	eq(Launch.grade(Tuning.v("launch/window_after"), Tuning.v("launch/window_after")), G.LAUNCH, "the last moment of the window")
+	eq(Launch.grade(Tuning.v("launch/window_after") + 0.01, 0.2), G.NONE, "just too late is a plain start")
 	eq(Launch.grade(NAN, 0.05), G.PENDING, "no gas yet, still in the window")
-	eq(Launch.grade(NAN, Launch.WINDOW_AFTER + 0.01), G.NONE, "no gas through the window")
+	eq(Launch.grade(NAN, Tuning.v("launch/window_after") + 0.01), G.NONE, "no gas through the window")
 
 
 ## Counts down with the gas off, presses it `before` seconds before GO (negative: after), and
@@ -254,7 +254,7 @@ func _start(before: float) -> Node:
 func test_gas_in_the_window_launches() -> void:
 	var r := _start(0.2)
 	eq(r.launch, Launch.Grade.LAUNCH, "launched")
-	check(r.banner == "LAUNCH!" or r.player.launch_time < Launch.BOOST_TIME, "LAUNCH banner")
+	check(r.banner == "LAUNCH!" or r.player.launch_time < Tuning.v("launch/boost_time"), "LAUNCH banner")
 	var plain := _start(-0.5)
 	eq(plain.launch, Launch.Grade.NONE, "a late start is plain")
 	check(r.player.speed > plain.player.speed * 1.2, "the launch is quicker off the line (%.0f vs %.0f)" % [r.player.speed, plain.player.speed])
@@ -555,7 +555,7 @@ func test_the_autodrive_power_slides_into_hard_bends() -> void:
 	p.slide = 1.0
 	check(not race.autodrive_slides(Track.CURVE_HARD, 1.0, p), "not when sliding already")
 	p.slide = 0.0
-	p.speed = Cfg.SLIDE_SPEED * 0.9
+	p.speed = Cfg.MAX_SPEED * Tuning.v("slide/speed") * 0.9
 	check(not race.autodrive_slides(Track.CURVE_HARD, 1.0, p), "not too slow")
 	p.speed = Cfg.MAX_SPEED
 	p.offroad = true

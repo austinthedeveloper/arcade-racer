@@ -82,7 +82,7 @@ func test_slipstream_rect() -> void:
 func test_device_rect() -> void:
 	var r := _rect("device")
 	check(r.position.x < 10 and r.end.y > Cfg.SCREEN_H - 10, "bottom left")
-	check(r.size.x >= UiText.width("F1 input debug   F2 calibrate wheel   R restart", 8), "the key line fits")
+	check(r.size.x >= UiText.width(Hud.keys_hint(false), 8) + 4, "the key line fits")
 
 
 func test_timer_pulses_under_the_low_time() -> void:

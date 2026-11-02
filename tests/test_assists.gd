@@ -60,7 +60,7 @@ func test_assists_never_exceed_their_caps() -> void:
 		var p := PlayerCar.new()
 		p.setup(cars[i % cars.size()])
 		p.reset(rng.randf() * t.length)
-		p.speed = rng.randf_range(0.0, Cfg.MAX_SPEED * Cfg.NITRO_SPEED_MULT)
+		p.speed = rng.randf_range(0.0, Cfg.MAX_SPEED * Tuning.v("driving/nitro_speed"))
 		p.x = rng.randf_range(-1.4, 1.4)
 		var inp := input(rng.randf(), rng.randf_range(-1.0, 1.0), rng.randf() if rng.randf() < 0.3 else 0.0)
 		inp.kind = DriveInput.Kind.GAMEPAD if i % 2 else DriveInput.Kind.KEYBOARD

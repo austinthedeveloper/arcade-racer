@@ -16,6 +16,11 @@ the release workflow puts that section at the top of the GitHub Release notes
   and Skyline are divided roads with traffic one way only.
 - Lane-change tells (RC-11): some everyday cars change lanes now and then, flashing a turn
   signal for a second first. A new tan sedan joins the traffic.
+- Tuning panel (EQ-15, EQ-16): F3 in a race or the menus opens a panel of the game's driving,
+  AI, traffic, drafting, launch, power-up, scoring and camera numbers. Nudge any of them and it
+  applies at once (the HUD says TUNED), save and load presets, and slow the race down, jump
+  along the stage, give yourself a power-up, set the clock or send a wave of traffic. Changes
+  are kept for the next run and logged.
 
 ### Changed
 

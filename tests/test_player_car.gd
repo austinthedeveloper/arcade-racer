@@ -53,7 +53,7 @@ func test_offroad_caps_speed() -> void:
 	check(p.speed < Cfg.MAX_SPEED * 0.8, "slowing hard (%.0f)" % p.speed)
 	_drive(p, t, 3.0, input(1.0))
 	# Within one tick of throttle above the limit
-	check(p.speed <= Cfg.OFFROAD_LIMIT + Cfg.ACCEL * DT * 1.3, "held to the off-road limit (%.0f)" % p.speed)
+	check(p.speed <= Cfg.MAX_SPEED / Tuning.v("driving/offroad_limit") + Cfg.MAX_SPEED / Tuning.v("driving/accel_time") * DT * 1.3, "held to the off-road limit (%.0f)" % p.speed)
 
 
 func test_steering_needs_speed() -> void:
@@ -151,7 +151,7 @@ func test_nitro_runs_out() -> void:
 		var go := input(1.0)
 		go.nitro_pressed = true
 		p.update(DT, go, t, true)
-		_drive(p, t, Cfg.NITRO_DURATION + 0.1, input(1.0))
+		_drive(p, t, Tuning.v("driving/nitro_time") + 0.1, input(1.0))
 	eq(p.nitro_charges, 0, "all used")
 	eq(p.nitro_time, 0.0, "no boost without charges")
 
@@ -219,17 +219,17 @@ func test_a_crash_into_traffic_is_a_short_spin_not_a_stop() -> void:
 	var c := _traffic_car(t, p, 0.0, Cfg.MAX_SPEED * 0.4)
 	p.collide(t)
 	check(p.crashed, "still a crash")
-	near(p.crash_time, Cfg.TRAFFIC_CRASH_DURATION, 0.001, "a short one")
-	near(p.speed, c.speed * Cfg.TRAFFIC_CRASH_KEEP, 0.001, "at a share of the car's speed")
+	near(p.crash_time, Tuning.v("crashes/traffic_spin_time"), 0.001, "a short one")
+	near(p.speed, c.speed * Tuning.v("crashes/traffic_spin_keep"), 0.001, "at a share of the car's speed")
 	check(p.position + Cfg.PLAYER_Z < c.z, "dropped in behind it")
 	var lowest := p.speed
 	while p.crash_time > 0.0:
 		p.update(DT, input(1.0), t, true)
 		lowest = minf(lowest, p.speed)
-	near(lowest, c.speed * Cfg.TRAFFIC_CRASH_KEEP, 1.0, "doesn't slow to a stop")
+	near(lowest, c.speed * Tuning.v("crashes/traffic_spin_keep"), 1.0, "doesn't slow to a stop")
 	var palm := _car(Cfg.MAX_SPEED)
 	palm.crash()
-	near(palm.crash_time, Cfg.CRASH_DURATION, 0.001, "a roadside crash is the full length...")
+	near(palm.crash_time, Tuning.v("crashes/crash_time"), 0.001, "a roadside crash is the full length...")
 	for i in 60:
 		palm.update(DT, input(1.0), t, true)
 	eq(palm.speed, 0.0, "...and stops the car")
@@ -242,7 +242,7 @@ func test_a_bump_keeps_most_of_the_cars_speed() -> void:
 	var c := _traffic_car(t, p, 0.0, Cfg.MAX_SPEED * 0.3)
 	p.collide(t)
 	check(p.bumped and not p.crashed, "a bump")
-	near(p.speed, c.speed * Cfg.BUMP_KEEP, 0.001, "most of the car's speed, not its square")
+	near(p.speed, c.speed * Tuning.v("crashes/bump_keep"), 0.001, "most of the car's speed, not its square")
 
 
 func test_slow_hit_on_traffic_bumps() -> void:
@@ -286,7 +286,7 @@ func test_traffic_in_a_skipped_segment_is_hit() -> void:
 	var t := flat_track()
 	var p := _car()
 	p.reset(50 * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z + 190.0)
-	p.speed = Cfg.MAX_SPEED * Cfg.NITRO_SPEED_MULT
+	p.speed = Cfg.MAX_SPEED * Tuning.v("driving/nitro_speed")
 	p.nitro_time = 1.0
 	var c := Traffic.TrafficCar.new()
 	c.z = 51 * Cfg.SEGMENT_LENGTH + 100.0
@@ -338,7 +338,7 @@ func test_steering_into_a_car_alongside_is_a_side_swipe() -> void:
 	check(p.bumped, "a nudge")
 	near(p.position, 4000.0, 0.001, "not snapped behind the car")
 	check(p.x < c.offset - 0.39, "pushed back out to the left (%.2f)" % p.x)
-	near(p.speed, Cfg.MAX_SPEED * (1.0 - Cfg.SIDESWIPE_SPEED_LOSS), 0.01, "a little speed lost")
+	near(p.speed, Cfg.MAX_SPEED * (1.0 - Tuning.v("crashes/sideswipe_loss")), 0.01, "a little speed lost")
 
 
 func _car_beside(t: Track, p: PlayerCar, offset: float, speed: float) -> Traffic.TrafficCar:
@@ -699,18 +699,18 @@ func _round_a_bend(p: PlayerCar, track: Track, seconds: float, inp: DriveInput) 
 
 
 func test_slide_after() -> void:
-	var fast := Cfg.SLIDE_SPEED + 100.0
+	var fast := Cfg.MAX_SPEED * Tuning.v("slide/speed") + 100.0
 	eq(PlayerCar.slide_after(0.0, fast, 0.8, 1.0, true), 1.0, "brake with right lock at speed: slides right")
 	eq(PlayerCar.slide_after(0.0, fast, -0.8, 1.0, true), -1.0, "and left")
 	eq(PlayerCar.slide_after(0.0, fast, 0.8, 0.2, true), 0.0, "not on a touch of brake")
 	eq(PlayerCar.slide_after(0.0, fast, 0.2, 1.0, true), 0.0, "not braking near straight")
-	eq(PlayerCar.slide_after(0.0, Cfg.SLIDE_SPEED - 100.0, 0.8, 1.0, true), 0.0, "not too slow")
+	eq(PlayerCar.slide_after(0.0, Cfg.MAX_SPEED * Tuning.v("slide/speed") - 100.0, 0.8, 1.0, true), 0.0, "not too slow")
 	eq(PlayerCar.slide_after(0.0, fast, 0.8, 1.0, false), 0.0, "not in the air, off the road or crashed")
 	eq(PlayerCar.slide_after(1.0, fast, 0.5, 0.0, true), 1.0, "lasts with the lock on, brake off")
-	eq(PlayerCar.slide_after(1.0, Cfg.SLIDE_EXIT_SPEED + 100.0, 0.5, 0.0, true), 1.0, "below the entry speed too")
+	eq(PlayerCar.slide_after(1.0, Cfg.MAX_SPEED * Tuning.v("slide/exit_speed") + 100.0, 0.5, 0.0, true), 1.0, "below the entry speed too")
 	eq(PlayerCar.slide_after(1.0, fast, 0.1, 0.0, true), 0.0, "ends when the lock comes off")
 	eq(PlayerCar.slide_after(1.0, fast, -0.8, 0.0, true), 0.0, "ends steering the other way")
-	eq(PlayerCar.slide_after(1.0, Cfg.SLIDE_EXIT_SPEED - 100.0, 0.8, 0.0, true), 0.0, "ends slowed right down")
+	eq(PlayerCar.slide_after(1.0, Cfg.MAX_SPEED * Tuning.v("slide/exit_speed") - 100.0, 0.8, 0.0, true), 0.0, "ends slowed right down")
 	eq(PlayerCar.slide_after(1.0, fast, 0.8, 1.0, false), 0.0, "ends leaving the road")
 
 
@@ -734,7 +734,7 @@ func test_a_slide_only_scrubs_a_little_speed() -> void:
 	var braked := _car(Cfg.MAX_SPEED * 0.8)
 	_round_a_bend(slid, t, 1.0, input(1.0, 1.0, 1.0))
 	_drive(braked, t, 1.0, input(0.0, 0.0, 1.0))
-	near(slid.speed, Cfg.MAX_SPEED * 0.8 - Cfg.SLIDE_DECEL, 1.0, "lost SLIDE_DECEL in a second")
+	near(slid.speed, Cfg.MAX_SPEED * 0.8 - Cfg.MAX_SPEED * Tuning.v("slide/decel"), 1.0, "lost SLIDE_DECEL in a second")
 	check(slid.speed < Cfg.MAX_SPEED * 0.8, "slower than it went in")
 	check(slid.speed > Cfg.MAX_SPEED * 0.8 * 0.85, "but only a little (%.0f)" % slid.speed)
 	check(braked.speed < slid.speed * 0.5, "far less than braking (%.0f)" % braked.speed)
@@ -746,12 +746,12 @@ func test_a_slide_turns_tighter() -> void:
 	var steered := _car(Cfg.MAX_SPEED * 0.8)
 	slid.update(DT, input(1.0, 1.0, 1.0), t, true)
 	steered.update(DT, input(1.0, 1.0, 0.0), t, true)
-	near(slid.x / steered.x, Cfg.SLIDE_TURN, 0.001, "SLIDE_TURN times the steering")
+	near(slid.x / steered.x, Tuning.v("slide/turn"), 0.001, "SLIDE_TURN times the steering")
 
 
 func test_no_slide_slow_off_road_or_for_rivals() -> void:
 	var t := flat_track(3000)
-	var slow := _car(Cfg.SLIDE_SPEED * 0.8)
+	var slow := _car(Cfg.MAX_SPEED * Tuning.v("slide/speed") * 0.8)
 	slow.update(DT, input(1.0, 1.0, 1.0), t, true)
 	eq(slow.slide, 0.0, "too slow: just brakes")
 	var off := _car(Cfg.MAX_SPEED * 0.8)
@@ -808,7 +808,7 @@ func test_a_head_on_crashes_even_when_stopped() -> void:
 	var c := _oncoming(t, p, 2000.0)
 	tr.cars.append(c)
 	check(_drive_into(t, p, tr, 120), "an oncoming car runs into a car standing in its lane")
-	near(p.crash_length, Cfg.HEAD_ON_DURATION, 0.001, "the longer head-on spin")
+	near(p.crash_length, Tuning.v("crashes/head_on_time"), 0.001, "the longer head-on spin")
 	check(c.flung > 0.0, "and is knocked aside")
 
 
@@ -819,7 +819,7 @@ func test_a_head_on_at_speed_is_never_skipped() -> void:
 	var tr := Traffic.new()
 	tr.cars.append(_oncoming(t, p, 3000.0))
 	check(_drive_into(t, p, tr, 120), "met nose to nose at nitro speed")
-	check(p.speed <= Cfg.MAX_SPEED * 1.3 * Cfg.HEAD_ON_KEEP + 1.0, "most of the speed gone")
+	check(p.speed <= Cfg.MAX_SPEED * 1.3 * Tuning.v("crashes/head_on_keep") + 1.0, "most of the speed gone")
 
 
 func test_oncoming_in_another_lane_goes_by() -> void:

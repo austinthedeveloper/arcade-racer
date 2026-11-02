@@ -6,33 +6,21 @@ extends RefCounted
 
 const LINE_FROM := 5  # segments ahead the racing line starts looking...
 const LINE_TO := 30  # ...and stops
-const LINE_GAIN := 0.09  # road half-widths toward the inside per unit of average curve
-const LINE_MAX := 0.55  # furthest inside the line goes
 const STEER_AHEAD := 3000.0  # world units ahead the steering reads the curve (as the autodrive)
 const STEER_CURVE := 0.25
-const STEER_GAIN := 1.5
 const LOOKAHEAD := 50  # segments checked for slower cars in the way
 const ONCOMING_SCAN := 2  # times LOOKAHEAD looked ahead for oncoming traffic
 const ONCOMING_CAUTION := 0.4  # oncoming room counts this much of a standing car's (oncoming_gap)
 const ONCOMING_CROSS_TIME := 1.0  # seconds before an oncoming car arrives that its lane can still be crossed
 const LANE_CLEARANCE := 0.05  # road half-widths of room kept beside a car when passing
 const CROSS_TIME := 0.3  # seconds ahead within which the way across to a new lane must be clear
-const LIFT_TIME := 0.5  # seconds: closer than this behind a car with nowhere to go, lift...
-const BRAKE_TIME := 0.25  # ...and closer than this, brake
 const CORNER_AHEAD := 8  # segments ahead the corner speed reads the sharpest curve
-const CORNER_GRIP := 0.85  # share of full lock a bend may take at speed; the rest is for the line
 const STRAIGHT_AHEAD := 40  # segments that must be nearly straight for nitro
 const STRAIGHT_CURVE := 0.5
-const NITRO_SPEED := 0.85  # share of top speed before nitro
-const NITRO_RATE := 0.6  # chance per second of firing nitro once everything allows it
-const BLOCK_RANGE := 1500.0  # world units: an aggressive driver blocks a faster car this close behind...
-const BLOCK_TIME := 1.5  # ...for this long at most...
-const BLOCK_REST := 5.0  # ...then lets it by for this long
 const BLOCK_FORGET := 0.5  # block seconds forgotten per second without a car to block, so a
                            # chaser dropping back for a moment doesn't restart the clock
 const ERRATIC_REACT := 0.35  # seconds an erratic driver sticks to a lane before looking again...
 const ERRATIC_LOOKAHEAD := 25  # ...seeing this many segments ahead
-const SWERVE_RATE := 0.25  # chance per second an erratic driver picks a new line
 const SWERVE_BIAS := 0.5
 
 var rng := RandomNumberGenerator.new()
@@ -58,7 +46,7 @@ func drive(me: PlayerCar, track: Track, racers: Array, dt: float) -> DriveInput:
 	var inp := DriveInput.new()
 	var z := me.position + Cfg.PLAYER_Z
 	var edge: float = track.narrowest_ahead(z).lane_offsets()[-1]
-	if style == RivalProfile.Style.ERRATIC and rng.randf() < SWERVE_RATE * dt:
+	if style == RivalProfile.Style.ERRATIC and rng.randf() < Tuning.v("ai/swerve_rate") * dt:
 		lane_bias = rng.randf_range(-SWERVE_BIAS, SWERVE_BIAS) * side
 	var want := clampf(racing_line(track, z) + lane_bias, -edge, edge)
 	if style == RivalProfile.Style.AGGRESSIVE:
@@ -69,9 +57,9 @@ func drive(me: PlayerCar, track: Track, racers: Array, dt: float) -> DriveInput:
 		else:
 			want = clampf(chaser.x, -edge, edge)
 			_blocking += dt
-			if _blocking >= BLOCK_TIME:
+			if _blocking >= Tuning.v("ai/block_time"):
 				_blocking = 0.0
-				_resting = BLOCK_REST
+				_resting = Tuning.v("ai/block_rest")
 	want = keep_to_own_side(track, z, want)
 	_react -= dt
 	if style != RivalProfile.Style.ERRATIC or _react <= 0.0:
@@ -82,25 +70,25 @@ func drive(me: PlayerCar, track: Track, racers: Array, dt: float) -> DriveInput:
 		_react = ERRATIC_REACT
 	var lane := {"x": target, "gap": _gap}
 	var seg := track.find_segment(z + STEER_AHEAD)
-	inp.steer = clampf(seg.curve * STEER_CURVE + (target - me.x) * STEER_GAIN, -1.0, 1.0)
+	inp.steer = clampf(seg.curve * STEER_CURVE + (target - me.x) * Tuning.v("ai/steer_gain"), -1.0, 1.0)
 	inp.throttle = 1.0
 	var room: float = lane["gap"] * Cfg.SEGMENT_LENGTH
-	if lane["gap"] < LOOKAHEAD and room < me.speed * LIFT_TIME:
+	if lane["gap"] < LOOKAHEAD and room < me.speed * Tuning.v("ai/lift_time"):
 		# Boxed in: ease off rather than run into the back of it
 		inp.throttle = 0.0
-		inp.brake = 1.0 if room < me.speed * BRAKE_TIME else 0.0
+		inp.brake = 1.0 if room < me.speed * Tuning.v("ai/brake_time") else 0.0
 	elif me.speed > corner_speed(me, track, z):
 		inp.throttle = 0.0
-	elif me.nitro_charges > 0 and me.nitro_time <= 0.0 and me.speed > me.top_speed * NITRO_SPEED \
+	elif me.nitro_charges > 0 and me.nitro_time <= 0.0 and me.speed > me.top_speed * Tuning.v("ai/nitro_speed") \
 			and lane["gap"] >= LOOKAHEAD and straight_ahead(track, z):
-		inp.nitro_pressed = rng.randf() < NITRO_RATE * dt
+		inp.nitro_pressed = rng.randf() < Tuning.v("ai/nitro_rate") * dt
 	return inp
 
 
 ## The nearest faster racer coming up close behind `me`, for an aggressive driver to block.
 static func blocking_target(me: PlayerCar, track: Track, racers: Array) -> PlayerCar:
 	var best: PlayerCar = null
-	var nearest := BLOCK_RANGE
+	var nearest := Tuning.v("ai/block_range")
 	for other: PlayerCar in racers:
 		if other == me or other.speed <= me.speed:
 			continue
@@ -124,7 +112,7 @@ static func corner_speed(me: PlayerCar, track: Track, z: float) -> float:
 		sharpest = maxf(sharpest, absf(seg.curve) / seg.grip)
 	if sharpest <= 0.0:
 		return INF
-	return Cfg.MAX_SPEED * CORNER_GRIP * me.steer_mult / (sharpest * Cfg.CENTRIFUGAL * me.pull_mult)
+	return Cfg.MAX_SPEED * Tuning.v("ai/corner_grip") * me.steer_mult / (sharpest * Tuning.v("driving/centrifugal") * me.pull_mult)
 
 
 static func racing_line(track: Track, z: float) -> float:
@@ -133,7 +121,7 @@ static func racing_line(track: Track, z: float) -> float:
 	var sum := 0.0
 	for k in range(LINE_FROM, LINE_TO):
 		sum += track.segments[(here + k) % n].curve
-	return clampf(sum / (LINE_TO - LINE_FROM) * LINE_GAIN, -LINE_MAX, LINE_MAX)
+	return clampf(sum / (LINE_TO - LINE_FROM) * Tuning.v("ai/line_gain"), -Tuning.v("ai/line_max"), Tuning.v("ai/line_max"))
 
 
 static func straight_ahead(track: Track, z: float) -> bool:

@@ -81,7 +81,7 @@ func test_racing_line_takes_the_inside_of_a_bend() -> void:
 	check(AIDriver.racing_line(right, z) > 0.2, "right of center into a right-hand bend")
 	check(AIDriver.racing_line(left, z) < -0.2, "left of center into a left-hand bend")
 	eq(AIDriver.racing_line(right, 450 * Cfg.SEGMENT_LENGTH), 0.0, "center on a straight")
-	check(absf(AIDriver.racing_line(right, z)) <= AIDriver.LINE_MAX, "never past LINE_MAX")
+	check(absf(AIDriver.racing_line(right, z)) <= Tuning.v("ai/line_max"), "never past LINE_MAX")
 
 
 func test_a_rival_follows_the_line_through_a_bend() -> void:
@@ -228,7 +228,7 @@ func test_running_into_a_racer_drops_in_behind_it() -> void:
 	Rivals.resolve_contacts([back, front], t)
 	check(back.bumped and not back.crashed, "a bump, no crash")
 	near(back.position, 2000.0 - Rivals.CONTACT_LENGTH, 0.001, "dropped in behind")
-	near(back.speed, 5000.0 * Rivals.CONTACT_SLOWDOWN, 0.01, "at a little under its speed")
+	near(back.speed, 5000.0 * Tuning.v("ai/contact_slowdown"), 0.01, "at a little under its speed")
 	eq(front.speed, 5000.0, "the car in front keeps its speed")
 
 
@@ -244,7 +244,7 @@ func test_racers_side_by_side_are_pushed_apart() -> void:
 	b.speed = 8000.0
 	Rivals.resolve_contacts([a, b], t)
 	check(a.x > 0.1 and b.x < -0.1, "pushed apart")
-	near(a.x - b.x, Cfg.CAR_WIDTH / Cfg.ROAD_WIDTH * Cfg.HIT_OVERLAP, 0.001, "just touching")
+	near(a.x - b.x, Cfg.CAR_WIDTH / Cfg.ROAD_WIDTH * Tuning.v("crashes/hit_overlap"), 0.001, "just touching")
 	near(a.position, 2000.0, 0.001, "no one moved along the road")
 
 
@@ -260,7 +260,7 @@ func test_rubbing_doors_scrubs_speed_once() -> void:
 		a.x = 0.1
 		b.x = -0.1
 		Rivals.resolve_contacts([a, b], t)
-	near(a.speed, 8000.0 * (1.0 - Rivals.SIDE_PUSH_LOSS), 0.001, "scrubbed when they touched, not every tick")
+	near(a.speed, 8000.0 * (1.0 - Tuning.v("ai/side_push_loss")), 0.001, "scrubbed when they touched, not every tick")
 	check(a.rubbing and b.rubbing, "still rubbing")
 	a.x = 0.5
 	b.x = -0.5
@@ -269,7 +269,7 @@ func test_rubbing_doors_scrubs_speed_once() -> void:
 	a.x = 0.1
 	b.x = -0.1
 	Rivals.resolve_contacts([a, b], t)
-	near(a.speed, 8000.0 * pow(1.0 - Rivals.SIDE_PUSH_LOSS, 2), 0.001, "a new touch scrubs again")
+	near(a.speed, 8000.0 * pow(1.0 - Tuning.v("ai/side_push_loss"), 2), 0.001, "a new touch scrubs again")
 
 
 func test_a_ghosted_car_drives_through_racers() -> void:
@@ -376,22 +376,22 @@ func test_a_profile_per_car() -> void:
 
 func test_the_band_never_exceeds_its_cap() -> void:
 	near(Rivals.band(0.0, 0.05, 0.04), 1.0, 0.0001, "level with the player: no band")
-	near(Rivals.band(Rivals.BAND_RANGE, 0.05, 0.04), 0.95, 0.0001, "well ahead: eases off in full")
-	near(Rivals.band(-Rivals.BAND_RANGE, 0.05, 0.04), 1.04, 0.0001, "well behind: gains in full")
-	near(Rivals.band(Rivals.BAND_RANGE * 0.5, 0.05, 0.04), 0.975, 0.0001, "half way: half")
-	for gap in [-1e9, -Rivals.BAND_RANGE * 3.0, Rivals.BAND_RANGE * 3.0, 1e9]:
+	near(Rivals.band(Tuning.v("ai/band_range"), 0.05, 0.04), 0.95, 0.0001, "well ahead: eases off in full")
+	near(Rivals.band(-Tuning.v("ai/band_range"), 0.05, 0.04), 1.04, 0.0001, "well behind: gains in full")
+	near(Rivals.band(Tuning.v("ai/band_range") * 0.5, 0.05, 0.04), 0.975, 0.0001, "half way: half")
+	for gap in [-1e9, -Tuning.v("ai/band_range") * 3.0, Tuning.v("ai/band_range") * 3.0, 1e9]:
 		for strength in [0.0, 0.05, 0.5, 10.0]:
 			var b := Rivals.band(gap, strength, strength)
-			check(b >= 1.0 - Rivals.BAND_MAX and b <= 1.0 + Rivals.BAND_MAX,
-				"capped at %d%% (gap %.0f, strength %.2f: %.3f)" % [Rivals.BAND_MAX * 100, gap, strength, b])
+			check(b >= 1.0 - Tuning.v("ai/band_max") and b <= 1.0 + Tuning.v("ai/band_max"),
+				"capped at %d%% (gap %.0f, strength %.2f: %.3f)" % [Tuning.v("ai/band_max") * 100, gap, strength, b])
 
 
 func test_the_band_reaches_the_race() -> void:
 	var t := flat_track(2000)
 	var p := _player()
 	var f := _field(t, 2)
-	f.cars[0].distance = p.distance + Rivals.BAND_RANGE * 2.0
-	f.cars[1].distance = p.distance - Rivals.BAND_RANGE * 2.0
+	f.cars[0].distance = p.distance + Tuning.v("ai/band_range") * 2.0
+	f.cars[1].distance = p.distance - Tuning.v("ai/band_range") * 2.0
 	f.update(DT, t, p, true, 1e12)
 	near(f.cars[0].top_speed, f.cars[0].base_top * (1.0 - Rivals.BAND_EASE), 0.01, "the leader eases off")
 	near(f.cars[1].top_speed, f.cars[1].base_top * (1.0 + Rivals.BAND_BOOST), 0.01, "the straggler gains")
@@ -450,10 +450,10 @@ func test_an_aggressive_driver_only_blocks_for_a_while() -> void:
 	chaser.speed = Cfg.MAX_SPEED
 	chaser.x = 0.75
 	var blocked := 0
-	for i in roundi((AIDriver.BLOCK_TIME + 1.0) / DT):
+	for i in roundi((Tuning.v("ai/block_time") + 1.0) / DT):
 		me.driver.drive(me, t, [me, chaser], DT)
 		blocked += int(me.driver.target == 0.75)
-	check(blocked <= roundi(AIDriver.BLOCK_TIME / DT) + 1, "blocks for BLOCK_TIME at most (%d ticks)" % blocked)
+	check(blocked <= roundi(Tuning.v("ai/block_time") / DT) + 1, "blocks for BLOCK_TIME at most (%d ticks)" % blocked)
 	near(me.driver.target, 0.0, 0.001, "then lets it by")
 
 
@@ -467,10 +467,10 @@ func test_difficulty_levels() -> void:
 	eq([easy.timer, normal.timer, hard.timer], [0, 1, 2], "relaxed, arcade and tight clocks")
 	var top_pace: float = RivalProfile.roster().map(func(p: RivalProfile) -> float: return p.pace).max()
 	for d in [easy, normal, hard]:
-		check(d.band_ease <= Rivals.BAND_MAX and d.band_boost <= Rivals.BAND_MAX, "within the band's cap")
+		check(d.band_ease <= Tuning.v("ai/band_max") and d.band_boost <= Tuning.v("ai/band_max"), "within the band's cap")
 		for gap in [-1e6, 1e6]:
 			var b := Rivals.band(gap, d.band_ease, d.band_boost)
-			check(absf(b - 1.0) <= Rivals.BAND_MAX, "band capped (%.3f)" % b)
+			check(absf(b - 1.0) <= Tuning.v("ai/band_max"), "band capped (%.3f)" % b)
 		# Base pace only: the rubber band (capped above) can add a little on top of this.
 		check(d.rival_pace * top_pace <= 1.0, "even a hard rival's base pace tops out at its car's speed")
 
@@ -500,13 +500,13 @@ func test_a_bump_does_not_restart_the_block() -> void:
 	chaser.reset(4000.0 - 800.0)
 	chaser.x = 0.75
 	var blocked := 0
-	for i in roundi((AIDriver.BLOCK_TIME + 2.0) / DT):
+	for i in roundi((Tuning.v("ai/block_time") + 2.0) / DT):
 		var t_s := i * DT
 		# faster for 1 s, bumped under the blocker's speed for 0.3 s, then faster again
 		chaser.speed = Cfg.MAX_SPEED * (0.6 if t_s >= 1.0 and t_s < 1.3 else 1.0)
 		me.driver.drive(me, t, [me, chaser], DT)
 		blocked += int(me.driver.target == 0.75)
-	check(blocked <= roundi(AIDriver.BLOCK_TIME / DT) + 10, "about BLOCK_TIME of blocking in all (%d ticks)" % blocked)
+	check(blocked <= roundi(Tuning.v("ai/block_time") / DT) + 10, "about BLOCK_TIME of blocking in all (%d ticks)" % blocked)
 	near(me.driver.target, 0.0, 0.001, "then lets it by")
 
 
