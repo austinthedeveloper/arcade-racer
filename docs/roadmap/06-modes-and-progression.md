@@ -24,6 +24,12 @@ Four cars and stage 1 are open from the start; the rest unlock as the tour goes
 | MP-6 ✓ | **Free Drive.** No timer, no rivals, traffic optional; the wheel test mode. | S | 6 | MP-8 | e2e smoke enters and quits it |
 | MP-7 ✓ | **Difficulty.** Easy, normal, hard: rival pace and rubber-band strength, and the timer option's default. | S | 2 | RC-4 | A `Difficulty` resource per level; tests on the band caps |
 | MP-8 ✓ | **Mode select.** A screen after the title: Grand Tour, Single Race, Time Attack, Free Drive, Options. Wheel-drivable. | S | 2 | | e2e smoke reaches each mode; `--screen=modes` screenshot |
+| MP-9 | **Medals.** Bronze, silver and gold times per stage and difficulty, shown on the map, the results screen and stage select. | S | 1 | MP-1 | A medal table per stage with a test that gold beats the autodrive's time; screenshots of the map and results |
+| MP-10 | **Player profiles.** Up to four local profiles, each a preset name and avatar picked from a list (no typing), each with its own save; the title screen shows who is driving. | M | 2 | MP-1 | Save files per profile with migration; `test_save` covers switching; a screenshot of the picker |
+| MP-11 | **Stats page.** Races, wins, crashes, near misses, miles, favourite car and stage, kept in the save and shown from the title. | S | 2 | MP-1 | Counters tested across a race; a screenshot |
+| MP-12 | **Sticker book.** Twenty-four stickers (first win, a clean race, every stage, a mirror win, a chain of five...), each awarded once with a chime, on a page in the menus. | M | 3 | MP-11 | Each sticker's condition in a plain function with a test; a screenshot of the page half full |
+| MP-13 | **Survival.** An endless road with ramping traffic and a clock that only shrinks at each checkpoint; the score is distance. On mode select, with its own best. | M | 3 | WS-8, MP-1 | The stage loop and ramp in plain functions with tests; an autodrive run that ends |
+| MP-14 | **Daily run.** A seeded stage, car, weather and traffic mix per calendar day, the same for everyone, with your best tries for the day. | S | 3 | MP-13 | The seed from the date, tested; a screenshot of the card |
 
 ## Open decisions
 
