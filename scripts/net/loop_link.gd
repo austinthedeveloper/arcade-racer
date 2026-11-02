@@ -55,6 +55,9 @@ class Relay:
 
 var relay: Relay
 var _inbox: Array = []
+## Milliseconds every message to this game takes to arrive (--bot-lag, screenshots); 0 at once.
+var lag_ms := 0
+var _held: Array = []  # with lag: [due msec, message] not handed over yet
 
 
 func _init(on: Relay) -> void:
@@ -89,7 +92,15 @@ func send_to(to: int, msg: Array) -> void:
 func receive() -> Array:
 	var out := _inbox
 	_inbox = []
-	return out
+	if lag_ms <= 0:
+		return out
+	var now := Time.get_ticks_msec()
+	for m: Array in out:
+		_held.append([now + lag_ms, m])
+	var due: Array = []
+	while not _held.is_empty() and int(_held[0][0]) <= now:
+		due.append(_held.pop_front()[1])
+	return due
 
 
 func close() -> void:

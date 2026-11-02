@@ -27,7 +27,12 @@ var make_link: Callable = func() -> NetLink: return RelayLink.new()
 ## --online=host / join:CODE (online_from_flags): "host" or "join", or "" from the menus.
 var auto_online := ""
 var auto_players := 2  # --players=N: the host starts once this many are in
+var auto_races := 1  # --races=N: rematches (ON-9) before the finishes are printed and it quits
+var _auto_done := 0  # races finished so far
+var _auto_again := false  # this race's finish has been seen: READY said, the next stage picked
 var _auto_started := false
+var bots: Array = []  # --online=bot: the made-up guests (OnlineBot)
+var _bot_relay: LoopLink.Relay
 var _auto_room_said := false
 ## Seconds on the title with no input before a demo starts. --attract-delay=N sets it
 ## (the e2e sets it directly).
@@ -116,6 +121,8 @@ func _ready() -> void:
 
 
 func _physics_process(dt: float) -> void:
+	for b: OnlineBot in bots:
+		b.tick(dt, race)
 	if online != null:
 		online.poll(dt)
 		if auto_online != "":
@@ -280,25 +287,40 @@ func open_room(link: NetLink) -> void:
 ## --online=host or --online=join:CODE, for racing two windows hands-off: straight into a
 ## room on the stage (--stage=N) and car (--car=ID) given, the host starting once `players`
 ## are in. The room's code is printed ("online room BXKM") and, with --room-file=PATH,
-## written there; with --autodrive each game drives itself. Once every racer has finished,
-## the finishes are printed and the game quits.
+## written there; with --autodrive each game drives itself. --online=bot hosts on an in-memory
+## relay with made-up guests (OnlineBot) for screenshots: --bot-speed=F of top speed (0.8),
+## --bot-lag=MS on their line, --bot-drop=S the first leaves at that race time. Once every racer has finished,
+## the finishes are printed; with --races=N each game says READY and the host picks the next
+## stage (ON-9), N races in all; then the game quits.
 func online_from_flags(flag: String, players := 2) -> void:
 	mode_index = ModeSelect.Item.ONLINE
 	auto_players = clampi(players, 1, OnlineSession.MAX_PLAYERS)
+	auto_races = maxi(1, int(DevArgs.value("--races", "1")))
 	var stage := DevArgs.value("--stage")
 	if stage != "":
 		stage_index = clampi(int(stage) - 1, 0, Stages.count() - 1)
 	show_online()
+	if flag == "bot":
+		_bot_relay = LoopLink.Relay.new()
+		make_link = func() -> NetLink: return LoopLink.new(_bot_relay)
 	var link: NetLink = make_link.call()
 	open_room(link)
-	if flag == "host":
+	if flag == "host" or flag == "bot":
 		auto_online = "host"
 		link.call("host")
 	elif flag.begins_with("join:"):
 		auto_online = "join"
 		link.call("join", flag.trim_prefix("join:"))
 	else:
-		push_error("--online=host or --online=join:CODE, not %s" % flag)
+		push_error("--online=host, --online=join:CODE or --online=bot, not %s" % flag)
+	if flag == "bot":
+		var cars := ["car_mesa", "car_kestrel", "car_bruiser"]
+		for i in auto_players - 1:
+			var b := OnlineBot.joining(_bot_relay, link.room, cars[i % cars.size()], int(DevArgs.value("--bot-lag", "0")))
+			b.speed = Cfg.MAX_SPEED * float(DevArgs.value("--bot-speed", "0.8"))
+			if i == 0 and DevArgs.value("--bot-drop") != "":
+				b.drop_at = float(DevArgs.value("--bot-drop"))
+			bots.append(b)
 
 
 func _auto_online_tick() -> void:
@@ -319,10 +341,18 @@ func _auto_online_tick() -> void:
 		_auto_started = true
 		online.choose(stage_index, mirror)
 		online.start()
-	if race != null and online.go and not online.racers.is_empty() \
+	if race != null and online.go and not _auto_again and not online.racers.is_empty() \
 			and online.racers.all(func(s: int) -> bool: return online.finishes.has(s) or online.gone.has(s)):
-		print("online finishes ", online.finishes, " gone ", online.gone)
-		_quit_auto(0)
+		_auto_again = true
+		_auto_done += 1
+		print("online race %d on %s: finishes %s gone %s" % [_auto_done, Stages.stage_name(online.stage), online.finishes, online.gone])
+		if _auto_done >= auto_races:
+			if bots.is_empty():  # (with bots, the results stay up for a screenshot)
+				_quit_auto(0)
+			return
+		if online.hosting():
+			online.choose(OnlineScreen.next_stage(online.stage, 1), false)
+		online.ready_again()
 
 
 func _quit_auto(code: int) -> void:
@@ -345,6 +375,7 @@ func start_online_race() -> void:
 	if race != null:
 		_drop_race()
 	online.started = false
+	_auto_again = false
 	stage_index = online.stage
 	_set_menu(null, Screen.RACE)
 	race = RACE_SCENE.instantiate()
@@ -353,6 +384,8 @@ func start_online_race() -> void:
 	race.mirror = online.mirror
 	race.tour = false
 	race.online = online
+	if auto_online != "" and DevArgs.has("--autodrive"):
+		race.drive_itself()  # (a rematch: the dev flags were the first race's)
 	race.debug_overlay = debug_overlay
 	race.calibration = calibration
 	race.debug_panel = debug_panel

@@ -525,9 +525,14 @@ func _physics_process(dt: float) -> void:
 			else:
 				start_race()
 			return
+		if online != null:
+			online_results_input(InputRouter.menu)
 		match results.choose(InputRouter.menu, inp.confirm_pressed):
 			ResultsScreen.Choice.CONTINUE:
-				after_race()
+				if online != null:
+					online_continue()
+				else:
+					after_race()
 				return
 			ResultsScreen.Choice.RETRY:
 				start_race()
@@ -775,7 +780,7 @@ func _check_progress() -> void:
 		var prompt := "Enter: menu   R: race again"
 		after = After.MENU
 		if online != null:
-			prompt = "Enter: back to the lobby"
+			prompt = "Enter: results"
 		elif tour:
 			prompt = _tour_finish()
 		elif time_attack:
@@ -882,6 +887,27 @@ func timed() -> bool:
 	return not time_attack and not free_drive and online == null
 
 
+## The results online (ON-9): the host picks the next stage with up and down.
+func online_results_input(m: MenuInput) -> void:
+	if not online.hosting() or online.phase != OnlineSession.Phase.RACING or m.step_y() == 0:
+		return
+	var next := OnlineScreen.next_stage(online.stage, m.step_y())
+	online.choose(next, online.mirror and Unlocks.mirror_unlocked(next))
+	Audio.play("tick")
+
+
+## The results' first button online (ON-9): READY for the next race (again to take it back);
+## the host, once ready, starts it without waiting for the rest. With the room gone, back to
+## the online screen, which says why.
+func online_continue() -> void:
+	if online.phase == OnlineSession.Phase.CLOSED:
+		after_race()
+	elif online.hosting() and online.is_ready_again():
+		online.start()
+	else:
+		online.ready_again(not online.is_ready_again())
+
+
 ## Online (ON-3): the other players where their games last said, moved on since; their
 ## finishes; those who left taken off the road; this car sent on.
 func _online_tick(dt: float) -> void:
@@ -910,6 +936,13 @@ func _online_tick(dt: float) -> void:
 			r.finish_time = online.finishes[r.slot]
 	if state != State.COUNTDOWN:
 		online.send_car(player)
+
+
+## Autodrives from here on, as --autodrive does (a rematch online, whose race didn't read the
+## dev flags: game.start_online_race).
+func drive_itself() -> void:
+	_autodrive = true
+	_log_banners = true
 
 
 ## Whether this race is the player's own, to save from: not autodriven, not started partway

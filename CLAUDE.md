@@ -22,7 +22,8 @@ godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a m
 godot --path . --resolution 1600x900 -- --settings-file=/tmp/opts.cfg --profiles-file=/tmp/prof.cfg --screen=options:display --shot-as-window --menu-shot=/tmp/d.png   # other options and binding files; the shot laid out as the window shows it (also --screen=remap, --screen=wheel, and race --screenshots)
 godot --path . -- --screen=online:lobby --touch --menu-shot=/tmp/o.png   # the online lobby (online:menu, code, guest, error) on an in-memory relay, touch controls up
 godot --headless --path . -s res://tools/online_probe.gd -- --relay=ws://127.0.0.1:8080   # host + guest through a relay (npm start in ../snes/pickleball-relay); no --relay: the live one
-godot --path . -- --online=host --stage=1 --autodrive --room-file=/tmp/room   # then in another: --online=join:$(cat /tmp/room) --autodrive; two windows race, print the finishes, quit
+godot --path . -- --online=host --stage=1 --autodrive --room-file=/tmp/room   # then in another: --online=join:$(cat /tmp/room) --autodrive; two windows race, print the finishes, quit (--races=2 on both: a rematch first, ON-9)
+godot --path . -- --online=bot --stage=1 --autodrive --at-segment=4650 --screenshots=900 --shot-dir=/tmp/shots   # an online race on an in-memory relay with a made-up guest (--players=N, --bot-speed=0.6, --bot-lag=MS, --bot-drop=S)
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
 godot --path . -- --tuning-file=res://tests/fixtures/tuning_override.cfg --screen=debug:camera --menu-shot=/tmp/d.png   # the F3 tuning panel on a page (Tuning.AREAS, actions, presets); race flags put it over a race
 python3 tools/tuning_adopt.py [FILE] [--only=KEYS] [--dry-run]   # tuned values into Tuning.TABLE as the defaults, golden traces regenerated (README: Tuning)

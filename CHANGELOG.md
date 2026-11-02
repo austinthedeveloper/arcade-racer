@@ -7,6 +7,13 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Rematch online (ON-9): after an online race the room stays open. The results show READY
+  and a count of who's in ("READY 1 / 2"); the host picks the next stage there with up and
+  down, and the next race starts as soon as everyone is ready. The host can also START NOW
+  without waiting for the rest.
+
 ## [0.4.0] - 2026-11-02
 
 ### Added

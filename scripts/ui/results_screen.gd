@@ -36,7 +36,7 @@ func open() -> void:
 	items = choices(race.tour, race.time_attack, online)
 	labels.clear()
 	for c in items:
-		labels.append("LOBBY" if online and c == Choice.CONTINUE else choice_label(c, race.after))
+		labels.append(online_label(race.online) if online and c == Choice.CONTINUE else choice_label(c, race.after))
 	index = 0
 	_latched = true
 	visible = true
@@ -52,6 +52,21 @@ static func choices(tour: bool, _time_attack: bool, online := false) -> Array[in
 	if tour or online:
 		return [Choice.CONTINUE, Choice.QUIT]
 	return [Choice.CONTINUE, Choice.RETRY, Choice.QUIT]
+
+
+## The first button online (ON-9): READY for the next race, then CANCEL READY (the host:
+## START NOW, not waiting for the rest); BACK once the room is gone.
+static func online_label(room: OnlineSession) -> String:
+	if room.phase == OnlineSession.Phase.CLOSED:
+		return "BACK"
+	if not room.is_ready_again():
+		return "READY"
+	return "START NOW" if room.hosting() else "CANCEL READY"
+
+
+## The READY count under the results online (ON-9): "READY  1 / 2".
+static func ready_line(room: OnlineSession) -> String:
+	return "READY  %d / %d" % [room.ready_count(), room.players.size()]
 
 
 static func choice_label(c: int, after: int) -> String:
@@ -113,11 +128,13 @@ static func best_line(new_best: bool, best_before: Dictionary) -> String:
 	return ""
 
 
-static func results_hints() -> String:
+## The footer's hints; `stage_pick` adds the host's next stage on up and down (ON-9).
+static func results_hints(stage_pick := false) -> String:
+	var more := "    Up / Down: next stage" if stage_pick else ""
 	match InputRouter.state.kind:
 		DriveInput.Kind.GAMEPAD, DriveInput.Kind.WHEEL:
-			return "D-pad: choose    A: select"
-	return "Left / Right: choose    Enter: select"
+			return "D-pad: choose    A: select" + more
+	return "Left / Right: choose    Enter: select" + more
 
 
 func _draw() -> void:
@@ -139,8 +156,12 @@ func _draw() -> void:
 		_standings_panel(tour, "FINAL STANDINGS" if race.after == race.After.TOUR_DONE else "TOUR OVER")
 	else:
 		_field_panel(field)
+	var room: OnlineSession = race.online
+	var picking := room != null and room.hosting() and room.phase == OnlineSession.Phase.RACING
+	if room != null:
+		_online_lines(room, picking)
 	_choices()
-	_footer(results_hints())
+	_footer(results_hints(picking))
 
 
 ## The dimming over the race: night, tinged with the sky, which crossfades from this stage's
@@ -275,6 +296,28 @@ func _badge(c: Vector2, place: int) -> void:
 func _crown(c: Vector2, col: Color) -> void:
 	draw_colored_polygon(PackedVector2Array([c + Vector2(-12, 6), c + Vector2(-12, -6), c + Vector2(-6, 0),
 		c + Vector2(0, -9), c + Vector2(6, 0), c + Vector2(12, -6), c + Vector2(12, 6)]), col)
+
+
+## Online (ON-9): the READY count left of the buttons, the next stage right of them; or,
+## with the room gone, why.
+func _online_lines(room: OnlineSession, picking: bool) -> void:
+	labels[items.find(Choice.CONTINUE)] = online_label(room)
+	if room.phase == OnlineSession.Phase.CLOSED:
+		_text(Vector2(16, 326), room.error, 10, Color("#ff8a5a"))
+		return
+	_text(Vector2(16, 318), ready_line(room), 12, GOLD)
+	_text(Vector2(16, 330), "Starts when all are in", 8, Color(1, 1, 1, 0.6))
+	var next := "NEXT  " + Stages.stage_name(room.stage).to_upper() + ("  MIRROR" if room.mirror else "")
+	var nw := UiText.width(next, 10)
+	_text(Vector2(Cfg.SCREEN_W - 16 - nw, 318), next, 10, GOLD if picking else Color(1, 1, 1, 0.8))
+	if picking:
+		_arrow_pair(Vector2(Cfg.SCREEN_W - 16 - nw / 2.0, 330))
+
+
+## Up and down arrows: the host's next stage changes with them.
+func _arrow_pair(c: Vector2) -> void:
+	draw_colored_polygon(PackedVector2Array([c + Vector2(-10, 2), c + Vector2(-4, 2), c + Vector2(-7, -3)]), GOLD)
+	draw_colored_polygon(PackedVector2Array([c + Vector2(4, -3), c + Vector2(10, -3), c + Vector2(7, 2)]), GOLD)
 
 
 func _choices() -> void:
