@@ -87,6 +87,17 @@ func _draw_layer(tex: Texture2D, layer: String, alpha: float, of_theme: Dictiona
 	draw_texture_rect(tex, Rect2(Vector2(x0 + tw, y0), size), false, tint)
 
 
+## Where `layer`'s first strip copy is on screen now (x, y, width, height), or an empty rect
+## for a layer this stage hasn't (the wet road's reflections, WS-13, read it).
+func layer_rect(layer: String) -> Rect2:
+	var tex: Texture2D = textures.get(layer)
+	if tex == null:
+		return Rect2()
+	var tw := float(tex.get_width())
+	var th := float(tex.get_height())
+	return Rect2(layer_x(offset, layer, tw, theme), layer_bottom(layer, hill, theme) - th, tw, th)
+
+
 ## A sky color `key` of `of_theme`, `k` of the way to `next`'s (its own with no next).
 static func sky_color(of_theme: Dictionary, next: Dictionary, key: String, k: float) -> Color:
 	var c: Color = of_theme[key]

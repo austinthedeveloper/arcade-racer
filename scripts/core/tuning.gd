@@ -1,7 +1,8 @@
 class_name Tuning
 extends RefCounted
 ## The tuning registry (EQ-15): the driving, AI, traffic, drafting, launch, power-up, scoring
-## and camera numbers, each with a default, a range and a step. The game reads them here
+## and camera numbers, and the look of the world (WORLD: the wet road, the tour's sundown, the
+## headlights), each with a default, a range and a step. The game reads them here
 ## (`Tuning.v("driving/steer_rate")`) where it once read constants. Overrides come from
 ## `user://tuning.cfg` (or `--tuning-file=PATH`), which the debug panel (F3, EQ-16) writes;
 ## tests and golden traces run on the defaults (use_defaults). Not an autoload: a self-updated
@@ -11,8 +12,8 @@ const PATH := "user://tuning.cfg"
 const PRESET_DIR := "user://tuning_presets"
 const LOG_PATH := "user://tuning_log.txt"
 ## The areas, in the debug panel's page order. A key is "area/name".
-const AREAS := ["driving", "slide", "crashes", "ai", "traffic", "draft", "launch", "power_ups", "scoring", "camera"]
-const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "SCORING", "CAMERA"]
+const AREAS := ["driving", "slide", "crashes", "ai", "traffic", "draft", "launch", "power_ups", "scoring", "camera", "world"]
+const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "SCORING", "CAMERA", "WORLD"]
 ## key: [default, min, max, step, what it is]. tools/tuning_adopt.py rewrites the defaults in
 ## place, so keep one value to a line, the default first.
 const TABLE := {
@@ -126,6 +127,14 @@ const TABLE := {
 	"camera/shake_settle": [12.0, 1.0, 40.0, 1.0, "pixels per second back to still"],
 	"camera/nitro_fov_stretch": [0.05, 0.0, 0.2, 0.01, "share the view widens while nitro burns"],
 	"camera/nitro_fov_rate": [0.15, 0.01, 1.0, 0.01, "share per second the stretch eases in and out"],
+	"world/wet_sheen": [1.6, 0.0, 3.0, 0.05, "how far the wet road goes toward the sky's color, times the weather's wet"],
+	"world/wet_gloss": [0.12, 0.0, 0.5, 0.01, "share of that sheen right under the car (the far road has all of it)"],
+	"world/reflect_alpha": [0.55, 0.0, 1.0, 0.05, "how strongly the sky and the skyline reflect in the wet road"],
+	"world/reflect_reach": [120, 0, 300, 10, "segments ahead the reflections are drawn (each is another draw)"],
+	"world/reflect_stretch": [2.6, 1.0, 6.0, 0.1, "how far down the road a reflection is drawn out into streaks"],
+	"world/puddle_share": [0.3, 0.0, 1.0, 0.05, "share of the near road's segments with a puddle"],
+	"world/puddle_glint": [0.65, 0.0, 1.0, 0.05, "how bright a puddle's highlight is"],
+	"world/puddle_reach": [60, 0, 200, 5, "segments ahead that puddles are drawn"],
 }
 
 ## Where overrides are read from and saved to; "" keeps them in memory only (tests).

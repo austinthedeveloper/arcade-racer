@@ -7,6 +7,12 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- The wet road reads (WS-13): on Thunderhead the rain-soaked road shines more, the storm sky
+  and the pylons reflect in it in long streaks, and puddles catch the light on the road ahead.
+  The sheen, the reflections and the puddles are on a new WORLD page of the F3 tuning panel.
+
 ## [0.4.0] - 2026-11-02
 
 ### Added

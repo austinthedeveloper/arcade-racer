@@ -147,6 +147,7 @@ func _ready() -> void:
 	add_child(background)
 	road = RoadRenderer.new()
 	add_child(road)
+	road.background = background
 	fx = FxLayer.new()
 	add_child(fx)
 	var layer := CanvasLayer.new()

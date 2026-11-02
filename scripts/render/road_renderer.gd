@@ -21,10 +21,18 @@ const TUBE_HEIGHT := 1250.0
 const TUBE_THICK := 70.0
 const TUBE_EVERY := 4
 
+## The background strips the wet road reflects (WS-13), back to front.
+const REFLECT_LAYERS := ["sky", "far"]
+const REFLECT_MIN := 0.02  # fainter than this, a reflection isn't drawn
+
 const BEHIND_SEGMENTS := 1  # segments behind the player whose cars are drawn (over it)
 const THIN_RUN := 1.0  # pixels: far segments thinner than this together are drawn as one band (EQ-7)
 
 var track: Track
+## The Background, whose strips the wet road reflects (WS-13). Untyped on purpose: Background
+## reads the Settings autoload, which a script run with -s (the test runner) can't see yet
+## when this file compiles.
+var background: Node2D
 var player: PlayerCar
 var player_strips: Dictionary = {}  # the player car's CarSprites.strips
 var rivals: Array[RivalCar] = []
@@ -46,6 +54,8 @@ var _idx := PackedInt32Array()
 var _fog_color := Color.WHITE
 var _wet := 0.0  # the stage's wet road (Weather "wet"), this frame
 var _wet_sky := Color.WHITE  # and the sky it reflects
+var _horizon := float(Cfg.HORIZON_Y)  # the background's horizon row this frame (reflections mirror on it)
+var _reflect: Array = []  # [texture, layer rect] per background strip the wet road reflects, this frame
 var _covered: Array[Dictionary] = []  # _covered_theme: the darkened colors, per depth step
 var _covered_from: Dictionary = {}  # and the theme they were made from
 var _font: Font
@@ -56,6 +66,7 @@ var _rivals_behind: Array = []  # rivals in the player's segment but behind it, 
 
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
+	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED  # the reflections run on round the strips
 
 
 func _draw() -> void:
@@ -67,6 +78,8 @@ func _draw() -> void:
 	var fog_density: float = here.get("fog_density", Cfg.FOG_DENSITY)
 	_wet = Weather.of(theme).get("wet", 0.0)
 	_wet_sky = here.get("sky_bottom", _fog_color)
+	_reflect = reflect_layers(background) if _wet > 0.0 else []
+	_horizon = Cfg.HORIZON_Y + (float(background.get("hill")) if background != null else 0.0)
 	var segs := track.segments
 	var count := segs.size()
 	var base := track.find_segment(camera_z)
@@ -234,11 +247,17 @@ func _draw_segment(seg: Segment, theme: Dictionary, far: Segment, depth: float) 
 	_quad(Vector2(x1 - w1 - r1, y1), Vector2(x1 - w1, y1), Vector2(x2 - w2, y2), Vector2(x2 - w2 - r2, y2), rumble)
 	_quad(Vector2(x1 + w1, y1), Vector2(x1 + w1 + r1, y1), Vector2(x2 + w2 + r2, y2), Vector2(x2 + w2, y2), rumble)
 
-	# Asphalt, catching the sky when it's wet (not under cover)
+	# Asphalt, catching the sky when it's wet (not under cover), with puddles on the near road
+	# (WS-13)
 	var asphalt: Color = theme["road"][b]
-	if _wet > 0.0 and not seg.covered:
-		asphalt = Weather.wet_color(asphalt, _wet_sky, _wet, depth)
-	_quad(Vector2(x1 - w1, y1), Vector2(x1 + w1, y1), Vector2(x2 + w2, y2), Vector2(x2 - w2, y2), _fogged(asphalt, fog))
+	var wet := _wet > 0.0 and not seg.covered
+	if wet:
+		asphalt = Weather.wet_color(asphalt, _wet_sky, _wet, depth, Tuning.v("world/wet_sheen"), Tuning.v("world/wet_gloss"))
+	var road_pts := PackedVector2Array([Vector2(x1 - w1, y1), Vector2(x1 + w1, y1), Vector2(x2 + w2, y2), Vector2(x2 - w2, y2)])
+	_quad_pts(road_pts, _fogged(asphalt, fog))
+	var ahead := depth * draw_distance(track.theme)  # segments from the camera
+	if wet and is_same(far, seg) and ahead < Tuning.v("world/puddle_reach"):
+		_puddle(seg, theme["road"][b])
 
 	# Dashed lane markings on alternate bands, this segment's lanes
 	if b == 0:
@@ -257,7 +276,73 @@ func _draw_segment(seg: Segment, theme: Dictionary, far: Segment, depth: float) 
 	if not lights.is_empty() and seg.index % TUBE_EVERY != TUBE_EVERY - 1:
 		_tunnel_lights(seg, lights)
 
-	RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), _idx, _pts, _cols)
+	_flush()
+	# The sky and the skyline reflected over it all, lane markings too (they shine wet as well);
+	# only so far off, where the fog hasn't swallowed them, as each one is another draw (WS-13)
+	if wet and ahead < Tuning.v("world/reflect_reach"):
+		_reflections(road_pts, Weather.reflect_strength(Tuning.v("world/reflect_alpha"), _wet, depth, fog))
+
+
+## Draws the triangles gathered so far and starts afresh.
+func _flush() -> void:
+	if not _idx.is_empty():
+		RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), _idx, _pts, _cols)
+	_pts.clear()
+	_cols.clear()
+	_idx.clear()
+
+
+## The background strips the wet road reflects (REFLECT_LAYERS), as [texture, screen rect]
+## pairs, for the ones this stage has; none without a background.
+static func reflect_layers(bg: Node2D) -> Array:
+	var out: Array = []
+	if bg == null:
+		return out
+	for layer: String in REFLECT_LAYERS:
+		var rect: Rect2 = bg.call("layer_rect", layer)
+		if rect.has_area():
+			out.append([bg.get("textures")[layer], rect])
+	return out
+
+
+## The reflections on a stretch of wet road (its four corners, `pts`) at `alpha`.
+func _reflections(pts: PackedVector2Array, alpha: float) -> void:
+	if _reflect.is_empty() or alpha < REFLECT_MIN:
+		return
+	var mirrored: bool = background.get("mirrored")
+	var stretch := Tuning.v("world/reflect_stretch")
+	var c := Color(1, 1, 1, alpha)
+	var cols := PackedColorArray([c, c, c, c])
+	for r: Array in _reflect:
+		var uvs := PackedVector2Array()
+		for p in pts:
+			uvs.append(Weather.reflect_uv(p, _horizon, r[1], stretch, mirrored))
+		draw_primitive(pts, cols, uvs, r[0])
+
+
+## A puddle on a near segment (Weather.puddle), if it has one: a dark wet patch with the sky's
+## highlight in it, across the road by Track.side like anything placed on it.
+func _puddle(seg: Segment, road: Color) -> void:
+	var p := Weather.puddle(seg.index, Tuning.v("world/puddle_share"))
+	if p == Vector4.ZERO:
+		return
+	var center := p.x * track.side() * seg.width
+	var half := p.y * seg.width
+	_quad_pts(road_patch(seg, center - half, center + half, p.z, p.w), _fogged(road.darkened(0.4), seg.fog))
+	var glint := Weather.puddle_color(_wet_sky, Tuning.v("world/puddle_glint"), seg.fog, time, seg.index)
+	_quad_pts(road_patch(seg, center - half * 0.6, center + half * 0.6, lerpf(p.z, p.w, 0.3), lerpf(p.z, p.w, 0.6)), glint)
+
+
+## A patch of a segment's road on screen: from `left` to `right` across it (road half-widths of
+## the usual road from its center, as a car's offset) and from `near` to `far` along it
+## (0..1): near left, near right, far right, far left.
+static func road_patch(seg: Segment, left: float, right: float, near: float, far: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for at: Array in [[near, left], [near, right], [far, right], [far, left]]:
+		var k: float = at[0]
+		var s := lerpf(seg.scale1, seg.scale2, k)
+		out.append(Vector2(lerpf(seg.s1.x, seg.s2.x, k) + s * float(at[1]) * Cfg.ROAD_WIDTH * Cfg.PROJ, lerpf(seg.s1.y, seg.s2.y, k)))
+	return out
 
 
 ## A segment's sprites, pickups and spans, and its cars too when `cars` (the segments
