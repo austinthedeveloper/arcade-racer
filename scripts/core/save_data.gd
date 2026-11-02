@@ -124,6 +124,16 @@ func best(stage: int, car_id: String) -> Dictionary:
 	return bests.get(best_key(stage, car_id), {})
 
 
+## The best time on a stage with any car (mirrored or not: they share bests), INF for none.
+func stage_best(stage: int) -> float:
+	var out := INF
+	var prefix: String = Stages.POSTCARDS[stage] + "/"
+	for key: String in bests:
+		if key.begins_with(prefix):
+			out = minf(out, float(bests[key]["time"]))
+	return out
+
+
 ## Records a finished stage: the best time and placing for the stage and car (place 0 is
 ## "no placing"; lower is better), and with `reach_next` the tour reaching the stage after it
 ## (a Time Attack run or a Single Race opens nothing). Saves when anything changed. Returns

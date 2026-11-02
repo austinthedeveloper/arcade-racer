@@ -21,6 +21,10 @@ the release workflow puts that section at the top of the GitHub Release notes
   applies at once (the HUD says TUNED), save and load presets, and slow the race down, jump
   along the stage, give yourself a power-up, set the clock or send a wave of traffic. Changes
   are kept for the next run and logged.
+- Medals (MP-9): every stage has bronze, silver and gold times, a little tighter on Hard and a
+  little looser on Easy. Your best time's medal hangs on each postcard on the stage map, stage
+  select shows the chosen stage's times beside its postcard, and the results show the medal a
+  run earned.
 
 ### Changed
 
