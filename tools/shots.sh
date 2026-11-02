@@ -33,8 +33,8 @@ run() {  # name, then Godot arguments
   fi
 }
 
-menu() {  # name, screen
-  run "$1" -- --screen="$2" --menu-shot="$out/$1.png"
+menu() {  # name, screen; an empty log folder, so a crash report here doesn't add COPY REPORT
+  run "$1" -- --screen="$2" --menu-shot="$out/$1.png" --log-dir="$out/logs"
 }
 
 race() {  # name, frame, then race flags

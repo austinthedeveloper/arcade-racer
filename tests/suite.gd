@@ -77,6 +77,12 @@ static func use_scratch_ghosts() -> void:
 			d.remove(f)
 
 
+## Installs the crash log (CrashLog, EQ-20) into this run's scratch folder before any main
+## scene does, so the game's own install keeps out of the player's user://logs/.
+static func use_scratch_logs() -> void:
+	CrashLog.install(scratch("logs/"))
+
+
 ## A straight, flat track `segments` long, for driving tests.
 static func flat_track(segments: int = 600) -> Track:
 	var t := Track.new()

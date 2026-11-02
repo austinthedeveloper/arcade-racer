@@ -7,6 +7,12 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Crash reports (EQ-20): when something goes wrong, the game writes the error and its last 200
+  log lines to a report in its logs folder, and the title's version line offers F4 COPY REPORT
+  (or click it) to put the report on the clipboard for a bug report.
+
 ## [0.4.0] - 2026-11-02
 
 ### Added
