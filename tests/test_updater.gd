@@ -3,7 +3,7 @@
 ## player's own user://updates/.
 extends TestSuite
 
-const SCRATCH := "user://test_updates/"
+var SCRATCH := TestSuite.scratch("updates/")
 
 
 ## An updater as tests use it: not in the tree (no HTTP), on the scratch folder, emptied.
@@ -11,8 +11,7 @@ func _updater() -> Updater:
 	var u := Updater.new()
 	u.dir = SCRATCH
 	u.state = Updater.State.IDLE
-	var d := DirAccess.open("user://")
-	if d.dir_exists("test_updates"):
+	if DirAccess.dir_exists_absolute(SCRATCH):
 		for f in DirAccess.get_files_at(SCRATCH):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(SCRATCH + f))
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SCRATCH))

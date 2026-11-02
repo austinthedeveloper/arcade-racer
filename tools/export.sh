@@ -5,11 +5,11 @@
 # .json, scripts/core/updater.gd). Needs the
 # Godot export templates for the editor's version installed. Argument: the
 # version for the file names and the macOS bundle (default: the
-# project.godot config/version). Set GODOT to use a binary that isn't
-# `godot` on the PATH.
+# project.godot config/version). GODOT picks the Godot binary (default:
+# tools/find_godot.sh finds it).
 set -eu
 cd "$(dirname "$0")/.." || exit 2
-GODOT=${GODOT:-godot}
+. tools/find_godot.sh
 version=${1:-$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)}
 version=${version#v}
 [ -n "$version" ] || { echo "no version given or in project.godot"; exit 2; }

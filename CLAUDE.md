@@ -8,6 +8,8 @@ Adding a car, prop, traffic vehicle, span or stage: art and Claude prompt templa
 tools/test.sh                                       # all Godot tests, headless (must pass)
 tools/test.sh test_player_car                       # one suite (filter on suite.test names; skips the e2e)
 tools/test.sh --skip=test_golden.                   # everything but the golden traces (their CI job runs them alongside)
+tools/dev.sh race 3 --car=car_mesa                  # shortcuts: play, race, auto, shots, menu <screen>, test, import (finds Godot, imports a fresh checkout)
+godot --headless --path . --import                  # once in a fresh clone or worktree before any windowed run, or it stops on "MainLoop type doesn't exist: BootTree"
 godot --path .                                      # play
 godot --path . -- --autodrive --screenshots=200,700 --shot-dir=/tmp/shots   # hands-off run with screenshots (race flags skip the menus)
 godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screenshots=300 --shot-dir=/tmp/shots   # start partway in, in another car
@@ -59,7 +61,8 @@ and also checks every stage's autodriven race finishes in time and every rival f
 
 - Add or extend tests with every change.
 - Tests never touch the player's wheel profiles or options (`TestSuite.use_scratch_profiles`,
-  `TestSuite.use_scratch_settings`). Golden traces run on the default options.
+  `TestSuite.use_scratch_settings`). Every file a test writes goes in `TestSuite.scratch(name)`,
+  the run's own folder, so runs in parallel worktrees don't collide. Golden traces run on the default options.
 - A gameplay number worth tuning (driving, AI, traffic, drafting, launch, power-ups, scoring,
   camera) goes in `Tuning.TABLE` (`scripts/core/tuning.gd`) with a range and step, read with
   `Tuning.v("area/name")`, not as a constant; the F3 panel then tunes it. Tests run on the
