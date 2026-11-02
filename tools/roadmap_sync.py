@@ -39,8 +39,14 @@ CELL = re.compile(r"^\| [A-Z]{2}-\d+(?: ✓)? \|")
 BEGIN, END = "<!-- roadmap-status:begin -->", "<!-- roadmap-status:end -->"
 
 
-def gh(*args):
-    return json.loads(subprocess.run(["gh", *args], check=True, capture_output=True, text=True).stdout)
+def gh(*args, tries=3):
+    """gh's JSON output. GitHub's API drops a call now and then, so a failure is retried."""
+    for attempt in range(tries):
+        run = subprocess.run(["gh", *args], capture_output=True, text=True)
+        if run.returncode == 0:
+            return json.loads(run.stdout)
+        if attempt == tries - 1:
+            sys.exit("gh %s failed: %s" % (" ".join(args[:3]), run.stderr.strip()))
 
 
 def doc_features():
@@ -211,8 +217,9 @@ def create_issues(by_id, items, project_id):
     milestones = {int(m["title"][1]): m["title"] for m in gh("api", "repos/%s/milestones?state=all" % REPO)}
     created = []
     for row in doc_rows():
-        if row["id"] in by_id:
-            continue
+        known = row["id"] in by_id
+        if not row["size"] or (known and by_id[row["id"]]["number"] in items):
+            continue  # a pointer row (CP-8, AC-7, AC-8: "see EQ-3") has no size and no issue
         prefix = row["id"].split("-")[0]
         month = first_month(row["month"])
         args = ["issue", "create", "--repo", REPO, "--title", "%s %s" % (row["id"], row["name"]),
@@ -220,9 +227,13 @@ def create_issues(by_id, items, project_id):
                 "--label", "size: %s" % row["size"], "--label", "roadmap"]
         if month in milestones:
             args += ["--milestone", milestones[month]]
-        url = subprocess.run(["gh"] + args, check=True, capture_output=True, text=True).stdout.strip()
-        number = int(url.rsplit("/", 1)[1])
-        by_id[row["id"]] = {"number": number, "title": "%s %s" % (row["id"], row["name"]), "name": row["name"], "closed": False}
+        if known:  # the issue is there (an earlier run stopped before the board step)
+            number = by_id[row["id"]]["number"]
+            url = "https://github.com/%s/issues/%d" % (REPO, number)
+        else:
+            url = subprocess.run(["gh"] + args, check=True, capture_output=True, text=True).stdout.strip()
+            number = int(url.rsplit("/", 1)[1])
+            by_id[row["id"]] = {"number": number, "title": "%s %s" % (row["id"], row["name"]), "name": row["name"], "closed": False}
         item = gh("project", "item-add", str(PROJECT), "--owner", OWNER, "--url", url, "--format", "json")
         values = {"Status": "Todo" if month == 1 else "Backlog", "Size": row["size"],
                   "Group": "%s: %s" % (prefix, GROUPS[prefix]), "Month": MONTHS[month - 1] if month else None}
@@ -232,8 +243,9 @@ def create_issues(by_id, items, project_id):
                 subprocess.run(["gh", "project", "item-edit", "--id", item["id"], "--project-id", project_id,
                                 "--field-id", fields[field]["id"], "--single-select-option-id", option],
                                check=True, capture_output=True)
-        created.append(row)
-        print("created #%d %s %s" % (number, row["id"], row["name"]))
+        if not known:
+            created.append(row)
+        print("%s #%d %s %s" % ("created" if not known else "on the board", number, row["id"], row["name"]))
     for row in created:  # a dependency created later in the run has its number now
         if re.search(r"[A-Z]{2}-\d+(?! \()", needs_text(row["needs"], {})) and row["needs"].strip():
             subprocess.run(["gh", "issue", "edit", str(by_id[row["id"]]["number"]), "--repo", REPO,
