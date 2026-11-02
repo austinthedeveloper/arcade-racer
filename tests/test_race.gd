@@ -587,7 +587,11 @@ func test_the_results_wait_for_the_finish_spectacle() -> void:
 	eq(r.state, r.State.FINISHED, "finished")
 	check(not r.results.visible, "the slow-down and celebration first")
 	drive(r, roundi(r.RESULTS_AFTER * 60.0) + 2)
-	check(r.results.visible, "then the results")
+	check(r.replaying and not r.results.visible, "then the instant replay (RC-17)")
+	var c0 := input()
+	c0.confirm_pressed = true
+	drive(r, 1, c0)
+	check(r.results.visible and not r.replaying, "then the results")
 	r.start_race()
 	drive(r, 200)
 	r.player.distance = r.finish_distance + 1.0

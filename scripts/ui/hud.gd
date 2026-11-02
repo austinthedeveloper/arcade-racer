@@ -92,6 +92,9 @@ func _draw() -> void:
 	if race.demo:
 		_draw_demo()
 		return
+	if race.replaying:
+		_draw_replay()
+		return
 	var p: PlayerCar = race.player
 	var w := float(Cfg.SCREEN_W)
 
@@ -692,6 +695,32 @@ func _text(pos: Vector2, s: String, size: int, col: Color) -> void:
 
 func _text_centered(pos: Vector2, s: String, size: int, col: Color) -> void:
 	UiText.draw_centered(self, pos, s, text_size(size), col)
+
+
+## The instant replay's frame (RC-17): REPLAY with a blinking light, top left, how far through
+## it is along the bottom, and how to skip it.
+func _draw_replay() -> void:
+	var w := float(Cfg.SCREEN_W)
+	var h := float(Cfg.SCREEN_H)
+	draw_rect(Rect2(0, 0, w, 22), Color(0, 0, 0, 0.55))
+	draw_rect(Rect2(0, h - 22, w, 22), Color(0, 0, 0, 0.55))
+	if fmod(race.road.time, 1.0) < 0.6:
+		draw_circle(Vector2(18, 11), 5.0, Color("#ff3b3b"))
+	_text(Vector2(30, 16), "REPLAY", 14, Color.WHITE)
+	_text(Vector2(w - 12 - UiText.width(replay_hint(), text_size(9)), 15), replay_hint(), 9, Color(1, 1, 1, 0.8))
+	var share := replay_share(race.replay_index, race.replay_frames.size())
+	draw_rect(Rect2(12, h - 13, w - 24, 4), Color(1, 1, 1, 0.2))
+	draw_rect(Rect2(12, h - 13, (w - 24) * share, 4), GOLD)
+
+
+## How far through the replay `index` frames of `count` is, 0..1.
+static func replay_share(index: int, count: int) -> float:
+	return clampf(float(index) / count, 0.0, 1.0) if count > 0 else 1.0
+
+
+## The replay's skip hint for the device in use.
+static func replay_hint() -> String:
+	return "ANY KEY: SKIP" if InputRouter.state.kind == DriveInput.Kind.KEYBOARD else "ANY BUTTON: SKIP"
 
 
 ## The power-up slot under the nitro: the running ram plate or ghost with its time left, or

@@ -11,6 +11,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 - The hubcap in the slot (CP-14): a mystery hubcap spins in the power-up slot for half a
   second, then bursts open to show what it turned into.
+- Instant replay (RC-17): after the finish, the last six seconds before the line play back
+  once, every racer and the traffic as they were, before the results. Any key or button
+  skips it; Enter during the finish slow-down still goes straight to the results.
 
 ## [0.4.0] - 2026-11-02
 
