@@ -9,6 +9,12 @@
 #   tools/dev.sh import                  re-import (after adding a class_name script)
 cd "$(dirname "$0")/.." || exit 2
 . tools/find_godot.sh
+# A fresh clone or worktree has no class cache: a windowed run would stop on "MainLoop type
+# doesn't exist: BootTree". Import first when the cache is missing or a script is newer.
+cache=.godot/global_script_class_cache.cfg
+if [ ! -f "$cache" ] || [ -n "$(find scripts scenes tests tools -name '*.gd' -newer "$cache" 2>/dev/null | head -1)" ]; then
+  "$GODOT" --headless --path . --import >/dev/null 2>&1
+fi
 cmd=${1:-play}
 [ $# -gt 0 ] && shift
 stage() { case "${1:-}" in [0-9]*) echo "--stage=$1" ;; *) echo "--stage=1" ;; esac; }
