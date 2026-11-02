@@ -26,10 +26,16 @@ class PixelDiff(unittest.TestCase):
         self.assertNotEqual(a, b)
         self.assertIsNone(cs.pixel_diff(a, b))
 
-    def test_one_pixel_one_level_off_differs(self):
+    def test_one_level_off_still_matches(self):
+        # macOS and Linux round a few pixels one level apart with the same libraries
         img = picture()
         img.putpixel((3, 2), (201, 40, 90, 255))
-        self.assertEqual(cs.pixel_diff(png(picture()), png(img)), "1 of 24 pixels differ, by up to 1")
+        self.assertIsNone(cs.pixel_diff(png(picture()), png(img)))
+
+    def test_one_pixel_two_levels_off_differs(self):
+        img = picture()
+        img.putpixel((3, 2), (202, 40, 90, 255))
+        self.assertEqual(cs.pixel_diff(png(picture()), png(img)), "1 of 24 pixels differ, by up to 2")
 
     def test_a_new_size_differs(self):
         self.assertEqual(cs.pixel_diff(png(picture()), png(picture((6, 5)))), "size 6x5, was 6x4")
