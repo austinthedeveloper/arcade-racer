@@ -25,6 +25,9 @@ the release workflow puts that section at the top of the GitHub Release notes
   little looser on Easy. Your best time's medal hangs on each postcard on the stage map, stage
   select shows the chosen stage's times beside its postcard, and the results show the medal a
   run earned.
+- Stage intro card (PR-16): during the countdown a card slides in with the stage's name, its
+  weather, its length (in miles or kilometres, after the units option), and your best time and
+  medal there, and slides away before GO.
 
 ### Changed
 

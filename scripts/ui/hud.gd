@@ -131,10 +131,17 @@ func _draw() -> void:
 	# Banners
 	if race.counting_down():
 		_text_centered(Vector2(w / 2.0, 130), str(ceili(race.countdown)), 64, Color("#ffd23a"))
+		StageIntro.draw(self, race.countdown_elapsed(), intro_text())
 	if not race.callouts.current.is_empty() and not race.results.visible:
 		_draw_callout(race.callouts.current, Vector2(w / 2.0, CALLOUT_Y))
 	if Settings.subtitles:
 		_draw_subtitle(lay["subtitle"], race.audio.announcer.subtitle())
+
+
+## The stage intro card's text (PR-16) for this race.
+func intro_text() -> Dictionary:
+	return StageIntro.lines(race.stage_index, race.mirror, race.track.theme, race.finish_distance, Settings.units,
+		SaveData.stage_best(race.stage_index), Settings.difficulty, not race.free_drive)
 
 
 ## Where each HUD element goes on the 640x360 screen (the window scales the whole picture):

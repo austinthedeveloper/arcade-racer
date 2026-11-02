@@ -14,6 +14,7 @@ enum State { COUNTDOWN, RACING, FINISHED, TIME_UP }
 ## stage sets one, WS-11); Settings scales it for the others.
 const RADIO_SHOW := 1.5  # seconds the new station's name stays up
 const START_TIME := 45.0
+const COUNTDOWN_TIME := 3.0  # seconds from the grid to GO
 const CHECKPOINT_BONUS := 25.0
 const BACKGROUND_SCROLL := 0.0006  # per segment travelled, per unit of curve
 # After the finish line (finish_time_scale)
@@ -66,7 +67,7 @@ var ram_flash := 0.0  # seconds left on the ram plate's impact flash
 var traffic: Traffic
 var rivals := Rivals.new()
 var state := State.COUNTDOWN
-var countdown := 3.0
+var countdown := COUNTDOWN_TIME
 var time_left := START_TIME
 var race_time := 0.0
 var finish_age := 0.0  # seconds since the finish line (real time, not slowed)
@@ -225,7 +226,7 @@ func start_race() -> void:
 	if tour and tour_state.drivers.is_empty():
 		tour_state.drivers = rivals.driver_names()
 	state = State.RACING if demo else State.COUNTDOWN
-	countdown = 0.0 if demo else 3.0
+	countdown = 0.0 if demo else COUNTDOWN_TIME
 	clock = stage_clock(track.theme, track.checkpoints.size())
 	time_left = Settings.race_time(clock[0]) + (tour_state.carried if tour else 0.0)
 	if not is_nan(_time_left_shot):
@@ -428,6 +429,11 @@ func demo_over() -> bool:
 
 func counting_down() -> bool:
 	return state == State.COUNTDOWN
+
+
+## Seconds since the countdown started (the stage intro card, StageIntro, slides by it).
+func countdown_elapsed() -> float:
+	return COUNTDOWN_TIME - countdown
 
 
 ## Whether the touch controls (TouchControls) show the driving layout: the race is on screen,
