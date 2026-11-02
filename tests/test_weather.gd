@@ -123,3 +123,61 @@ func test_fx_layer_runs_the_storm() -> void:
 	check(palm.fx.storm.is_empty(), "no lightning on Palm Coast")
 	drive(palm, 30)
 	eq(palm.fx.flash, 0.0, "nor any flash")
+
+
+func test_cover_is_a_plain_function_of_the_track() -> void:
+	# WS-12: Thunderhead's overpasses roof the road for a deck's depth past each span
+	var thunder := Stages.build(THUNDERHEAD)
+	var cover := Weather.shelters(thunder)
+	var overpasses: Array[float] = []
+	for seg in thunder.segments:
+		if seg.spans.has("thunder_overpass"):
+			overpasses.append(seg.w1.z)
+	check(overpasses.size() >= 3, "Thunderhead has its overpasses (%d)" % overpasses.size())
+	eq(cover.size(), overpasses.size(), "each overpass is a covered stretch, and nothing else")
+	var deck: float = Weather.SHELTER_SPANS["thunder_overpass"]
+	for z in overpasses:
+		eq(Weather.shelter_at(cover, z + deck * 0.5), 1.0, "under the overpass at %d: sheltered" % int(z))
+		eq(Weather.shelter_at(cover, z - Cfg.SEGMENT_LENGTH), 0.0, "just before it: open sky")
+		eq(Weather.shelter_at(cover, z + deck + Cfg.SEGMENT_LENGTH), 0.0, "just past the deck: open sky")
+		var edge := Weather.shelter_at(cover, z + Weather.SHELTER_FADE * 0.5)
+		check(edge > 0.0 and edge < 1.0, "the rain thins out at the deck's edge (%s)" % edge)
+	eq(Weather.shelters(Stages.build(THUNDERHEAD, true)), cover, "mirrored, the same cover")
+	eq(Weather.shelters(Stages.build(THUNDERHEAD)), cover, "the same every time")
+	# Tunnels and covered bridges: every segment inside is under the roof, well inside fully
+	for stage: int in [2, 3]:  # Neon Strip's tunnel, Timberline's covered bridge
+		var t := Stages.build(stage)
+		var inside := Weather.shelters(t)
+		var n := 0
+		for seg in t.segments:
+			if seg.covered:
+				n += 1
+				var mid := seg.w1.z + Cfg.SEGMENT_LENGTH * 0.5
+				check(Weather.shelter_at(inside, mid) > 0.0, "%s segment %d: under the roof" % [Stages.stage_name(stage), seg.index])
+				if seg.depth >= 1.0:
+					eq(Weather.shelter_at(inside, mid), 1.0, "%s segment %d: well inside, no rain at all" % [Stages.stage_name(stage), seg.index])
+		check(n > 0, "%s has a covered stretch" % Stages.stage_name(stage))
+	eq(Weather.shelter_at([] as Array[Vector2], 1000.0), 0.0, "no cover: open sky")
+
+
+func test_no_rain_streaks_under_cover() -> void:
+	eq(Weather.drops_shown(Weather.RAIN_DROPS, 0.0), Weather.RAIN_DROPS, "in the open, all the rain")
+	eq(Weather.drops_shown(Weather.RAIN_DROPS, 1.0), 0, "under a roof, none")
+	var half := Weather.drops_shown(Weather.RAIN_DROPS, 0.5)
+	check(half > 0 and half < Weather.RAIN_DROPS, "thinning out at the edge")
+	check(not Weather.thunder_muffled(0.0), "thunder in the open, as it is")
+	check(Weather.thunder_muffled(1.0), "under a roof, muffled")
+	# In a race: the camera parked under an overpass sees no streaks
+	var r := race(false, false, THUNDERHEAD, false)
+	var cover := Weather.shelters(r.track)
+	r.player.move_to((cover[0].x + cover[0].y) * 0.5, r.track)
+	drive(r, 1)
+	eq(r.fx.shelter, 1.0, "the camera under the overpass is sheltered")
+	eq(Weather.drops_shown(r.fx._drops.size(), r.fx.shelter), 0, "and draws no rain streaks")
+	r.player.move_to(cover[0].x - 2000.0, r.track)
+	drive(r, 1)
+	eq(r.fx.shelter, 0.0, "back in the open")
+	eq(Weather.drops_shown(r.fx._drops.size(), r.fx.shelter), Weather.RAIN_DROPS, "the rain again")
+	var palm := race(false, false, 0, false)
+	drive(palm, 1)
+	eq(palm.fx.shelter, 0.0, "no weather, nothing to shelter from")

@@ -101,6 +101,9 @@ var storm: Array[Vector3] = []  # its lightning (Weather.strikes), none without
 var flash := 0.0  # the lightning flash this tick, as designed (Weather.shown_flash scales it)
 var flash_share := 1.0  # the flash option's share of it (Settings.flash_amount(1.0)); the race sets it
 var thunder := false  # true for the tick thunder rolls (RaceAudio plays it)
+var shelter := 0.0  # how sheltered the camera is this tick (Weather.shelter_at): no rain, muffled thunder
+var _cover: Array[Vector2] = []  # the track's covered stretches (Weather.shelters)
+var _cover_of: Track  # the track they were worked out for
 var _drops := PackedVector3Array()  # the rain streaks' starts (Weather.rain_streak)
 var _free: Array[int] = []
 var _tick := 0
@@ -134,6 +137,7 @@ func clear() -> void:
 	celebrate_age = 0.0
 	flash = 0.0
 	thunder = false
+	shelter = 0.0
 	_rng.seed = 2024
 
 
@@ -196,6 +200,7 @@ func update(dt: float, p: PlayerCar, track: Track) -> void:
 	time += dt
 	flash = Weather.flash_at(time, storm)
 	thunder = Weather.thunder_between(time - dt, time, storm)
+	shelter = shelter_for(p, track)
 	spawned = 0
 	_tick += 1
 	for i in MAX_PARTICLES:
@@ -213,6 +218,16 @@ func update(dt: float, p: PlayerCar, track: Track) -> void:
 	react(p, track)
 	if celebrating:
 		_celebration(dt)
+
+
+## How sheltered the camera behind `p` is on `track` (Weather.shelter_at); 0 in clear weather.
+func shelter_for(p: PlayerCar, track: Track) -> float:
+	if weather.is_empty() or track == null or track.length <= 0.0:
+		return 0.0
+	if not is_same(track, _cover_of):
+		_cover = Weather.shelters(track)
+		_cover_of = track
+	return Weather.shelter_at(_cover, fposmod(p.position, track.length))
 
 
 ## Starts the particles for this tick's triggers (triggers) at the car's wheels and exhausts.
@@ -412,8 +427,8 @@ static func rain_shown(drops: int) -> int:
 
 func _draw_rain() -> void:
 	var pct := player.speed_percent()
-	for d in _drops:
-		var s := Weather.rain_streak(d, time, pct)
+	for i in Weather.drops_shown(_drops.size(), shelter):
+		var s := Weather.rain_streak(_drops[i], time, pct)
 		draw_line(s[0], s[1], Weather.RAIN_COLOR, 1.0)
 
 

@@ -6,6 +6,11 @@ const POOL_SIZE := 10
 ## Buses a one-shot can play on: side -1 left, 0 center, 1 right (traffic whooshes).
 const SIDE_BUSES := {-1: "SFX Left", 0: "SFX", 1: "SFX Right"}
 const SIDE_PAN := 0.7
+## A muffled one-shot (thunder heard under cover, WS-12) plays on this bus, through a low-pass
+## at MUFFLE_CUTOFF Hz, MUFFLE_DB quieter.
+const MUFFLED_BUS := "SFX Muffled"
+const MUFFLE_CUTOFF := 450.0
+const MUFFLE_DB := -8.0
 const DUCK_DB := -9.0  # the music under the announcer
 const DUCK_SPEED := 30.0  # dB per second, down and back up
 const HISTORY_SIZE := 64
@@ -42,6 +47,14 @@ func _ready() -> void:
 			var pan := AudioEffectPanner.new()
 			pan.pan = side * SIDE_PAN
 			AudioServer.add_bus_effect(i, pan)
+	if AudioServer.get_bus_index(MUFFLED_BUS) < 0:
+		AudioServer.add_bus()
+		var i := AudioServer.bus_count - 1
+		AudioServer.set_bus_name(i, MUFFLED_BUS)
+		AudioServer.set_bus_send(i, "SFX")
+		var low := AudioEffectLowPassFilter.new()
+		low.cutoff_hz = MUFFLE_CUTOFF
+		AudioServer.add_bus_effect(i, low)
 	if AudioServer.get_bus_effect_count(0) == 0:
 		AudioServer.add_bus_effect(0, AudioEffectHardLimiter.new())  # crashes over music never clip
 	music = AudioStreamPlayer.new()
@@ -55,8 +68,8 @@ func _ready() -> void:
 
 
 ## Plays a one-shot cue on the next free pool player (or the oldest), panned to `side`
-## (-1 left, 0 center, 1 right).
-func play(cue: String, pitch := 1.0, side := 0) -> void:
+## (-1 left, 0 center, 1 right), or `muffled` (MUFFLED_BUS) as if heard from under a roof.
+func play(cue: String, pitch := 1.0, side := 0, muffled := false) -> void:
 	_log(cue)
 	var s := SoundBank.stream(cue)
 	if s == null or _pool.is_empty():
@@ -69,12 +82,22 @@ func play(cue: String, pitch := 1.0, side := 0) -> void:
 			break
 	_next = (_pool.find(p) + 1) % POOL_SIZE
 	p.stream = s
-	p.volume_db = SoundBank.volume_db(cue)
+	p.volume_db = SoundBank.volume_db(cue) + (MUFFLE_DB if muffled else 0.0)
 	p.pitch_scale = pitch
-	p.bus = SIDE_BUSES.get(signi(side), "SFX")
+	p.bus = MUFFLED_BUS if muffled else SIDE_BUSES.get(signi(side), "SFX")
 	p.stream_paused = false
 	if p.is_inside_tree():
 		p.play()
+
+
+## The pool player that last started `cue`, or null (tests: its bus and volume).
+func player_of(cue: String) -> AudioStreamPlayer:
+	var s := SoundBank.stream(cue)
+	for i in _pool.size():
+		var p := _pool[posmod(_next - 1 - i, _pool.size())]
+		if p.stream == s:
+			return p
+	return null
 
 
 ## Starts a music cue, `from` seconds in (wrapped to its length).
