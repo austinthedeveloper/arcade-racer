@@ -5,10 +5,10 @@
 # any fails. Optional argument: a substring filter on suite.test names (skips
 # the e2e and the Python tests), or --skip=<substring> to run everything but
 # the suite.test names containing it (CI: --skip=test_golden. beside a
-# test_golden. job). Set GODOT to use a binary that isn't `godot`
-# on the PATH, PYTHON for a Python with tools/requirements.txt.
+# test_golden. job). GODOT picks the Godot binary (default: tools/find_godot.sh finds it);
+# PYTHON a Python with tools/requirements.txt.
 cd "$(dirname "$0")/.." || exit 2
-GODOT=${GODOT:-godot}
+. tools/find_godot.sh
 "$GODOT" --headless --path . --import >/dev/null 2>&1
 filter() {
   grep -v -e "ObjectDB instances were leaked" -e "resources still in use" \

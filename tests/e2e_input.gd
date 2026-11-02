@@ -23,6 +23,7 @@ func _initialize() -> void:
 	# ticks in one frame could flush a press and its release together
 	Engine.max_physics_steps_per_frame = 1
 	Engine.physics_jitter_fix = 0.0
+	TestSuite.begin_run()  # this run's own scratch folder (EQ-18)
 	_router = root.get_node("InputRouter")
 	TestSuite.use_scratch_profiles(_router)
 	_settings = root.get_node("Settings")  # autoloads aren't globals in a SceneTree script
@@ -586,3 +587,7 @@ func _tick() -> void:
 		_:
 			print("\n%s" % ("e2e passed" if _fails == 0 else "e2e: %d failed" % _fails))
 			quit(1 if _fails > 0 else 0)
+
+
+func _finalize() -> void:
+	TestSuite.end_run()

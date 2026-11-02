@@ -79,7 +79,7 @@ func test_version_helper() -> void:
 
 
 func test_to_write_keeps_only_a_newer_file() -> void:
-	var path := "user://test_cfg_version.cfg"
+	var path := TestSuite.scratch("cfg_version.cfg")
 	var missing := CfgVersion.to_write(path + ".none", 3)
 	eq([CfgVersion.of(missing), missing.get_sections()], [3, PackedStringArray(["meta"])], "no file: empty, stamped current")
 	for version in [1, 3, 7]:

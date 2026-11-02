@@ -5,10 +5,10 @@
 #   tools/car_angles.sh                     # all cars -> build/car_angles/car_angles.html
 #   tools/car_angles.sh --car=car_mesa      # one car (any tools/car_angles.gd flag passes through)
 #
-# Needs a display (it renders windowed). GODOT picks the Godot binary (default: godot on the
-# PATH), SHOTS_PYTHON the Python with PIL (default: python3), ANGLES_DIR where it all goes.
+# Needs a display (it renders windowed). GODOT picks the Godot binary (default: tools/find_godot.sh
+# finds it), SHOTS_PYTHON the Python with PIL (default: python3), ANGLES_DIR where it all goes.
 cd "$(dirname "$0")/.." || exit 2
-GODOT=${GODOT:-godot}
+. tools/find_godot.sh
 PY=${SHOTS_PYTHON:-python3}
 out=${ANGLES_DIR:-build/car_angles}
 rm -rf "$out" && mkdir -p "$out"

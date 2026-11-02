@@ -1,9 +1,9 @@
 ## The tuning registry (EQ-15) and the debug panel's logic (EQ-16).
 extends TestSuite
 
-const SCRATCH := "user://test_tuning.cfg"
-const SCRATCH_PRESETS := "user://test_tuning_presets"
-const SCRATCH_LOG := "user://test_tuning_log.txt"
+var SCRATCH := TestSuite.scratch("tuning.cfg")
+var SCRATCH_PRESETS := TestSuite.scratch("tuning_presets")
+var SCRATCH_LOG := TestSuite.scratch("tuning_log.txt")
 const FIXTURE := "res://tests/fixtures/tuning_override.cfg"
 
 
@@ -114,7 +114,7 @@ func test_set_value_clamps_snaps_and_drops_the_default() -> void:
 func test_a_missing_file_is_the_defaults() -> void:
 	_scratch()
 	Tuning.set_value("draft/width", 0.6)
-	check(not Tuning.load_file("user://no_such_tuning.cfg"), "nothing to read")
+	check(not Tuning.load_file(TestSuite.scratch("no_such_tuning.cfg")), "nothing to read")
 	check(not Tuning.any_tuned(), "the defaults")
 	_done()
 

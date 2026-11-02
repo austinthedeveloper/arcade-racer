@@ -11,12 +11,14 @@ var current := ""
 
 
 func _initialize() -> void:
+	TestSuite.begin_run()  # this run's own scratch folder (EQ-18)
 	# Never read or write the player's own wheel profiles.
 	TestSuite.use_scratch_profiles(root.get_node("InputRouter"))
 	TestSuite.use_scratch_settings(root.get_node("Settings"))
 	TestSuite.use_scratch_save(root.get_node("SaveData"))
 	TestSuite.use_scratch_ghosts()
 	Tuning.use_defaults()  # never the player's user://tuning.cfg
+	root.get_node("Audio")._ready()  # its buses, before the autoloads' own _ready (a filtered run)
 	SpriteLibrary.load_all()
 	CarSprites.load_all()
 	var filter := ""
@@ -70,3 +72,7 @@ func _initialize() -> void:
 func fail(msg: String) -> void:
 	failures += 1
 	printerr("  FAIL ", current, ": ", msg)
+
+
+func _finalize() -> void:
+	TestSuite.end_run()

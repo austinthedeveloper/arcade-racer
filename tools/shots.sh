@@ -10,12 +10,12 @@
 # Needs a display: it renders windowed (the headless dummy driver draws nothing). On Linux
 # without one, run it under xvfb-run (CI does). Frames run at a fixed 60 fps, so animation
 # lands on the same frame every run whatever the machine's speed.
-# GODOT picks the Godot binary (default: godot on the PATH), SHOTS_PYTHON the Python with
+# GODOT picks the Godot binary (default: tools/find_godot.sh), SHOTS_PYTHON the Python with
 # PIL (default: python3; pip install -r tools/requirements.txt), SHOTS_DIR where the
 # rendered shots go (default: a temp dir, kept on a failure), SHOTS_GODOT_ARGS extra Godot
 # arguments (CI: --rendering-driver opengl3 --display-driver x11).
 cd "$(dirname "$0")/.." || exit 2
-GODOT=${GODOT:-godot}
+. tools/find_godot.sh
 PY=${SHOTS_PYTHON:-python3}
 mode=compare
 [ "$1" = "--update" ] && mode=update

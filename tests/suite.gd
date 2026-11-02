@@ -2,15 +2,45 @@
 class_name TestSuite
 extends RefCounted
 
-const SCRATCH_PROFILES := "user://test_input_profiles.cfg"
-const SCRATCH_SETTINGS := "user://test_settings.cfg"
-const SCRATCH_SAVE := "user://test_save.cfg"
-const SCRATCH_GHOSTS := "user://test_ghosts"
+## This run's own scratch folder (EQ-18): parallel runs in other worktrees share user://,
+## so every file a test writes goes under the process id. begin_run makes it, end_run removes it.
+static var run_dir: String = "user://test_runs/%d/" % OS.get_process_id()
+static var SCRATCH_PROFILES: String = scratch("input_profiles.cfg")
+static var SCRATCH_SETTINGS: String = scratch("settings.cfg")
+static var SCRATCH_SAVE: String = scratch("save.cfg")
+static var SCRATCH_GHOSTS: String = scratch("ghosts")
 const DT := 1.0 / 60.0
 
 var runner
 var asserts := 0
 var _nodes: Array[Node] = []
+
+
+## A path in this run's scratch folder.
+static func scratch(name: String) -> String:
+	return run_dir + name
+
+
+## Makes this run's scratch folder, empty (a crashed run with the same id may have left one).
+static func begin_run() -> void:
+	remove_tree(run_dir)
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(run_dir))
+
+
+## Removes this run's scratch folder.
+static func end_run() -> void:
+	remove_tree(run_dir)
+
+
+## Deletes a user:// folder and everything in it.
+static func remove_tree(dir: String) -> void:
+	if not DirAccess.dir_exists_absolute(dir):
+		return
+	for d in DirAccess.get_directories_at(dir):
+		remove_tree(dir.path_join(d))
+	for f in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(dir.path_join(f)))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir))
 
 
 ## Points the InputRouter at an empty profile file of the tests' own.
