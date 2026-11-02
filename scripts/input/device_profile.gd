@@ -11,7 +11,8 @@ enum Kind { KEYBOARD = 0, GAMEPAD = 1, WHEEL = 2 }
 const KEYBOARD_GUID := "keyboard"
 ## The actions the player can rebind on every device (RemapScreen), in screen order.
 ## shift_up and shift_down only change gear with manual gears on (Settings.manual_gears); view
-## has no effect in play yet; the horn moves the car ahead over (Traffic.honk), the radio only sounds.
+## steps the camera view (CameraView); the horn moves the car ahead over (Traffic.honk), the
+## radio only sounds.
 const REMAP_ACTIONS := ["nitro", "shift_up", "shift_down", "horn", "radio", "pause", "view"]
 const ACTION_NAMES := {"nitro": "NITRO", "shift_up": "SHIFT UP", "shift_down": "SHIFT DOWN", "horn": "HORN", "radio": "RADIO",
 	"pause": "PAUSE", "view": "VIEW"}

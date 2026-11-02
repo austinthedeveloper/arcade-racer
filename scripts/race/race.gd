@@ -62,6 +62,7 @@ var pickup := -1  # the last pickup taken (PowerUps.Kind), for the HUD
 var pickup_gave := -1  # what it gave (a mystery hubcap opens into another kind)
 var pickup_age := 99.0  # seconds since it was taken
 var picked_up := false  # true for the tick a pickup is taken
+var view: int = CameraView.View.CHASE_NEAR  # the camera view (WS-15, set_view)
 var horn := false  # the horn button held this tick (RaceAudio sounds it; traffic ahead gives way, RC-13)
 var ram_flash := 0.0  # seconds left on the ram plate's impact flash
 ## Gamepad rumble (WH-13): what it sent last tick (ZERO for nothing) and how many it has sent.
@@ -296,6 +297,7 @@ func start_race() -> void:
 	fx.clear()
 	fx.set_weather(track.theme, _lightning_at)
 	fx.player = player
+	set_view(Settings.camera_view)
 
 
 ## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
@@ -554,6 +556,12 @@ func _physics_process(dt: float) -> void:
 	if inp.radio_pressed and not over:
 		audio.next_station()
 		callouts.push_message(Radio.station_name(audio.station), Radio.genre(audio.station), RADIO_SHOW)
+	if inp.view_pressed and not demo:
+		Settings.camera_view = CameraView.next(Settings.camera_view)
+		Settings.save()  # remembered in Options (WS-15)
+		callouts.push_message(CameraView.name_of(Settings.camera_view), "VIEW", RADIO_SHOW)
+	if view != Settings.camera_view:  # the VIEW button, or Options from the pause menu
+		set_view(Settings.camera_view)
 
 	banner_time = maxf(0.0, banner_time - dt)
 	_watch_launch(inp)
@@ -647,7 +655,7 @@ func _physics_process(dt: float) -> void:
 		rumble_sent += 1
 		Rumble.send(InputRouter.last_active_device, last_rumble)
 	fx.position = road.position
-	road.camera_z = player.position
+	road.camera_z = CameraView.camera_z(view, player.position, track.length)
 	var rise := track.height_at(player.position + Background.HILL_AHEAD) - player.road_y
 	background.hill = Background.shown_hill(rise, road.camera_depth)
 	_flow(dt)
@@ -657,6 +665,13 @@ func _physics_process(dt: float) -> void:
 	_frame += 1
 	if _screenshot_frames.has(_frame):
 		_save_screenshot(_frame)
+
+
+## The camera view (WS-15, CameraView) the road and the FX layer draw from. Display only.
+func set_view(v: int) -> void:
+	view = clampi(v, 0, CameraView.View.size() - 1)
+	road.view = view
+	fx.view = view
 
 
 ## Camera shake (pixels, as designed) after a tick: a crash sets it, a landing, a takeoff

@@ -39,6 +39,7 @@ var rivals: Array[RivalCar] = []
 var ghost := Vector3.ZERO  # Time Attack's ghost: distance, x, steer (Ghost.at)
 var ghost_strips: Dictionary = {}  # its car's strips; empty for no ghost
 var camera_z := 0.0
+var view: int = CameraView.View.CHASE_NEAR  # the camera view (WS-15): where camera_z and the car sit
 var camera_depth := Tuning.v("camera/depth")  # the race eases it down for the nitro stretch
 var flash := 1.0  # the FLASHING option's share of the designed blink (Settings.flash_amount(1.0))
 var time := 0.0
@@ -84,7 +85,7 @@ func _draw() -> void:
 	var count := segs.size()
 	var base := track.find_segment(camera_z)
 	var base_percent := fposmod(camera_z, Cfg.SEGMENT_LENGTH) / Cfg.SEGMENT_LENGTH
-	var cam_y := player.road_y + Tuning.v("camera/height")
+	var cam_y := player.road_y + CameraView.height(view)
 	var cam_x := player.x * Cfg.ROAD_WIDTH
 	var x := 0.0
 	var dx := -base.curve * base_percent
@@ -141,12 +142,12 @@ func _draw() -> void:
 			_draw_player()
 	if at < 0:
 		_draw_player()
-	else:
+	elif CameraView.car_shown(view):
 		# Cars just behind the player, over the player's car; nearer the camera than that
-		# they would fill the screen, so they aren't drawn
+		# they would fill the screen, so they aren't drawn (from the bumper, they're behind it)
 		for r: RivalCar in _rivals_behind:
 			_draw_rival(drawn[at], r, Color.WHITE.lerp(_fog_color, drawn[at].fog))
-		for i in range(at - 1, behind_from(at) - 1, -1):
+		for i in range(at - 1, behind_from(at, CameraView.behind_segments(view, BEHIND_SEGMENTS)) - 1, -1):
 			_draw_cars(drawn[i])
 
 
@@ -179,9 +180,9 @@ func _stands_on(seg: Segment, player_here: bool) -> bool:
 
 
 ## The nearest slot in `drawn` whose cars are still drawn when the player is at slot `at`:
-## BEHIND_SEGMENTS behind it at most.
-static func behind_from(at: int) -> int:
-	return maxi(0, at - BEHIND_SEGMENTS)
+## `behind` (BEHIND_SEGMENTS; more from further back, CameraView.behind_segments) at most.
+static func behind_from(at: int, behind := BEHIND_SEGMENTS) -> int:
+	return maxi(0, at - behind)
 
 
 ## Where in the near-to-far `drawn` list the player's segment is, or -1.
@@ -198,10 +199,16 @@ static func behind(z: float, player_z: float, length: float) -> bool:
 
 
 func _project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float) -> void:
+	project(seg, cx1, cx2, cam_y, cz, camera_depth)
+
+
+## Projects a segment's ends onto the screen for a camera at track position `cz`, `cam_y` up,
+## `cx1` and `cx2` across from each end's road center (world units), with camera `depth`.
+static func project(seg: Segment, cx1: float, cx2: float, cam_y: float, cz: float, depth: float) -> void:
 	seg.cam_z1 = seg.w1.z - cz
 	seg.cam_z2 = seg.w2.z - cz
-	seg.scale1 = camera_depth / maxf(seg.cam_z1, 1.0)
-	seg.scale2 = camera_depth / maxf(seg.cam_z2, 1.0)
+	seg.scale1 = depth / maxf(seg.cam_z1, 1.0)
+	seg.scale2 = depth / maxf(seg.cam_z2, 1.0)
 	var half_w := Cfg.SCREEN_W * 0.5
 	seg.s1 = Vector2(half_w - seg.scale1 * cx1 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale1 * (seg.w1.y - cam_y) * Cfg.PROJ)
 	seg.s2 = Vector2(half_w - seg.scale2 * cx2 * Cfg.PROJ, Cfg.HORIZON_Y - seg.scale2 * (seg.w2.y - cam_y) * Cfg.PROJ)
@@ -533,10 +540,12 @@ func _draw_ghost(seg: Segment) -> void:
 
 
 func _draw_player() -> void:
+	if not CameraView.car_shown(view):
+		return
 	var p := player
-	var s := camera_depth / Cfg.PLAYER_Z
-	var w := Cfg.CAR_WIDTH * s * Cfg.PROJ
-	var y := Cfg.HORIZON_Y + s * Tuning.v("camera/height") * Cfg.PROJ
+	var s := camera_depth / CameraView.distance(view)
+	var w := CameraView.car_width(view, camera_depth)
+	var y := CameraView.car_base(view, camera_depth).y
 	var lift := p.air_height * s * Cfg.PROJ
 	var steer := p.shown_steer()
 	if p.crash_time > 0.0:

@@ -269,6 +269,22 @@ func test_settings_v10_to_v11_adds_rumble() -> void:
 	_clean()
 
 
+func test_settings_v11_to_v12_adds_the_camera_view() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v11.cfg")
+	eq(Settings.migrate(cfg), 11, "from version 11")
+	eq([CfgVersion.of(cfg), cfg.get_value("display", "camera_view")], [Settings.VERSION, CameraView.View.CHASE_NEAR], "migrated on: chase near, as ever")
+	_clean()
+	_load_settings("settings_v11.cfg")
+	eq(Settings.camera_view, CameraView.View.CHASE_NEAR, "v11 loads in chase near")
+	eq([Settings.rumble, Settings.reduce_motion], [4, true], "the rest as saved")
+	Settings.camera_view = CameraView.View.BUMPER
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.camera_view], [Settings.VERSION, CameraView.View.BUMPER], "saved and loaded back")
+	_clean()
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")

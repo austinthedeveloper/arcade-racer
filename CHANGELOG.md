@@ -12,6 +12,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 - The wet road reads (WS-13): on Thunderhead the rain-soaked road shines more, the storm sky
   and the pylons reflect in it in long streaks, and puddles catch the light on the road ahead.
   The sheen, the reflections and the puddles are on a new WORLD page of the F3 tuning panel.
+- Camera views (WS-15): the VIEW button (V, or the right stick click) steps through chase near
+  (as before), chase far (higher and further back) and a low bumper view without the car. The
+  view is remembered, and is also on the Options DISPLAY page as CAMERA VIEW.
 
 ## [0.4.0] - 2026-11-02
 
