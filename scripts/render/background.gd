@@ -132,6 +132,11 @@ static func hill_shift(rise: float, depth: float) -> float:
 	return roundf(clampf(-rise * depth / HILL_AHEAD * Cfg.PROJ, -HILL_MAX, HILL_MAX))
 
 
+## The hill shift as the race shows it: none with reduce motion (Settings.motion_amount).
+static func shown_hill(rise: float, depth: float) -> float:
+	return Settings.motion_amount(hill_shift(rise, depth))
+
+
 ## Where the first of the two strip copies starts (a whole pixel, at or left of 0) for an
 ## `offset` of 0..1 round a strip `width` wide; the second follows it.
 static func strip_x(offset: float, width: float) -> float:

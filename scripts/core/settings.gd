@@ -24,7 +24,18 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 5: [play] steer_assist, brake_assist (missing: off).
 ## 6: [audio] radio (missing: shuffle). 7: [accessibility] subtitles (missing: on).
 ## 8: [play] manual_gears (missing: automatic).
-const VERSION := 8
+## 9: [controls] key_steer_in, key_steer_out (missing: STANDARD, as every earlier build).
+## 10: [accessibility] reduce_motion (missing: off).
+## 11: [controls] rumble (missing: as designed, EFFECT_STEPS).
+const VERSION := 11
+## Keyboard steering feel (AC-11): how fast a held key turns in and a released one comes back,
+## snappy to smooth. Each multiplies its rate (shares of full lock per second); STANDARD is
+## the rate every earlier build had.
+const KEY_STEER_IN := 5.0
+const KEY_STEER_OUT := 9.0
+const STEER_FEEL_NAMES := ["SNAPPIEST", "SNAPPIER", "SNAPPY", "STANDARD", "SMOOTH", "SMOOTHER", "SMOOTHEST"]
+const STEER_FEEL_MULT := [2.0, 1.6, 1.3, 1.0, 0.8, 0.6, 0.45]
+const STEER_FEEL_STANDARD := 3
 ## The scanline overlay's CanvasLayer: above the race, the menus and the debug overlay.
 const SCANLINE_LAYER := 100
 const SCANLINE_SHADER := preload("res://scripts/render/scanlines.gdshader")
@@ -40,6 +51,9 @@ var carry_time := false  # Grand Tour: clock left at a finish carries into the n
 var steer_assist := false  # Assists: keyboard and gamepad steering pulls toward the lane
 var brake_assist := false  # Assists: brakes into corners taken too fast
 var manual_gears := false  # the player shifts (PlayerCar.shift); automatic by default
+var key_steer_in: int = STEER_FEEL_STANDARD  # into STEER_FEEL_NAMES: a held key's turn in
+var key_steer_out: int = STEER_FEEL_STANDARD  # and a released key's return to center
+var rumble := 10  # 0..EFFECT_STEPS; a gamepad's rumble (Rumble), 0 off
 var attack_traffic := false  # Time Attack and Free Drive with traffic (picked on stage select)
 var unlock_all := false  # every car and stage open (Unlocks), for testing and accessibility
 var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
@@ -48,6 +62,9 @@ var radio: int = Radio.SHUFFLE  # the station races start on (Radio)
 var screen_shake := 10  # 0..EFFECT_STEPS; scales camera shake and the nitro FOV stretch
 var flash := 10  # 0..EFFECT_STEPS; scales flashes and blinking warnings
 var subtitles := true  # the announcer's words on screen (Announcer)
+## Reduce motion (AC-13): no camera shake, nitro view stretch, hill shift of the scenery or
+## rain streaks, whatever the screen shake option says (shake_amount, motion_reduced).
+var reduce_motion := false
 var units: int = Units.MPH  # the speedometer's
 var fullscreen := false  # windowed by default
 var integer_scale := false  # whole-number scaling of the 640x360 view (borders round it)
@@ -76,6 +93,9 @@ func reset() -> void:
 	steer_assist = false
 	brake_assist = false
 	manual_gears = false
+	key_steer_in = STEER_FEEL_STANDARD
+	key_steer_out = STEER_FEEL_STANDARD
+	rumble = EFFECT_STEPS
 	unlock_all = false
 	attack_traffic = false
 	music_volume = 10
@@ -84,6 +104,7 @@ func reset() -> void:
 	screen_shake = EFFECT_STEPS
 	flash = EFFECT_STEPS
 	subtitles = true
+	reduce_motion = false
 	units = Units.MPH
 	fullscreen = false
 	integer_scale = false
@@ -108,6 +129,9 @@ func load_settings() -> void:
 		steer_assist = bool(cfg.get_value("play", "steer_assist", steer_assist))
 		brake_assist = bool(cfg.get_value("play", "brake_assist", brake_assist))
 		manual_gears = bool(cfg.get_value("play", "manual_gears", manual_gears))
+		key_steer_in = clampi(int(cfg.get_value("controls", "key_steer_in", key_steer_in)), 0, STEER_FEEL_NAMES.size() - 1)
+		key_steer_out = clampi(int(cfg.get_value("controls", "key_steer_out", key_steer_out)), 0, STEER_FEEL_NAMES.size() - 1)
+		rumble = clampi(int(cfg.get_value("controls", "rumble", rumble)), 0, EFFECT_STEPS)
 		unlock_all = bool(cfg.get_value("play", "unlock_all", unlock_all))
 		attack_traffic = bool(cfg.get_value("play", "attack_traffic", attack_traffic))
 		music_volume = clampi(int(cfg.get_value("audio", "music", music_volume)), 0, VOLUME_STEPS)
@@ -116,6 +140,7 @@ func load_settings() -> void:
 		screen_shake = clampi(int(cfg.get_value("accessibility", "screen_shake", screen_shake)), 0, EFFECT_STEPS)
 		flash = clampi(int(cfg.get_value("accessibility", "flash", flash)), 0, EFFECT_STEPS)
 		subtitles = bool(cfg.get_value("accessibility", "subtitles", subtitles))
+		reduce_motion = bool(cfg.get_value("accessibility", "reduce_motion", reduce_motion))
 		units = clampi(int(cfg.get_value("display", "units", units)), 0, Units.size() - 1)
 		fullscreen = bool(cfg.get_value("display", "fullscreen", fullscreen))
 		integer_scale = bool(cfg.get_value("display", "integer_scale", integer_scale))
@@ -127,7 +152,7 @@ func load_settings() -> void:
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -176,6 +201,23 @@ static func _v7_to_v8(cfg: ConfigFile) -> void:
 	cfg.set_value("play", "manual_gears", false)
 
 
+## Version 9 added the keyboard steering feel, STANDARD both ways: the rates every earlier
+## build steered at.
+static func _v8_to_v9(cfg: ConfigFile) -> void:
+	cfg.set_value("controls", "key_steer_in", STEER_FEEL_STANDARD)
+	cfg.set_value("controls", "key_steer_out", STEER_FEEL_STANDARD)
+
+
+## Version 10 added reduce motion, off: everything moving as before.
+static func _v9_to_v10(cfg: ConfigFile) -> void:
+	cfg.set_value("accessibility", "reduce_motion", false)
+
+
+## Version 11 added gamepad rumble, as designed (no earlier build rumbled; this is the default).
+static func _v10_to_v11(cfg: ConfigFile) -> void:
+	cfg.set_value("controls", "rumble", EFFECT_STEPS)
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -189,6 +231,9 @@ func save(fresh := false) -> void:
 	cfg.set_value("play", "steer_assist", steer_assist)
 	cfg.set_value("play", "brake_assist", brake_assist)
 	cfg.set_value("play", "manual_gears", manual_gears)
+	cfg.set_value("controls", "key_steer_in", key_steer_in)
+	cfg.set_value("controls", "key_steer_out", key_steer_out)
+	cfg.set_value("controls", "rumble", rumble)
 	cfg.set_value("play", "unlock_all", unlock_all)
 	cfg.set_value("play", "attack_traffic", attack_traffic)
 	cfg.set_value("audio", "music", music_volume)
@@ -197,6 +242,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("accessibility", "screen_shake", screen_shake)
 	cfg.set_value("accessibility", "flash", flash)
 	cfg.set_value("accessibility", "subtitles", subtitles)
+	cfg.set_value("accessibility", "reduce_motion", reduce_motion)
 	cfg.set_value("display", "units", units)
 	cfg.set_value("display", "fullscreen", fullscreen)
 	cfg.set_value("display", "integer_scale", integer_scale)
@@ -218,10 +264,25 @@ func drive_input(inp: DriveInput) -> DriveInput:
 	return out
 
 
+## The keyboard's steering rates after the steering feel options: x turning in (share of
+## full lock per second while a key is held), y coming back (released, or reversing).
+func key_steer_rates() -> Vector2:
+	return Vector2(KEY_STEER_IN * STEER_FEEL_MULT[clampi(key_steer_in, 0, STEER_FEEL_MULT.size() - 1)],
+		KEY_STEER_OUT * STEER_FEEL_MULT[clampi(key_steer_out, 0, STEER_FEEL_MULT.size() - 1)])
+
+
 ## A camera effect (shake in pixels, the nitro FOV stretch) after the screen shake option:
-## the designed amount at 10, none at 0, never more than designed.
+## the designed amount at 10, none at 0, never more than designed. None with reduce motion.
 func shake_amount(designed: float) -> float:
+	if reduce_motion:
+		return 0.0
 	return designed * clampi(screen_shake, 0, EFFECT_STEPS) / float(EFFECT_STEPS)
+
+
+## A moving effect after reduce motion: `designed` (pixels, streaks), or none with it on.
+## The hill shift (Background.shown_hill) and rain (FxLayer.rain_shown) read it.
+func motion_amount(designed: float) -> float:
+	return 0.0 if reduce_motion else designed
 
 
 ## A flash's strength (alpha, or how far a blink goes) after the flash option, as above.

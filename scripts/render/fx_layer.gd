@@ -411,13 +411,18 @@ func _draw() -> void:
 			if side > 0.0:
 				rect = Rect2(rect.position.x + rect.size.x, rect.position.y, -rect.size.x, rect.size.y)
 			draw_texture_rect(tex, rect, false)
-	if not _drops.is_empty():
+	if rain_shown(_drops.size()) > 0:
 		_draw_rain()
 	var shown := Weather.shown_flash(flash, flash_share)
 	if shown > 0.0:
 		# Oversized, so the camera shake (this layer's position) never shows an edge
 		var c := Weather.FLASH_COLOR
 		draw_rect(Rect2(-16, -16, Cfg.SCREEN_W + 32, Cfg.SCREEN_H + 32), Color(c, shown))
+
+
+## How many of a storm's `drops` rain streaks are drawn: none with reduce motion.
+static func rain_shown(drops: int) -> int:
+	return roundi(Settings.motion_amount(drops))
 
 
 func _draw_rain() -> void:

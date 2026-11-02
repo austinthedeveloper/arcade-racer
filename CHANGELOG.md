@@ -21,6 +21,15 @@ the release workflow puts that section at the top of the GitHub Release notes
   applies at once (the HUD says TUNED), save and load presets, and slow the race down, jump
   along the stage, give yourself a power-up, set the clock or send a wave of traffic. Changes
   are kept for the next run and logged.
+- Keyboard steering feel (AC-11): Options > Controls sets how fast a held steering key reaches
+  full lock and how fast the steering comes back when you let go, each from SNAPPIEST to
+  SMOOTHEST. STANDARD steers exactly as before.
+- Reduce motion (AC-13): one switch in Options > Accessibility turns off the camera shake, the
+  nitro view stretch, the scenery rising and dipping with the hills, and the rain streaks.
+- Auto-pause (AC-15): switching to another window, or sending a phone browser tab to the
+  background, pauses the race. Online races carry on, as they always do.
+- Gamepad rumble (WH-13): the pad you drive with rumbles on crashes, bumps, landings, nitro and
+  off the road. Options > Controls > RUMBLE sets how strongly, 0 for none.
 
 ### Changed
 
