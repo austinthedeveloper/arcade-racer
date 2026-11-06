@@ -7,6 +7,13 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-06
+
+### Fixed
+
+- Bruiser 440 steering: turning right now shows the car's right side (it used to look like a
+  left turn), and the engine on top sits in the middle instead of off to the left.
+
 ## [0.5.0] - 2026-11-02
 
 ### Added
