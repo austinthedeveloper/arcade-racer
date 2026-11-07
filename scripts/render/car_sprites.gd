@@ -109,7 +109,7 @@ static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float
 	var strip: Dictionary = car[row]
 	var tex: Texture2D = strip["tex"]
 	var cell: Vector2 = strip["cell"]
-	var k := draw_scale(w, strip)
+	var k := car_scale(w, car)
 	w = float(strip["body_w"]) * k
 	var size := cell * k
 	var y := base.y - lift
@@ -146,6 +146,12 @@ static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float
 static func draw_scale(w: float, strip: Dictionary) -> float:
 	var cell: Vector2 = strip["cell"]
 	return minf(w / float(strip["body_w"]), w * MAX_HEIGHT / cell.y)
+
+
+## draw_scale for a whole car: every pitch at its level strip's scale, or a tall nose-up strip
+## would shrink the car as the road starts to climb.
+static func car_scale(w: float, car: Dictionary) -> float:
+	return draw_scale(w, car[0])
 
 
 ## Which pitch strip to draw: -1 nose-up, 0 level, 1 nose-down, among the rows that exist.

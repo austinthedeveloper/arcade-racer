@@ -7,13 +7,16 @@ Cuts the car's views sheet (assets/concept/cars/car_<car>_views_*.png, the newes
 back, front and side, left to right, on magenta) into back.png, front.png, left.png and
 right.png on transparent backgrounds, each padded to a square. The sheet's side view has the
 nose to the left, so it shows the car's left flank; the right is that one mirrored. The hero
-picture, if there is one, is copied as hero.png for a tool that takes one image.
+picture, if there is one, is copied as hero.png for a tool that takes one image. A front view
+drawn with a part off to one side (CENTER_PARTS, the Bruiser's blower) is put right first, or
+the model would keep it there.
 """
 import argparse
 import glob
 import os
 import shutil
 
+import numpy as np
 from PIL import Image
 
 from spritelib import key_sheet, slice_row
@@ -22,6 +25,10 @@ PROJECT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 CONCEPT = os.path.join(PROJECT, "assets", "concept", "cars")
 VIEWS = ["back", "front", "left"]
 PAD = 0.1  # of the square's side, around the car
+# Parts the front view draws off-centre: car -> the box round the part, as shares of the square
+# (x0, y0, x1, y1). The sprites have the Bruiser's blower in the middle of the hood.
+CENTER_PARTS = {"bruiser": (0.5, 0.26, 0.73, 0.45)}
+PART_DIFF = 40  # how far a pixel differs from its mirror image to count as the part
 
 
 def newest(car, kind):
@@ -37,7 +44,27 @@ def square(img, pad=PAD):
     return out
 
 
-def views(sheet_path):
+def center_part(img, box):
+    """`img`, a view of a car with one side clean, with that side mirrored over the other, then
+    the part in `box` (found by how it differs from the mirror image) back on the middle."""
+    a = np.array(img.convert("RGBA")).astype(np.int16)
+    xs = np.nonzero(a[..., 3].max(axis=0))[0]
+    mid = (xs[0] + xs[-1]) // 2
+    h, w = a.shape[:2]
+    x0, y0, x1, y1 = round(box[0] * w), round(box[1] * h), round(box[2] * w), round(box[3] * h)
+    out = a.copy()
+    for x in range(mid + 1, min(2 * mid + 1, w)):
+        out[:, x] = a[:, 2 * mid - x]
+    part = np.zeros((h, w), bool)
+    part[y0:y1, x0:x1] = np.abs(a[y0:y1, x0:x1, :3] - out[y0:y1, x0:x1, :3]).sum(axis=2) > PART_DIFF
+    cols = np.nonzero(part.any(axis=0))[0]
+    shift = mid - (cols[0] + cols[-1]) // 2
+    ys, px = np.nonzero(part)
+    out[ys, px + shift] = a[ys, px]
+    return Image.fromarray(out.astype(np.uint8))
+
+
+def views(sheet_path, car=None):
     """{name: image} for the views sheet: back, front, left (as drawn) and right (mirrored)."""
     sheet = Image.open(sheet_path).convert("RGB")
     crops = slice_row(key_sheet(sheet), key_sheet(sheet, hue_fringe=0, spill=0))
@@ -45,6 +72,8 @@ def views(sheet_path):
         raise SystemExit("%s: found %d views, expected %d (back, front, side)" % (sheet_path, len(crops), len(VIEWS)))
     out = {name: square(c) for name, c in zip(VIEWS, crops)}
     out["right"] = out["left"].transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    if car in CENTER_PARTS:
+        out["front"] = center_part(out["front"], CENTER_PARTS[car])
     return out
 
 
@@ -59,7 +88,7 @@ def main():
         raise SystemExit("no views sheet for " + a.car)
     out_dir = os.path.join(a.out, a.car)
     os.makedirs(out_dir, exist_ok=True)
-    for name, img in views(sheet).items():
+    for name, img in views(sheet, a.car).items():
         img.save(os.path.join(out_dir, name + ".png"))
     hero = newest(a.car, "hero")
     if hero:
