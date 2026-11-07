@@ -144,3 +144,9 @@ has real uphill and downhill strips, which the concept sheets don't (they fake i
 It is plainly better uphill. On level road the concept was a little crisper, and its flanks are
 still brighter when airborne. Austin drove it and chose the render: these strips are in the game, `RENDERED` in `tools/make_car_sprites.py` keeps the sheet rebuild
 off them, and `tools/check_sprites.py` doesn't cover them.
+
+**The other eleven (2026-11-07):** one Tripo generation each came out right, 55 credits a car, and
+each took about 3 minutes to render. In races, the Hauler, Halo, Skipper and Sol came close to their
+concept strips. The concept is still ahead on the Vega, Kestrel, Mesa, Phantom, Tempest, Cyclone and
+Zenith: crisper, and with painted detail the models don't carry, such as the Zenith's shimmer and the
+Phantom's black louvers. Their strips aren't in the game; `build/car_trial` has them to drive.
