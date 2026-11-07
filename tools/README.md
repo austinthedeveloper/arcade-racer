@@ -149,4 +149,5 @@ off them, and `tools/check_sprites.py` doesn't cover them.
 each took about 3 minutes to render. In races, the Hauler, Halo, Skipper and Sol came close to their
 concept strips. The concept is still ahead on the Vega, Kestrel, Mesa, Phantom, Tempest, Cyclone and
 Zenith: crisper, and with painted detail the models don't carry, such as the Zenith's shimmer and the
-Phantom's black louvers. Their strips aren't in the game; `build/car_trial` has them to drive.
+Phantom's black louvers. Austin had the four close ones installed (they're in `RENDERED`); the other
+seven stay on their concept strips, and `build/car_trial` has their renders to drive.

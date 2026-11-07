@@ -149,12 +149,19 @@ func test_right_turns_show_the_right_flank() -> void:
 			check(mirrored < same, "%s frame %d mirrors its left turn (%.3f vs %.3f as is)" % [id, left, mirrored, same])
 
 
-func test_the_bruiser_has_rendered_strips_at_every_pitch() -> void:
-	var car: Dictionary = CarSprites.strips("bruiser")
-	check(car.has(-1) and car.has(0) and car.has(1), "uphill, level and downhill")
-	# Its uphill strip is over the height limit: it mustn't shrink the car when it swaps in
-	near(CarSprites.car_scale(100.0, car), 100.0 / car[0]["body_w"], 0.0001, "fills the width at every pitch")
-	check(car[-1]["cell"].y * CarSprites.car_scale(100.0, car) < 100.0 * 1.2, "uphill stays in proportion")
+## The cars whose strips are rendered from a 3D model (RENDERED in tools/make_car_sprites.py).
+const RENDERED_CARS := ["bruiser", "halo", "hauler", "skipper", "sol"]
+
+
+func test_rendered_cars_have_strips_at_every_pitch() -> void:
+	for id in RENDERED_CARS:
+		var car: Dictionary = CarSprites.strips(id)
+		check(car.has(-1) and car.has(0) and car.has(1), "%s: uphill, level and downhill" % id)
+		# A pitch strip over the height limit mustn't shrink the car when it swaps in
+		near(CarSprites.car_scale(100.0, car), CarSprites.draw_scale(100.0, car[0]), 0.0001, "%s keeps its level size at every pitch" % id)
+		check(car[0]["cell"].y * CarSprites.car_scale(100.0, car) <= 100.0 * CarSprites.MAX_HEIGHT + 0.001, "%s is no taller than the limit" % id)
+		for pitch in [-1, 1]:
+			check(car[pitch]["cell"].y * CarSprites.car_scale(100.0, car) < 100.0 * 1.2, "%s pitch %d stays in proportion" % [id, pitch])
 
 
 ## Mean channel difference (alpha included) between two images of one size.
