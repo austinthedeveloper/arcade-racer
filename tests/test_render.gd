@@ -96,6 +96,18 @@ func test_tall_cars_are_drawn_smaller_not_taller() -> void:
 		check(h <= 100.0 * CarSprites.MAX_HEIGHT + 0.01, "%s at most %.2f x its width tall (%.1f)" % [id, CarSprites.MAX_HEIGHT, h])
 
 
+func test_every_pitch_draws_at_the_level_strips_scale() -> void:
+	# A tall nose-up strip mustn't shrink the car as the road starts to climb
+	var level := {"cell": Vector2(200.0, 130.0), "body_w": 180.0}
+	var tall := {"cell": Vector2(200.0, 170.0), "body_w": 180.0}
+	var car := {0: level, -1: tall}
+	near(CarSprites.car_scale(100.0, car), 100.0 / 180.0, 0.0001, "the level strip's scale")
+	check(CarSprites.draw_scale(100.0, tall) < CarSprites.car_scale(100.0, car), "alone, the tall strip would draw smaller")
+	# A car too tall on the level still comes down, by its level strip
+	var hauler := {0: {"cell": Vector2(200.0, 200.0), "body_w": 180.0}}
+	near(CarSprites.car_scale(100.0, hauler), 100.0 * CarSprites.MAX_HEIGHT / 200.0, 0.0001, "the height limit still holds")
+
+
 func test_player_cars_are_solid() -> void:
 	# Regression: the magenta key ate pink and purple paint (Cyclone, Zenith), so the road
 	# showed through the car. The Skipper is an open tube-frame buggy: its gaps are real.
@@ -137,22 +149,12 @@ func test_right_turns_show_the_right_flank() -> void:
 			check(mirrored < same, "%s frame %d mirrors its left turn (%.3f vs %.3f as is)" % [id, left, mirrored, same])
 
 
-func test_bruiser_blower_is_on_the_middle_of_the_roof() -> void:
-	# The sheet drew it off to the car's left, where it stayed through every turn. The
-	# intake is all that shows above the roof in the straight frame.
-	var frame := _straight_frame("bruiser")
-	var body := frame.get_used_rect()
-	var top := Rect2i(body.position, Vector2i(body.size.x, 4)).get_area()
-	var sum := 0.0
-	var n := 0
-	for y in range(body.position.y, body.position.y + 4):
-		for x in range(body.position.x, body.end.x):
-			if frame.get_pixel(x, y).a > 0.5:
-				sum += x
-				n += 1
-	check(n > 0 and n < top / 4, "only the intake pokes up (%d pixels)" % n)
-	var middle := body.position.x + body.size.x / 2.0
-	check(absf(sum / maxi(n, 1) - middle) < body.size.x * 0.05, "intake centered (%.1f vs %.1f)" % [sum / maxi(n, 1), middle])
+func test_the_bruiser_has_rendered_strips_at_every_pitch() -> void:
+	var car: Dictionary = CarSprites.strips("bruiser")
+	check(car.has(-1) and car.has(0) and car.has(1), "uphill, level and downhill")
+	# Its uphill strip is over the height limit: it mustn't shrink the car when it swaps in
+	near(CarSprites.car_scale(100.0, car), 100.0 / car[0]["body_w"], 0.0001, "fills the width at every pitch")
+	check(car[-1]["cell"].y * CarSprites.car_scale(100.0, car) < 100.0 * 1.2, "uphill stays in proportion")
 
 
 ## Mean channel difference (alpha included) between two images of one size.

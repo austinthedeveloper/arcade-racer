@@ -5,7 +5,8 @@
   The nose-down (downhill) and nose-up (uphill) sheets, when they exist, become strips laid
   out the same way. Those sheets may hold 7, 3 (left, straight, right) or 1 (straight) frames;
   fewer frames are repeated across the seven steering cells. Only the Vega has pitched
-  sheets so far; the rest of the garage (GARAGE) gets a level strip each.
+  sheets so far; the rest of the garage (GARAGE) gets a level strip each. A car in RENDERED
+  has strips from its 3D model instead (tools/make_car_renders.py), which this leaves alone.
 - Traffic: rear views from the traffic sheets, one keyed sprite each; front views (oncoming,
   RC-11) for the vehicles that have them, at the rear view's width; and light states (CP-6):
   the TRF-10 sheet's brake and signal frames for the beige sedan, and signal frames for the
@@ -159,6 +160,9 @@ GARAGE = [
     ("halo", "car_halo_steer_sheet_A_v1.png"),
     ("cyclone", "car_cyclone_steer_sheet_A_v2.png"),
 ]
+# Cars whose strips in the game are rendered from a 3D model, not cut from their sheet. Take one
+# out of here and rerun to go back to its sheet, and delete its _steer_up and _steer_down.
+RENDERED = {"bruiser"}
 # Which sheet frame fills each of the seven steering cells, by frame count
 STEER_CELLS = {7: [0, 1, 2, 3, 4, 5, 6], 3: [0, 0, 1, 1, 1, 2, 2], 1: [0] * 7}
 # Sheets whose right-hand frames were drawn showing the left flank again: their right turns
@@ -338,6 +342,8 @@ def main():
             h = make_player(path, os.path.join(sprites, "cars", strip), level_h, max_ratio)
             level_h = level_h or h
     for car, sheet in GARAGE:
+        if car in RENDERED:
+            continue
         make_player(os.path.join(concept_dir, "cars", sheet), os.path.join(sprites, "cars", car + "_steer.png"))
     make_traffic(concept_dir, os.path.join(sprites, "traffic"))
     make_fronts(concept_dir, os.path.join(sprites, "traffic"))

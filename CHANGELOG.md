@@ -7,6 +7,10 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Changed
+
+- Bruiser 440: a new car sprite rendered from a 3D model, with its own uphill and downhill views.
+
 ## [0.5.1] - 2026-11-06
 
 ### Fixed

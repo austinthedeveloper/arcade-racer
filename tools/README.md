@@ -50,16 +50,37 @@ straight frame is 180 px wide, cuts the colors to a small palette and darkens th
 together. If the car is facing the wrong way, pass `--forward=-y` (or `x`, `-x`): the axis its
 nose points along when it comes in.
 
-Tripo's Vega comes in nose toward the camera and needs `--forward=-y`. Its lamps are only
-painted on, so the render makes orange-to-amber texels glow (`GLOW_*` in the render script).
+What differs per car is in `tools/blender/car_looks.py`, by strip name: which way the nose faces
+(Tripo's come in nose toward the camera), which texels count as lamps and the hue they glow in,
+a turn of the paint's hue, the camera tilt and the cabin wall. Lamps on an AI-made model are
+only painted on, so the render makes texels of the lamps' color glow (`GLOW_*` in the render
+script). `--only=level_3,up_0` renders just those frames, to try a setting in seconds.
 
 `--style=cel` renders flat bands of light instead of the model's own shading, with a hard
 highlight (`CEL_*`), closer to pixel art.
 
-`tools/blender/render_car.py` sets the look in its constants: `STEER_YAW` (the turn at each
-frame, matched to the sheets), `PITCH` (the hill tilt), the camera (`CAMERA_TILT`,
-`CAMERA_LENS`, `CAMERA_DISTANCE`) and the sun from the upper left. `tools/blender/blockout_vega.py`
+`tools/blender/render_car.py` sets the rest of the look in its constants: `STEER_YAW` (the turn
+at each frame, matched to the sheets), `PITCH` (the hill tilt), the camera (`CAMERA_LENS`,
+`CAMERA_DISTANCE`), the sun (behind the camera, so the tail and deck are lit), the sky the paint
+reflects (`SKY`) and the paint (`PAINT_*`, `NEUTRAL_SATURATION`). `tools/blender/blockout_vega.py`
 builds a rough Vega from boxes, to try the pipeline without a real model.
+
+What a Tripo model needs, all found on the Bruiser:
+
+- **It is about 0.7 metallic all over**, stripes too, so a white stripe shows the sky and the
+  paint shows every lump in the mesh: `PAINT_METALLIC` takes most of that away. Chrome and white
+  texels skip the richer color (`NEUTRAL_SATURATION`), or the bumper and stripes go blue.
+- **It has no glass.** The windows are holes, and the road shows through the cabin. The strip
+  pass fills any hole in the outline with a dark gradient (`fill_glass`), and an invisible wall
+  ahead of the seats (`cabin_wall`) clears the dash and engine seen through them.
+- **Don't cut the palette.** At 64 colors smooth paint breaks into blotches and at 256 it still
+  pales; the concept strips have tens of thousands (`COLORS` is 0).
+- **The camera:** the Bruiser's long tail and deep fenders hide the tires at 15 degrees, and a car
+  with no tires showing floats however steep the camera is. It uses 9, and `contact_shadow` fills
+  from the tires down to the sprite's bottom edge, since tail pipes set that edge.
+- **Height:** at 9 degrees the level strip is as tall as the concept's (0.72 of its width). The
+  uphill strip is 0.94, over `CarSprites.MAX_HEIGHT`; `car_scale` draws every pitch at the level
+  strip's scale so the car doesn't shrink when the strip swaps.
 
 Models in `assets/models/` stay out of the Godot project (`.gdignore`); only the strips ship.
 
@@ -71,3 +92,12 @@ still read pale pink and the light bar faint: the concept's glowing triangles ar
 detail the model's texture doesn't have. The concept-sheet strips stay in the game; the models
 may still serve the car select turntable (CP-10), a screen of its own. `build/car_renders/vega_ingame_compare.png` (made by hand) had four
 race frames side by side.
+
+**The Bruiser trial (2026-11-06):** the first Tripo generation came out right from all sides. With
+the fixes above the render sits on the road, its light bar reads as well as the concept's, and it
+has real uphill and downhill strips, which the concept sheets don't (they fake it by stretching).
+It is plainly better uphill. On level road the concept was a little crisper and its flanks
+brighter, and it kept the blower showing over the roof, which at 9 degrees the model hides. The
+right flank falls into shade when airborne or turned hard. Austin drove it and chose the render:
+these strips are in the game, `RENDERED` in `tools/make_car_sprites.py` keeps the sheet rebuild
+off them, and `tools/check_sprites.py` doesn't cover them.

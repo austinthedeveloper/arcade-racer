@@ -21,6 +21,9 @@ import sys
 import bpy
 from mathutils import Euler, Vector
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from car_looks import look  # noqa: E402
+
 CAR_LENGTH = 4.4  # metres, nose to tail, after import
 # Turn of the car at each steering frame, degrees, + is left (counter-clockwise from above).
 # Frame 0 is hard left; these match the turn the concept steering sheets show.
@@ -28,31 +31,48 @@ STEER_YAW = [20, 13, 6, 0, -6, -13, -20]
 # Nose-up (uphill) and nose-down (downhill) tilt, degrees; the game swaps to these strips past
 # CarSprites.PITCH_SWITCH.
 PITCH = {"level": 0.0, "up": 9.0, "down": -9.0}
-# Camera: behind the car and above it, looking down at CAMERA_TILT, at a long lens so the
-# perspective stays mild (the race draws the car flat, at one scale).
-CAMERA_DISTANCE = 13.0
-CAMERA_TILT = 6.0  # degrees below level
-CAMERA_LENS = 135.0  # mm
-# The sun (docs/03-art-direction.md: upper left)
-SUN_ROTATION = (-50.0, 0.0, 30.0)  # degrees: the sun ahead of the car and to its left, low, as in the hero art (it drives into the sunset), so the tail is in shade with lit edges
-SUN_ENERGY = 5.0
-RIM_ENERGY = 2.0
-# Lamps glow: base-color texels that are orange to amber (green between these shares of the
-# red, red at least GLOW_MIN_RED, blue under GLOW_MAX_BLUE of the red) emit at GLOW_STRENGTH.
-# The body red has almost no green, and warm chrome has too much blue, so both stay out. An
-# AI-made model's lamps are only painted on, and the concept art lights them.
-GLOW_GREEN = (0.05, 0.9)
-GLOW_MIN_RED = 0.3
+# Camera: behind the car and above it, looking down at the car's tilt (car_looks.py). The race
+# camera sees the road under the car from atan(camera/height / Cfg.PLAYER_Z) = 34 degrees; a car
+# drawn from much lower than that doesn't sit on the road, it floats. Too steep and the bumper
+# hides the tires, and it floats anyway.
+CAMERA_DISTANCE = 10.0
+CAMERA_LENS = 85.0  # mm
+# The sun (docs/03-art-direction.md: upper left): behind the camera, so it lights the tail and
+# the deck, the parts the player sees. Ahead of the car it leaves all of those in shade.
+SUN_ROTATION = (65.0, 0.0, -25.0)  # degrees
+SUN_ENERGY = 3.8
+RIM_ENERGY = 1.5
+# What the paint and glass reflect: a postcard sky, height (-1 straight down .. 1 straight up)
+# to color. A flat world leaves gloss with nothing to show, and the car looks matte.
+SKY = [(-1.0, (0.3, 0.3, 0.32)), (-0.02, (0.4, 0.38, 0.38)), (0.0, (1.0, 0.72, 0.45)),
+       (0.12, (0.55, 0.8, 1.0)), (1.0, (0.16, 0.42, 1.0))]
+SKY_STRENGTH = 0.5
+# The paint, whatever the model's texture says: AI-made textures come out chalky.
+PAINT_SATURATION = 1.6
+PAINT_VALUE = 1.0
+PAINT_GAMMA = 1.7  # deepens a color's weak channels: blue paint stays blue under the sun, whites hold
+PAINT_ROUGHNESS = 0.8  # times the model's roughness
+# Times the model's metallic. An AI-made model is about 0.7 metallic all over, stripes too: a
+# white stripe then shows the sky, not white, and the paint shows every lump in the mesh.
+PAINT_METALLIC = 0.25
+# Texels under this saturation (fading out to the second) are chrome or white, not paint: they
+# skip the richer color, so stripes stay white and bumpers silver, not blue.
+NEUTRAL_SATURATION = (0.25, 0.45)
+PAINT_COAT = 0.3  # clear coat over it
+PAINT_COAT_ROUGHNESS = 0.25
+# Lamps glow: base-color texels that are orange to amber (green between the car's glow_green
+# shares of the red, tools/blender/car_looks.py; red at least GLOW_MIN_RED, blue under
+# GLOW_MAX_BLUE of the red) emit at GLOW_STRENGTH. Warm chrome has too much blue, so it stays
+# out. An AI-made model's lamps are only painted on, and the concept art lights them.
+GLOW_MIN_RED = 0.15
 GLOW_MAX_BLUE = 0.2
-GLOW_STRENGTH = 3.0
+GLOW_STRENGTH = 5.5
 # Cel style (--style=cel): the light on a face, 0 dark .. about 1.5 full sun, picks one of
 # these flat shares of its color; a highlight band adds CEL_SHINE's white where the gloss is
 # brightest.
 CEL_BANDS = [(0.0, 0.4), (0.6, 0.7), (1.2, 0.95)]
 CEL_SHINE = [(0.0, 0.0), (1.2, 0.4)]
 CEL_GLOSS_ROUGHNESS = 0.2
-# Sky light: low, so the faces away from the sun go dark like the concept art's lower panels
-AMBIENT = 0.25
 
 
 def args():
@@ -60,9 +80,12 @@ def args():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--forward", default="y", help="axis the nose points along after import: x, -x, y, -y")
+    ap.add_argument("--car", default="", help="the car's strip name, for its settings in car_looks.py")
+    ap.add_argument("--forward", default="", help="axis the nose points along after import: x, -x, y, -y (default: the car's)")
+    ap.add_argument("--only", default="", help="render just these frames, comma-separated: level_3,up_0")
     ap.add_argument("--size", type=int, default=720, help="render width in pixels")
-    ap.add_argument("--engine", default="BLENDER_EEVEE", help="or CYCLES")
+    ap.add_argument("--engine", default="CYCLES", help="or BLENDER_EEVEE, quicker with duller gloss")
+    ap.add_argument("--tilt", type=float, default=None, help="camera degrees below level (default: the car's)")
     ap.add_argument("--style", default="shaded", choices=["shaded", "cel"],
                     help="shaded: the model's own materials; cel: flat bands (cel_shade)")
     return ap.parse_args(argv)
@@ -169,27 +192,96 @@ def textured_materials(meshes):
             yield nodes, links, bsdf, bsdf.inputs["Base Color"].links[0].from_socket
 
 
-def lamp_mask(nodes, links, color):
-    """1 where `color` is a lamp's orange to amber (GLOW_*), else 0."""
+def lamp_mask(nodes, links, color, glow_green):
+    """1 where `color` is a lamp's color (glow_green, GLOW_*), else 0."""
     rgb = nodes.new("ShaderNodeSeparateColor")
     links.new(color, rgb.inputs[0])
     r, g, b = rgb.outputs[0], rgb.outputs[1], rgb.outputs[2]
     red = math_node(nodes, links, "MAXIMUM", r, 0.001)
     share = math_node(nodes, links, "DIVIDE", g, red)
     mask = math_node(nodes, links, "MULTIPLY",
-                     math_node(nodes, links, "GREATER_THAN", share, GLOW_GREEN[0]),
-                     math_node(nodes, links, "LESS_THAN", share, GLOW_GREEN[1]))
+                     math_node(nodes, links, "GREATER_THAN", share, glow_green[0]),
+                     math_node(nodes, links, "LESS_THAN", share, glow_green[1]))
     mask = math_node(nodes, links, "MULTIPLY", mask, math_node(nodes, links, "GREATER_THAN", r, GLOW_MIN_RED))
     return math_node(nodes, links, "MULTIPLY", mask,
                      math_node(nodes, links, "LESS_THAN", math_node(nodes, links, "DIVIDE", b, red), GLOW_MAX_BLUE))
 
 
-def add_lamp_glow(meshes):
-    """Every textured material emits where its texture is a lamp's color: the taillights."""
+def neutral_mask(nodes, links, color):
+    """1 for chrome and white texels, fading to 0 for paint (NEUTRAL_SATURATION), and the
+    texel's value as a socket: (mask, value)."""
+    hsv = nodes.new("ShaderNodeSeparateColor")
+    hsv.mode = "HSV"
+    links.new(color, hsv.inputs[0])
+    fade = nodes.new("ShaderNodeMapRange")
+    links.new(hsv.outputs[1], fade.inputs["Value"])
+    fade.inputs["From Min"].default_value = NEUTRAL_SATURATION[0]
+    fade.inputs["From Max"].default_value = NEUTRAL_SATURATION[1]
+    fade.inputs["To Min"].default_value = 1.0
+    fade.inputs["To Max"].default_value = 0.0
+    return fade.outputs[0], hsv.outputs[2]
+
+
+def polish_paint(meshes, hue):
+    """Every textured material richer in color and glossier, under a clear coat. hue: the
+    car's turn of the paint's hue, in turns (car_looks.py)."""
     for nodes, links, bsdf, color in textured_materials(meshes):
-        links.new(color, bsdf.inputs["Emission Color"])
-        links.new(math_node(nodes, links, "MULTIPLY", lamp_mask(nodes, links, color), GLOW_STRENGTH),
-                  bsdf.inputs["Emission Strength"])
+        hsv = nodes.new("ShaderNodeHueSaturation")
+        hsv.inputs["Hue"].default_value = 0.5 + hue
+        hsv.inputs["Saturation"].default_value = PAINT_SATURATION
+        hsv.inputs["Value"].default_value = PAINT_VALUE
+        links.new(color, hsv.inputs["Color"])
+        deep = nodes.new("ShaderNodeGamma")
+        deep.inputs["Gamma"].default_value = PAINT_GAMMA
+        links.new(hsv.outputs[0], deep.inputs["Color"])
+        neutral, value = neutral_mask(nodes, links, color)
+        grey = nodes.new("ShaderNodeCombineColor")
+        for i in range(3):
+            links.new(value, grey.inputs[i])
+        base = nodes.new("ShaderNodeMix")
+        base.data_type = "RGBA"
+        links.new(neutral, base.inputs["Factor"])
+        links.new(deep.outputs[0], base.inputs[6])
+        links.new(grey.outputs[0], base.inputs[7])
+        links.new(base.outputs[2], bsdf.inputs["Base Color"])
+        rough = bsdf.inputs["Roughness"]
+        if rough.is_linked:
+            links.new(math_node(nodes, links, "MULTIPLY", rough.links[0].from_socket, PAINT_ROUGHNESS), rough)
+        else:
+            rough.default_value *= PAINT_ROUGHNESS
+        metal = bsdf.inputs["Metallic"]
+        if metal.is_linked:
+            links.new(math_node(nodes, links, "MULTIPLY", metal.links[0].from_socket, PAINT_METALLIC), metal)
+        else:
+            metal.default_value *= PAINT_METALLIC
+        bsdf.inputs["Coat Weight"].default_value = PAINT_COAT
+
+
+def red_as(nodes, links, color, tint):
+    """A lamp color from `color`'s red alone, in `tint`'s hue: at GLOW_STRENGTH a red texel's
+    small green and blue clip up with the red, and the lamp comes out pink."""
+    rgb = nodes.new("ShaderNodeSeparateColor")
+    links.new(color, rgb.inputs[0])
+    grey = nodes.new("ShaderNodeCombineColor")
+    for i in range(3):
+        links.new(rgb.outputs[0], grey.inputs[i])
+    return mix_node(nodes, links, "MULTIPLY", grey.outputs[0], tuple(tint) + (1.0,))
+
+
+def add_lamp_glow(meshes, glow_green, glow_color):
+    """Every textured material emits where its texture is a lamp's color: the taillights.
+    glow_color: the car's lamp hue (car_looks.py), or None for the texel's own. A lit lamp's
+    base goes black, so the sky on the paint doesn't mix into the glow."""
+    for nodes, links, bsdf, color in textured_materials(meshes):
+        mask = lamp_mask(nodes, links, color, glow_green)
+        links.new(red_as(nodes, links, color, glow_color) if glow_color else color, bsdf.inputs["Emission Color"])
+        links.new(math_node(nodes, links, "MULTIPLY", mask, GLOW_STRENGTH), bsdf.inputs["Emission Strength"])
+        lit = nodes.new("ShaderNodeMix")
+        lit.data_type = "RGBA"
+        links.new(mask, lit.inputs["Factor"])
+        links.new(color, lit.inputs[6])
+        lit.inputs[7].default_value = (0.0, 0.0, 0.0, 1.0)
+        links.new(lit.outputs[2], bsdf.inputs["Base Color"])
 
 
 def stepped(nodes, links, shader, stops):
@@ -221,7 +313,7 @@ def mix_node(nodes, links, op, a, b):
     return n.outputs[2]
 
 
-def cel_shade(meshes):
+def cel_shade(meshes, glow_green):
     """Flat-banded shading like the concept art's pixel painting: the texture's color times
     the sun's light cut into CEL_BANDS, a hard white highlight where the gloss catches it
     (CEL_SHINE), and the lamps lit. Emitted, so the bands come out exactly as set."""
@@ -235,7 +327,7 @@ def cel_shade(meshes):
         glow = mix_node(nodes, links, "MULTIPLY", color, (GLOW_STRENGTH,) * 3 + (1.0,))
         lamp = nodes.new("ShaderNodeMix")
         lamp.data_type = "RGBA"
-        links.new(lamp_mask(nodes, links, color), lamp.inputs["Factor"])
+        links.new(lamp_mask(nodes, links, color, glow_green), lamp.inputs["Factor"])
         links.new(lit, lamp.inputs[6])
         links.new(glow, lamp.inputs[7])
         emit = nodes.new("ShaderNodeEmission")
@@ -244,12 +336,34 @@ def cel_shade(meshes):
         links.new(emit.outputs[0], out.inputs["Surface"])
 
 
-def setup_camera(size):
+def add_cabin_wall(holder, size, wall):
+    """An invisible wall across the cabin that cuts everything ahead of it out of the render,
+    so tools/make_car_renders.py fills that with glass: seats stay, and the dash and engine
+    seen through a model's glassless windows go. wall: (y, half width, z0, z1), shares of
+    the car's size; y from its middle toward the nose (car_looks.py)."""
+    y, half, z0, z1 = wall
+    x = half * size.x
+    y *= size.y
+    lo, hi = (z0 - 0.5) * size.z, (z1 - 0.5) * size.z
+    mesh = bpy.data.meshes.new("cabin_wall")
+    mesh.from_pydata([(-x, y, lo), (x, y, lo), (x, y, hi), (-x, y, hi)], [], [(0, 1, 2, 3)])
+    mat = bpy.data.materials.new("cabin_wall")
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    nodes.clear()
+    mat.node_tree.links.new(nodes.new("ShaderNodeHoldout").outputs[0], nodes.new("ShaderNodeOutputMaterial").inputs["Surface"])
+    mesh.materials.append(mat)
+    ob = bpy.data.objects.new("cabin_wall", mesh)
+    bpy.context.scene.collection.objects.link(ob)
+    ob.parent = holder
+
+
+def setup_camera(size, tilt_degrees):
     cam_data = bpy.data.cameras.new("camera")
     cam_data.lens = CAMERA_LENS
     cam = bpy.data.objects.new("camera", cam_data)
     bpy.context.scene.collection.objects.link(cam)
-    tilt = math.radians(CAMERA_TILT)
+    tilt = math.radians(tilt_degrees)
     target = Vector((0.0, 0.0, size.z * 0.45))
     cam.location = target + Vector((0.0, -math.cos(tilt), math.sin(tilt))) * CAMERA_DISTANCE
     cam.rotation_euler = Euler((math.pi / 2 - tilt, 0.0, 0.0))
@@ -272,9 +386,22 @@ def setup_lights():
     rim.rotation_euler = Euler((math.radians(60), 0.0, math.radians(-150)))
     bpy.context.scene.collection.objects.link(rim)
     world = bpy.data.worlds.new("sky")
-    bg = world.node_tree.nodes["Background"]
-    bg.inputs["Color"].default_value = (0.55, 0.62, 0.75, 1.0)
-    bg.inputs["Strength"].default_value = AMBIENT
+    world.use_nodes = True
+    nodes, links = world.node_tree.nodes, world.node_tree.links
+    bg = nodes["Background"]
+    bg.inputs["Strength"].default_value = SKY_STRENGTH
+    coord = nodes.new("ShaderNodeTexCoord")
+    xyz = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(coord.outputs["Generated"], xyz.inputs[0])
+    ramp = nodes.new("ShaderNodeValToRGB")
+    els = ramp.color_ramp.elements
+    while len(els) < len(SKY):
+        els.new(0.5)
+    for el, (height, color) in zip(els, SKY):
+        el.position = (height + 1.0) / 2.0
+        el.color = color + (1.0,)
+    links.new(math_node(nodes, links, "MULTIPLY", math_node(nodes, links, "ADD", xyz.outputs["Z"], 1.0), 0.5), ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bg.inputs["Color"])
     bpy.context.scene.world = world
 
 
@@ -286,8 +413,9 @@ def setup_render(width, engine):
         scene.render.engine = "BLENDER_EEVEE"
     if scene.render.engine == "CYCLES":
         scene.cycles.samples = 64
+        scene.cycles.use_denoising = True
     scene.render.resolution_x = width
-    scene.render.resolution_y = round(width * 0.75)
+    scene.render.resolution_y = width  # square: a steep camera and a full turn both need the room
     scene.render.film_transparent = True
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGBA"
@@ -298,23 +426,30 @@ def setup_render(width, engine):
 
 def main():
     a = args()
+    car = look(a.car)
+    only = set(filter(None, a.only.split(",")))
     clear_scene()
     meshes = import_model(os.path.abspath(a.model))
-    holder, size = normalize(meshes, a.forward)
+    holder, size = normalize(meshes, a.forward or car["forward"])
     if a.style == "cel":
-        cel_shade(meshes)
+        cel_shade(meshes, car["glow_green"])
     else:
-        add_lamp_glow(meshes)
-    setup_camera(size)
+        polish_paint(meshes, car["hue"])
+        add_lamp_glow(meshes, car["glow_green"], car["glow_color"])
+    if car["cabin_wall"]:
+        add_cabin_wall(holder, size, car["cabin_wall"])
+    setup_camera(size, a.tilt if a.tilt is not None else car["tilt"])
     setup_lights()
     setup_render(a.size, a.engine)
     os.makedirs(a.out, exist_ok=True)
     for pitch_name, pitch in PITCH.items():
         for i, yaw in enumerate(STEER_YAW):
+            if only and "%s_%d" % (pitch_name, i) not in only:
+                continue
             holder.rotation_euler = Euler((math.radians(pitch), 0.0, math.radians(yaw)), "ZXY")
             bpy.context.scene.render.filepath = os.path.join(os.path.abspath(a.out), "%s_%d.png" % (pitch_name, i))
             bpy.ops.render.render(write_still=True)
-    print("rendered %d frames to %s" % (len(PITCH) * len(STEER_YAW), a.out))
+    print("rendered to %s" % a.out)
 
 
 main()

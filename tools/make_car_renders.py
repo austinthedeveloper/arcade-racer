@@ -8,8 +8,8 @@ and down) and makes the three strips the game reads (CarSprites.strips): <car>_s
 <car>_steer_up.png and <car>_steer_down.png, laid out as tools/make_car_sprites.py lays out
 the sheet ones. Every frame shares one scale, set by the level straight frame's width, so the
 car doesn't change size when the game swaps strips on a hill. Then a pixel pass: box-filtered
-down with hard alpha edges (spritelib.pixelate_down), the colors cut to a small palette, and a
-dark outline, like the concept art.
+down with hard alpha edges (spritelib.pixelate_down), the colors cut to a palette if COLORS asks
+for one, a dark outline, like the concept art, glass in the windows and a shadow under the car.
 
 The strips go to <render dir>/strips/ and a review page, <render dir>/compare.html, sets them
 beside the concept-sheet strips in assets/sprites/cars/. --install writes them over those.
@@ -22,15 +22,26 @@ import shutil
 
 import numpy as np
 from PIL import Image
+from scipy import ndimage
 
 from make_car_sprites import PLAYER_BODY_WIDTH, save_strip
 from spritelib import pixelate_down, rgba
 
 PITCHES = {"level": "_steer", "up": "_steer_up", "down": "_steer_down"}
 FRAMES = 7
-COLORS = 64  # palette for the three strips, after the downscale (48 loses the light bar)
+# Palette for the three strips, after the downscale; 0 for none. The concept-sheet strips have
+# tens of thousands of colors. At 64 smooth paint breaks into blotches, at 256 it still pales.
+COLORS = 0
 OUTLINE_DARKEN = 0.35  # edge pixels keep this much of their color
 ALPHA_CUT = 8  # render alpha below this is background
+# An AI-made model has no glass: its windows are holes, and the road would show through the
+# cabin. A hole in the outline gets this, top to bottom, dark with some sky on it.
+GLASS_TOP = (78, 102, 138)
+GLASS_BOTTOM = (20, 28, 46)
+# A shadow under the car down to the sprite's bottom edge, so it meets the road: the game stands
+# a strip's lowest pixel on the road, and tail pipes hang lower than the tires' contact.
+CONTACT_SHADE = (8, 8, 12, 210)
+CONTACT_BAND = 0.1  # the columns with car in this bottom share of the frame get it
 
 
 def load(path):
@@ -53,6 +64,37 @@ def outline(img, darken=OUTLINE_DARKEN):
     inner = pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:]
     edge = solid & ~inner
     a[edge, :3] = (a[edge, :3] * darken).astype(np.uint8)
+    return Image.fromarray(a)
+
+
+def fill_glass(img):
+    """Clear pixels the car's outline closes in (windows, seen through the cabin) filled with
+    glass, GLASS_TOP at the top of the frame's holes to GLASS_BOTTOM at the bottom."""
+    a = rgba(img)
+    solid = a[..., 3] > 0
+    holes = ndimage.binary_fill_holes(solid) & ~solid
+    if holes.any():
+        rows = np.where(holes.any(axis=1))[0]
+        share = (np.arange(a.shape[0]) - rows[0]) / max(rows[-1] - rows[0], 1)
+        ramp = np.outer(np.clip(share, 0.0, 1.0), np.subtract(GLASS_BOTTOM, GLASS_TOP)) + GLASS_TOP
+        a[holes, :3] = np.broadcast_to(ramp[:, None, :], a.shape[:2] + (3,))[holes].astype(np.uint8)
+        a[holes, 3] = 255
+    return Image.fromarray(a)
+
+
+def contact_shadow(img):
+    """CONTACT_SHADE under the car, in every column from its left to its right in the frame's
+    bottom CONTACT_BAND, from the car's lowest pixel there down to the frame's bottom."""
+    a = rgba(img)
+    h = a.shape[0]
+    solid = a[..., 3] > 0
+    band = solid[h - max(1, int(h * CONTACT_BAND)):]
+    cols = np.where(band.any(axis=0))[0]
+    if len(cols) == 0:
+        return img
+    for x in range(cols[0], cols[-1] + 1):
+        rows = np.where(solid[:, x])[0]
+        a[rows[-1] + 1 if len(rows) else 0:, x] = CONTACT_SHADE
     return Image.fromarray(a)
 
 
@@ -83,10 +125,12 @@ def make_strips(render_dir, car, out_dir):
     frames = {p: [load(os.path.join(render_dir, "%s_%d.png" % (p, i))) for i in range(FRAMES)] for p in PITCHES}
     scale = render_scale(frames["level"][FRAMES // 2])
     small = {p: [pixelate_down(trim(f), scale) for f in fs] for p, fs in frames.items()}
-    flat = quantize([f for fs in small.values() for f in fs])
+    flat = [f for fs in small.values() for f in fs]
+    if COLORS:
+        flat = quantize(flat, COLORS)
     paths = []
     for k, p in enumerate(PITCHES):
-        strip = [outline(f) for f in flat[k * FRAMES:(k + 1) * FRAMES]]
+        strip = [contact_shadow(outline(fill_glass(f))) for f in flat[k * FRAMES:(k + 1) * FRAMES]]
         path = os.path.join(out_dir, car + PITCHES[p] + ".png")
         save_strip(strip, path)
         paths.append(path)
