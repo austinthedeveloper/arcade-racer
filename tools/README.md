@@ -52,7 +52,8 @@ nose points along when it comes in.
 
 What differs per car is in `tools/blender/car_looks.py`, by strip name: which way the nose faces
 (Tripo's come in nose toward the camera), which texels count as lamps and the hue they glow in,
-a turn of the paint's hue, the camera tilt, the cabin wall and a part to raise. Lamps on an AI-made model are
+its paint (hue, saturation, gamma, exposure, a band of hue to move), the camera tilt, the cabin
+wall and a part to raise. Lamps on an AI-made model are
 only painted on, so the render makes texels of the lamps' color glow (`GLOW_*` in the render
 script). `--only=level_3,up_0` renders just those frames, to try a setting in seconds.
 
@@ -62,14 +63,21 @@ highlight (`CEL_*`), closer to pixel art.
 `tools/blender/render_car.py` sets the rest of the look in its constants: `STEER_YAW` (the turn
 at each frame, matched to the sheets), `PITCH` (the hill tilt), the camera (`CAMERA_LENS`,
 `CAMERA_DISTANCE`), the sun (behind the camera, so the tail and deck are lit), the sky the paint
-reflects (`SKY`) and the paint (`PAINT_*`, `NEUTRAL_SATURATION`). `tools/blender/blockout_vega.py`
+reflects (`SKY`) and the paint (`PAINT_*`). `tools/blender/blockout_vega.py`
 builds a rough Vega from boxes, to try the pipeline without a real model.
 
 What a Tripo model needs, all found on the Bruiser:
 
 - **It is about 0.7 metallic all over**, stripes too, so a white stripe shows the sky and the
   paint shows every lump in the mesh: `PAINT_METALLIC` takes most of that away. Chrome and white
-  texels skip the richer color (`NEUTRAL_SATURATION`), or the bumper and stripes go blue.
+  texels skip the richer color (`neutral`), or the bumper and stripes go blue.
+- **Color is per car.** Settings tuned on the blue Bruiser wrecked the others: its sun clips light
+  paint (beige goes yellow) and its gamma, by channel, turns orange red. The default is gentle, and
+  a car that needs more asks for it. Tripo also shifts some paints itself (the Hauler's beige and
+  the Kestrel's amber came out yellow): `hue_band` moves just that band. Don't match a render's
+  colors to the concept sprite by curves. That was tried: the two show different shares of tires
+  and glass, and red stripes or lamps pull the curve, so the Hauler went pink and the Phantom's
+  grille red.
 - **It has no glass.** The windows are holes, and the road shows through the cabin. The strip
   pass fills any hole in the outline with a dark gradient (`fill_glass`), and an invisible wall
   ahead of the seats (`cabin_wall`) clears the dash and engine seen through them.

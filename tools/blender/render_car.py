@@ -50,17 +50,12 @@ FILL_ENERGY = 1.3
 SKY = [(-1.0, (0.3, 0.3, 0.32)), (-0.02, (0.4, 0.38, 0.38)), (0.0, (1.0, 0.72, 0.45)),
        (0.12, (0.55, 0.8, 1.0)), (1.0, (0.16, 0.42, 1.0))]
 SKY_STRENGTH = 0.5
-# The paint, whatever the model's texture says: AI-made textures come out chalky.
-PAINT_SATURATION = 1.6
+# The paint, whatever the model's texture says; how rich is per car (car_looks.py).
 PAINT_VALUE = 1.0
-PAINT_GAMMA = 1.7  # deepens a color's weak channels: blue paint stays blue under the sun, whites hold
 PAINT_ROUGHNESS = 0.8  # times the model's roughness
 # Times the model's metallic. An AI-made model is about 0.7 metallic all over, stripes too: a
 # white stripe then shows the sky, not white, and the paint shows every lump in the mesh.
 PAINT_METALLIC = 0.25
-# Texels under this saturation (fading out to the second) are chrome or white, not paint: they
-# skip the richer color, so stripes stay white and bumpers silver, not blue.
-NEUTRAL_SATURATION = (0.25, 0.45)
 PAINT_COAT = 0.3  # clear coat over it
 PAINT_COAT_ROUGHNESS = 0.25
 # Lamps glow: base-color texels that are orange to amber (green between the car's glow_green
@@ -210,34 +205,34 @@ def lamp_mask(nodes, links, color, glow_green):
                      math_node(nodes, links, "LESS_THAN", math_node(nodes, links, "DIVIDE", b, red), GLOW_MAX_BLUE))
 
 
-def neutral_mask(nodes, links, color):
-    """1 for chrome and white texels, fading to 0 for paint (NEUTRAL_SATURATION), and the
-    texel's value as a socket: (mask, value)."""
+def neutral_mask(nodes, links, color, neutral):
+    """1 for chrome and white texels, under the car's `neutral` saturation, fading to 0 for
+    paint at its second number; and the texel's value as a socket: (mask, value)."""
     hsv = nodes.new("ShaderNodeSeparateColor")
     hsv.mode = "HSV"
     links.new(color, hsv.inputs[0])
     fade = nodes.new("ShaderNodeMapRange")
     links.new(hsv.outputs[1], fade.inputs["Value"])
-    fade.inputs["From Min"].default_value = NEUTRAL_SATURATION[0]
-    fade.inputs["From Max"].default_value = NEUTRAL_SATURATION[1]
+    fade.inputs["From Min"].default_value = neutral[0]
+    fade.inputs["From Max"].default_value = neutral[1]
     fade.inputs["To Min"].default_value = 1.0
     fade.inputs["To Max"].default_value = 0.0
     return fade.outputs[0], hsv.outputs[2]
 
 
-def polish_paint(meshes, hue):
-    """Every textured material richer in color and glossier, under a clear coat. hue: the
-    car's turn of the paint's hue, in turns (car_looks.py)."""
+def polish_paint(meshes, car):
+    """Every textured material richer in color and glossier, under a clear coat, by the car's
+    hue, saturation, gamma and neutral (car_looks.py)."""
     for nodes, links, bsdf, color in textured_materials(meshes):
         hsv = nodes.new("ShaderNodeHueSaturation")
-        hsv.inputs["Hue"].default_value = 0.5 + hue
-        hsv.inputs["Saturation"].default_value = PAINT_SATURATION
+        hsv.inputs["Hue"].default_value = 0.5 + car["hue"]
+        hsv.inputs["Saturation"].default_value = car["saturation"]
         hsv.inputs["Value"].default_value = PAINT_VALUE
         links.new(color, hsv.inputs["Color"])
         deep = nodes.new("ShaderNodeGamma")
-        deep.inputs["Gamma"].default_value = PAINT_GAMMA
+        deep.inputs["Gamma"].default_value = car["gamma"]
         links.new(hsv.outputs[0], deep.inputs["Color"])
-        neutral, value = neutral_mask(nodes, links, color)
+        neutral, value = neutral_mask(nodes, links, color, car["neutral"])
         grey = nodes.new("ShaderNodeCombineColor")
         for i in range(3):
             links.new(value, grey.inputs[i])
@@ -429,7 +424,7 @@ def setup_lights():
     bpy.context.scene.world = world
 
 
-def setup_render(width, engine):
+def setup_render(width, engine, exposure):
     scene = bpy.context.scene
     try:
         scene.render.engine = engine
@@ -446,6 +441,7 @@ def setup_render(width, engine):
     # Standard, not AgX/Filmic: the saturated arcade colors of the concept art
     scene.view_settings.view_transform = "Standard"
     scene.view_settings.look = "None"
+    scene.view_settings.exposure = exposure
 
 
 def main():
@@ -458,7 +454,7 @@ def main():
     if a.style == "cel":
         cel_shade(meshes, car["glow_green"])
     else:
-        polish_paint(meshes, car["hue"])
+        polish_paint(meshes, car)
         add_lamp_glow(meshes, car["glow_green"], car["glow_color"])
     if car["raise_part"]:
         raise_part(meshes, size, car["raise_part"])
@@ -466,7 +462,7 @@ def main():
         add_cabin_wall(holder, size, car["cabin_wall"])
     setup_camera(size, a.tilt if a.tilt is not None else car["tilt"])
     setup_lights()
-    setup_render(a.size, a.engine)
+    setup_render(a.size, a.engine, car["exposure"])
     os.makedirs(a.out, exist_ok=True)
     for pitch_name, pitch in PITCH.items():
         for i, yaw in enumerate(STEER_YAW):

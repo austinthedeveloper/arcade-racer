@@ -105,7 +105,58 @@ class ContactShadow(unittest.TestCase):
         self.assertEqual(sl.rgba(mcr.contact_shadow(img)).tolist(), sl.rgba(img).tolist())
 
 
+class HueBand(unittest.TestCase):
+    BAND = {"hues": (45.0, 80.0), "by": -25.0, "saturation": 0.7}
+
+    def one(self, color, band=None):
+        img = Image.new("RGBA", (2, 2), color)
+        return sl.rgba(mcr.shift_hue_band(img, band or self.BAND))[0, 0].tolist()
+
+    def test_a_color_in_the_band_turns_and_loses_saturation(self):
+        r, g, b, a = self.one((240, 220, 120, 200))  # a yellow, toward beige
+        self.assertEqual(r, 240, "the value holds")
+        self.assertLess(g, 220, "less green is more orange")
+        self.assertGreater(b, 120, "less saturated")
+        self.assertEqual(a, 200, "alpha kept")
+
+    def test_colors_outside_it_come_back_the_same(self):
+        for color in ((200, 30, 20, 255), (30, 60, 200, 255), (20, 180, 60, 255)):
+            for got, want in zip(self.one(color), color):
+                self.assertLessEqual(abs(got - want), 1, color)
+
+    def test_chrome_and_white_have_no_hue_to_move(self):
+        self.assertEqual(self.one((230, 225, 205, 255)), [230, 225, 205, 255])  # saturation 0.11
+
+    def test_it_fades_in_at_the_edge_of_the_band(self):
+        full = self.one((230, 218, 46, 255), {"hues": (45.0, 80.0), "by": -25.0})[1]  # hue 56
+        edge = self.one((230, 195, 46, 255), {"hues": (45.0, 80.0), "by": -25.0})[1]  # hue 49
+        self.assertLess(195 - edge, 218 - full, "the edge moves less")
+
+    def test_a_car_with_a_band_gets_it_on_every_strip(self):
+        with tempfile.TemporaryDirectory() as d:
+            for p in mcr.PITCHES:
+                for i in range(mcr.FRAMES):
+                    render((400, 200), (0, 0, 360, 100), (240, 220, 120, 255)).save(os.path.join(d, "%s_%d.png" % (p, i)))
+            paths = mcr.make_strips(d, "hauler", os.path.join(d, "strips"))
+            for path in paths:
+                px = sl.rgba(mcr.load(path))
+                mid = px[px.shape[0] // 3, px.shape[1] // 2].tolist()
+                self.assertLess(mid[1], 220, os.path.basename(path))
+
+
 class Looks(unittest.TestCase):
+    def test_the_bruiser_keeps_its_own_strong_paint_and_the_rest_start_gentle(self):
+        bruiser, plain = car_looks.look("bruiser"), car_looks.look("mesa")
+        self.assertGreater(bruiser["gamma"], plain["gamma"])
+        self.assertGreater(bruiser["exposure"], plain["exposure"])
+        self.assertEqual(plain["gamma"], 1.0, "gamma turns orange red")
+
+    def test_every_car_in_the_garage_has_a_look(self):
+        for car in ("vega", "bruiser", "kestrel", "sol", "mesa", "phantom", "tempest", "skipper", "halo",
+                    "cyclone", "hauler", "zenith"):
+            self.assertIn(car, car_looks.LOOKS)
+            self.assertEqual(car_looks.look(car)["forward"], "-y", car)
+
     def test_the_bruisers_red_lamps_count_and_the_vegas_red_body_does_not(self):
         self.assertLess(car_looks.look("bruiser")["glow_green"][0], 0.0)
         self.assertGreater(car_looks.look("vega")["glow_green"][0], 0.0)

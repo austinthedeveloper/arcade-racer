@@ -19,6 +19,7 @@ import base64
 import html
 import os
 import shutil
+import sys
 
 import numpy as np
 from PIL import Image
@@ -27,6 +28,9 @@ from scipy import ndimage
 from make_car_sprites import PLAYER_BODY_WIDTH, save_strip
 from spritelib import pixelate_down, rgba
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "blender"))
+from car_looks import look  # noqa: E402
+
 PITCHES = {"level": "_steer", "up": "_steer_up", "down": "_steer_down"}
 FRAMES = 7
 # Palette for the three strips, after the downscale; 0 for none. The concept-sheet strips have
@@ -34,6 +38,8 @@ FRAMES = 7
 COLORS = 0
 OUTLINE_DARKEN = 0.35  # edge pixels keep this much of their color
 ALPHA_CUT = 8  # render alpha below this is background
+BAND_FEATHER = 8.0  # degrees of hue a hue_band fades in over
+BAND_MIN_SATURATION = 0.15
 # An AI-made model has no glass: its windows are holes, and the road would show through the
 # cabin. A hole in the outline gets this, top to bottom, dark with some sky on it.
 GLASS_TOP = (78, 102, 138)
@@ -64,6 +70,30 @@ def outline(img, darken=OUTLINE_DARKEN):
     inner = pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:]
     edge = solid & ~inner
     a[edge, :3] = (a[edge, :3] * darken).astype(np.uint8)
+    return Image.fromarray(a)
+
+
+def shift_hue_band(img, band):
+    """`img` with one band of hues moved, by the car's hue_band (car_looks.py): a color the model
+    got wrong, moved without touching the rest, so a red stripe stays red while yellow paint goes
+    beige. Fades in over BAND_FEATHER degrees at each end of the band; chrome and white, with too
+    little saturation to have a hue (BAND_MIN_SATURATION), stay out. Alpha kept."""
+    a = rgba(img)
+    rgb = a[..., :3] / 255.0
+    top, low = rgb.max(axis=-1), rgb.min(axis=-1)
+    span = np.maximum(top - low, 1e-6)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    hue = np.where(top == r, (g - b) / span % 6.0, np.where(top == g, (b - r) / span + 2.0, (r - g) / span + 4.0)) * 60.0
+    sat = np.where(top > 0, (top - low) / np.maximum(top, 1e-6), 0.0)
+    lo, hi = band["hues"]
+    share = np.clip((hue - lo) / BAND_FEATHER, 0.0, 1.0) * np.clip((hi - hue) / BAND_FEATHER, 0.0, 1.0)
+    share = share * (sat >= BAND_MIN_SATURATION)
+    hue = (hue + band["by"] * share) % 360.0
+    sat = np.clip(sat * (1.0 + (band.get("saturation", 1.0) - 1.0) * share), 0.0, 1.0)
+    # Hue, saturation and value back to red, green and blue
+    k = lambda n: (n + hue / 60.0) % 6.0  # noqa: E731
+    f = lambda n: top * (1.0 - sat * np.clip(np.minimum(k(n), 4.0 - k(n)), 0.0, 1.0))  # noqa: E731
+    a[..., :3] = (np.stack([f(5), f(3), f(1)], axis=-1) * 255.0).round().astype(np.uint8)
     return Image.fromarray(a)
 
 
@@ -126,6 +156,9 @@ def make_strips(render_dir, car, out_dir):
     scale = render_scale(frames["level"][FRAMES // 2])
     small = {p: [pixelate_down(trim(f), scale) for f in fs] for p, fs in frames.items()}
     flat = [f for fs in small.values() for f in fs]
+    band = look(car)["hue_band"]
+    if band:
+        flat = [shift_hue_band(f, band) for f in flat]
     if COLORS:
         flat = quantize(flat, COLORS)
     paths = []
