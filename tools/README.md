@@ -98,6 +98,37 @@ What a Tripo model needs, all found on the Bruiser:
 
 Models in `assets/models/` stay out of the Godot project (`.gdignore`); only the strips ship.
 
+### The rhythm for a car
+
+Once a model exists, a car takes minutes of looking and a few of waiting. In order:
+
+1. **Try it.** `python3 tools/car_review.py hauler`: a straight and a hard-right frame from the
+   model beside the concept's, in about 15 seconds, with the paint's hue, saturation and value
+   measured against the concept's. Several at once are fine: `hauler,halo`, or `--tilt=6` to try a
+   camera on all of them.
+2. **Tune it**, in `LOOKS` in `tools/blender/car_looks.py`, and repeat. Check, in this order, as
+   each one hides the next:
+   - Tires showing? Lower `tilt` until they do (5 for a low body, 9 where they stand clear).
+   - Is the paint flat and over-bright? It's glowing: narrow `glow_green` (`RED_ONLY`, `ANY_RED`).
+   - Lamps the right color? `glow_color` `RED_LAMP`, and `glow_blue` if they're washed out.
+   - Hue more than about 10 degrees out? Trust the picture over the number on a multicolored car,
+     where the commonest hue isn't the paint. Otherwise `hue_band`.
+   - Too pale or dull? `saturation`, then `exposure`. `gamma` only on cool colors.
+   - A part hidden, or doubled? `raise_part`, `remove_part`.
+3. **Render it.** `tools/render_car.sh hauler --model=path.glb`: 21 frames, about 3 minutes.
+4. **Race it.** `python3 tools/car_review.py hauler --race`: the concept and the render side by side on
+   four stages, in `build/car_renders/race_hauler.png`. It prints the command to drive the copy of
+   the game with those strips in. A strip can look right on the sheet and wrong on the road, and
+   it's the road that counts: tires and size only showed up there.
+5. **Install it** if it wins: `tools/render_car.sh hauler --model=path.glb --install`, then add the
+   car to `RENDERED` in `tools/make_car_sprites.py`, or the sprite rebuild undoes it and CI fails.
+
+Getting models for many cars: Tripo runs several generations at once, so queue them all and then
+export. Reload the workspace page between cars, for clean slots. Name each export in the dialog;
+Tripo's own names are guesses. Check the car in the viewer against the name as you do. A download
+can sit under a hidden temporary name for a few minutes; a `.glb` holds its own length at byte 8,
+so the file can be checked against that, and it can be used before Chrome finishes with it.
+
 **The Vega trial (2026-11-02):** the rendered Vega has the right shape and turns convincingly,
 but in a race it looked duller and softer than the concept-sheet sprite, and its taillights
 barely showed, even with the lamp glow and extra saturation and contrast. Cel shading, with
