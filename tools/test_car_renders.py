@@ -113,6 +113,14 @@ class Looks(unittest.TestCase):
     def test_a_car_not_listed_gets_the_defaults(self):
         self.assertEqual(car_looks.look("nosuch"), car_looks.DEFAULTS)
 
+    def test_a_raised_part_lifts_only_inside_its_box_easing_in(self):
+        part = {"half_width": 0.1, "y": (0.2, 0.4), "z": 0.6, "by": 0.3, "ramp": 0.1}
+        self.assertEqual(car_looks.part_lift(0.0, 0.3, 0.9, part), 0.3)
+        self.assertAlmostEqual(car_looks.part_lift(0.0, 0.3, 0.65, part), 0.15)
+        self.assertEqual(car_looks.part_lift(0.0, 0.3, 0.6, part), 0.0, "the floor stays")
+        self.assertEqual(car_looks.part_lift(0.2, 0.3, 0.9, part), 0.0, "out to the side")
+        self.assertEqual(car_looks.part_lift(-0.05, 0.1, 0.9, part), 0.0, "behind it")
+
     def test_every_look_sets_only_known_settings(self):
         for car, look in car_looks.LOOKS.items():
             self.assertLessEqual(set(look), set(car_looks.DEFAULTS), car)

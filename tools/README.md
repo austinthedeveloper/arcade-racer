@@ -52,7 +52,7 @@ nose points along when it comes in.
 
 What differs per car is in `tools/blender/car_looks.py`, by strip name: which way the nose faces
 (Tripo's come in nose toward the camera), which texels count as lamps and the hue they glow in,
-a turn of the paint's hue, the camera tilt and the cabin wall. Lamps on an AI-made model are
+a turn of the paint's hue, the camera tilt, the cabin wall and a part to raise. Lamps on an AI-made model are
 only painted on, so the render makes texels of the lamps' color glow (`GLOW_*` in the render
 script). `--only=level_3,up_0` renders just those frames, to try a setting in seconds.
 
@@ -78,8 +78,14 @@ What a Tripo model needs, all found on the Bruiser:
 - **The camera:** the Bruiser's long tail and deep fenders hide the tires at 15 degrees, and a car
   with no tires showing floats however steep the camera is. It uses 9, and `contact_shadow` fills
   from the tires down to the sprite's bottom edge, since tail pipes set that edge.
-- **Height:** at 9 degrees the level strip is as tall as the concept's (0.72 of its width). The
-  uphill strip is 0.94, over `CarSprites.MAX_HEIGHT`; `car_scale` draws every pitch at the level
+- **The blower** comes out below the roofline at 9 degrees, where the concept art draws it above.
+  `raise_part` lifts the part in the model, as the art does. A stretch shows on a hard turn, but
+  not much at sprite size.
+- **The lamps** lose their clear coat and specular where they glow, or a lumpy mesh puts white
+  streaks across them on a right turn. A fill light from the camera's right (`FILL_*`) keeps that
+  flank out of shade.
+- **Height:** at 9 degrees the level strip is 0.77 of its width (the concept's was 0.73). The
+  uphill strip is 0.98, over `CarSprites.MAX_HEIGHT`; `car_scale` draws every pitch at the level
   strip's scale so the car doesn't shrink when the strip swaps.
 
 Models in `assets/models/` stay out of the Godot project (`.gdignore`); only the strips ship.
@@ -96,8 +102,6 @@ race frames side by side.
 **The Bruiser trial (2026-11-06):** the first Tripo generation came out right from all sides. With
 the fixes above the render sits on the road, its light bar reads as well as the concept's, and it
 has real uphill and downhill strips, which the concept sheets don't (they fake it by stretching).
-It is plainly better uphill. On level road the concept was a little crisper and its flanks
-brighter, and it kept the blower showing over the roof, which at 9 degrees the model hides. The
-right flank falls into shade when airborne or turned hard. Austin drove it and chose the render:
-these strips are in the game, `RENDERED` in `tools/make_car_sprites.py` keeps the sheet rebuild
+It is plainly better uphill. On level road the concept was a little crisper, and its flanks are
+still brighter when airborne. Austin drove it and chose the render: these strips are in the game, `RENDERED` in `tools/make_car_sprites.py` keeps the sheet rebuild
 off them, and `tools/check_sprites.py` doesn't cover them.

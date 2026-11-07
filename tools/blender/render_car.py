@@ -22,7 +22,7 @@ import bpy
 from mathutils import Euler, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from car_looks import look  # noqa: E402
+from car_looks import look, part_lift  # noqa: E402
 
 CAR_LENGTH = 4.4  # metres, nose to tail, after import
 # Turn of the car at each steering frame, degrees, + is left (counter-clockwise from above).
@@ -42,6 +42,9 @@ CAMERA_LENS = 85.0  # mm
 SUN_ROTATION = (65.0, 0.0, -25.0)  # degrees
 SUN_ENERGY = 3.8
 RIM_ENERGY = 1.5
+# From the camera's right, the side away from the sun, or a hard turn right shows a flank in shade
+FILL_ROTATION = (70.0, 0.0, 40.0)  # degrees
+FILL_ENERGY = 1.3
 # What the paint and glass reflect: a postcard sky, height (-1 straight down .. 1 straight up)
 # to color. A flat world leaves gloss with nothing to show, and the car looks matte.
 SKY = [(-1.0, (0.3, 0.3, 0.32)), (-0.02, (0.4, 0.38, 0.38)), (0.0, (1.0, 0.72, 0.45)),
@@ -282,6 +285,10 @@ def add_lamp_glow(meshes, glow_green, glow_color):
         links.new(color, lit.inputs[6])
         lit.inputs[7].default_value = (0.0, 0.0, 0.0, 1.0)
         links.new(lit.outputs[2], bsdf.inputs["Base Color"])
+        # Lit lamps catch no glints: on a lumpy mesh those are white streaks across the glow
+        unlit = math_node(nodes, links, "SUBTRACT", 1.0, mask)
+        links.new(math_node(nodes, links, "MULTIPLY", unlit, bsdf.inputs["Coat Weight"].default_value), bsdf.inputs["Coat Weight"])
+        links.new(math_node(nodes, links, "MULTIPLY", unlit, bsdf.inputs["Specular IOR Level"].default_value), bsdf.inputs["Specular IOR Level"])
 
 
 def stepped(nodes, links, shader, stops):
@@ -336,6 +343,18 @@ def cel_shade(meshes, glow_green):
         links.new(emit.outputs[0], out.inputs["Surface"])
 
 
+def raise_part(meshes, size, part):
+    """The car's raise_part lifted (car_looks.part_lift), on a car still facing +Y at rest."""
+    for ob in meshes:
+        to_world, to_local = ob.matrix_world, ob.matrix_world.inverted()
+        for v in ob.data.vertices:
+            p = to_world @ v.co
+            by = part_lift(p.x / size.x, p.y / size.y, p.z / size.z, part)
+            if by:
+                v.co = to_local @ (p + Vector((0.0, 0.0, by * size.z)))
+        ob.data.update()
+
+
 def add_cabin_wall(holder, size, wall):
     """An invisible wall across the cabin that cuts everything ahead of it out of the render,
     so tools/make_car_renders.py fills that with glass: seats stay, and the dash and engine
@@ -385,6 +404,11 @@ def setup_lights():
     rim = bpy.data.objects.new("rim", rim_data)
     rim.rotation_euler = Euler((math.radians(60), 0.0, math.radians(-150)))
     bpy.context.scene.collection.objects.link(rim)
+    fill_data = bpy.data.lights.new("fill", "SUN")
+    fill_data.energy = FILL_ENERGY
+    fill = bpy.data.objects.new("fill", fill_data)
+    fill.rotation_euler = Euler([math.radians(a) for a in FILL_ROTATION])
+    bpy.context.scene.collection.objects.link(fill)
     world = bpy.data.worlds.new("sky")
     world.use_nodes = True
     nodes, links = world.node_tree.nodes, world.node_tree.links
@@ -436,6 +460,8 @@ def main():
     else:
         polish_paint(meshes, car["hue"])
         add_lamp_glow(meshes, car["glow_green"], car["glow_color"])
+    if car["raise_part"]:
+        raise_part(meshes, size, car["raise_part"])
     if car["cabin_wall"]:
         add_cabin_wall(holder, size, car["cabin_wall"])
     setup_camera(size, a.tilt if a.tilt is not None else car["tilt"])
