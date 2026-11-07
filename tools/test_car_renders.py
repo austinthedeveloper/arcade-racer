@@ -173,8 +173,8 @@ class Looks(unittest.TestCase):
         self.assertFalse(car_looks.in_part(0.2, 0.0, 0.5, part), "below it")
 
     def test_a_car_with_warm_paint_doesnt_light_it_up(self):
-        for car in ("kestrel", "mesa"):
-            self.assertLess(car_looks.look(car)["glow_green"][1], 0.3, car)
+        self.assertLess(car_looks.look("kestrel")["glow_green"][1], 0.3)
+        self.assertEqual(car_looks.look("mesa")["glow_green"], car_looks.NO_LAMPS)
 
     def test_the_bruiser_keeps_its_own_strong_paint_and_the_rest_start_gentle(self):
         bruiser, plain = car_looks.look("bruiser"), car_looks.look("mesa")

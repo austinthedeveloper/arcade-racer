@@ -6,7 +6,8 @@ camera, -y).
 glow_green: the green share of the red, (over, under), at which a texel counts as a lamp. It has to
 fit the car, or the paint lights up too. The default's 0.05 keeps pure red out, for a red body like
 the Vega's. Its 0.9 takes in orange and amber, so an orange or yellow body wants RED_ONLY; a body
-with no red or yellow in it wants ANY_RED; a car with no lamps to speak of, NO_LAMPS.
+with no red or yellow in it wants ANY_RED; a car with no lamps to speak of, or paint too near its
+lamps' color to tell apart (the Mesa's deep orange glowed whole under RED_ONLY), NO_LAMPS.
 glow_blue: how much blue a lamp texel may have, as a share of its red; a washed-out lamp wants more.
 glow_color: the hue a lamp glows in, red green blue; None for the texture's own.
 hue: a turn of the paint's hue, in whole turns (the Bruiser's texture is purpler than its art).
@@ -44,17 +45,17 @@ LOOKS = {
     **{car: {"forward": "-y", **extra} for car, extra in {
         "kestrel": {"tilt": 7.0, "glow_green": RED_ONLY, "glow_color": RED_LAMP, "hue_band": {"hues": (45.0, 80.0), "by": -20.0}},
         "sol": {"tilt": 7.0, "saturation": 1.4, "glow_green": ANY_RED, "glow_color": RED_LAMP},
-        "mesa": {"tilt": 9.0, "glow_green": RED_ONLY, "glow_color": RED_LAMP},
+        "mesa": {"tilt": 9.0, "glow_green": NO_LAMPS},
         "phantom": {"tilt": 7.0, "glow_green": ANY_RED, "glow_color": RED_LAMP},
-        "tempest": {"tilt": 7.0, "saturation": 1.3, "exposure": 0.0, "glow_green": ANY_RED, "glow_color": RED_LAMP,
+        "tempest": {"tilt": 7.0, "saturation": 1.3, "exposure": 0.35, "glow_green": ANY_RED, "glow_color": RED_LAMP,
                     "hue_band": {"hues": (90.0, 140.0), "by": -30.0, "saturation": 1.35}},
         "skipper": {"tilt": 9.0, "saturation": 1.3, "glow_green": NO_LAMPS,
                     "remove_part": {"x": (-1.0, 1.0), "y": (0.0, 1.0), "z": (0.72, 2.0)}},
         "halo": {"tilt": 5.0, "saturation": 0.8, "glow_green": ANY_RED, "glow_blue": 0.75, "glow_color": RED_LAMP},
-        "cyclone": {"tilt": 9.0, "saturation": 1.6, "exposure": 0.35},
+        "cyclone": {"tilt": 9.0, "saturation": 1.6, "exposure": 0.35, "neutral": (0.25, 0.45)},
         "hauler": {"tilt": 5.0, "exposure": -0.5, "glow_green": (0.3, 0.7),
                    "hue_band": {"hues": (45.0, 80.0), "by": -25.0, "saturation": 0.7}},
-        "zenith": {"tilt": 7.0, "saturation": 1.4, "exposure": 0.0, "glow_green": ANY_RED, "glow_color": RED_LAMP},
+        "zenith": {"tilt": 7.0, "saturation": 1.4, "exposure": 0.5, "glow_green": ANY_RED, "glow_color": RED_LAMP},
     }.items()},
     "bruiser": {"forward": "-y", "glow_green": (-0.01, 0.9), "glow_color": (1.0, 0.015, 0.0), "hue": -0.04, "saturation": 1.6, "gamma": 1.7,
                 "neutral": (0.25, 0.45), "exposure": 0.0, "cabin_wall": (0.04, 0.3, 0.5, 0.9),
