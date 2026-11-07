@@ -12,6 +12,7 @@ from PIL import Image
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "blender"))
 
 import car_looks  # noqa: E402
+import car_review as cr
 import make_car_renders as mcr
 import make_model_inputs as mmi
 import spritelib as sl
@@ -144,7 +145,37 @@ class HueBand(unittest.TestCase):
                 self.assertLess(mid[1], 220, os.path.basename(path))
 
 
+class Review(unittest.TestCase):
+    def test_the_measure_takes_the_commonest_paint_hue_not_chrome_or_rubber(self):
+        img = render((40, 20), (0, 0, 20, 20), (30, 60, 220, 255))
+        img.paste((200, 200, 205, 255), (20, 0, 30, 20))  # chrome
+        img.paste((15, 15, 15, 255), (30, 0, 40, 20))  # rubber
+        hue, sat, val = cr.paint_measure(img)
+        self.assertAlmostEqual(hue, 231.0, delta=6.0)
+        self.assertGreater(sat, 0.8)
+        self.assertAlmostEqual(val, 220 / 255, places=2)
+
+    def test_a_car_with_no_paint_measures_zero(self):
+        self.assertEqual(cr.paint_measure(render((10, 10), (0, 0, 10, 10), (200, 200, 200, 255))), (0.0, 0.0, 0.0))
+
+    def test_concept_frames_are_cut_from_the_sheet_seven_wide(self):
+        frames = cr.concept_frames("bruiser")
+        self.assertEqual(len(frames), 7)
+        self.assertEqual(frames[3].size, frames[0].size)
+        self.assertIsNone(cr.concept_frames("nosuch"))
+
+
 class Looks(unittest.TestCase):
+    def test_remove_part_is_a_box_in_shares_of_the_car(self):
+        part = {"x": (0.0, 1.0), "y": (-1.0, 1.0), "z": (0.7, 2.0)}
+        self.assertTrue(car_looks.in_part(0.2, 0.0, 0.9, part))
+        self.assertFalse(car_looks.in_part(-0.2, 0.0, 0.9, part), "the other side")
+        self.assertFalse(car_looks.in_part(0.2, 0.0, 0.5, part), "below it")
+
+    def test_a_car_with_warm_paint_doesnt_light_it_up(self):
+        for car in ("kestrel", "mesa"):
+            self.assertLess(car_looks.look(car)["glow_green"][1], 0.3, car)
+
     def test_the_bruiser_keeps_its_own_strong_paint_and_the_rest_start_gentle(self):
         bruiser, plain = car_looks.look("bruiser"), car_looks.look("mesa")
         self.assertGreater(bruiser["gamma"], plain["gamma"])

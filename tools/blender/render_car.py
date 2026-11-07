@@ -18,11 +18,12 @@ import math
 import os
 import sys
 
+import bmesh
 import bpy
 from mathutils import Euler, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from car_looks import look, part_lift  # noqa: E402
+from car_looks import in_part, look, part_lift  # noqa: E402
 
 CAR_LENGTH = 4.4  # metres, nose to tail, after import
 # Turn of the car at each steering frame, degrees, + is left (counter-clockwise from above).
@@ -63,7 +64,6 @@ PAINT_COAT_ROUGHNESS = 0.25
 # GLOW_MAX_BLUE of the red) emit at GLOW_STRENGTH. Warm chrome has too much blue, so it stays
 # out. An AI-made model's lamps are only painted on, and the concept art lights them.
 GLOW_MIN_RED = 0.15
-GLOW_MAX_BLUE = 0.2
 GLOW_STRENGTH = 5.5
 # Cel style (--style=cel): the light on a face, 0 dark .. about 1.5 full sun, picks one of
 # these flat shares of its color; a highlight band adds CEL_SHINE's white where the gloss is
@@ -190,8 +190,9 @@ def textured_materials(meshes):
             yield nodes, links, bsdf, bsdf.inputs["Base Color"].links[0].from_socket
 
 
-def lamp_mask(nodes, links, color, glow_green):
-    """1 where `color` is a lamp's color (glow_green, GLOW_*), else 0."""
+def lamp_mask(nodes, links, color, car):
+    """1 where `color` is a lamp's color (the car's glow_green and glow_blue, GLOW_*), else 0."""
+    glow_green = car["glow_green"]
     rgb = nodes.new("ShaderNodeSeparateColor")
     links.new(color, rgb.inputs[0])
     r, g, b = rgb.outputs[0], rgb.outputs[1], rgb.outputs[2]
@@ -202,7 +203,7 @@ def lamp_mask(nodes, links, color, glow_green):
                      math_node(nodes, links, "LESS_THAN", share, glow_green[1]))
     mask = math_node(nodes, links, "MULTIPLY", mask, math_node(nodes, links, "GREATER_THAN", r, GLOW_MIN_RED))
     return math_node(nodes, links, "MULTIPLY", mask,
-                     math_node(nodes, links, "LESS_THAN", math_node(nodes, links, "DIVIDE", b, red), GLOW_MAX_BLUE))
+                     math_node(nodes, links, "LESS_THAN", math_node(nodes, links, "DIVIDE", b, red), car["glow_blue"]))
 
 
 def neutral_mask(nodes, links, color, neutral):
@@ -266,12 +267,13 @@ def red_as(nodes, links, color, tint):
     return mix_node(nodes, links, "MULTIPLY", grey.outputs[0], tuple(tint) + (1.0,))
 
 
-def add_lamp_glow(meshes, glow_green, glow_color):
-    """Every textured material emits where its texture is a lamp's color: the taillights.
-    glow_color: the car's lamp hue (car_looks.py), or None for the texel's own. A lit lamp's
-    base goes black, so the sky on the paint doesn't mix into the glow."""
+def add_lamp_glow(meshes, car):
+    """Every textured material emits where its texture is a lamp's color: the taillights, in the
+    car's glow_color (car_looks.py), or the texel's own for None. A lit lamp's base goes black,
+    so the sky on the paint doesn't mix into the glow."""
+    glow_color = car["glow_color"]
     for nodes, links, bsdf, color in textured_materials(meshes):
-        mask = lamp_mask(nodes, links, color, glow_green)
+        mask = lamp_mask(nodes, links, color, car)
         links.new(red_as(nodes, links, color, glow_color) if glow_color else color, bsdf.inputs["Emission Color"])
         links.new(math_node(nodes, links, "MULTIPLY", mask, GLOW_STRENGTH), bsdf.inputs["Emission Strength"])
         lit = nodes.new("ShaderNodeMix")
@@ -315,7 +317,7 @@ def mix_node(nodes, links, op, a, b):
     return n.outputs[2]
 
 
-def cel_shade(meshes, glow_green):
+def cel_shade(meshes, car):
     """Flat-banded shading like the concept art's pixel painting: the texture's color times
     the sun's light cut into CEL_BANDS, a hard white highlight where the gloss catches it
     (CEL_SHINE), and the lamps lit. Emitted, so the bands come out exactly as set."""
@@ -329,7 +331,7 @@ def cel_shade(meshes, glow_green):
         glow = mix_node(nodes, links, "MULTIPLY", color, (GLOW_STRENGTH,) * 3 + (1.0,))
         lamp = nodes.new("ShaderNodeMix")
         lamp.data_type = "RGBA"
-        links.new(lamp_mask(nodes, links, color, glow_green), lamp.inputs["Factor"])
+        links.new(lamp_mask(nodes, links, color, car), lamp.inputs["Factor"])
         links.new(lit, lamp.inputs[6])
         links.new(glow, lamp.inputs[7])
         emit = nodes.new("ShaderNodeEmission")
@@ -347,6 +349,19 @@ def raise_part(meshes, size, part):
             by = part_lift(p.x / size.x, p.y / size.y, p.z / size.z, part)
             if by:
                 v.co = to_local @ (p + Vector((0.0, 0.0, by * size.z)))
+        ob.data.update()
+
+
+def remove_part(meshes, size, part):
+    """The car's remove_part cut out of the model (car_looks.in_part), on a car still at rest."""
+    for ob in meshes:
+        to_world = ob.matrix_world
+        mesh = bmesh.new()
+        mesh.from_mesh(ob.data)
+        doomed = [v for v in mesh.verts if in_part(*(c / s for c, s in zip(to_world @ v.co, size)), part)]
+        bmesh.ops.delete(mesh, geom=doomed, context="VERTS")
+        mesh.to_mesh(ob.data)
+        mesh.free()
         ob.data.update()
 
 
@@ -452,12 +467,14 @@ def main():
     meshes = import_model(os.path.abspath(a.model))
     holder, size = normalize(meshes, a.forward or car["forward"])
     if a.style == "cel":
-        cel_shade(meshes, car["glow_green"])
+        cel_shade(meshes, car)
     else:
         polish_paint(meshes, car)
-        add_lamp_glow(meshes, car["glow_green"], car["glow_color"])
+        add_lamp_glow(meshes, car)
     if car["raise_part"]:
         raise_part(meshes, size, car["raise_part"])
+    if car["remove_part"]:
+        remove_part(meshes, size, car["remove_part"])
     if car["cabin_wall"]:
         add_cabin_wall(holder, size, car["cabin_wall"])
     setup_camera(size, a.tilt if a.tilt is not None else car["tilt"])
