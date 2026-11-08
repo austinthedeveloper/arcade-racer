@@ -35,6 +35,13 @@ static var shadow_length := 1.0
 ## already, so braking lays a hotter core and a halo over them (BRAKE_CORE).
 const LAMPS := {
 	"bruiser": {-1: [[0.23, 0.24, 0.40, 0.07]], 0: [[0.24, 0.33, 0.39, 0.10]], 1: [[0.23, 0.47, 0.40, 0.12]]},
+	# Cyclone: one bar across the tail, as two halves meeting in the middle
+	"cyclone": {-1: [[0.18, 0.42, 0.36, 0.07]], 0: [[0.18, 0.49, 0.36, 0.08]], 1: [[0.18, 0.58, 0.36, 0.07]]},
+	# Zenith: an angled bar each side, and a spine down the middle (two halves, as above)
+	"zenith": {
+		-1: [[0.24, 0.47, 0.28, 0.09], [0.008, 0.26, 0.016, 0.31]],
+		0: [[0.24, 0.55, 0.28, 0.07], [0.008, 0.25, 0.016, 0.26]],
+		1: [[0.24, 0.58, 0.27, 0.06], [0.008, 0.29, 0.016, 0.26]]},
 	"hauler": {-1: [[0.39, 0.30, 0.08, 0.20]], 0: [[0.39, 0.33, 0.08, 0.21]], 1: [[0.39, 0.36, 0.08, 0.20]]},
 	# Halo: a ring, as its top and bottom bands and its round end
 	"halo": {

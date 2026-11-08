@@ -150,7 +150,7 @@ func test_right_turns_show_the_right_flank() -> void:
 
 
 ## The cars whose strips are rendered from a 3D model (RENDERED in tools/make_car_sprites.py).
-const RENDERED_CARS := ["bruiser", "halo", "hauler", "skipper", "sol"]
+const RENDERED_CARS := ["bruiser", "cyclone", "halo", "hauler", "skipper", "sol", "zenith"]
 
 
 func test_rendered_cars_have_strips_at_every_pitch() -> void:

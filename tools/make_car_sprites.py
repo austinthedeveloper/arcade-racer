@@ -162,7 +162,7 @@ GARAGE = [
 ]
 # Cars whose strips in the game are rendered from a 3D model, not cut from their sheet. Take one
 # out of here and rerun to go back to its sheet, and delete its _steer_up and _steer_down.
-RENDERED = {"bruiser", "halo", "hauler", "skipper", "sol"}
+RENDERED = {"bruiser", "cyclone", "halo", "hauler", "skipper", "sol", "zenith"}
 # Which sheet frame fills each of the seven steering cells, by frame count
 STEER_CELLS = {7: [0, 1, 2, 3, 4, 5, 6], 3: [0, 0, 1, 1, 1, 2, 2], 1: [0] * 7}
 # Sheets whose right-hand frames were drawn showing the left flank again: their right turns
