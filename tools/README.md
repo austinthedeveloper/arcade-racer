@@ -161,5 +161,8 @@ Phantom's black louvers. Austin had the four close ones installed (they're in `R
 the Cyclone and Zenith too: their concept strips are drawn from so high that they read as doing a
 wheelie next to the other cars, and the renders fix that, which outweighs the lost detail. Height
 to width on the straight frame shows it (concept to render: Cyclone 1.20 to 0.98, Zenith 0.76 to
-0.65, Tempest 0.94 to 0.68). Vega, Kestrel, Mesa, Phantom and Tempest stay on their concept
-strips, and `build/car_trial` has their renders to drive.
+0.65, Tempest 0.94 to 0.68). Then the last five went in too, so every car is rendered and the
+garage sits at one angle. The Vega, Kestrel, Mesa and Phantom were already level (0.64 to 0.58,
+0.89 to 0.88, 0.86 to 0.82; the Mesa's 1.06 to 1.17 is a narrower render, not a higher camera),
+and the Tempest wasn't. Their concept strips had crisper detail, but one look across twelve cars
+counted for more.

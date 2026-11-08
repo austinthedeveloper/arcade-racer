@@ -149,8 +149,9 @@ func test_right_turns_show_the_right_flank() -> void:
 			check(mirrored < same, "%s frame %d mirrors its left turn (%.3f vs %.3f as is)" % [id, left, mirrored, same])
 
 
-## The cars whose strips are rendered from a 3D model (RENDERED in tools/make_car_sprites.py).
-const RENDERED_CARS := ["bruiser", "cyclone", "halo", "hauler", "skipper", "sol", "zenith"]
+## The cars whose strips are rendered from a 3D model (RENDERED in tools/make_car_sprites.py):
+## since CP-2, every car in the garage.
+const RENDERED_CARS := ["bruiser", "cyclone", "halo", "hauler", "kestrel", "mesa", "phantom", "skipper", "sol", "tempest", "vega", "zenith"]
 
 
 func test_rendered_cars_have_strips_at_every_pitch() -> void:
@@ -174,7 +175,6 @@ func test_rendered_cars_glow_at_their_own_lamps() -> void:
 				for r in rects:
 					check(r.position.x >= -50.0 and r.end.x <= 50.0 and r.position.y >= 40.0 and r.end.y <= 100.0,
 						"%s pitch %d lamp %s inside the car" % [id, row, r])
-	check(not CarSprites.strips("vega")[0].has("lamps"), "a concept strip keeps the sheets' taillights")
 
 
 func test_lamp_rects_mirror_the_left_lamp() -> void:
