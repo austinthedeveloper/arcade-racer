@@ -157,5 +157,9 @@ off them, and `tools/check_sprites.py` doesn't cover them.
 each took about 3 minutes to render. In races, the Hauler, Halo, Skipper and Sol came close to their
 concept strips. The concept is still ahead on the Vega, Kestrel, Mesa, Phantom, Tempest, Cyclone and
 Zenith: crisper, and with painted detail the models don't carry, such as the Zenith's shimmer and the
-Phantom's black louvers. Austin had the four close ones installed (they're in `RENDERED`); the other
-seven stay on their concept strips, and `build/car_trial` has their renders to drive.
+Phantom's black louvers. Austin had the four close ones installed (they're in `RENDERED`), then
+the Cyclone and Zenith too: their concept strips are drawn from so high that they read as doing a
+wheelie next to the other cars, and the renders fix that, which outweighs the lost detail. Height
+to width on the straight frame shows it (concept to render: Cyclone 1.20 to 0.98, Zenith 0.76 to
+0.65, Tempest 0.94 to 0.68). Vega, Kestrel, Mesa, Phantom and Tempest stay on their concept
+strips, and `build/car_trial` has their renders to drive.
