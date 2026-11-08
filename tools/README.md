@@ -52,7 +52,8 @@ nose points along when it comes in.
 
 What differs per car is in `tools/blender/car_looks.py`, by strip name: which way the nose faces
 (Tripo's come in nose toward the camera), which texels count as lamps and the hue they glow in,
-a turn of the paint's hue, the camera tilt, the cabin wall and a part to raise. Lamps on an AI-made model are
+its paint (hue, saturation, gamma, exposure, a band of hue to move), the camera tilt, the cabin
+wall and a part to raise. Lamps on an AI-made model are
 only painted on, so the render makes texels of the lamps' color glow (`GLOW_*` in the render
 script). `--only=level_3,up_0` renders just those frames, to try a setting in seconds.
 
@@ -62,14 +63,21 @@ highlight (`CEL_*`), closer to pixel art.
 `tools/blender/render_car.py` sets the rest of the look in its constants: `STEER_YAW` (the turn
 at each frame, matched to the sheets), `PITCH` (the hill tilt), the camera (`CAMERA_LENS`,
 `CAMERA_DISTANCE`), the sun (behind the camera, so the tail and deck are lit), the sky the paint
-reflects (`SKY`) and the paint (`PAINT_*`, `NEUTRAL_SATURATION`). `tools/blender/blockout_vega.py`
+reflects (`SKY`) and the paint (`PAINT_*`). `tools/blender/blockout_vega.py`
 builds a rough Vega from boxes, to try the pipeline without a real model.
 
 What a Tripo model needs, all found on the Bruiser:
 
 - **It is about 0.7 metallic all over**, stripes too, so a white stripe shows the sky and the
   paint shows every lump in the mesh: `PAINT_METALLIC` takes most of that away. Chrome and white
-  texels skip the richer color (`NEUTRAL_SATURATION`), or the bumper and stripes go blue.
+  texels skip the richer color (`neutral`), or the bumper and stripes go blue.
+- **Color is per car.** Settings tuned on the blue Bruiser wrecked the others: its sun clips light
+  paint (beige goes yellow) and its gamma, by channel, turns orange red. The default is gentle, and
+  a car that needs more asks for it. Tripo also shifts some paints itself (the Hauler's beige and
+  the Kestrel's amber came out yellow): `hue_band` moves just that band. Don't match a render's
+  colors to the concept sprite by curves. That was tried: the two show different shares of tires
+  and glass, and red stripes or lamps pull the curve, so the Hauler went pink and the Phantom's
+  grille red.
 - **It has no glass.** The windows are holes, and the road shows through the cabin. The strip
   pass fills any hole in the outline with a dark gradient (`fill_glass`), and an invisible wall
   ahead of the seats (`cabin_wall`) clears the dash and engine seen through them.
@@ -90,6 +98,45 @@ What a Tripo model needs, all found on the Bruiser:
 
 Models in `assets/models/` stay out of the Godot project (`.gdignore`); only the strips ship.
 
+### The rhythm for a car
+
+Once a model exists, a car takes minutes of looking and a few of waiting. In order:
+
+1. **Try it.** `python3 tools/car_review.py hauler`: a straight and a hard-right frame from the
+   model beside the concept's, in about 15 seconds, with the paint's hue, saturation and value
+   measured against the concept's. Several at once are fine: `hauler,halo`, or `--tilt=6` to try a
+   camera on all of them.
+2. **Tune it**, in `LOOKS` in `tools/blender/car_looks.py`, and repeat. Check, in this order, as
+   each one hides the next:
+   - Tires showing? Lower `tilt` until they do (5 for a low body, 9 where they stand clear).
+   - Is the paint flat and over-bright? It's glowing: narrow `glow_green` (`RED_ONLY`, `ANY_RED`).
+   - Lamps the right color? `glow_color` `RED_LAMP`, and `glow_blue` if they're washed out.
+   - Hue more than about 10 degrees out? Trust the picture over the number on a multicolored car,
+     where the commonest hue isn't the paint. Otherwise `hue_band`.
+   - Too pale or dull? `saturation`, then `exposure`. `gamma` only on cool colors.
+   - A part hidden, or doubled? `raise_part`, `remove_part`.
+3. **Render it.** `tools/render_car.sh hauler --model=path.glb`: 21 frames, about 3 minutes.
+4. **Race it.** `python3 tools/car_review.py hauler --race`: the concept and the render side by side on
+   four stages, in `build/car_renders/race_hauler.png`. It prints the command to drive the copy of
+   the game with those strips in. A strip can look right on the sheet and wrong on the road, and
+   it's the road that counts: tires and size only showed up there.
+5. **Install it** if it wins: `tools/render_car.sh hauler --model=path.glb --install`, then add the
+   car to `RENDERED` in `tools/make_car_sprites.py`, or the sprite rebuild undoes it and CI fails,
+   and to `RENDERED_CARS` in `tests/test_render.gd`.
+6. **Place its lamps.** The brake and night glow sit where the concept sheets drew taillights,
+   which is rarely where a model's are. Measure the lit lamps on the straight frame of each strip
+   (up, level, down) and add them to `CarSprites.LAMPS` (`scripts/render/car_sprites.gd`). A ring
+   or outline goes in as several boxes, or the glow fills the dark inside it. Check braking and
+   night on a sheet that draws the car with `brake` and `glow` set, and in a race on Neon Strip.
+   Automatic detection of red pixels isn't reliable: red paint, stripes and the concept sheets'
+   painted details all pass for lamps.
+
+Getting models for many cars: Tripo runs several generations at once, so queue them all and then
+export. Reload the workspace page between cars, for clean slots. Name each export in the dialog;
+Tripo's own names are guesses. Check the car in the viewer against the name as you do. A download
+can sit under a hidden temporary name for a few minutes; a `.glb` holds its own length at byte 8,
+so the file can be checked against that, and it can be used before Chrome finishes with it.
+
 **The Vega trial (2026-11-02):** the rendered Vega has the right shape and turns convincingly,
 but in a race it looked duller and softer than the concept-sheet sprite, and its taillights
 barely showed, even with the lamp glow and extra saturation and contrast. Cel shading, with
@@ -105,3 +152,14 @@ has real uphill and downhill strips, which the concept sheets don't (they fake i
 It is plainly better uphill. On level road the concept was a little crisper, and its flanks are
 still brighter when airborne. Austin drove it and chose the render: these strips are in the game, `RENDERED` in `tools/make_car_sprites.py` keeps the sheet rebuild
 off them, and `tools/check_sprites.py` doesn't cover them.
+
+**The other eleven (2026-11-07):** one Tripo generation each came out right, 55 credits a car, and
+each took about 3 minutes to render. In races, the Hauler, Halo, Skipper and Sol came close to their
+concept strips. The concept is still ahead on the Vega, Kestrel, Mesa, Phantom, Tempest, Cyclone and
+Zenith: crisper, and with painted detail the models don't carry, such as the Zenith's shimmer and the
+Phantom's black louvers. Austin had the four close ones installed (they're in `RENDERED`), then
+the Cyclone and Zenith too: their concept strips are drawn from so high that they read as doing a
+wheelie next to the other cars, and the renders fix that, which outweighs the lost detail. Height
+to width on the straight frame shows it (concept to render: Cyclone 1.20 to 0.98, Zenith 0.76 to
+0.65, Tempest 0.94 to 0.68). Vega, Kestrel, Mesa, Phantom and Tempest stay on their concept
+strips, and `build/car_trial` has their renders to drive.

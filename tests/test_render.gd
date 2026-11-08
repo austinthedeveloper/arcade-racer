@@ -149,12 +149,42 @@ func test_right_turns_show_the_right_flank() -> void:
 			check(mirrored < same, "%s frame %d mirrors its left turn (%.3f vs %.3f as is)" % [id, left, mirrored, same])
 
 
-func test_the_bruiser_has_rendered_strips_at_every_pitch() -> void:
-	var car: Dictionary = CarSprites.strips("bruiser")
-	check(car.has(-1) and car.has(0) and car.has(1), "uphill, level and downhill")
-	# Its uphill strip is over the height limit: it mustn't shrink the car when it swaps in
-	near(CarSprites.car_scale(100.0, car), 100.0 / car[0]["body_w"], 0.0001, "fills the width at every pitch")
-	check(car[-1]["cell"].y * CarSprites.car_scale(100.0, car) < 100.0 * 1.2, "uphill stays in proportion")
+## The cars whose strips are rendered from a 3D model (RENDERED in tools/make_car_sprites.py).
+const RENDERED_CARS := ["bruiser", "cyclone", "halo", "hauler", "skipper", "sol", "zenith"]
+
+
+func test_rendered_cars_have_strips_at_every_pitch() -> void:
+	for id in RENDERED_CARS:
+		var car: Dictionary = CarSprites.strips(id)
+		check(car.has(-1) and car.has(0) and car.has(1), "%s: uphill, level and downhill" % id)
+		# A pitch strip over the height limit mustn't shrink the car when it swaps in
+		near(CarSprites.car_scale(100.0, car), CarSprites.draw_scale(100.0, car[0]), 0.0001, "%s keeps its level size at every pitch" % id)
+		check(car[0]["cell"].y * CarSprites.car_scale(100.0, car) <= 100.0 * CarSprites.MAX_HEIGHT + 0.001, "%s is no taller than the limit" % id)
+		for pitch in [-1, 1]:
+			check(car[pitch]["cell"].y * CarSprites.car_scale(100.0, car) < 100.0 * 1.2, "%s pitch %d stays in proportion" % [id, pitch])
+
+
+func test_rendered_cars_glow_at_their_own_lamps() -> void:
+	for id in RENDERED_CARS:
+		var car: Dictionary = CarSprites.strips(id)
+		for row: int in car:
+			check(car[row].has("lamps"), "%s pitch %d has its lamps placed" % [id, row])
+			for box: Array in car[row].get("lamps", []):
+				var rects := CarSprites.lamp_rects(box, Vector2(0.0, 100.0), 100.0, 60.0)
+				for r in rects:
+					check(r.position.x >= -50.0 and r.end.x <= 50.0 and r.position.y >= 40.0 and r.end.y <= 100.0,
+						"%s pitch %d lamp %s inside the car" % [id, row, r])
+	check(not CarSprites.strips("vega")[0].has("lamps"), "a concept strip keeps the sheets' taillights")
+
+
+func test_lamp_rects_mirror_the_left_lamp() -> void:
+	var rects := CarSprites.lamp_rects([0.3, 0.4, 0.1, 0.2], Vector2(50.0, 200.0), 100.0, 50.0)
+	check(rects.size() == 2, "a lamp each side")
+	near(rects[0].get_center().x, 80.0, 0.001, "right lamp 0.3 widths out")
+	near(rects[1].get_center().x, 20.0, 0.001, "left lamp mirrors it")
+	near(rects[0].get_center().y, 180.0, 0.001, "0.4 heights up from the base")
+	near(rects[0].size.x, 10.0, 0.001, "width in body widths")
+	near(rects[0].size.y, 10.0, 0.001, "height in car heights")
 
 
 ## Mean channel difference (alpha included) between two images of one size.

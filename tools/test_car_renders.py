@@ -12,6 +12,7 @@ from PIL import Image
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "blender"))
 
 import car_looks  # noqa: E402
+import car_review as cr
 import make_car_renders as mcr
 import make_model_inputs as mmi
 import spritelib as sl
@@ -105,7 +106,88 @@ class ContactShadow(unittest.TestCase):
         self.assertEqual(sl.rgba(mcr.contact_shadow(img)).tolist(), sl.rgba(img).tolist())
 
 
+class HueBand(unittest.TestCase):
+    BAND = {"hues": (45.0, 80.0), "by": -25.0, "saturation": 0.7}
+
+    def one(self, color, band=None):
+        img = Image.new("RGBA", (2, 2), color)
+        return sl.rgba(mcr.shift_hue_band(img, band or self.BAND))[0, 0].tolist()
+
+    def test_a_color_in_the_band_turns_and_loses_saturation(self):
+        r, g, b, a = self.one((240, 220, 120, 200))  # a yellow, toward beige
+        self.assertEqual(r, 240, "the value holds")
+        self.assertLess(g, 220, "less green is more orange")
+        self.assertGreater(b, 120, "less saturated")
+        self.assertEqual(a, 200, "alpha kept")
+
+    def test_colors_outside_it_come_back_the_same(self):
+        for color in ((200, 30, 20, 255), (30, 60, 200, 255), (20, 180, 60, 255)):
+            for got, want in zip(self.one(color), color):
+                self.assertLessEqual(abs(got - want), 1, color)
+
+    def test_chrome_and_white_have_no_hue_to_move(self):
+        self.assertEqual(self.one((230, 225, 205, 255)), [230, 225, 205, 255])  # saturation 0.11
+
+    def test_it_fades_in_at_the_edge_of_the_band(self):
+        full = self.one((230, 218, 46, 255), {"hues": (45.0, 80.0), "by": -25.0})[1]  # hue 56
+        edge = self.one((230, 195, 46, 255), {"hues": (45.0, 80.0), "by": -25.0})[1]  # hue 49
+        self.assertLess(195 - edge, 218 - full, "the edge moves less")
+
+    def test_a_car_with_a_band_gets_it_on_every_strip(self):
+        with tempfile.TemporaryDirectory() as d:
+            for p in mcr.PITCHES:
+                for i in range(mcr.FRAMES):
+                    render((400, 200), (0, 0, 360, 100), (240, 220, 120, 255)).save(os.path.join(d, "%s_%d.png" % (p, i)))
+            paths = mcr.make_strips(d, "hauler", os.path.join(d, "strips"))
+            for path in paths:
+                px = sl.rgba(mcr.load(path))
+                mid = px[px.shape[0] // 3, px.shape[1] // 2].tolist()
+                self.assertLess(mid[1], 220, os.path.basename(path))
+
+
+class Review(unittest.TestCase):
+    def test_the_measure_takes_the_commonest_paint_hue_not_chrome_or_rubber(self):
+        img = render((40, 20), (0, 0, 20, 20), (30, 60, 220, 255))
+        img.paste((200, 200, 205, 255), (20, 0, 30, 20))  # chrome
+        img.paste((15, 15, 15, 255), (30, 0, 40, 20))  # rubber
+        hue, sat, val = cr.paint_measure(img)
+        self.assertAlmostEqual(hue, 231.0, delta=6.0)
+        self.assertGreater(sat, 0.8)
+        self.assertAlmostEqual(val, 220 / 255, places=2)
+
+    def test_a_car_with_no_paint_measures_zero(self):
+        self.assertEqual(cr.paint_measure(render((10, 10), (0, 0, 10, 10), (200, 200, 200, 255))), (0.0, 0.0, 0.0))
+
+    def test_concept_frames_are_cut_from_the_sheet_seven_wide(self):
+        frames = cr.concept_frames("bruiser")
+        self.assertEqual(len(frames), 7)
+        self.assertEqual(frames[3].size, frames[0].size)
+        self.assertIsNone(cr.concept_frames("nosuch"))
+
+
 class Looks(unittest.TestCase):
+    def test_remove_part_is_a_box_in_shares_of_the_car(self):
+        part = {"x": (0.0, 1.0), "y": (-1.0, 1.0), "z": (0.7, 2.0)}
+        self.assertTrue(car_looks.in_part(0.2, 0.0, 0.9, part))
+        self.assertFalse(car_looks.in_part(-0.2, 0.0, 0.9, part), "the other side")
+        self.assertFalse(car_looks.in_part(0.2, 0.0, 0.5, part), "below it")
+
+    def test_a_car_with_warm_paint_doesnt_light_it_up(self):
+        self.assertLess(car_looks.look("kestrel")["glow_green"][1], 0.3)
+        self.assertEqual(car_looks.look("mesa")["glow_green"], car_looks.NO_LAMPS)
+
+    def test_the_bruiser_keeps_its_own_strong_paint_and_the_rest_start_gentle(self):
+        bruiser, plain = car_looks.look("bruiser"), car_looks.look("mesa")
+        self.assertGreater(bruiser["gamma"], plain["gamma"])
+        self.assertGreater(bruiser["exposure"], plain["exposure"])
+        self.assertEqual(plain["gamma"], 1.0, "gamma turns orange red")
+
+    def test_every_car_in_the_garage_has_a_look(self):
+        for car in ("vega", "bruiser", "kestrel", "sol", "mesa", "phantom", "tempest", "skipper", "halo",
+                    "cyclone", "hauler", "zenith"):
+            self.assertIn(car, car_looks.LOOKS)
+            self.assertEqual(car_looks.look(car)["forward"], "-y", car)
+
     def test_the_bruisers_red_lamps_count_and_the_vegas_red_body_does_not(self):
         self.assertLess(car_looks.look("bruiser")["glow_green"][0], 0.0)
         self.assertGreater(car_looks.look("vega")["glow_green"][0], 0.0)

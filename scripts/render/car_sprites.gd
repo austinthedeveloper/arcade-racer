@@ -27,6 +27,35 @@ const DECK_STRETCH := 0.35
 ## How long the cars' shadows are, times the plain one (Sundown.shadow_length): the race sets
 ## it for the stage's hour (WS-16); they stretch toward the camera, away from the low sun.
 static var shadow_length := 1.0
+## Where the tail lights sit on the cars rendered from a 3D model (tools/make_car_renders.py),
+## whose lamps aren't where the concept sheets drew them: strip id -> pitch row -> the right-hand
+## lamp's boxes, each [centre x from the car's middle in body widths, centre y up from the base
+## in car heights, width, height]; the left lamp mirrors them. Measured on the straight frame.
+## A car not here glows at the concept sheets' triangle taillights. The renders' lamps are lit
+## already, so braking lays a hotter core and a halo over them (BRAKE_CORE).
+const LAMPS := {
+	"bruiser": {-1: [[0.23, 0.24, 0.40, 0.07]], 0: [[0.24, 0.33, 0.39, 0.10]], 1: [[0.23, 0.47, 0.40, 0.12]]},
+	# Cyclone: one bar across the tail, as two halves meeting in the middle
+	"cyclone": {-1: [[0.18, 0.42, 0.36, 0.07]], 0: [[0.18, 0.49, 0.36, 0.08]], 1: [[0.18, 0.58, 0.36, 0.07]]},
+	# Zenith: an angled bar each side, and a spine down the middle (two halves, as above)
+	"zenith": {
+		-1: [[0.24, 0.47, 0.28, 0.09], [0.008, 0.26, 0.016, 0.31]],
+		0: [[0.24, 0.55, 0.28, 0.07], [0.008, 0.25, 0.016, 0.26]],
+		1: [[0.24, 0.58, 0.27, 0.06], [0.008, 0.29, 0.016, 0.26]]},
+	"hauler": {-1: [[0.39, 0.30, 0.08, 0.20]], 0: [[0.39, 0.33, 0.08, 0.21]], 1: [[0.39, 0.36, 0.08, 0.20]]},
+	# Halo: a ring, as its top and bottom bands and its round end
+	"halo": {
+		-1: [[0.21, 0.35, 0.36, 0.06], [0.21, 0.11, 0.36, 0.06], [0.37, 0.23, 0.07, 0.27]],
+		0: [[0.21, 0.49, 0.36, 0.06], [0.21, 0.21, 0.36, 0.06], [0.37, 0.35, 0.07, 0.32]],
+		1: [[0.20, 0.66, 0.36, 0.06], [0.20, 0.36, 0.36, 0.06], [0.36, 0.51, 0.07, 0.35]]},
+	# Skipper: no tail lights; the round lamps on the cage
+	"skipper": {-1: [[0.19, 0.46, 0.06, 0.05]], 0: [[0.17, 0.44, 0.06, 0.05]], 1: [[0.17, 0.42, 0.06, 0.05]]},
+	"sol": {-1: [[0.41, 0.23, 0.07, 0.33]], 0: [[0.40, 0.22, 0.07, 0.28]], 1: [[0.41, 0.46, 0.07, 0.40]]},
+}
+## Braking on a LAMPS car: a pale hot core over the lit lamp, and the night halo round it
+const BRAKE_CORE := Color(1.0, 0.62, 0.45, 0.55)
+const BRAKE_HALO := 0.3
+
 static var _strip_sets: Dictionary = {}  # car strip id -> its strips
 static var traffic: Dictionary = {}
 
@@ -75,6 +104,9 @@ static func strips(strip_id: String) -> Dictionary:
 			var path: String = PLAYER_DIR + strip_id + "_steer" + PITCH_SUFFIXES[row] + ".png"
 			if ResourceLoader.exists(path):
 				rows[row] = _load_strip(path)
+		for row: int in LAMPS.get(strip_id, {}):
+			if rows.has(row):
+				rows[row]["lamps"] = LAMPS[strip_id][row]
 		_strip_sets[strip_id] = rows
 	return _strip_sets[strip_id]
 
@@ -128,6 +160,15 @@ static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float
 	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top, roundf(size.x), bumper_h), bumper_src, mod)
 	ci.draw_texture_rect_region(tex, Rect2(left, bumper_top - deck_h, roundf(size.x), deck_h), deck_src, mod)
 	var h := deck_h + bumper_h
+	if strip.has("lamps"):
+		var halo := maxf(0.18 * glow, BRAKE_HALO if brake else 0.0)
+		for box: Array in strip["lamps"]:
+			for r in lamp_rects(box, Vector2(base.x, y), w, h):
+				if halo > 0.0:
+					ci.draw_rect(r.grow(minf(w, h) * 0.04), Color(Headlights.TAIL, halo * alpha))
+				if brake:
+					ci.draw_rect(r, Color(BRAKE_CORE, BRAKE_CORE.a * alpha))
+		return
 	var ly := y - h * 0.58
 	if glow > 0.0:
 		# Tail lights on in the dark: a halo round the triangle taillights
@@ -138,6 +179,17 @@ static func draw_player(ci: CanvasItem, car: Dictionary, base: Vector2, w: float
 		var a := (0.35 if brake else 0.0) + 0.3 * glow
 		for side in [-1.0, 1.0]:
 			ci.draw_rect(Rect2(base.x + side * w * 0.36 - w * 0.13, ly, w * 0.26, h * 0.12), Color(1.0, 0.25, 0.1, minf(0.8, a) * alpha))
+
+
+## The two tail-light rects on screen for a LAMPS entry, a car drawn `w` wide and `h` tall
+## standing on `base`: the right-hand one, then the left mirrored.
+static func lamp_rects(lamp: Array, base: Vector2, w: float, h: float) -> Array[Rect2]:
+	var size := Vector2(lamp[2] * w, lamp[3] * h)
+	var cy: float = base.y - lamp[1] * h
+	var out: Array[Rect2] = []
+	for side in [1.0, -1.0]:
+		out.append(Rect2(Vector2(base.x + side * lamp[0] * w, cy) - size / 2.0, size))
+	return out
 
 
 ## Texture-to-screen scale for a strip drawn `w` wide: its body fills `w`, unless that would
