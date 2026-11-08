@@ -127,6 +127,8 @@ func test_tag_deploys_the_web_build() -> void:
 
 ## The Web build's .pck may not grow past this (bytes): every byte is downloaded before the
 ## game starts. 0.4.0's was 25.0 MB. Raising it is a decision, not a fix for a red build.
+## Textures are lossless WebP at full effort (project.godot, rendering/textures/webp_compression):
+## the default effort put the twelve rendered cars' pitch strips 1.4 MB over.
 const WEB_PCK_BUDGET := 28_000_000
 ## The files the export copies as they are (imported files go as their .godot/imported copies).
 const EXPORTED_AS_IS := ["gd", "tscn", "tres", "gdshader", "json", "uid", "import"]

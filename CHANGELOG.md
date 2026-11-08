@@ -12,6 +12,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Bruiser 440: a new car sprite rendered from a 3D model, with its own uphill and downhill views.
 - Hauler, Halo, Skipper and Sol: new sprites rendered from 3D models, with uphill and downhill views.
 - Cyclone and Zenith X: rendered sprites that sit level on the road, no longer looking like a wheelie.
+- Vega, Kestrel, Mesa, Phantom and Tempest: rendered sprites too, so every car in the garage now
+  comes from a 3D model and they all sit on the road at the same angle.
 - The rendered cars' brake lights and night tail lights glow on their own lamps, not above them.
 
 ## [0.5.1] - 2026-11-06

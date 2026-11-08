@@ -6,8 +6,8 @@ drive-throughs, the Skyline Finale, menus and options. Paths are relative to the
 checked in game. "Fixed (phase N)" marks what the cleanup below has done (2026-10-31, branches
 `feature/CLD-cleanup-1-fixes` to `-4-golden`).
 
-**G3 and G4 fixed in RC-9; A1 to A3 in CP-7.** **Still open:** A4 (brake
-glow and nitro flame anchors, roadmap CP-3), G6
+**G3 and G4 fixed in RC-9; A1 to A3 in CP-7.** **Still open:** A4 (nitro
+flame anchors, roadmap CP-3; the brake glow sits on each car's own lamps since CP-2), G6
 (a missing traffic sprite crashes; the manifest test makes it unlikely). Every loaded roadside sprite is now placed
 (roadmap WS-5): `Track.add_road_signs` and `Track.add_race_furniture`, and `test_track` asserts it.
 
@@ -30,7 +30,7 @@ glow and nitro flame anchors, roadmap CP-3), G6
 | A1 | Low | **Fixed (CP-7)** | **Magenta painted into the window glass.** The generator reflected the magenta background into the glass of the taxi, tractor cab, roadster, navy van, green SUV, dump truck and the trolley windscreen (one streak left), and the tuk-tuk's. The glass is opaque and drawn that way, so keying can't help. `make_car_sprites.GLASS` turns the purple in each window box blue. | concept sheets `trf0*`; `make_car_sprites.GLASS` |
 | A2 | Low | **Fixed (CP-7)** | **Pink halo around glowing parts.** The street sweeper's amber beacons have a pink glow halo: glow blended with magenta, kept because it touches the lamp. Phase 2's wide fringe left part of it, and a pink tinge on every car's outline; `spritelib.despill` now takes the spill out of pixels next to the background. | `traffic/street_sweeper.png` |
 | A3 | Low | **Fixed (CP-7)** | **Purple line under some vehicles.** A one-pixel purple line runs along the bottom edge of several traffic sprites (double-decker, dump truck, jeep). It is the ground shadow blended with the key and not caught by the one-pixel fringe pass. `spritelib.key_sheet` now keys two more pixels near the key's hue. | `spritelib.key_sheet` fringe step |
-| A4 | Low | Suspected | **Brake glow and nitro flame placed for the Vega on all 12 cars.** The trike, buggy and van will likely look off. | `scripts/render/car_sprites.gd:115-119` |
+| A4 | Low | Suspected | **Nitro flame placed for the Vega on all 12 cars.** The trike, buggy and van will likely look off. (Brake glow fixed in CP-2: each car's lamps are in `CarSprites.LAMPS`.) | `scripts/render/car_sprites.gd:115-119` |
 
 ### Gameplay
 
