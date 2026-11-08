@@ -121,7 +121,15 @@ Once a model exists, a car takes minutes of looking and a few of waiting. In ord
    the game with those strips in. A strip can look right on the sheet and wrong on the road, and
    it's the road that counts: tires and size only showed up there.
 5. **Install it** if it wins: `tools/render_car.sh hauler --model=path.glb --install`, then add the
-   car to `RENDERED` in `tools/make_car_sprites.py`, or the sprite rebuild undoes it and CI fails.
+   car to `RENDERED` in `tools/make_car_sprites.py`, or the sprite rebuild undoes it and CI fails,
+   and to `RENDERED_CARS` in `tests/test_render.gd`.
+6. **Place its lamps.** The brake and night glow sit where the concept sheets drew taillights,
+   which is rarely where a model's are. Measure the lit lamps on the straight frame of each strip
+   (up, level, down) and add them to `CarSprites.LAMPS` (`scripts/render/car_sprites.gd`). A ring
+   or outline goes in as several boxes, or the glow fills the dark inside it. Check braking and
+   night on a sheet that draws the car with `brake` and `glow` set, and in a race on Neon Strip.
+   Automatic detection of red pixels isn't reliable: red paint, stripes and the concept sheets'
+   painted details all pass for lamps.
 
 Getting models for many cars: Tripo runs several generations at once, so queue them all and then
 export. Reload the workspace page between cars, for clean slots. Name each export in the dialog;
