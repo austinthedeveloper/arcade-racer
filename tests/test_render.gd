@@ -165,6 +165,20 @@ func test_rendered_cars_have_strips_at_every_pitch() -> void:
 			check(car[pitch]["cell"].y * CarSprites.car_scale(100.0, car) < 100.0 * 1.2, "%s pitch %d stays in proportion" % [id, pitch])
 
 
+func test_rendered_cars_select_pictures_fill_the_frame() -> void:
+	# tools/render_car_hero.sh renders the sky transparent and make_car_heroes.py puts the title
+	# screen's coast behind it: no hole may be left where the backdrop didn't reach
+	for id in RENDERED_CARS:
+		var img: Image = load("res://assets/sprites/ui/car_%s.png" % id).get_image()
+		eq(img.get_size(), Vector2i(304, 141), "%s picture size" % id)
+		var holes := 0
+		for y in range(0, img.get_height(), 4):
+			for x in range(0, img.get_width(), 4):
+				if img.get_pixel(x, y).a < 1.0:
+					holes += 1
+		eq(holes, 0, "%s picture is opaque" % id)
+
+
 func test_rendered_cars_glow_at_their_own_lamps() -> void:
 	for id in RENDERED_CARS:
 		var car: Dictionary = CarSprites.strips(id)

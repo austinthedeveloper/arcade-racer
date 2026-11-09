@@ -166,3 +166,25 @@ garage sits at one angle. The Vega, Kestrel, Mesa and Phantom were already level
 0.89 to 0.88, 0.86 to 0.82; the Mesa's 1.06 to 1.17 is a narrower render, not a higher camera),
 and the Tempest wasn't. Their concept strips had crisper detail, but one look across twelve cars
 counted for more.
+
+**4. The car select picture:**
+
+```sh
+tools/render_car_hero.sh vega        # assets/sprites/ui/car_vega.png, about a minute
+```
+
+`tools/blender/render_car_hero.py` renders the car, with the strips' paint fixes and lamp glow
+from `car_looks.py`, on a stretch of coast road: a dashed centre line, edge lines, red and white
+kerbs, sand verges, and the car's own shadow. The sky stays transparent. Every car gets the same
+low three-quarter view from behind and the strips' sun, a touch warmer (any warmer and the cream
+Hauler goes yellow). The camera moves in or out until the car covers the same area of the frame
+(`FILL`, capped by `MAX_FILL`), so a long low car and a tall truck look as big as each other. The
+outermost half percent of the mesh is left out, so the Skipper's flag doesn't shrink the buggy.
+Then `tools/make_car_heroes.py` puts the title screen's coast behind it, lined up on the
+render's horizon, applies the car's `hue_band`, and cuts it to the 304 x 141 picture. The same
+model and seed give the same picture. `tools/make_ui_sprites.py` leaves pictures of cars in
+`RENDERED` alone, as `make_car_sprites.py` does with their strips.
+
+**The pictures (2026-11-08):** the concept crops each had their own road, angle and light, and
+some didn't match the car in the race (the Halo was mint). The renders are less painterly but
+make one set, and the car you pick is the car you drive.
