@@ -145,6 +145,12 @@ def main() -> int:
             fails += 1
             continue
         ref = Image.open(ref_path).convert("RGB")
+        if ref.size != REF_SIZE:
+            # A shot copied in as it was rendered (say from CI's artifact) hashes differently
+            # from its reduced self: put it through `tools/shots.py update` instead
+            print(f"  FAIL {p.stem}: reference is {ref.size[0]}x{ref.size[1]}, not {REF_SIZE[0]}x{REF_SIZE[1]} (tools/shots.py update)")
+            fails += 1
+            continue
         shot = reduce(Image.open(p))
         ok, bits, col = compare(ref, shot, args.max_hash_bits, args.max_color_diff)
         line = f"{p.stem}: hash {bits}/{HASH_W * HASH_H} bits, color {col:.2f}"

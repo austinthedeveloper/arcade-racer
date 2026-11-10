@@ -60,9 +60,9 @@ class FileDiff(unittest.TestCase):
         import glob
         import os
         tools = {os.path.basename(p) for p in glob.glob(os.path.join(cs.PROJECT, "tools", "make_*.py"))}
-        # Sounds and the 3D car renders (Blender) are outside the sprite rebuild
-        # (make_model_inputs only cuts the pictures for a model, into build/).
-        expected = tools - {"make_audio.py", "make_car_renders.py", "make_model_inputs.py"}
+        # Sounds and the 3D car renders (Blender), strips and car select pictures, are outside
+        # the sprite rebuild (make_model_inputs only cuts the pictures for a model, into build/).
+        expected = tools - {"make_audio.py", "make_car_renders.py", "make_car_heroes.py", "make_model_inputs.py"}
         self.assertEqual({t[0] for t in cs.TOOLS}, expected)
 
 
