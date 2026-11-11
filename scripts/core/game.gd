@@ -5,7 +5,7 @@ extends Node
 ## --online=host or --online=join:CODE straight into a room (online_from_flags).
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES, CONTROLS }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -52,6 +52,12 @@ var _menu_shot := ""
 ## What's new (WhatsNew) may come up on the title: not for a staged screenshot (--menu-shot),
 ## which neither shows it nor marks it seen; --screen=whats_new stages it.
 var news_allowed := true
+## The onboarding (who's driving AC-16, the wheel's first run WH-16, the first drive MP-15)
+## may come up: not for a staged screenshot (--menu-shot) unless it stages one of them, and
+## the first drive not in a race the dev flags started (--first-drive asks for it there).
+## WhosDriving.enabled turns all of it off (the test runners).
+var onboarding := true
+var first_drive_allowed := true
 ## Where the options screen goes back to (close_options): the title unless whoever opened
 ## it says otherwise.
 var _options_back := Callable()
@@ -80,19 +86,22 @@ func _ready() -> void:
 	var unplug_shot := false
 	var replug_shot := ""  # --screen=replugged (a different wheel) or replugged:same
 	var debug_page := ""  # --screen=debug[:page]: the tuning panel, over a race given race flags
+	var controls_shot := false  # --screen=pause:controls: the controls card over the paused race
 	var car := DevArgs.value("--car")
 	if car != "":
 		car_index = maxi(0, Cars.LIST.find(Cars.find(car)))
 	mirror = DevArgs.has("--mirror")
 	news_allowed = DevArgs.value("--menu-shot") == ""
+	onboarding = news_allowed
 	var mode := DevArgs.value("--mode")
 	if mode != "":
 		mode_index = ModeSelect.Item.get(mode.to_upper(), mode_index)
 	for arg in OS.get_cmdline_user_args():
 		for flag: String in RACE_FLAGS:
 			quick = quick or arg.begins_with(flag)
-		if arg == "--screen=pause":
+		if arg == "--screen=pause" or arg == "--screen=pause:controls":
 			pause_shot = true
+			controls_shot = arg.ends_with(":controls")
 		elif arg == "--screen=unplugged":
 			pause_shot = true
 			unplug_shot = true
@@ -110,6 +119,7 @@ func _ready() -> void:
 			_menu_shot = arg.get_slice("=", 1)
 		elif arg.begins_with("--attract-delay="):
 			attract_delay = float(arg.get_slice("=", 1))
+	first_drive_allowed = not quick or DevArgs.has("--first-drive")
 	var auto := DevArgs.value("--online")
 	if auto != "":
 		online_from_flags(auto, int(DevArgs.value("--players", "2")))
@@ -126,6 +136,8 @@ func _ready() -> void:
 			stage_replug(replug_shot == "same")
 	elif pause_shot:
 		race.pause()
+		if controls_shot:
+			race.pause_menu.open_controls()
 	if debug_page != "":
 		if menu == null and race == null:
 			show_title()
@@ -154,7 +166,7 @@ func _physics_process(dt: float) -> void:
 		_swallow -= 1
 		return
 	if screen == Screen.TITLE:
-		var reading := menu is TitleScreen and not (menu as TitleScreen).news.is_empty()  # (what's new up)
+		var reading := menu is TitleScreen and (menu as TitleScreen).busy()  # (what's new, a question up)
 		idle = 0.0 if woke or reading else idle + dt
 		if idle >= attract_delay:
 			start_demo()
@@ -191,7 +203,27 @@ func show_title(item := 0) -> void:
 	if news_allowed:
 		t.news = WhatsNew.take()
 		t.news_version = Updater.version()
+	t.offers = onboarding_on()
+	t.asking = onboarding_on() and WhosDriving.due(SaveData)
 	_set_menu(t, Screen.TITLE)
+
+
+## Whether the onboarding comes up (onboarding, WhosDriving.enabled).
+func onboarding_on() -> bool:
+	return onboarding and WhosDriving.enabled
+
+
+## Whether a race on `stage` starts as the first drive (MP-15): a new profile's first race on
+## Palm Coast (FirstDrive.wanted), from the menus, not a demo or online.
+func first_drive_for(stage: int, demo: bool) -> bool:
+	return onboarding_on() and first_drive_allowed and not demo and FirstDrive.wanted(stage, SaveData)
+
+
+## CONTROLS on the title (PR-22): the controls card, back to the title on CONTROLS.
+func show_controls() -> void:
+	var c := ControlsCard.new()
+	c.on_back = show_title.bind(TitleScreen.items().find("CONTROLS"))
+	_set_menu(c, Screen.CONTROLS)
 
 
 ## The update check, before the title. `staged` (tests and --screen=update) shows that
@@ -474,6 +506,7 @@ func _spawn_race(stage: int, car: int, demo: bool) -> void:
 	race.time_attack = not demo and mode_index == ModeSelect.Item.TIME_ATTACK
 	race.free_drive = not demo and mode_index == ModeSelect.Item.FREE_DRIVE
 	race.mirror = not demo and mirror_for(stage)
+	race.first_drive_on = first_drive_for(stage, demo)
 	race.debug_overlay = debug_overlay
 	race.calibration = calibration
 	race.debug_panel = debug_panel
@@ -555,6 +588,11 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # --screen=debug opens the F3 tuning panel (debug:camera, debug:actions etc. for a page:
 # Tuning.AREAS, actions, presets), over the title, or over a race given race flags.
 # --screen=stats opens the stats page (MP-11); --screen=profiles the driver picker (MP-10).
+# --screen=controls the controls card (PR-22; controls:gamepad, controls:wheel, controls:touch
+# for another device), --screen=pause:controls the card over a paused race.
+# --screen=whos_driving asks who's driving over the title (AC-16); --screen=wheel_offer offers
+# a staged wheel calibration (WH-16). Neither is saved. --first-drive makes a race the flags
+# start the first drive (MP-15) when the save is a new profile's.
 # --screen=whats_new shows this version's notes over the title (PR-17), without marking them seen.
 # --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
 # a download; update:checking, update:failed, update:full and update:ready the other states.)
@@ -577,6 +615,18 @@ func _open(which: String) -> void:
 			show_stats()
 		"profiles":
 			show_profiles()
+		_ when which.begins_with("controls"):
+			show_controls()
+			var dev := ControlsCard.DEVICE_NAMES.find(which.get_slice(":", 1).to_upper()) if which.contains(":") else -1
+			if dev >= 0:
+				(menu as ControlsCard).device = dev
+		"whos_driving":
+			show_title()
+			(menu as TitleScreen).asking = true
+		"wheel_offer":
+			show_title()
+			(menu as TitleScreen).wheel_offer = "staged-wheel"
+			(menu as TitleScreen).wheel_offer_name = "Logitech G29 Driving Force Racing Wheel"
 		"whats_new":
 			show_title()
 			(menu as TitleScreen).news = WhatsNew.items(WhatsNew.notes(Updater.version()))

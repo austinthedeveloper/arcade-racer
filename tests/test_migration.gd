@@ -675,3 +675,51 @@ func test_save_v4_loads() -> void:
 	eq([v4[0], v4[1], SaveData.stats["races"]], [3, 250, 14], "and its progress")
 	check(not CfgVersion.has_backup(TestSuite.SCRATCH_SAVE), "current: no backup")
 	_clean()
+
+
+# --- Onboarding (AC-16, MP-15, WH-16) ---
+
+func test_save_v4_to_v5_counts_an_older_driver_as_onboarded() -> void:
+	_clean()
+	check(not SaveData.driver_asked and SaveData.first_drive_pending(), "a fresh save: a new driver")
+	_load_save("save_v4.cfg")
+	eq(SaveData.loaded_version, 4, "from version 4")
+	check(SaveData.driver_asked, "who's driving: not asked")
+	eq(SaveData.first_drive, SaveData.FirstDrive.DONE, "no first drive")
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "save_v4.cfg")
+	SaveData.migrate(cfg)
+	eq([CfgVersion.of(cfg), cfg.get_value("onboarding", "driver_asked"), cfg.get_value("onboarding", "first_drive")],
+		[SaveData.VERSION, true, SaveData.FirstDrive.DONE], "migrated on")
+	_load_save("save_v0.cfg")
+	check(SaveData.driver_asked and not SaveData.first_drive_pending(), "an unversioned save too")
+	_clean()
+	SaveData.mark_driver_asked()
+	SaveData.end_first_drive(true)
+	SaveData.load_save()
+	eq([SaveData.loaded_version, SaveData.driver_asked, SaveData.first_drive], [SaveData.VERSION, true, SaveData.FirstDrive.SKIPPED],
+		"saved and loaded back")
+	var made := SaveData.make_profile("JET", "car_mesa")
+	SaveData.switch_to(made)
+	check(not SaveData.driver_asked and SaveData.first_drive_pending(), "a new profile: a new driver")
+	_clean()
+
+
+func test_settings_v13_to_v14_adds_the_wheels_offered() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v13.cfg")
+	eq(Settings.migrate(cfg), 13, "from version 13")
+	eq([CfgVersion.of(cfg), cfg.get_value("first_run", "wheels")], [Settings.VERSION, []], "migrated on: none offered yet")
+	_clean()
+	_load_settings("settings_v13.cfg")
+	eq([Settings.loaded_version, Settings.camera_view, Settings.wheels_prompted], [13, CameraView.View.BUMPER, [] as Array[String]],
+		"v13 loads: its keys as saved, no wheels offered")
+	Settings.wheels_prompted.append("030000006d04000018c2000000000000")
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.wheels_prompted], [Settings.VERSION, ["030000006d04000018c2000000000000"] as Array[String]],
+		"saved and loaded back")
+	Settings.save(true)
+	Settings.load_settings()
+	eq(Settings.wheels_prompted.size(), 1, "a fresh write of the options keeps them")
+	_clean()

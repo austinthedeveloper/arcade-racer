@@ -1,21 +1,30 @@
 class_name PauseMenu
 extends MenuScreen
-## The in-race pause menu: Resume, Restart, Options, Quit to title over the frozen race.
+## The in-race pause menu: Resume, Restart, Options, Controls (the controls card, PR-22),
+## Quit to title over the frozen race; Skip first drive too during the first drive (MP-15).
 ## Up/down or left/right (a D-pad, a wheel's too) moves, confirm picks, back or pause resumes.
 ## `choose` turns a tick of input into an Action; the race carries it out. A notice above it
 ## says why the race paused when it wasn't the player (the wheel unplugged, WH-7). Plugged
 ## back in, the menu gives way to a 3, 2, 1 count (counting, WH-12) before the race resumes.
 
-enum Action { NONE, RESUME, RESTART, OPTIONS, QUIT }
+enum Action { NONE, RESUME, RESTART, OPTIONS, CONTROLS, SKIP, QUIT }
 
-const ITEMS := [Action.RESUME, Action.RESTART, Action.OPTIONS, Action.QUIT]
-const LABELS := ["RESUME", "RESTART", "OPTIONS", "QUIT TO TITLE"]
+## The menu's rows; SKIP goes in before QUIT while the first drive runs (can_skip).
+const ITEMS := [Action.RESUME, Action.RESTART, Action.OPTIONS, Action.CONTROLS, Action.QUIT]
+const LABELS := {Action.RESUME: "RESUME", Action.RESTART: "RESTART", Action.OPTIONS: "OPTIONS",
+	Action.CONTROLS: "CONTROLS", Action.SKIP: "SKIP FIRST DRIVE", Action.QUIT: "QUIT TO TITLE"}
 const ROW_H := 30.0
 const REPLUG_COUNT := 3.0  # seconds the count runs after the joypad comes back (WH-12)
 const WARN := Color("#ff5d5d")  # the notice's heading
 const BACK_OK := Color("#5dff8a")  # the same joypad back (replugged_notice)
 
 var has_options := true  # false when nothing can show the options (a race on its own)
+## The first drive (MP-15) is running: SKIP FIRST DRIVE is on the menu.
+var can_skip := false
+## The rows as they are now (rows): ITEMS, with SKIP while can_skip.
+var items: Array = ITEMS.duplicate()
+## The controls card (PR-22) open over the menu, or null.
+var card: ControlsCard
 ## Why the race paused, over the menu: [heading, line] (unplugged_notice), or empty.
 var notice: Array[String] = []
 ## Seconds left on the replug countdown (Race.replug_tick), 0 when not counting: the count
@@ -32,8 +41,18 @@ func _ready() -> void:
 	visible = false
 
 
+## The rows for `skip` (the first drive running): ITEMS, SKIP FIRST DRIVE before QUIT.
+static func rows(skip: bool) -> Array:
+	var out := ITEMS.duplicate()
+	if skip:
+		out.insert(out.find(Action.QUIT), Action.SKIP)
+	return out
+
+
 ## Shows the menu on RESUME.
 func open() -> void:
+	items = rows(can_skip)
+	close_controls()
 	index = 0
 	visible = true
 	_hold = 0
@@ -48,26 +67,52 @@ func reopen() -> void:
 
 
 func close() -> void:
+	close_controls()
 	visible = false
+
+
+## CONTROLS: the controls card over the menu, for the device in use; back closes it.
+func open_controls() -> void:
+	if card != null:
+		return
+	card = ControlsCard.new()
+	card.over_race = true
+	card.on_back = close_controls
+	add_child(card)
+
+
+func close_controls() -> void:
+	if card == null:
+		return
+	card.queue_free()
+	remove_child(card)
+	card = null
+	_hold = 1  # (the press that closed it)
 
 
 ## Moves the selection by `dir`, wrapping round and skipping OPTIONS without options;
 ## returns the new index.
 func move(dir: int) -> int:
 	super.move(dir)
-	if ITEMS[index] == Action.OPTIONS and not has_options:
+	if items[index] == Action.OPTIONS and not has_options:
 		super.move(dir)
 	return index
 
 
 func choice_count() -> int:
-	return ITEMS.size()
+	return items.size()
 
 
 ## One tick of menu input (and whether pause was pressed): the action picked, or NONE.
 func choose(m: MenuInput, pause_pressed := false) -> int:
 	if _hold > 0:
 		_hold -= 1
+		return Action.NONE
+	if card != null:
+		if pause_pressed:
+			close_controls()
+		else:
+			card.handle(m)
 		return Action.NONE
 	if pause_pressed or m.back_pressed:
 		return Action.RESUME
@@ -80,7 +125,10 @@ func choose(m: MenuInput, pause_pressed := false) -> int:
 		return Action.NONE
 	if m.confirm_pressed:
 		Audio.play("beep")
-		return ITEMS[index]
+		if items[index] == Action.CONTROLS:
+			open_controls()
+			return Action.NONE
+		return items[index]
 	return Action.NONE
 
 
@@ -136,20 +184,22 @@ func _draw() -> void:
 	if counting > 0.0:
 		_draw_count(w)
 		return
-	var panel := Rect2(w / 2.0 - 140, 84, 280, 76 + ROW_H * ITEMS.size())
+	if card != null:
+		return  # (the card draws over it)
+	var panel := Rect2(w / 2.0 - 140, 84, 280, 76 + ROW_H * items.size())
 	_panel(panel, 0.9)
 	_text_centered(Vector2(w / 2.0, panel.position.y + 32), "PAUSED", 24, GOLD)
 	draw_rect(Rect2(panel.position.x + 20, panel.position.y + 42, panel.size.x - 40, 2), GOLD)
-	for i in ITEMS.size():
+	for i in items.size():
 		var y := panel.position.y + 52 + i * ROW_H
 		var on := i == index
-		var off: bool = ITEMS[i] == Action.OPTIONS and not has_options
+		var off: bool = items[i] == Action.OPTIONS and not has_options
 		var row := Rect2(panel.position.x + 16, y, panel.size.x - 32, ROW_H - 6)
 		if on:
 			draw_rect(row, Color(GOLD, 0.18 + 0.06 * sin(time * 5.0)))
 			draw_rect(Rect2(row.position.x, row.position.y, 3, row.size.y), GOLD)
 		var col := GOLD if on else Color(1, 1, 1, 0.3 if off else 0.85)
-		_text_centered(Vector2(w / 2.0, y + 17), LABELS[i], 14, col)
+		_text_centered(Vector2(w / 2.0, y + 17), LABELS[items[i]], 14, col)
 	_text_centered(Vector2(w / 2.0, panel.end.y - 10), pause_hints(), 9, Color(1, 1, 1, 0.7))
 	_draw_notice(w)
 

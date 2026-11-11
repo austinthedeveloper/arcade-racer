@@ -19,6 +19,7 @@ func _initialize() -> void:
 	TestSuite.use_scratch_ghosts()
 	TestSuite.use_scratch_logs()  # never the player's user://logs/
 	Tuning.use_defaults()  # never the player's user://tuning.cfg
+	WhosDriving.enabled = false  # no onboarding over the title or in races (test_onboarding turns it on)
 	root.get_node("Audio")._ready()  # its buses, before the autoloads' own _ready (a filtered run)
 	SpriteLibrary.load_all()
 	CarSprites.load_all()
