@@ -33,6 +33,11 @@ var _rng := RandomNumberGenerator.new()
 static var _textures: Dictionary = {}
 
 
+## Each stage's own seed for its pickups (G7: one seed for every stage gave each the same five).
+static func seed_for(stage: int) -> int:
+	return 11 + 97 * (stage + 1)
+
+
 ## Lays out a stage's pickups, the same every time for a stage, and lists each in its segment.
 func place(track: Track, seed_value: int = 11) -> void:
 	for p in pickups:
@@ -46,17 +51,48 @@ func place(track: Track, seed_value: int = 11) -> void:
 static func layout(track: Track, seed_value: int) -> Array[Pickup]:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
+	var kinds := deal(ROAD_WEIGHTS, SPOTS.size(), rng)
 	var out: Array[Pickup] = []
-	for f: float in SPOTS:
-		var i := track.free_spot(int(track.segments.size() * f), 6)
+	for k in SPOTS.size():
+		var i := track.free_spot(int(track.segments.size() * SPOTS[k]), 6)
 		if i < 0:
 			continue
 		var p := Pickup.new()
 		p.segment = i
 		var seg := track.segments[i]
 		p.offset = seg.lane_x(rng.randi() % seg.lanes) * track.side()
-		p.kind = pick(ROAD_WEIGHTS, rng.randf())
+		p.kind = kinds[k]
 		out.append(p)
+	return out
+
+
+## `n` kinds dealt to follow `weights` (G7), shuffled: each kind its whole share of n, and the
+## spots left over to kinds drawn by what's left of their shares, no kind twice. Five spots on
+## the road weights: two mystery hubcaps and three of the other four kinds, a different one
+## left out stage to stage. Independent rolls could give one stage four of a kind.
+static func deal(weights: Array, n: int, rng: RandomNumberGenerator) -> Array[int]:
+	var total := 0.0
+	for w: float in weights:
+		total += w
+	var out: Array[int] = []
+	var left := []
+	for k in weights.size():
+		var share: float = weights[k] / total * n
+		for c in int(share + 1e-6):
+			out.append(k)
+		left.append(maxf(share - int(share + 1e-6), 0.0))
+	while out.size() < n:
+		var rest := 0.0
+		for w: float in left:
+			rest += w
+		var k := pick(left if rest > 0.0 else weights, rng.randf())
+		out.append(k)
+		left[k] = 0.0
+	for i in range(out.size() - 1, 0, -1):  # Fisher-Yates on the stage's own rng
+		var j := rng.randi() % (i + 1)
+		var s := out[i]
+		out[i] = out[j]
+		out[j] = s
 	return out
 
 

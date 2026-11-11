@@ -262,7 +262,7 @@ func start_race() -> void:
 	player.road_y = track.height_at(player.position + Cfg.PLAYER_Z)
 	power_ups = PowerUps.new()
 	if Settings.power_ups:
-		power_ups.place(track)
+		power_ups.place(track, PowerUps.seed_for(stage_index))
 	pickup = -1
 	pickup_gave = -1
 	pickup_age = 99.0

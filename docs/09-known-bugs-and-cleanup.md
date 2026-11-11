@@ -6,9 +6,8 @@ drive-throughs, the Skyline Finale, menus and options. Paths are relative to the
 checked in game. "Fixed (phase N)" marks what the cleanup below has done (2026-10-31, branches
 `feature/CLD-cleanup-1-fixes` to `-4-golden`).
 
-**G3 and G4 fixed in RC-9; A1 to A3 in CP-7; A4 and G6 in the 1.0 bug bash (EQ-26).**
-**Still open:** G7 (the power-up layout is the same on every stage, with no nitro cans or
-mystery hubcaps; deferred, see the row). Every loaded roadside sprite is now placed
+**G3 and G4 fixed in RC-9; A1 to A3 in CP-7; A4 and G6 in the 1.0 bug bash (EQ-26); G7 after it.**
+Nothing is open. Every loaded roadside sprite is now placed
 (roadmap WS-5): `Track.add_road_signs` and `Track.add_race_furniture`, and `test_track` asserts it.
 
 ## The 1.0 bug bash (EQ-26, 2026-11-11)
@@ -27,7 +26,7 @@ Every open item here and every open GitHub issue, fixed or deferred with a reaso
   a whole kind missing falls back to the cars, none at all gives an empty road), a missing front
   view or light frame falls back to the rear view, and a missing power-up sprite draws blank
   instead of a null texture (`test_traffic.test_a_missing_sprite_is_left_out`).
-- **G7** found and deferred: below.
+- **G7** found and deferred, then fixed after the bug bash with Austin's go-ahead on the golden traces: below.
 
 ## Fixed in this pass
 
@@ -60,7 +59,7 @@ Every open item here and every open GitHub issue, fixed or deferred with a reaso
 | G4 | Low | **Fixed (RC-9)** | **Rammed cars never come back onto the road.** They stay at offset ±4 and become solid again after 0.8 s. A player far off-road can then crash into them. | `scripts/car/traffic.gd:59-61`, `player_car.gd:203` |
 | G5 | Low | **Fixed (phase 1)** | **Auto gas can drop new input fields.** `Settings.drive_input` copies a hand-written list of `DriveInput` fields, so a field added later is silently lost when auto gas is on. | `scripts/core/settings.gd:73-75` |
 | G6 | Low | **Fixed (EQ-26)** | **A missing traffic sprite crashes the game.** The loader only warned, but `Traffic.spawn` indexed the sprite table directly, and `PowerUps.texture` cached a null. Now a missing sprite is left out of the pools (`Traffic.loaded`) and a missing power-up draws blank. | `traffic.gd`, `car_sprites.gd`, `power_ups.gd` |
-| G7 | Med | Confirmed, **deferred** | **Every stage has the same five power-ups, and never a nitro can or a mystery hubcap.** `PowerUps.place` lays them out with one seed (11) on every stage, and that seed's rolls give ram, clock, ghost, ghost, ram everywhere, though the road weights make mystery hubcaps the commonest kind. **Why deferred:** any fix (a seed per stage) moves the pickups, which is a play change: the golden traces must be regenerated with it, and that is Austin's call as a gameplay story (RC or MP, with the power-up balance), not a bug-bash change. | `scripts/race/power_ups.gd` `place`, `layout` |
+| G7 | Med | **Fixed** | **Every stage has the same five power-ups, and never a nitro can or a mystery hubcap.** `PowerUps.place` laid them out with one seed (11) on every stage, and that seed's rolls gave ram, clock, ghost, ghost, ram everywhere, though the road weights make mystery hubcaps the commonest kind. **Fix:** each stage has its own seed (`PowerUps.seed_for`), and the kinds are dealt to follow the road weights (`PowerUps.deal`): two mystery hubcaps and three of the other four on every stage, the one left out and the order changing stage to stage (independent rolls on a seed per stage could still give one stage four of a kind). The golden traces and `Medals.TIMES` are regenerated; `test_power_ups.test_every_stage_has_its_own_mix`. | `scripts/race/power_ups.gd` `seed_for`, `layout`, `deal` |
 
 ### UI and flow
 
