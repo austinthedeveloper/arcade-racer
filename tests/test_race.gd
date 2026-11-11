@@ -651,3 +651,85 @@ func test_the_horn_button_moves_the_car_ahead() -> void:
 	honking.horn = true
 	drive(r, 1, honking)
 	check(car.honk_in < INF, "the horn: it gives way after a beat")
+
+
+# RC-22: a big hit holds a few frames of slow motion, none with reduce motion (AC-13)
+func test_a_big_hit_holds_a_moment_of_slow_motion() -> void:
+	var race_script: GDScript = load("res://scripts/race/race.gd")
+	var p := PlayerCar.new()
+	p.reset()
+	p.speed = Cfg.MAX_SPEED * 0.95
+	eq(race_script.hit_slowmo_for(p, false, false), 0.0, "no crash, none")
+	p.crash()
+	near(race_script.hit_slowmo_for(p, false, false), Tuning.v("crashes/slowmo_time"), 0.0001, "a big hit")
+	eq(race_script.hit_slowmo_for(p, true, false), 0.0, "none with reduce motion")
+	eq(race_script.hit_slowmo_for(p, false, true), 0.0, "none online")
+	p.speed = Cfg.MAX_SPEED * 0.3
+	p.crash()
+	eq(race_script.hit_slowmo_for(p, false, false), 0.0, "a small hit: none")
+
+
+func test_the_slow_motion_slows_the_race_then_lets_go() -> void:
+	var r := race(false, false)
+	drive(r, 300, input(1.0))  # (racing)
+	var t0: float = r.race_time
+	r.hit_slowmo = Tuning.v("crashes/slowmo_time")
+	drive(r, 1, input(1.0))
+	near(r.race_time - t0, DT * Tuning.v("crashes/slowmo_scale"), 0.0001, "the clock slowed with it")
+	var ticks := 1
+	while r.hit_slowmo > 0.0 and ticks < 600:
+		drive(r, 1, input(1.0))
+		ticks += 1
+	near(ticks * DT, Tuning.v("crashes/slowmo_time"), DT * 1.5, "for crashes/slowmo_time of real time")
+	t0 = r.race_time
+	drive(r, 1, input(1.0))
+	near(r.race_time - t0, DT, 0.0001, "then full speed")
+
+
+func test_reduce_motion_skips_the_slow_motion_in_a_race() -> void:
+	var settings: Node = runner.root.get_node("Settings")
+	var held := []
+	for reduce in [false, true]:
+		settings.reduce_motion = reduce
+		var r := race(false, false)
+		drive(r, 300, input(1.0))  # up to speed
+		var crashed := false
+		for i in 600:
+			r.player.x = 1.8  # off the road at speed, into the palms
+			r.player.speed = Cfg.MAX_SPEED * 0.95
+			drive(r, 1, input(1.0))
+			if r.player.crashed:
+				crashed = true
+				break
+		check(crashed and PlayerCar.big_hit(r.player.hit_speed), "a big hit on the roadside (%.0f)" % r.player.hit_speed)
+		held.append(r.hit_slowmo > 0.0)
+	settings.reduce_motion = false
+	eq(held, [true, false], "slow motion held, then skipped with reduce motion")
+
+
+# RC-23: each checkpoint's time bonus scales with the difficulty (Difficulty.clock_bonus)
+func test_checkpoint_bonuses_scale_with_the_difficulty() -> void:
+	var settings: Node = runner.root.get_node("Settings")
+	var got := []
+	for level in [Difficulty.Level.EASY, Difficulty.Level.NORMAL, Difficulty.Level.HARD]:
+		settings.difficulty = level
+		settings.timer = settings.Clock.ARCADE
+		var r := race(false, false)
+		eq(r.checkpoint_bonus, roundf(r.clock[1] * Difficulty.of(level).clock_bonus), "%s: the first bonus" % Difficulty.NAMES[level])
+		eq(r.time_left, settings.race_time(r.clock[0]), "the start time as the timer has it")
+		got.append(r.checkpoint_bonus)
+		r.player.distance = r.checkpoint_distances[0] + 1.0
+		var before: float = r.time_left
+		var bonus: float = r.checkpoint_bonus
+		r.state = r.State.RACING
+		r._check_progress()
+		near(r.time_left - before, bonus, 0.001, "given at the checkpoint")
+		eq(r.checkpoint_bonus, roundf(r.clock[2] * Difficulty.of(level).clock_bonus), "and the next one scaled too")
+	check(got[0] > got[1] and got[1] > got[2], "easy generous, hard tight (%s)" % str(got))
+	settings.timer = settings.Clock.TIGHT
+	settings.difficulty = Difficulty.Level.HARD
+	var tight := race(false, false)
+	eq(tight.checkpoint_bonus, roundf(tight.clock[1] * Settings.TIMER_MULT[Settings.Clock.TIGHT] * Tuning.v("difficulty/hard_clock")),
+		"on top of the timer option")
+	settings.timer = settings.Clock.ARCADE
+	settings.difficulty = Difficulty.Level.NORMAL

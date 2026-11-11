@@ -27,6 +27,8 @@ godot --headless --path . -s res://tools/online_probe.gd -- --relay=ws://127.0.0
 godot --path . -- --online=host --stage=1 --autodrive --room-file=/tmp/room   # then in another: --online=join:$(cat /tmp/room) --autodrive; two windows race, print the finishes, quit (--races=2 on both: a rematch first, ON-9)
 godot --path . -- --online=bot --stage=1 --autodrive --at-segment=4650 --screenshots=900 --shot-dir=/tmp/shots   # an online race on an in-memory relay with a made-up guest (--players=N, --bot-speed=0.6, --bot-lag=MS, --bot-drop=S)
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
+tools/soak.sh --quick                               # soak test (EQ-22): random inputs on every stage and difficulty (no --quick: every car too, nightly; --stages=2 --cars=car_mesa --seed=N)
+tools/soak.sh --report --detail [--draws=3]         # the autodrive's field per stage and difficulty against its band (RC-21; --tuning-file=F to try tuning)
 godot --path . -- --tuning-file=res://tests/fixtures/tuning_override.cfg --screen=debug:camera --menu-shot=/tmp/d.png   # the F3 tuning panel on a page (Tuning.AREAS, actions, presets); race flags put it over a race
 python3 tools/tuning_adopt.py [FILE] [--only=KEYS] [--dry-run]   # tuned values into Tuning.TABLE as the defaults, golden traces regenerated (README: Tuning)
 godot --headless --path . -s res://tools/track_preview.gd -- --out=/tmp/plots   # plot every stage top-down and side-on to PNG (--stage=N for one)
@@ -66,7 +68,7 @@ No addon. `tests/run_tests.gd` runs every `tests/test_*.gd` (methods named `test
 it through the input map: menus, then the race. The race itself is `scenes/race.tscn`. `tests/golden/` holds per-frame traces of autodriven races
 (Palm Coast with traffic and rivals and on a clear road with neither, every other stage with traffic and rivals, default options so power-ups on); `test_golden` replays them
 and also checks every stage's autodriven race finishes in time and every rival finishes, and that each stage run mirrored (WS-6) gives its trace again once mirrored back (`Golden.snapshot` takes x times `Track.side`), so anything placed across the road must go by `Track.side` / `Traffic.lanes`. `--no-rivals` and `--no-traffic` empty the road for screenshots. `tools/shots.sh` renders five menus (the update screen staged mid-download) and two race frames at a fixed 60 fps and compares them with
-`tests/shots/` (`tools/shots.py`: a difference hash plus a color difference). CI (`.github/workflows/ci.yml`) runs `tools/test.sh` in two jobs (the golden traces on their own), and `tools/shots.sh` under xvfb. A pushed `v*` tag runs
+`tests/shots/` (`tools/shots.py`: a difference hash plus a color difference). CI (`.github/workflows/ci.yml`) runs `tools/test.sh` in two jobs (the golden traces on their own), and `tools/shots.sh` under xvfb; `.github/workflows/soak.yml` runs `tools/soak.sh` nightly. A pushed `v*` tag runs
 `.github/workflows/release.yml`: tests, `tools/export.sh`, then a GitHub Release with the zips.
 
 - Add or extend tests with every change.

@@ -237,6 +237,47 @@ func test_running_into_a_racer_drops_in_behind_it() -> void:
 	eq(front.speed, 5000.0, "the car in front keeps its speed")
 
 
+func test_a_rival_stuck_behind_a_stopped_car_edges_round_it() -> void:
+	# Regression (EQ-22's soak): a rival that ran up behind the player stopped at TIME UP was
+	# held at a standstill every tick, and with no speed it couldn't steer out: it sat there.
+	var t := flat_track(2000)
+	var p := _player()
+	p.reset(20000.0)
+	p.x = 0.2
+	var f := _field(t, 1)
+	var r: RivalCar = f.cars[0]
+	r.reset(19500.0)
+	r.x = 0.54
+	r.speed = 3000.0
+	for i in 60 * 10:
+		f.update(DT, t, p, true, 1e12)
+		p.update(DT, DriveInput.new(), t, false)
+		Rivals.resolve_contacts(f.everyone(p), t)
+	check(r.position > p.position, "it got by (%.0f, the stopped car at %.0f)" % [r.position, p.position])
+	var front := PlayerCar.new()
+	front.reset(2000.0)
+	var back := PlayerCar.new()
+	back.reset(1500.0)
+	back.x = 0.3
+	back.speed = 100.0
+	back.position = 1900.0
+	Rivals.resolve_contacts([back, front], t)
+	near(back.x, 0.3 + Rivals.SQUEEZE, 0.0001, "edged away from it")
+	back.x = 0.3
+	back.position = 1900.0
+	back.last_position = 1500.0
+	front.crash_time = 1.0
+	Rivals.resolve_contacts([back, front], t)
+	eq(back.x, 0.3, "a crashed car gets going again: waited for")
+	front.crash_time = 0.0
+	front.speed = 5000.0
+	back.x = 0.3
+	back.position = 2000.0 - Rivals.CONTACT_LENGTH + 100.0
+	back.last_position = 1500.0
+	Rivals.resolve_contacts([back, front], t)
+	eq(back.x, 0.3, "behind a moving car it stays in line")
+
+
 func test_racers_side_by_side_are_pushed_apart() -> void:
 	var t := flat_track()
 	var a := RivalCar.new()
@@ -398,8 +439,8 @@ func test_the_band_reaches_the_race() -> void:
 	f.cars[0].distance = p.distance + Tuning.v("ai/band_range") * 2.0
 	f.cars[1].distance = p.distance - Tuning.v("ai/band_range") * 2.0
 	f.update(DT, t, p, true, 1e12)
-	near(f.cars[0].top_speed, f.cars[0].base_top * (1.0 - Rivals.BAND_EASE), 0.01, "the leader eases off")
-	near(f.cars[1].top_speed, f.cars[1].base_top * (1.0 + Rivals.BAND_BOOST), 0.01, "the straggler gains")
+	near(f.cars[0].top_speed, f.cars[0].base_top * (1.0 - Tuning.v("difficulty/normal_ease")), 0.01, "the leader eases off")
+	near(f.cars[1].top_speed, f.cars[1].base_top * (1.0 + Tuning.v("difficulty/normal_boost")), 0.01, "the straggler gains")
 
 
 func test_an_aggressive_driver_blocks_a_faster_car_behind() -> void:
@@ -469,7 +510,10 @@ func test_difficulty_levels() -> void:
 	check(easy.rival_pace < normal.rival_pace and normal.rival_pace < hard.rival_pace, "rivals quicker as it gets harder")
 	check(easy.band_ease > hard.band_ease, "easy rivals wait for you more")
 	check(easy.band_boost < hard.band_boost, "hard rivals catch up more")
-	eq([easy.timer, normal.timer, hard.timer], [0, 1, 2], "relaxed, arcade and tight clocks")
+	eq([easy.timer, normal.timer, hard.timer], [0, 1, 1], "relaxed, arcade and arcade timers")
+	check(easy.clock_bonus > normal.clock_bonus and normal.clock_bonus > hard.clock_bonus,
+		"checkpoint bonuses bigger on easy, smaller on hard (RC-23)")
+	eq(normal.clock_bonus, 1.0, "normal's as the stage has them")
 	var top_pace: float = RivalProfile.roster().map(func(p: RivalProfile) -> float: return p.pace).max()
 	for d in [easy, normal, hard]:
 		check(d.band_ease <= Tuning.v("ai/band_max") and d.band_boost <= Tuning.v("ai/band_max"), "within the band's cap")
@@ -478,6 +522,23 @@ func test_difficulty_levels() -> void:
 			check(absf(b - 1.0) <= Tuning.v("ai/band_max"), "band capped (%.3f)" % b)
 		# Base pace only: the rubber band (capped above) can add a little on top of this.
 		check(d.rival_pace * top_pace <= 1.0, "even a hard rival's base pace tops out at its car's speed")
+
+
+func test_a_rivals_pace_is_capped_at_its_cars_top_speed() -> void:
+	# RC-21: the difficulty and a stage's balance value multiply, but never past the car
+	var t := flat_track()
+	var f := Rivals.new()
+	f.spawn(t, _player(), "car_vega", Rivals.COUNT, Rivals.SEED, Difficulty.of(Difficulty.Level.HARD), [], 1.1)
+	for r in f.cars:
+		var car_top: float = Cfg.MAX_SPEED * Cars.tuning(Cars.find(r.car_id))["top"]
+		check(r.base_top <= car_top * Rivals.MAX_PACE + 0.001, "%s capped" % r.car_id)
+	for stage in Stages.count():
+		near(Rivals.stage_pace_of(stage), Tuning.v("balance/" + Stages.POSTCARDS[stage]), 0.0001, "the stage's balance value")
+	var plain := Rivals.new()
+	plain.spawn(t, _player(), "car_vega", Rivals.COUNT, Rivals.SEED, Difficulty.of(Difficulty.Level.EASY))
+	var slow := Rivals.new()
+	slow.spawn(t, _player(), "car_vega", Rivals.COUNT, Rivals.SEED, Difficulty.of(Difficulty.Level.EASY), [], 0.95)
+	near(slow.cars[0].base_top, plain.cars[0].base_top * 0.95, 0.01, "a stage's pace below 1 slows its field")
 
 
 func test_difficulty_reaches_the_field() -> void:

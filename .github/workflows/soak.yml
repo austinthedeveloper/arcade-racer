@@ -1,0 +1,53 @@
+# The soak test (EQ-22): every stage raced with every car on every difficulty, random inputs,
+# headless (tools/soak.sh). Nightly, a job per stage; a race that breaks or any error printed
+# fails it. Beside it, the autodrive's field per stage and difficulty against its band (RC-21).
+name: Soak
+
+on:
+  schedule:
+    - cron: "17 7 * * *"  # nightly, 07:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  soak:
+    name: Soak stage ${{ matrix.stage }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        stage: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-godot
+
+      - name: Import the project
+        run: godot --headless --path . --import
+
+      - name: Soak (12 cars x 3 difficulties)
+        # A new seed each night, printed so a failure can be raced again locally
+        run: |
+          seed=$(date +%Y%m%d)
+          echo "seed $seed: tools/soak.sh --stages=${{ matrix.stage }} --seed=$seed"
+          tools/soak.sh --stages=${{ matrix.stage }} --seed=$seed
+
+  balance:
+    name: Rival balance report
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-godot
+
+      - name: Import the project
+        run: godot --headless --path . --import
+
+      - name: Field per stage and difficulty (tools/soak.sh --report)
+        run: |
+          set -o pipefail
+          tools/soak.sh --report | tee -a "$GITHUB_STEP_SUMMARY"

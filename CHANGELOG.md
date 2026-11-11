@@ -50,8 +50,23 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Changed
 
+- Easier to read (AC-17): the credits roll down a dark column instead of straight over the
+  harbor, and the Grand Tour finale's podium, standings and end card wait for you to press
+  on instead of moving on by themselves.
 - Car select: every car's picture is now rendered from its 3D model, all from the same angle on
   the same coast road, and painted like the car you then drive.
+- Rival balance (RC-21): on Easy, rivals ahead of you wait for you a little longer.
+- Crash feel (RC-22): the harder the hit, the longer the car tumbles; a big hit holds a moment
+  of slow motion (not with Reduce motion on); back on the road the car is see-through for a
+  second, so nothing can hit it again at once. Medal times move with the new autodrive times.
+- Clock per difficulty (RC-23): checkpoint time bonuses are 10% bigger on Easy and 10% smaller
+  on Hard. Hard now starts you on the ARCADE timer instead of TIGHT (TIGHT is still there to
+  pick): on TIGHT the start time on some stages ran out before the first checkpoint.
+
+### Fixed
+
+- Stuck rivals (EQ-22): a rival that ran up behind a car standing still on the road (yours
+  after TIME UP, say) could sit behind it for the rest of the race; it now drives round.
 
 ### Fixed
 

@@ -12,10 +12,10 @@ const PATH := "user://tuning.cfg"
 const PRESET_DIR := "user://tuning_presets"
 const LOG_PATH := "user://tuning_log.txt"
 ## The areas, in the debug panel's page order. A key is "area/name".
-const AREAS := ["driving", "slide", "crashes", "ai", "traffic", "draft", "launch", "power_ups", "scoring", "camera", "world",
-	"assists", "first_drive"]
-const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "SCORING", "CAMERA",
-	"WORLD", "ASSISTS", "FIRST DRIVE"]
+const AREAS := ["driving", "slide", "crashes", "ai", "difficulty", "balance", "traffic", "draft", "launch", "power_ups", "scoring", "camera",
+	"world", "assists", "first_drive"]
+const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "DIFFICULTY", "STAGE BALANCE", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "SCORING",
+	"CAMERA", "WORLD", "ASSISTS", "FIRST DRIVE"]
 ## key: [default, min, max, step, what it is]. tools/tuning_adopt.py rewrites the defaults in
 ## place, so keep one value to a line, the default first.
 const TABLE := {
@@ -54,6 +54,12 @@ const TABLE := {
 	"crashes/sideswipe_loss": [0.05, 0.0, 0.3, 0.01, "share of your speed a side-swipe scrubs off"],
 	"crashes/head_on_time": [1.0, 0.3, 3.0, 0.1, "seconds a head-on with oncoming traffic lasts"],
 	"crashes/head_on_keep": [0.25, 0.0, 1.0, 0.05, "share of your speed you keep after a head-on"],
+	"crashes/tumble_slow": [0.5, 0.2, 1.5, 0.05, "share of a crash's length it lasts hit at a standstill (RC-22)"],
+	"crashes/tumble_fast": [1.1, 0.5, 2.0, 0.05, "and hit at top speed; between, by the speed of the hit"],
+	"crashes/big_hit": [0.75, 0.0, 1.0, 0.05, "share of top speed a hit needs for the slow motion"],
+	"crashes/slowmo_time": [0.35, 0.0, 1.0, 0.05, "seconds (real time) a big hit holds the slow motion (none with reduce motion)"],
+	"crashes/slowmo_scale": [0.3, 0.1, 1.0, 0.05, "how fast the race runs in it"],
+	"crashes/respawn_ghost": [1.0, 0.0, 3.0, 0.1, "seconds a car is ghosted once its crash is over, so nothing hits it at once"],
 	"ai/line_gain": [0.09, 0.0, 0.3, 0.01, "road half-widths toward the inside per unit of curve ahead"],
 	"ai/line_max": [0.55, 0.0, 1.0, 0.05, "furthest inside the racing line goes"],
 	"ai/steer_gain": [1.5, 0.5, 4.0, 0.1, "how hard a rival steers toward its line"],
@@ -70,6 +76,26 @@ const TABLE := {
 	"ai/band_max": [0.08, 0.0, 0.3, 0.01, "most the rubber band changes a rival's speed, either way"],
 	"ai/contact_slowdown": [0.97, 0.8, 1.0, 0.01, "share of the front car's speed the car behind drops to on contact"],
 	"ai/side_push_loss": [0.02, 0.0, 0.2, 0.01, "share of speed a side contact between racers scrubs off"],
+	"difficulty/easy_pace": [0.94, 0.8, 1.1, 0.01, "easy: every rival's pace times this"],
+	"difficulty/easy_ease": [0.08, 0.0, 0.3, 0.01, "easy: most a rival ahead of you gives up (the rubber band)"],
+	"difficulty/easy_boost": [0.02, 0.0, 0.3, 0.01, "easy: most a rival behind you gains"],
+	"difficulty/normal_pace": [1.0, 0.8, 1.1, 0.01, "normal: every rival's pace times this"],
+	"difficulty/normal_ease": [0.05, 0.0, 0.3, 0.01, "normal: most a rival ahead of you gives up"],
+	"difficulty/normal_boost": [0.04, 0.0, 0.3, 0.01, "normal: most a rival behind you gains"],
+	"difficulty/hard_pace": [1.03, 0.8, 1.1, 0.01, "hard: every rival's pace times this"],
+	"difficulty/hard_ease": [0.02, 0.0, 0.3, 0.01, "hard: most a rival ahead of you gives up"],
+	"difficulty/hard_boost": [0.06, 0.0, 0.3, 0.01, "hard: most a rival behind you gains"],
+	"difficulty/easy_clock": [1.1, 0.5, 2.0, 0.05, "easy: each checkpoint's time bonus times this, on top of the timer option (RC-23)"],
+	"difficulty/normal_clock": [1.0, 0.5, 2.0, 0.05, "normal: each checkpoint's time bonus times this"],
+	"difficulty/hard_clock": [0.9, 0.5, 2.0, 0.05, "hard: each checkpoint's time bonus times this (the autodrive still makes it, test_golden)"],
+	"balance/palm_coast": [1.0, 0.9, 1.1, 0.01, "Palm Coast: every rival's pace times this, on top of the difficulty's"],
+	"balance/redrock": [1.0, 0.9, 1.1, 0.01, "Redrock Canyon: every rival's pace times this, on top of the difficulty's"],
+	"balance/neon": [1.0, 0.9, 1.1, 0.01, "Neon Strip: every rival's pace times this, on top of the difficulty's"],
+	"balance/timberline": [1.0, 0.9, 1.1, 0.01, "Timberline Pass: every rival's pace times this, on top of the difficulty's"],
+	"balance/bayou": [1.0, 0.9, 1.1, 0.01, "Bayou Causeway: every rival's pace times this, on top of the difficulty's"],
+	"balance/harvest": [1.0, 0.9, 1.1, 0.01, "Harvest Valley: every rival's pace times this, on top of the difficulty's"],
+	"balance/thunder": [1.0, 0.9, 1.1, 0.01, "Thunderhead Highway: every rival's pace times this, on top of the difficulty's"],
+	"balance/skyline": [1.0, 0.9, 1.1, 0.01, "Skyline Finale: every rival's pace times this, on top of the difficulty's"],
 	"traffic/signal_time": [1.0, 0.0, 3.0, 0.1, "seconds a car signals before it changes lanes"],
 	"traffic/changer_share": [0.5, 0.0, 1.0, 0.05, "share of the cars with signals that change lanes"],
 	"traffic/change_retry": [1.5, 0.2, 5.0, 0.1, "seconds before trying again when the next lane is taken"],

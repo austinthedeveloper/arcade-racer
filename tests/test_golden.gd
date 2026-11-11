@@ -89,6 +89,25 @@ func _finishes_in_time(r: Node) -> void:
 	check(r.race_time > 60.0 and r.race_time < 120.0, "%s: a believable lap time (%.1f s)" % [name, r.race_time])
 	run_until(r, func(): return r.rivals.finished_count() == Rivals.COUNT, 60 * 60)
 	eq(r.rivals.finished_count(), Rivals.COUNT, name + ": every rival finishes")
+	# RC-21: the field home within its band on Normal, the autodrive placed in it
+	var f := Soak.field(r)
+	eq(Soak.out_of_band(f, Difficulty.Level.NORMAL, r.stage_index), "", "%s: in its band (spread %.1f s, placed %d)" % [
+		name, f["spread"], f["place"]])
+
+
+# RC-21: on Easy and Hard too, every stage's autodriven field finishes within its band
+# (Soak.BANDS), the autodrive placed where the difficulty says. (Normal: _finishes_in_time.)
+# RC-23: and the autodrive reaches every checkpoint with Soak.CLOCK_MARGIN on the clock at
+# least, on the difficulty's own timer and checkpoint bonuses.
+func test_every_stage_in_its_band_on_easy_and_hard_with_time_to_spare() -> void:
+	var settings: Node = runner.root.get_node("Settings")
+	for stage in Stages.count():
+		for level in [Difficulty.Level.EASY, Difficulty.Level.HARD]:
+			var f := Soak.autodrive_field(settings, stage, level)
+			eq(f["rivals_home"], Rivals.COUNT, "%s %s: every rival home" % [Stages.POSTCARDS[stage], Difficulty.NAMES[level]])
+			eq(Soak.out_of_band(f, level, stage), "", "%s %s: in its band (spread %.1f s, placed %d, %.1f s on the clock)" % [
+				Stages.POSTCARDS[stage], Difficulty.NAMES[level], f["spread"], f["place"], f["clock"]])
+	eq(settings.difficulty, Difficulty.Level.NORMAL, "Settings left as they were")
 
 
 func test_every_stage_has_a_golden_scenario() -> void:

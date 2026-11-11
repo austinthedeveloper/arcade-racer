@@ -4,12 +4,12 @@ extends MenuScreen
 ## stage select. First the podium on the Skyline bridge (the top three's cars on the steps
 ## under the bridge's pylons, fireworks over the harbor), then the tour standings, then the
 ## end card for where the player finished overall (end_card: the champion, a podium place
-## or the rest), then the credits over the harbor (CreditsScreen.harbor). Each page moves
-## on by itself after PAGE_TIME, or sooner with select; back skips to the credits.
+## or the rest), then the credits over the harbor (CreditsScreen.harbor). Each page waits for
+## select, so nobody has to read the standings against a clock (AC-17); back skips to the
+## credits.
 
 enum Page { PODIUM, STANDINGS, CARD }
 
-const PAGE_TIME := {Page.PODIUM: 9.0, Page.STANDINGS: 8.0, Page.CARD: 7.0}
 const SKY_TOP := Color("#24124a")  # Skyline's sky (stages/skyline.gd)
 const SKY_BOTTOM := Color("#f2875a")
 const WATER := Color("#22307a")
@@ -153,16 +153,7 @@ func handle(m: MenuInput) -> void:
 
 func _process(dt: float) -> void:
 	super._process(dt)
-	if advance(dt) and game != null:
-		game.show_credits(true)
-
-
-## Moves the pages on with the clock; true once the last page is over (on to the credits).
-func advance(dt: float) -> bool:
 	page_time += dt
-	if page_time >= PAGE_TIME[page]:
-		return next_page_due()
-	return false
 
 
 func next_page_due() -> bool:

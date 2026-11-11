@@ -113,7 +113,7 @@ var player_finish := -1.0  # race time the player finished in, -1 still racing
 var touched_traffic := false  # the player has touched a traffic car this stage (Unlocks secret)
 var new_unlocks: Array[String] = []  # car ids (and a stage's mirror_id) this finish opened, for the HUD
 var finish_distance := 1.0
-var checkpoint_bonus := CHECKPOINT_BONUS  # the next checkpoint's, after the timer option
+var checkpoint_bonus := CHECKPOINT_BONUS  # the next checkpoint's, after the timer option and the difficulty (RC-23)
 var clock: Array[float] = []  # this stage's ARCADE clock: start, then each checkpoint (stage_clock)
 var checkpoint_distances: Array[float] = []
 var next_checkpoint := 0
@@ -162,6 +162,7 @@ var calibration: CalibrationWizard
 var debug_panel: DebugPanel
 var audio: RaceAudio
 
+var hit_slowmo := 0.0  # real seconds left of a big hit's slow motion (RC-22, hit_slowmo_for)
 var _shake := 0.0  # camera shake as designed, in pixels; the screen shake option scales what shows
 var _fov_stretch := 0.0  # 0..camera/nitro_fov_stretch (Tuning), eased while nitro burns
 var _was_airborne := false
@@ -267,6 +268,7 @@ func start_race() -> void:
 	pickup_age = 99.0
 	ram_flash = 0.0
 	_shake = 0.0
+	hit_slowmo = 0.0
 	_fov_stretch = 0.0
 	_was_airborne = false
 	traffic = Traffic.new()
@@ -281,7 +283,7 @@ func start_race() -> void:
 	rivals = Rivals.new()
 	difficulty = Difficulty.of(Settings.difficulty)
 	rivals.spawn(track, player, car_id, 0 if _no_rivals or time_attack or free_drive or online != null else Rivals.COUNT,
-		Rivals.SEED + stage_index, difficulty, tour_state.drivers if tour else [])
+		Rivals.SEED + stage_index, difficulty, tour_state.drivers if tour else [], Rivals.stage_pace_of(stage_index))
 	_shown.clear()
 	if online != null:
 		for s: int in online.racers:
@@ -303,7 +305,7 @@ func start_race() -> void:
 	if not is_nan(_time_left_shot):
 		time_left = _time_left_shot
 	after = After.RETRY
-	checkpoint_bonus = Settings.race_time(clock[1]) if clock.size() > 1 else 0.0
+	checkpoint_bonus = Settings.race_time(clock[1], difficulty.clock_bonus) if clock.size() > 1 else 0.0
 	race_time = 0.0
 	finish_age = 0.0
 	_results_shown = false
@@ -660,6 +662,9 @@ func _physics_process(dt: float) -> void:
 		_redraw()
 		return
 	dt *= debug_panel.logic.slow_motion()
+	if hit_slowmo > 0.0 and not paused:  # a big hit: the whole race, clock and all, slows a moment
+		hit_slowmo = maxf(0.0, hit_slowmo - dt)
+		dt *= Tuning.v("crashes/slowmo_scale")
 	if paused:
 		if replug_count > 0.0:  # the joypad back: 3, 2, 1 (WH-12)
 			replug_tick(dt, inp.pause_pressed or InputRouter.menu.back_pressed)
@@ -773,6 +778,8 @@ func _physics_process(dt: float) -> void:
 	if online != null:
 		_online_tick(sim)
 	player.collide(track)
+	if state == State.RACING:
+		hit_slowmo = maxf(hit_slowmo, hit_slowmo_for(player, Settings.reduce_motion, online != null))
 	if state == State.FINISHED:
 		player.speed = move_toward(player.speed, 0.0, FINISH_BRAKING * sim)
 		player.braking = player.speed > 0.0
@@ -888,6 +895,15 @@ func set_view(v: int) -> void:
 	fx.view = view
 
 
+## The slow motion (real seconds) a tick's crash of `p` starts (RC-22): crashes/slowmo_time
+## for a big hit (PlayerCar.big_hit), none for a small one, with reduce motion (AC-13) or online,
+## where the race can't slow for one player.
+static func hit_slowmo_for(p: PlayerCar, reduce_motion: bool, is_online: bool) -> float:
+	if not p.crashed or reduce_motion or is_online or not PlayerCar.big_hit(p.hit_speed):
+		return 0.0
+	return Tuning.v("crashes/slowmo_time")
+
+
 ## Camera shake (pixels, as designed) after a tick: a crash sets it, a landing, a takeoff
 ## over a crest and rough ground at speed kick it up, and it settles back to still.
 static func shake_after(shake: float, p: PlayerCar, took_off: bool, dt: float) -> float:
@@ -990,7 +1006,7 @@ func _check_progress() -> void:
 			_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0, Callouts.Kind.NONE)
 			callouts.push(Callouts.Kind.CHECKPOINT)
 			callouts.push(Callouts.Kind.TIME_EXTENDED, "+%d SEC" % checkpoint_bonus)
-			checkpoint_bonus = Settings.race_time(clock[next_checkpoint + 1]) if next_checkpoint + 1 < clock.size() else 0.0
+			checkpoint_bonus = Settings.race_time(clock[next_checkpoint + 1], difficulty.clock_bonus) if next_checkpoint + 1 < clock.size() else 0.0
 			_catch_up()
 	if player.distance >= finish_distance:
 		state = State.FINISHED

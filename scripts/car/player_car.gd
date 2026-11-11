@@ -65,6 +65,10 @@ var hit_traffic := false  # true for the tick the car touches a traffic car (any
 var crash_time := 0.0
 var crash_length := Tuning.v("crashes/crash_time")  # seconds the crash under way lasts in all
 var crash_floor := 0.0  # the speed the crash under way slows to
+var hit_speed := 0.0  # how fast the car was going when the last crash hit (RC-22)
+## Seconds left ghosted after a crash (RC-22): back on the road, it neither hits nor is hit for
+## crashes/respawn_ghost, drawn see-through like the GHOST power-up.
+var respawn_ghost := 0.0
 
 var _alt := 0.0
 var _vy := 0.0
@@ -99,6 +103,8 @@ func reset(start_position: float = 0.0) -> void:
 	ram_time = 0.0
 	ghost_time = 0.0
 	crash_time = 0.0
+	hit_speed = 0.0
+	respawn_ghost = 0.0
 	gear = 1
 	shifted = 0
 	airborne = false
@@ -192,6 +198,7 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	bog_time = maxf(0.0, bog_time - dt)
 	ram_time = maxf(0.0, ram_time - dt)
 	ghost_time = maxf(0.0, ghost_time - dt)
+	respawn_ghost = maxf(0.0, respawn_ghost - dt)
 
 	slide = slide_after(slide, speed, steer_in, brake, slides and not airborne and not offroad and crash_time <= 0.0)
 
@@ -215,6 +222,8 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	var was := speed
 	if crash_time > 0.0:
 		crash_time -= dt
+		if crash_time <= 0.0:
+			respawn_ghost = Tuning.v("crashes/respawn_ghost")  # back on its wheels: ghosted a moment
 		speed = move_toward(speed, crash_floor, Cfg.MAX_SPEED * Tuning.v("crashes/crash_braking") * dt)
 		var recover := Cfg.CRASH_RECOVER_X * seg.width
 		x = move_toward(x, clampf(x, -recover, recover), dt * Tuning.v("crashes/recover_rate"))
@@ -327,7 +336,7 @@ func passed_segments(track: Track) -> Array[Segment]:
 ## Checks roadside sprites and traffic in every segment the car entered this tick.
 func collide(track: Track) -> void:
 	rammed = false
-	if crash_time > 0.0 or airborne:
+	if crash_time > 0.0 or airborne or respawn_ghost > 0.0:
 		return
 	for seg in passed_segments(track):
 		if _collide_segment(seg, track):
@@ -412,7 +421,7 @@ func _collide_oncoming(track: Track) -> bool:
 			if ram_time > 0.0:
 				rammed = true
 			else:
-				crash(Tuning.v("crashes/head_on_time"), speed * Tuning.v("crashes/head_on_keep"))
+				crash(Tuning.v("crashes/head_on_time"), speed * Tuning.v("crashes/head_on_keep"), speed + car.speed)  # (hit at both speeds)
 			return true
 		if gap <= 0.0 and gap > -Cfg.CAR_LENGTH and absf(last_x - car.offset) >= reach:
 			hit_traffic = true
@@ -461,16 +470,35 @@ static func hits_span(seg: Segment, car_x: float, half_car: float) -> bool:
 ## Ran into the back of traffic too fast to bump it: a short spin, dropped in behind it at a
 ## share of its speed. Costs about a second, not the stop of a roadside crash.
 func spin_out(car: Traffic.TrafficCar, track: Track) -> void:
+	var hit := speed - car.speed  # (how hard it hit: the closing speed)
 	speed = minf(speed, car.speed * Tuning.v("crashes/traffic_spin_keep"))
 	move_to(car.z - Cfg.PLAYER_Z - Cfg.BUMP_GAP, track)
-	crash(Tuning.v("crashes/traffic_spin_time"), speed)
+	crash(Tuning.v("crashes/traffic_spin_time"), speed, hit)
 
 
-## A crash: no controls for `duration` seconds while the car slows to `slow_to` (a stop, unless
-## it's a spin off traffic).
-func crash(duration := Tuning.v("crashes/crash_time"), slow_to := 0.0) -> void:
-	crash_time = duration
-	crash_length = duration
+## Crash feel (RC-22): how long a crash of `duration` lasts hit at `hit` (world units per
+## second): a share of it from crashes/tumble_slow at a standstill to crashes/tumble_fast at
+## top speed, so a big hit tumbles longer than a nudge.
+static func tumble_length(duration: float, hit: float) -> float:
+	return duration * lerpf(Tuning.v("crashes/tumble_slow"), Tuning.v("crashes/tumble_fast"), clampf(hit / Cfg.MAX_SPEED, 0.0, 1.0))
+
+
+## Whether a hit at `hit` is a big one, worth the slow motion (Race.hit_slowmo_for).
+static func big_hit(hit: float) -> bool:
+	return hit >= Cfg.MAX_SPEED * Tuning.v("crashes/big_hit")
+
+
+## Ghosted: the GHOST power-up or just back from a crash. Racers drive through it.
+func ghosted() -> bool:
+	return ghost_time > 0.0 or respawn_ghost > 0.0
+
+
+## A crash: no controls for a while (tumble_length of `duration` for the hit at `hit`: the car's
+## speed unless given, the closing speed into traffic) while the car slows to `slow_to` (a stop, unless it's a spin off traffic).
+func crash(duration := Tuning.v("crashes/crash_time"), slow_to := 0.0, hit := -1.0) -> void:
+	hit_speed = speed if hit < 0.0 else hit
+	crash_time = tumble_length(duration, hit_speed)
+	crash_length = crash_time
 	crash_floor = slow_to
 	crashed = true
 	nitro_time = 0.0

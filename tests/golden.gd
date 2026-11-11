@@ -77,7 +77,7 @@ static func snapshot(r: Node) -> String:
 		+ " lanes=%.2f flung=%d ram=%.2f ghost=%.2f taken=%s%s") % [
 		r.state, r.race_time, r.time_left, r.next_checkpoint, p.distance, sided(p.x, side), p.speed,
 		p.air_height, p.crash_time, p.nitro_charges, p.nitro_time, cars, sided(lanes, side), flung, p.ram_time,
-		p.ghost_time, taken, rival_cols]
+		p.ghost_time + p.respawn_ghost, taken, rival_cols]
 
 
 ## `x` across a stage mirrored or not (`side`, Track.side) as it is across the stage as built.

@@ -571,8 +571,9 @@ func _draw_rival(seg: Segment, r: RivalCar, tint: Color) -> void:
 	if r.crash_time > 0.0:
 		steer = sin(r.crash_time * 20.0) * 2.0
 		lift += sin(r.crash_time / r.crash_length * PI) * w * 0.3
+	var alpha := r.fade * (ghost_alpha(r.respawn_ghost, time, flash) if r.respawn_ghost > 0.0 else 1.0)
 	CarSprites.draw_player(self, r.strips, Vector2(roundf(cx), roundf(cy)), w, steer, r.braking,
-		roundf(lift), r.pitch, r.fade, tint, _glow * (1.0 - seg.fog))
+		roundf(lift), r.pitch, alpha, tint, _glow * (1.0 - seg.fog))
 
 
 ## Where the ghost is on the track (its distance from the start line, wrapped).
@@ -608,10 +609,10 @@ func _draw_player() -> void:
 		lift += sin(k * PI) * w * 0.3
 	elif p.speed > 50.0 and not p.airborne:
 		y += roundf(randf_range(-1.0, 1.0) * (1.5 if p.offroad else 0.4) * p.speed / Cfg.MAX_SPEED)
-	# A ghost flickers see-through, brighter as it runs out
+	# A ghost flickers see-through, brighter as it runs out (the power-up, or back from a crash)
 	var alpha := 1.0
-	if p.ghost_time > 0.0:
-		alpha = ghost_alpha(p.ghost_time, time, flash)
+	if p.ghosted():
+		alpha = ghost_alpha(maxf(p.ghost_time, p.respawn_ghost), time, flash)
 	CarSprites.draw_player(self, player_strips, Vector2(Cfg.SCREEN_W * 0.5, roundf(y)), w, steer, p.braking,
 		roundf(lift), p.pitch, alpha, _light, _glow)
 

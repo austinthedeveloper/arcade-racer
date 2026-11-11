@@ -10,13 +10,14 @@ extends MenuScreen
 const SPEED := 24.0  # pixels a second
 const FAST := 6.0  # times faster while a key or button is held
 const START_Y := 120.0  # where the first line starts: the title up at once, the rest below
+const COLUMN_MARGIN := 18.0  # the column's room either side of the widest line
 const END_PAUSE := 2.0  # seconds the last line sits in the middle before the roll ends
 ## Each line's kind: its text size, color and the space it takes.
 const STYLE := {
 	"title": {"size": 30, "color": GOLD, "height": 44},
 	"head": {"size": 11, "color": SKY, "height": 30},
 	"name": {"size": 15, "color": Color.WHITE, "height": 20},
-	"small": {"size": 9, "color": Color(1, 1, 1, 0.75), "height": 14},
+	"small": {"size": 9, "color": Color(1, 1, 1, 0.85), "height": 14},
 	"gap": {"size": 0, "color": Color.WHITE, "height": 24},
 }
 ## The roll, top to bottom: [kind, text]. Each tool and font is a "name" with its license
@@ -121,6 +122,17 @@ func advance(dt: float, held: bool) -> bool:
 	return scroll >= scroll_end() + END_PAUSE * SPEED
 
 
+## The dark column the roll runs down: as wide as its widest line and a margin, full height.
+static func column() -> Rect2:
+	var widest := 0.0
+	for line: Array in LINES:
+		var st: Dictionary = STYLE[line[0]]
+		if st["size"] > 0:
+			widest = maxf(widest, UiText.width(line[1], st["size"]))
+	var cw := minf(widest + 2.0 * COLUMN_MARGIN, Cfg.SCREEN_W)
+	return Rect2((Cfg.SCREEN_W - cw) / 2.0, 0, cw, Cfg.SCREEN_H)
+
+
 func handle(m: MenuInput) -> void:
 	if m.back_pressed:
 		Audio.play("beep")
@@ -138,6 +150,7 @@ func _draw() -> void:
 	else:
 		_backdrop(0.72)
 	var w := float(Cfg.SCREEN_W)
+	draw_rect(column(), Color(NIGHT, 0.7))  # the text never sits straight on the busy art (AC-17)
 	var y := START_Y - scroll
 	for line: Array in LINES:
 		var st: Dictionary = STYLE[line[0]]

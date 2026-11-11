@@ -126,3 +126,14 @@ func test_the_title_pills_fit_across() -> void:
 		var size := TitleScreen.label_size(item, pill_w)
 		check(UiText.width(item, size) < pill_w - 6, "%s fits its pill at %d px" % [item, size])
 	eq(TitleScreen.label_size("START", pill_w), 14, "a short label keeps 14 px")
+
+
+func test_every_line_sits_on_the_dark_column() -> void:
+	# AC-17: small grey lines were lost over the sea; each line is inside the column
+	var col := CreditsScreen.column()
+	check(col.size.x < Cfg.SCREEN_W, "narrower than the screen")
+	for line: Array in CreditsScreen.LINES:
+		var st: Dictionary = CreditsScreen.STYLE[line[0]]
+		if st["size"] > 0:
+			var lw := UiText.width(line[1], st["size"])
+			check(lw <= col.size.x - CreditsScreen.COLUMN_MARGIN, line[1] + " fits the column")
