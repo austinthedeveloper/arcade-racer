@@ -77,9 +77,15 @@ static func build() -> Track:
 	t.add_tunnel(t.free_spot(strip_start + 120, 50), 45, "neon_tunnel", "neon_tunnel_ring", 3, "neon_tunnel_exit")
 	t.add_spans_at("neon_gantry", [0.08, 0.4, 0.68, 0.85])
 	t.scatter(["casino_entrance", "slot_machine", "cowboy_boot", "fountain_show", "palm_lights", "searchlight"], 200, 450, 1.7)
+	# Set pieces (WS-21): a searchlit premiere, a fountain court
+	t.add_set_piece("premiere", int(t.segments.size() * 0.3), [["searchlight", 0, -1.7], ["searchlight", 0, 1.7, true],
+		["billboard_wide", 4, -2.1], ["palm_lights", 6, -1.5], ["casino_entrance", 8, 1.9], ["searchlight", 10, -1.7]])
+	t.add_set_piece("fountain_court", int(t.segments.size() * 0.72), [["fountain_show", 0, 2.1], ["palm_lit", 2, -1.4],
+		["palm_lights", 4, -1.7], ["neon_spiral", 4, 1.7, true], ["palm_lit", 6, 1.4, true], ["neon_cocktail", 8, -1.4]])
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()
+	t.fill_bare(["neon_star", "palm_lit", "neon_stars"])  # no bare roadside longer than Track.MAX_BARE (WS-21)
 	return t
 
 

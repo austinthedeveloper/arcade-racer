@@ -20,12 +20,30 @@ const FINISH_INTO_STRAIGHT := 60  # segments into the final straight
 const TUNNEL_RAMP := 10.0  # segments from a tunnel mouth to its darkest
 const CREST_SPAN := 8  # segments either side of a crest its slopes are measured over (blind_crests)
 
-## Curves this sharp or sharper get a turn sign before them and chevrons on the outside.
+## Corner warnings (WS-5, WS-20): what the road signs warn of, decided here and nowhere else.
+## A bend is sharp where its curve is SHARP_CURVE or more (sharp_curves): it gets a turn arrow
+## before it and chevrons along its outside. A crest is blind by blind_crests (CREST_SPAN and
+## traffic/blind_crest, the same crests traffic keeps out from behind): it gets CREST_SIGN
+## before it. Every jump and bumpy stretch (hazards) gets one too.
 const SHARP_CURVE := CURVE_MEDIUM
-const SIGN_AHEAD := 30  # segments before a sharp curve, jump or bumps that its warning sign stands
+const SIGN_AHEAD := 30  # segments before a sharp curve, crest, jump or bumps that its warning sign stands
+## Where that spot is taken (a race gate, a span, a tunnel), the sign stands at the nearest open
+## segment up to SIGN_SLACK either side of it, so every bend and crest still has one.
+const SIGN_SLACK := 20
+const CREST_SIGN := "bump_sign"
+const HAZARD_REACH := 60  # segments: a jump's length (jump), so its crest is within this of its start
 const CHEVRON_EVERY := 8
 const RAIL_REACH := 10  # segments: rails stand every 10 (Bayou, Timberline), so a run has one this close
 const CHEVRONS := ["chevron_a", "chevron_b", "chevron_c"]
+## Scenery (WS-21): roadside on one side of a segment is bare when nothing stands on that side
+## within BARE_REACH road half-widths of the road and it isn't under a span or in a tunnel.
+## No stage has a bare stretch longer than MAX_BARE segments on either side: fill_bare plants
+## something every FILL_EVERY segments of a longer one.
+const BARE_REACH := 4.0
+const MAX_BARE := 30
+const FILL_EVERY := 24
+const FILL_OFFSET := 1.8  # road half-widths out, clear of the cars
+const FILL_SPREAD := 1.4
 ## Roadside art that reads wrong mirrored (lettering, numbers): on a mirrored stage it moves
 ## to the other side but keeps its art the right way round.
 const MIRROR_KEEPS_ART := ["slot_machine"]
@@ -49,6 +67,8 @@ var checkpoints: Array[int] = []
 var finish_index := 0
 ## First segment of every jump and bumpy stretch, for the bump signs (add_road_signs).
 var hazards: Array[int] = []
+## Set pieces (WS-21, add_set_piece): each one's name and the segment it starts at.
+var set_pieces: Array[Dictionary] = []
 ## Stage flow (StageFlow.dress): the next stage's theme, and this stage's palette mixed toward
 ## it in StageFlow.STEPS steps. Empty on the last stage, which keeps its own end.
 var next_theme: Dictionary = {}
@@ -384,6 +404,73 @@ func scatter(ids: Array, first: int, every: int, offset: float, side := 0) -> vo
 		at = i + every
 
 
+## A set piece (WS-21): a small roadside scene of `props`, each [id, segments on from its
+## start, offset (road half-widths, + right as built), flip], at the first free spot at or after
+## `index` (no race gate or span near, no part of it in a tunnel). Kept as `name` in set_pieces.
+## The segment it starts at, or -1 if there's no room.
+func add_set_piece(name_: String, index: int, props: Array) -> int:
+	var reach := 0
+	for p: Array in props:
+		reach = maxi(reach, p[1])
+	var at := free_spot(index, 4)
+	while at >= 0 and not _open_run(at, reach):
+		at = free_spot(at + 1, 4)
+	if at < 0:
+		return -1
+	for p: Array in props:
+		add_sprite(at + int(p[1]), p[0], p[2], p[3] if p.size() > 3 else false)
+	set_pieces.append({"name": name_, "at": at})
+	return at
+
+
+func _open_run(first: int, length: int) -> bool:
+	for i in range(first, first + length + 1):
+		if not open_roadside(i):
+			return false
+	return true
+
+
+## Plants `ids` in turn wherever roadside on either side has been bare (bare) for FILL_EVERY
+## segments, FILL_OFFSET to FILL_OFFSET + FILL_SPREAD out, so no bare stretch runs past
+## MAX_BARE. Call last in a stage's build, once everything else stands.
+func fill_bare(ids: Array) -> void:
+	var k := 0
+	for side: float in [-1.0, 1.0]:
+		var run := 0
+		for i in segments.size():
+			run = run + 1 if bare(i, side) else 0
+			if run <= FILL_EVERY or not open_roadside(i):
+				continue
+			var out := FILL_OFFSET + FILL_SPREAD * fposmod(k * 0.37, 1.0)
+			add_sprite(i, ids[k % ids.size()], side * out, side < 0.0)
+			k += 1
+			run = 0
+
+
+## Whether nothing stands on `side` (-1 left, 1 right) of segment `index` within BARE_REACH
+## and it's out in the open (no span over it, not in a tunnel).
+func bare(index: int, side: float) -> bool:
+	var seg := segments[index]
+	if seg.covered or not seg.spans.is_empty():
+		return false
+	for sp: Dictionary in seg.sprites:
+		var o: float = sp["offset"]
+		if signf(o) == side and absf(o) <= BARE_REACH:
+			return false
+	return true
+
+
+## The longest run of segments bare on `side` (-1 left, 1 right), as (first segment, length).
+func longest_bare(side: float) -> Vector2i:
+	var best := Vector2i(0, 0)
+	var run := 0
+	for i in segments.size():
+		run = run + 1 if bare(i, side) else 0
+		if run > best.y:
+			best = Vector2i(i - run + 1, run)
+	return best
+
+
 ## Crowds behind barriers, a grandstand, a camera tower and a flagman before the finish line.
 func add_finish_crowd() -> void:
 	var f := finish_index
@@ -395,16 +482,18 @@ func add_finish_crowd() -> void:
 	add_sprite(f - 4, "flagman", 1.15)
 
 
-## Warning signs: a turn arrow before every sharp curve (SHARP_CURVE) and, with `chevrons`,
-## chevrons along its outside where no rail already runs; a bump sign before every jump and
-## bumpy stretch. Call after the stage's spans, tunnels and rails: nothing goes under a span,
-## in a tunnel or on a race gate.
+## Warning signs (WS-5, WS-20), placed from the track data: a turn arrow before every sharp
+## curve (SHARP_CURVE) on its outside and, with `chevrons`, chevrons along its outside where no
+## rail already runs; a bump sign before every jump and bumpy stretch, and a crest sign before
+## every blind crest (blind_crests) that one doesn't already warn of. Call after the stage's
+## spans, tunnels and rails: nothing goes under a span, in a tunnel or on a race gate. Built
+## for the stage as it stands; mirror() then moves every sign across with its bend.
 func add_road_signs(chevrons := true) -> void:
 	for run in sharp_curves():
 		var first: int = run.x
 		var dir := signf(segments[first].curve)
 		var outside := -dir
-		_add_sign(first - SIGN_AHEAD, "turn_right" if dir > 0.0 else "turn_left", outside * 1.5, false)
+		_warn(first, "turn_right" if dir > 0.0 else "turn_left", outside * 1.5, false)
 		if chevrons:
 			var k := 0
 			for i in range(first, run.y, CHEVRON_EVERY):
@@ -414,7 +503,36 @@ func add_road_signs(chevrons := true) -> void:
 				_add_sign(i, CHEVRONS[k % CHEVRONS.size()], outside * 1.5, dir < 0.0)
 				k += 1
 	for h in hazards:
-		_add_sign(h - SIGN_AHEAD, "bump_sign", 1.3, false)
+		_warn(h, CREST_SIGN, 1.3, false)
+	for c in blind_crests():
+		if hazard_before(c) < 0:
+			_warn(c, CREST_SIGN, 1.3, false)
+
+
+## The jump or bumpy stretch (hazards) that crest `crest` is the top of: one starting at most
+## HAZARD_REACH segments before it, or -1. Its bump sign already warns of the crest.
+func hazard_before(crest: int) -> int:
+	for h in hazards:
+		if h <= crest and crest - h <= HAZARD_REACH:
+			return h
+	return -1
+
+
+## The farthest before a bend or crest its warning sign can stand (SIGN_AHEAD + SIGN_SLACK).
+static func warning_reach() -> int:
+	return SIGN_AHEAD + SIGN_SLACK
+
+
+## Puts sign `id` SIGN_AHEAD segments before segment `target`, or at the nearest open
+## segment within SIGN_SLACK of that (nearer first on a tie). The segment it stands on, or -1.
+func _warn(target: int, id: String, offset: float, flip: bool) -> int:
+	var ideal := target - SIGN_AHEAD
+	for d in SIGN_SLACK + 1:
+		for i in ([ideal + d, ideal - d] if d > 0 else [ideal]):
+			if i < target and open_roadside(i):
+				add_sprite(i, id, offset, flip)
+				return i
+	return -1
 
 
 ## Whether a rail (a "rail_" or "guardrail" sprite) stands on `side` (-1 left, 1 right) within

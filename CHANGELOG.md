@@ -36,6 +36,17 @@ the release workflow puts that section at the top of the GitHub Release notes
   tools/playtest_report.py charts a folder of them per stage. Nothing is sent anywhere.
 - Update to play online (ON-14): joining a host on a newer version says UPDATE TO PLAY ONLINE
   and offers an UPDATE button, instead of only OLD VERSION.
+- Corner warnings (WS-20): every sharp bend on every stage has its turn arrow on the outside
+  before it and chevrons (or a rail) along its outside, and every blind crest a crest sign
+  before it, mirrored stages too. Where a sign's spot is taken by a gate or a bridge, it now
+  stands just beside it instead of going missing.
+- Scenery pass (WS-21): two new roadside scenes on every stage (a surf break and a pier head
+  on Palm Coast, a cattle crossing and a rock garden in Redrock, a searchlit premiere and a
+  fountain court on the Strip, a logging camp and the ski lift's base at Timberline, a fishing
+  camp and a gator crossing on the Bayou, a pumpkin patch and a hay yard in Harvest Valley,
+  storm chasers and a substation on Thunderhead, a news crew and a waterfront cafe in
+  Skyline), and no stretch of empty roadside longer than 30 segments on any stage: Harvest's
+  wheat country and Timberline's summit gain sunflowers, corn, snowbanks and pines.
 
 ### Changed
 
