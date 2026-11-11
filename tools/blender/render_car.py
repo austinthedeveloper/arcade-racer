@@ -491,4 +491,5 @@ def main():
     print("rendered to %s" % a.out)
 
 
-main()
+if __name__ == "__main__":  # render_car_hero.py imports this file
+    main()

@@ -7,6 +7,11 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Changed
+
+- Car select: every car's picture is now rendered from its 3D model, all from the same angle on
+  the same coast road, and painted like the car you then drive.
+
 ## [0.5.2] - 2026-11-07
 
 ### Changed

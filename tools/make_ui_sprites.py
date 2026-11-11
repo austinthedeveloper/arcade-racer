@@ -7,7 +7,8 @@
 - The 640x360 country map behind stage select (KA-06). It has no text; the stage pins
   (StageSelect.PINS) sit on its painted route markers.
 - A showroom picture per car, cropped from its approved hero art (the screen mockups' cars
-  are layout reference only).
+  are layout reference only). A car rendered from its 3D model (RENDERED in
+  make_car_sprites.py) has a rendered picture instead (tools/render_car_hero.sh), left alone here.
 
 Usage:
     python3 tools/make_ui_sprites.py <concept_dir> <project_dir>
@@ -16,6 +17,7 @@ import os
 
 from PIL import Image
 
+from make_car_sprites import RENDERED
 from spritelib import cli_args, hard_alpha, rgba, sprite_dir
 
 # Stage order matches Stages.NAMES
@@ -91,6 +93,8 @@ def main():
         print(name, card.size)
 
     for car, hero_file, crop in CARS:
+        if car in RENDERED:
+            continue
         hero = Image.open(os.path.join(concept, "cars", hero_file)).crop(crop)
         pic = quantize(hero.resize(CAR_SIZE, Image.LANCZOS))
         pic.save(os.path.join(out, "car_%s.png" % car))

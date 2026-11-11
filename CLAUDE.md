@@ -36,8 +36,9 @@ python3 tools/roadmap_sync.py [--fix-board --write-docs]   # docs/roadmap vs Git
 python3 tools/make_car_sprites.py <concept_dir> .   # rebuild car sprites from the concept sheets
 python3 tools/make_model_inputs.py vega               # the views to upload to Tripo for a car's 3D model (tools/README.md)
 tools/render_car.sh vega [--install]                 # a car's strips from assets/models/vega.glb via Blender, compare.html beside the sheets
+tools/render_car_hero.sh vega                        # its car select picture from the same model, on a coast road
 python3 tools/make_stage_sprites.py assets/concept . neon      # rebuild a stage's background + roadside sprites (shared: race furniture)
-python3 tools/make_ui_sprites.py assets/concept .   # rebuild the logo, title backdrop, stage postcards, car pictures
+python3 tools/make_ui_sprites.py assets/concept .   # rebuild the logo, title backdrop, stage postcards (car pictures of unrendered cars)
 python3 tools/make_icon.py assets/concept .         # rebuild the game icon (icon.png, icon.ico, icon.icns)
 python3 tools/make_span_sprites.py assets/concept . # rebuild tunnels, bridges, arches and race gates
 python3 tools/make_powerup_sprites.py assets/concept .   # rebuild the power-up pickups, icons and effects

@@ -19,6 +19,9 @@ Do this:
 1. tools/make_car_sprites.py: add ("<id>", "car_<id>_steer_sheet_<v>.png") to GARAGE.
 2. tools/make_ui_sprites.py: add ("<id>", "car_<id>_hero_<v>.png", CAR_CROP) to CARS. Look at
    the cropped picture; if the car is cut off, give it its own crop box like the Hauler's.
+   Every car in the garage now has its strips and picture rendered from a 3D model instead
+   (tools/README.md): once this one has a model, tools/render_car_hero.sh <id> replaces the crop,
+   and adding it to RENDERED in make_car_sprites.py keeps both tools off it.
 3. Build (needs the PIL venv from tools/requirements.txt):
      python3 tools/make_car_sprites.py assets/concept .
      python3 tools/make_ui_sprites.py assets/concept .
