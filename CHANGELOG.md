@@ -7,6 +7,20 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Grand Tour ending (MP-16): finishing the tour ends on a finale instead of stage select: the
+  top three on the podium under the Skyline bridge with fireworks over the harbor, the final
+  tour standings, then an end card for where you finished (the champion, a podium place or the
+  rest), and the credits rolling over the harbor.
+- Credits (PR-23): CREDITS on the title rolls who made the game, the tools and the font with
+  their licenses, and how every sound is synthesized in code. It scrolls by itself; hold any
+  key or button to speed it up.
+- Radio v2 (PR-24): four new songs on every station, twenty in all, played in turn with the
+  station's own sting between them, and a now-playing tag on the HUD as each song starts.
+  Still all synthesized in code. The browser version keeps one song per station, to stay
+  quick to load.
+
 ### Changed
 
 - Car select: every car's picture is now rendered from its 3D model, all from the same angle on

@@ -192,7 +192,7 @@ func _next(wait_frames: int = 0) -> void:
 
 func _tick() -> void:
 	_frame += 1
-	if _frame > 3800 + 5 * (Replay.KEEP + 30):  # (five finishes sit through the instant replay, RC-17) first, so a script error in a step can't hang the run
+	if _frame > 4400 + 6 * (Replay.KEEP + 30):  # (six finishes sit through the instant replay, RC-17) first, so a script error in a step can't hang the run
 		printerr("  FAIL e2e timed out at step %d" % _step)
 		quit(1)
 		return
@@ -584,6 +584,69 @@ func _tick() -> void:
 			_next(4)
 		85:
 			_check(_game.screen == _game.Screen.TITLE, "the press that ended it doesn't also pick START")
+			# The Grand Tour's ending (MP-16): a tour on its last stage, scripted to the line
+			_game.mode_index = 0  # GRAND_TOUR (ModeSelect.Item; named here, its script would compile before the autoloads)
+			_game.stage_index = Stages.count() - 1
+			_game.start_race()
+			_race = _game.race
+			_check(_race != null and _race.tour, "a tour on the last stage")
+			if _race == null:
+				quit(1)
+				return
+			_send("accelerate", true)
+			_next(200)
+		86:
+			_check(_race.state == _race.State.RACING, "racing the last stage")
+			_race.next_checkpoint = _race.checkpoint_distances.size()
+			_race.player.distance = _race.finish_distance + 1.0
+			_next(150 + Replay.KEEP + 30)  # past the finish spectacle and the instant replay, to the results
+		87:
+			_send("accelerate", false)
+			_check(_race.state == _race.State.FINISHED and _race.after == _race.After.TOUR_DONE and _race.results.visible,
+				"the last stage completes the tour: " + _race.banner_sub)
+			_send("confirm", true)
+			_next(2)
+		88:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.FINALE and _game.race == null, "CONTINUE: the tour's finale, on the podium")
+			_next(2)
+		89:
+			_send("confirm", true)
+			_next(2)
+		90:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.FINALE and _game.menu.page == 1, "Enter: the tour standings")
+			_next(2)
+		91:
+			_send("confirm", true)
+			_next(2)
+		92:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.FINALE and _game.menu.page == 2
+				and _game.menu.standings[0]["name"] == "YOU", "Enter: the end card, first overall")
+			_next(2)
+		93:
+			_send("confirm", true)
+			_next(2)
+		94:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.CREDITS and _game.menu.harbor, "Enter: the credits, over the harbor")
+			_mark = _game.menu.scroll
+			_next(30)
+		95:
+			_check(_game.menu.scroll > _mark, "the credits roll by themselves")
+			_mark = _game.menu.scroll
+			_send("accelerate", true)
+			_next(30)
+		96:
+			_send("accelerate", false)
+			_check(_game.menu.scroll - _mark > 30.0 * _game.menu.SPEED / Engine.physics_ticks_per_second * 2.0,
+				"a button held speeds them up")
+			_send("back", true)
+			_next(2)
+		97:
+			_send("back", false)
+			_check(_game.screen == _game.Screen.TITLE, "back from the credits: the title")
 			_next()
 		_:
 			print("\n%s" % ("e2e passed" if _fails == 0 else "e2e: %d failed" % _fails))

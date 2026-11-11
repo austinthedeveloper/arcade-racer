@@ -146,7 +146,7 @@ tools/                      test.sh, shots.sh, sprite-cutting scripts, make_audi
                             tuning_adopt.py (tuned values in as the new defaults)
 ```
 
-For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--car=car_mesa` picks a car by id (the ids are in `scripts/car/cars.gd`), `--at-segment=N` starts N segments into the stage, `--no-traffic` removes traffic, `--no-rivals` removes the rivals, `--drive-x=1.8` starts the car on that line (past 1 is off the road) and keeps autodrive on it, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|modes|options|stages|cars|stats|profiles|pause|unplugged|results|update|remap|wheel --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits (`options:audio` opens an options page, `update:failed` an update state). `--callout=near_miss` holds a callout up after GO, `--time-left=9` starts on a low clock, `--pickup=mystery` (or nitro, clock, ram, ghost) takes that pickup at GO, and `--lightning-at=5` forces a lightning strike on Thunderhead. `CLAUDE.md` lists more examples. Left on the title for 20 seconds, the game plays an autodriven demo race (attract mode) until any key or button; `--attract-delay=N` changes the wait and `--screen=demo` starts one straight away.
+For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--car=car_mesa` picks a car by id (the ids are in `scripts/car/cars.gd`), `--at-segment=N` starts N segments into the stage, `--no-traffic` removes traffic, `--no-rivals` removes the rivals, `--drive-x=1.8` starts the car on that line (past 1 is off the road) and keeps autodrive on it, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|modes|options|stages|cars|stats|profiles|credits|finale|pause|unplugged|results|update|remap|wheel --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits (`options:audio` opens an options page, `update:failed` an update state, `finale:card:2` the Grand Tour's end card for second place). `--callout=near_miss` holds a callout up after GO, `--time-left=9` starts on a low clock, `--pickup=mystery` (or nitro, clock, ram, ghost) takes that pickup at GO, and `--lightning-at=5` forces a lightning strike on Thunderhead. `CLAUDE.md` lists more examples. Left on the title for 20 seconds, the game plays an autodriven demo race (attract mode) until any key or button; `--attract-delay=N` changes the wait and `--screen=demo` starts one straight away.
 
 ## Tests
 
@@ -227,6 +227,25 @@ To try it without publishing: export two versions, serve the newer one's `.pck`,
 - [Known bugs and cleanup plan](docs/09-known-bugs-and-cleanup.md)
 - [Releases](docs/10-releases.md): monthly tags, the changelog, why the builds aren't signed yet, where the game is published
 - [Roadmap, November 2026 to April 2027](docs/roadmap/00-overview.md): the six-month feature list (feature IDs like RC-1), split into eight group docs in `docs/roadmap/`
+
+## Credits
+
+Made by Austin Stewart, with Claude. The game's CREDITS screen (from the title, and after the
+Grand Tour) lists the same; `tests/test_credits.gd` checks that it names every tool and font here.
+Every sound and song is synthesized in code by `tools/make_audio.py`: no samples, no recordings.
+
+### Tools
+
+- **Godot Engine** 4.7 (MIT License): the engine
+- **Python** 3 (PSF License): the sprite, audio and release tools
+- **Pillow** (MIT-CMU License), **NumPy** and **SciPy** (BSD 3-Clause): the sprite tools' libraries
+- **Blender** (GPL 2.0 or later): renders the cars from their 3D models
+- **Tripo**: image to 3D, the cars' models
+- **Claude Code**: written with it
+
+### Fonts
+
+- **Open Sans SemiBold** (SIL Open Font License 1.1): Godot's built-in font, used for all the text
 
 ## Concept art prompts
 

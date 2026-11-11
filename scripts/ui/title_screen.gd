@@ -1,7 +1,8 @@
 class_name TitleScreen
 extends MenuScreen
 ## Attract screen: the logo over the Palm Coast sunset, with START (on to mode select),
-## OPTIONS, STATS (MP-11), PROFILE (MP-10: who is driving) and QUIT side by side. A browser
+## OPTIONS, STATS (MP-11), PROFILE (MP-10: who is driving), CREDITS (PR-23) and QUIT side by
+## side, narrower when six don't fit at full width (pill_step). A browser
 ## tab can't be quit, so the web build has no QUIT. The driver's avatar and name show top left.
 ## After an error (CrashLog, EQ-20) the version line offers COPY REPORT: F4, or a click or tap
 ## on it, puts the report on the clipboard.
@@ -44,10 +45,15 @@ static func start_prompt() -> String:
 
 ## The title's choices: QUIT too, except in a browser.
 static func items(web := OS.has_feature("web")) -> Array[String]:
-	var out: Array[String] = ["START", "OPTIONS", "STATS", "PROFILE"]
+	var out: Array[String] = ["START", "OPTIONS", "STATS", "PROFILE", "CREDITS"]
 	if not web:
 		out.append("QUIT")
 	return out
+
+
+## The spacing of `count` pills: PILL_STEP, or less so they fit across the screen.
+static func pill_step(count: int) -> float:
+	return minf(PILL_STEP, (Cfg.SCREEN_W - 16.0) / maxi(1, count))
 
 
 ## What the version line offers about the crash report: nothing without one.
@@ -110,6 +116,8 @@ func handle(m: MenuInput) -> void:
 				game.show_stats()
 			"PROFILE":
 				game.show_profiles()
+			"CREDITS":
+				game.show_credits()
 			"QUIT":
 				game.quit()
 
@@ -121,8 +129,10 @@ func _draw() -> void:
 		var bob := roundf(sin(time * 2.0) * 2.0)
 		draw_texture(_logo, Vector2(roundf((w - _logo.get_width()) / 2.0), 22 + bob))
 	var names := items()
+	var step := pill_step(names.size())
+	var pill_w := PILL.x - (PILL_STEP - step)
 	for i in names.size():
-		var pill := Rect2(w / 2.0 - names.size() * PILL_STEP / 2.0 + (PILL_STEP - PILL.x) / 2.0 + i * PILL_STEP, 270, PILL.x, PILL.y)
+		var pill := Rect2(w / 2.0 - names.size() * step / 2.0 + (step - pill_w) / 2.0 + i * step, 270, pill_w, PILL.y)
 		var on := i == index
 		if on:
 			draw_rect(pill.grow(4), Color(GOLD, 0.45 + 0.2 * sin(time * 5.0)))

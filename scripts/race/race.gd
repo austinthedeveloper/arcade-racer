@@ -991,12 +991,12 @@ func _tour_finish() -> String:
 	tour_state.complete = true
 	after = After.TOUR_DONE
 	if not tour_state.full():
-		return "Tour complete! Start from stage 1 for the Zenith.   Enter: menu"
+		return "Tour complete! Start from stage 1 for the Zenith.   Enter: finale"
 	if _saves():
 		SaveData.unlock(Tour.FINISH_UNLOCK)
 		SaveData.total_points += int(tour_state.points.get(Tour.YOU, 0))
 		SaveData.save()
-	return "Tour complete!   Enter: menu"
+	return "Tour complete!   Enter: finale"
 
 
 ## Saves the finish (SaveData): best time for this stage and car, and the tour's progress
