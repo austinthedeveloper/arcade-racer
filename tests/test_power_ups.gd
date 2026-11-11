@@ -30,6 +30,50 @@ func test_layout_is_the_same_every_time() -> void:
 		eq([a[k].segment, a[k].offset, a[k].kind], [b[k].segment, b[k].offset, b[k].kind], "pickup %d" % k)
 
 
+## G7: each stage its own deal. Two mystery hubcaps (the commonest kind) and three of the
+## other four on every stage, not one stage's five rolls on all of them.
+func test_every_stage_has_its_own_mix() -> void:
+	var seen := {}
+	var tour := [0, 0, 0, 0, 0]
+	for i in Stages.count():
+		var t := Stages.build(i)
+		var kinds := []
+		for p in PowerUps.layout(t, PowerUps.seed_for(i)):
+			kinds.append(p.kind)
+			tour[p.kind] += 1
+		eq(kinds.count(PowerUps.Kind.MYSTERY), 2, "%s: two mystery hubcaps" % t.name)
+		for k in [PowerUps.Kind.NITRO, PowerUps.Kind.CLOCK, PowerUps.Kind.RAM, PowerUps.Kind.GHOST]:
+			check(kinds.count(k) <= 1, "%s: no two %s" % [t.name, PowerUps.IDS[k]])
+		seen[str(kinds)] = true
+	check(seen.size() >= Stages.count() - 1, "the stages' mixes differ (%d of %d)" % [seen.size(), Stages.count()])
+	for k in PowerUps.Kind.size():
+		check(tour[k] >= 2, "%s on the tour (%d)" % [PowerUps.IDS[k], tour[k]])
+	check(tour[PowerUps.Kind.MYSTERY] > tour[PowerUps.Kind.NITRO], "mystery the commonest")
+
+
+func test_the_deal_follows_the_weights() -> void:
+	var rng := RandomNumberGenerator.new()
+	for s in 50:
+		rng.seed = s
+		var d := PowerUps.deal(PowerUps.ROAD_WEIGHTS, 5, rng)
+		eq(d.size(), 5, "five dealt")
+		eq(d.count(PowerUps.Kind.MYSTERY), 2, "two mysteries (seed %d)" % s)
+		for k in 4:
+			check(d.count(k) <= 1, "no other kind twice (seed %d)" % s)
+	rng.seed = 3
+	eq(PowerUps.deal([1.0, 1.0], 4, rng).count(0), 2, "even weights: half each")
+	rng.seed = 3
+	eq(PowerUps.deal([0.0, 1.0], 3, rng), [1, 1, 1] as Array[int], "a zero weight never dealt")
+
+
+func test_the_race_lays_out_its_own_stage() -> void:
+	for stage in [0, 2]:
+		var r := race(false, false, stage, false)
+		var want := PowerUps.layout(r.track, PowerUps.seed_for(stage))
+		eq(r.power_ups.pickups.map(func(p: PowerUps.Pickup) -> Array: return [p.segment, p.kind]),
+			want.map(func(p: PowerUps.Pickup) -> Array: return [p.segment, p.kind]), "stage %d: its own layout" % stage)
+
+
 func test_weighted_pick() -> void:
 	eq(PowerUps.pick([1.0, 1.0], 0.2), 0, "low roll, first")
 	eq(PowerUps.pick([1.0, 1.0], 0.7), 1, "high roll, second")

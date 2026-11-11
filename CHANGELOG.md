@@ -67,9 +67,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 - Stuck rivals (EQ-22): a rival that ran up behind a car standing still on the road (yours
   after TIME UP, say) could sit behind it for the rest of the race; it now drives round.
-
-### Fixed
-
+- Power-ups (G7): every stage had the same five, and never a nitro can or a mystery hubcap.
+  Each stage now has its own: two mystery hubcaps and three of the other four kinds. Medal
+  times follow the new finish times.
 - Nitro flames (EQ-26): the Cyclone's, Bruiser's and Kestrel's now come out of their own pipes.
 - Missing art (EQ-26): a traffic or power-up picture that fails to load no longer crashes the
   race; that vehicle is just left off the road.
