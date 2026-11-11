@@ -83,10 +83,12 @@ static func load_all() -> void:
 		if not traffic.has(id):
 			continue
 		if m[id].has("front"):
-			traffic[id]["front"] = load(SpriteLibrary.SPRITES + m[id]["front"])
+			traffic[id]["front"] = _load_optional(SpriteLibrary.SPRITES + m[id]["front"])
 		var lights := {}
 		for state: String in m[id].get("lights", {}):
-			lights[state] = load(SpriteLibrary.SPRITES + m[id]["lights"][state])
+			var tex := _load_optional(SpriteLibrary.SPRITES + m[id]["lights"][state])
+			if tex != null:
+				lights[state] = tex
 		traffic[id]["lights"] = lights
 
 
@@ -133,9 +135,18 @@ static func _load_strip(path: String) -> Dictionary:
 	return {"tex": tex, "cell": cell, "body_w": float(straight.get_used_rect().size.x)}
 
 
+## A front view or light frame: null (with a warning) when its file is missing (G6), and the
+## vehicle shows its rear view, lights off, instead.
+static func _load_optional(path: String) -> Texture2D:
+	if ResourceLoader.exists(path):
+		return load(path)
+	push_warning("Missing traffic sprite: " + path)
+	return null
+
+
 ## A traffic vehicle; world_per_px is its sheet's scale (each concept sheet was drawn at its own).
 static func _add_traffic(id: String, path: String, world_per_px: float) -> void:
-	var tex: Texture2D = load(path)
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
 	if tex == null:
 		push_warning("Missing traffic sprite: " + path)
 		return
@@ -248,6 +259,8 @@ static func steer_frame(steer: float) -> int:
 ## way shows its headlights instead, as drawn.
 static func draw_traffic(ci: CanvasItem, base: Vector2, w: float, id: String, tint: Color, fog: float,
 		oncoming := false, state := "", glow := 0.0) -> void:
+	if not traffic.has(id):
+		return  # its sprite is missing (G6)
 	var tex := traffic_texture(id, oncoming, state)
 	var h := w * tex.get_height() / float(tex.get_width())
 	if w >= 3.0:

@@ -20,7 +20,8 @@ const REASONS := {"HOST LEFT": "THE HOST LEFT", "IDLE": "THE ROOM CLOSED: IDLE",
 	"TIME UP": "THE ROOM CLOSED: TIME UP", "NO SUCH ROOM": "NO SUCH ROOM",
 	"ROOM FULL": "THAT ROOM IS FULL", "SERVER FULL": "THE SERVER IS FULL",
 	"NO SUCH GAME": "THE SERVER DOESN'T KNOW THIS GAME", "TOO MANY TRIES": "TOO MANY TRIES: WAIT A MINUTE",
-	"TOO MANY ROOMS": "TOO MANY ROOMS: WAIT A MINUTE"}
+	"TOO MANY ROOMS": "TOO MANY ROOMS: WAIT A MINUTE",
+	"OLD VERSION": OnlineSession.UPDATE_TO_PLAY + ": THE SERVER NEEDS A NEWER VERSION"}
 
 const MAX_REGIONS := 8
 ## A region's relay picked on the online screen (ON-12), or "" for URL. A relay with regions
@@ -157,10 +158,12 @@ func _control(msg: Variant) -> void:
 	match String(msg.get("op", "")):
 		"room":
 			room = String(msg.get("code", ""))
+			oldest_version = String(msg.get("oldest", oldest_version))
 			_keep_ms = Time.get_ticks_msec()
 		"welcome":
 			you = int(msg.get("you", 0))
 			host_version = String(msg.get("ver", ""))
+			oldest_version = String(msg.get("oldest", oldest_version))
 		"joined":
 			_inbox.append([int(msg.get("guest", 0)), [JOINED, String(msg.get("ver", ""))]])
 		"left":
