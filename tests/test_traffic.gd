@@ -589,7 +589,7 @@ func test_a_missing_sprite_is_left_out() -> void:
 	check(seen.has("sedan_beige"), "the cars still come")
 	CarSprites._add_traffic("no_such_car", "res://assets/sprites/traffic/no_such_car.png", 1.0)
 	check(not CarSprites.traffic.has("no_such_car"), "a missing file isn't added")
-	CarSprites.traffic.clear()
+	CarSprites.traffic = {"not_a_kind": saved["sedan_beige"]}  # (empty, load_all would load them again)
 	var empty := Traffic.new()
 	empty.spawn(PalmCoast.build(), 20)
 	eq(empty.cars.size(), 0, "no sprites: no cars")
