@@ -7,6 +7,11 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Save promise (EQ-27): a save, the options and wheel setups from any version since 0.1.0 load
+  in this one with everything in them, and every build is checked against all of them.
+
 ### Changed
 
 - Car select: every car's picture is now rendered from its 3D model, all from the same angle on
