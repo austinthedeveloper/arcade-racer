@@ -121,6 +121,10 @@ var banner := ""
 var banner_sub := ""
 var banner_time := 0.0
 var callouts := Callouts.new()  # what the HUD shows of the banners, and the starbursts (PR-5)
+## The first drive (MP-15): the game sets first_drive_on for a new profile's first race on
+## Palm Coast; first_drive is its prompts while they run (null when it's over, or not on).
+var first_drive_on := false
+var first_drive: FirstDrive
 var paused := false
 var pause_menu: PauseMenu
 ## The GUID of the joypad driving while it's unplugged (WH-7), or "". The pause menu says so.
@@ -328,6 +332,10 @@ func start_race() -> void:
 	next_checkpoint = 0
 	banner = ""
 	callouts.clear()
+	if first_drive_on and first_drive == null and stage_index == FirstDrive.STAGE and SaveData.first_drive_pending():
+		first_drive = FirstDrive.new()  # (a restart keeps the prompts already cleared)
+	elif first_drive != null and stage_index != FirstDrive.STAGE:
+		first_drive = null  # (on to the next stage of a tour)
 	_final_stretch = false
 	_led_at = -INF
 	resume()
@@ -426,6 +434,7 @@ func pause() -> void:
 	paused = true
 	rumble.stop(InputRouter.last_active_device)  # (the keyboard's -1: nothing to stop)
 	pause_menu.has_options = not options_requested.get_connections().is_empty()
+	pause_menu.can_skip = first_drive != null
 	pause_menu.open()
 
 
@@ -538,8 +547,42 @@ func pause_action(action: int) -> void:
 		PauseMenu.Action.OPTIONS:
 			pause_menu.close()
 			options_requested.emit()
+		PauseMenu.Action.SKIP:
+			skip_first_drive()
+			resume()
 		PauseMenu.Action.QUIT:
 			quit_requested.emit()
+
+
+## One tick of the first drive (MP-15) on `inp` (the input driven on): a cleared prompt
+## bursts NICE!, the last one FIRST DRIVE DONE. Every prompt cleared, or the race over (a
+## finish, TIME UP), and it's done for good.
+func first_drive_tick(dt: float, inp: DriveInput) -> void:
+	if state == State.FINISHED or state == State.TIME_UP:
+		end_first_drive(false)
+		return
+	var step := first_drive.tick(dt, FirstDrive.look(self, inp))
+	if step >= 0:
+		callouts.push_message(FirstDrive.CLEARED, FirstDrive.TEXT[step], Callouts.SHOW_TIME)
+	if first_drive.done:
+		callouts.push_message(FirstDrive.DONE_TEXT, FirstDrive.DONE_SUB, 2.0)
+		end_first_drive(false)
+
+
+## SKIP FIRST DRIVE on the pause menu: no more prompts, and never again for this profile.
+func skip_first_drive() -> void:
+	end_first_drive(true)
+
+
+## The first drive over, done or `skipped`: the prompts gone, and the profile's save says so
+## (not for a race that saves nothing: an autodriven run, a staged screenshot).
+func end_first_drive(skipped: bool) -> void:
+	if first_drive == null:
+		return
+	first_drive = null
+	first_drive_on = false
+	if _saves():
+		SaveData.end_first_drive(skipped)
 
 
 ## Carries out the tuning panel's action (TuningPanel.Action), with its values in `panel`.
@@ -754,6 +797,8 @@ func _physics_process(dt: float) -> void:
 			playtest.tick(sim, player.distance, player.speed * sim, player.crashed)
 		_check_progress()
 		_callouts_after_tick(earned, place_before)
+	if first_drive != null:
+		first_drive_tick(dt, inp)
 	if demo and demo_over():
 		quit_requested.emit()
 		return

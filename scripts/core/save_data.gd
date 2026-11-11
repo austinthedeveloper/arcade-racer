@@ -18,7 +18,9 @@ signal changed
 ## migrated, newer ones are read as far as the keys this build knows go.
 ## 0: no version field. 1: the same keys, versioned. 2: stage mirrors (WS-6) in the unlocks.
 ## 3: [stats] (MP-11). 4: [profile] (MP-10): the save that was there becomes profile 1's.
-const VERSION := 4
+## 5: [onboarding] (AC-16, MP-15): who's driving asked, the first drive done or skipped
+## (missing: a new profile; a save from before is a driver who has been playing, so both done).
+const VERSION := 5
 const MAX_PROFILES := 4
 ## The names a profile can have (no typing: picked from this list).
 const NAMES: Array[String] = ["ACE", "BLAZE", "COMET", "DASH", "ECHO", "FLASH", "JET", "NOVA", "ROCKET",
@@ -28,6 +30,9 @@ const NAMES: Array[String] = ["ACE", "BLAZE", "COMET", "DASH", "ECHO", "FLASH", 
 ## quit partway too), and races per car id and per stage id (Stages.POSTCARDS) for the
 ## favourites.
 const STAT_COUNTS := ["races", "wins", "crashes", "near_misses"]
+## The first drive (MP-15): still to come, done (every prompt cleared, or the race run to the
+## end) or skipped from the pause menu. Done or skipped, it never shows again.
+enum FirstDrive { PENDING, DONE, SKIPPED }
 
 ## Profile 1's save; the other profiles' files and the roster are named after it. Tests and
 ## --save-file point it elsewhere (use_base).
@@ -50,6 +55,11 @@ var total_points := 0
 var stats := fresh_stats()
 ## The version of the file last loaded (VERSION when there was no file).
 var loaded_version := VERSION
+## Who's driving (AC-16) has been answered for this profile (or passed over), so the title
+## doesn't ask again.
+var driver_asked := false
+## This profile's first drive (MP-15), a FirstDrive.
+var first_drive: int = FirstDrive.PENDING
 
 
 func _ready() -> void:
@@ -223,7 +233,30 @@ func reset() -> void:
 	bests.clear()
 	total_points = 0
 	stats = fresh_stats()
+	driver_asked = false
+	first_drive = FirstDrive.PENDING
 	loaded_version = VERSION
+
+
+## The first drive (MP-15) is still to come for this profile.
+func first_drive_pending() -> bool:
+	return first_drive == FirstDrive.PENDING
+
+
+## The first drive is over (`skipped`, or done) and saved, so it never shows again.
+func end_first_drive(skipped: bool) -> void:
+	if first_drive != FirstDrive.PENDING:
+		return
+	first_drive = FirstDrive.SKIPPED if skipped else FirstDrive.DONE
+	save()
+
+
+## Who's driving (AC-16) answered for this profile: saved, so the title doesn't ask again.
+func mark_driver_asked() -> void:
+	if driver_asked:
+		return
+	driver_asked = true
+	save()
 
 
 static func fresh_stats() -> Dictionary:
@@ -270,11 +303,13 @@ func load_save() -> void:
 		if d is Dictionary:
 			for id in d:
 				stats[k][str(id)] = maxi(0, int(d[id]))
+	driver_asked = bool(cfg.get_value("onboarding", "driver_asked", false))
+	first_drive = clampi(int(cfg.get_value("onboarding", "first_drive", FirstDrive.PENDING)), 0, FirstDrive.size() - 1)
 
 
 ## Brings a loaded save.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -334,6 +369,13 @@ static func _v3_to_v4(cfg: ConfigFile) -> void:
 		cfg.set_value("profile", "avatar", id["avatar"])
 
 
+## Version 5 adds [onboarding] (AC-16, MP-15). A save from before belongs to a driver who has
+## been playing: no question on the title, no guided first race.
+static func _v4_to_v5(cfg: ConfigFile) -> void:
+	cfg.set_value("onboarding", "driver_asked", true)
+	cfg.set_value("onboarding", "first_drive", FirstDrive.DONE)
+
+
 ## Writes the save. Over a file from a newer build, its other keys are kept (CfgVersion.to_write);
 ## `fresh` (resetting the save) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -350,6 +392,8 @@ func save(fresh := false) -> void:
 		cfg.set_value("best", key, entry)
 	for k: String in stats:
 		cfg.set_value("stats", k, stats[k])
+	cfg.set_value("onboarding", "driver_asked", driver_asked)
+	cfg.set_value("onboarding", "first_drive", first_drive)
 	# Written whole to a side file and then renamed over the save, so a crash mid-write
 	# never leaves a cut-off save.
 	CfgVersion.backup_if_older(path, VERSION)  # (EQ-21)

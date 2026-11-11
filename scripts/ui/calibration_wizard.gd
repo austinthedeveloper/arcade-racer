@@ -38,9 +38,11 @@ func _ready() -> void:
 	visible = false
 
 
-func open() -> void:
-	device = InputRouter.last_active_device
+## Opens on joypad `on` when it's plugged in (the wheel's first run, WH-16); otherwise on
+## the joypad in use, or the first wheel, or the first joypad.
+func open(on := -1) -> void:
 	var pads := Input.get_connected_joypads()
+	device = on if on >= 0 and pads.has(on) else InputRouter.last_active_device
 	if device < 0 or not pads.has(device):
 		device = -1
 		for d in pads:
