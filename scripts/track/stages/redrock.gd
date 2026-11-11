@@ -78,9 +78,16 @@ static func build() -> Track:
 	t.scatter(["water_tower_wood", "dino", "rusty_truck", "cattle_sign", "butte", "arrow_sign"], 250, 450, 1.8)
 	# Brown scenic-route signs on the right
 	t.scatter(["sign_brown", "sign_brown", "sign_brown", "sign_brown", "sign_brown"], 120, 800, 1.5, 1)
+	# Set pieces (WS-21): a cattle crossing out in the desert, a rock garden on the way home
+	t.add_set_piece("cattle_crossing", 520, [["fence", 0, -1.6], ["fence", 3, -1.6], ["fence", 6, -1.6],
+		["cattle_sign", 2, 1.5], ["windmill", 5, -3.4], ["skull_post", 8, 1.4], ["rusty_truck", 10, -2.4, true]])
+	t.add_set_piece("rock_garden", canyon_end + 320, [["boulders_a", 0, -1.7], ["boulders_b", 2, -2.1, true],
+		["rock_arch", 5, -2.6], ["saguaro_a", 3, 1.7], ["saguaro_b", 7, 2.2, true], ["prickly_pear_a", 6, -1.5],
+		["tumbleweed_a", 9, 1.3]])
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()
+	t.fill_bare(["prickly_pear_a", "tumbleweed_b", "saguaro_c"])  # no bare roadside longer than Track.MAX_BARE (WS-21)
 	return t
 
 

@@ -105,11 +105,17 @@ static func build() -> Track:
 			i = t.free_spot(i + 300, 20)
 	# Highway signs: route and exit boards on the right
 	t.scatter(["sign_green", "sign_green", "sign_green", "sign_green", "sign_green"], 120, 800, 1.5, 1)
+	# Set pieces (WS-21): a news crew downtown, a cafe on the waterfront
+	t.add_set_piece("news_crew", downtown.x + 320, [["news_van", 0, 1.6], ["crowd_barrier_city", 2, 1.3],
+		["crowd_barrier_city", 4, 1.3], ["flag_c", 3, -1.3], ["dolphin_balloon", 6, -2.7]])
+	t.add_set_piece("waterfront_cafe", port + 220, [["cafe", 0, 1.8], ["flag_a", 2, -1.3], ["harbor_lamp", 3, 1.2],
+		["harbor_lamp", 3, -1.2], ["flag_b", 4, -1.3], ["ferry_terminal", 6, -2.5]])
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()
 	t.add_sprite(t.finish_index - 20, "crowd_barrier_city", -1.3)
 	t.add_sprite(t.finish_index + 20, "dolphin_balloon", -2.5)
+	t.fill_bare(["harbor_lamp", "flag_d", "flag_e"])  # no bare roadside longer than Track.MAX_BARE (WS-21)
 	return t
 
 

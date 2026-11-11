@@ -96,9 +96,15 @@ static func build() -> Track:
 	t.scatter(["crab_shack", "gator", "crawfish_sign", "live_oak", "mailboxes", "riverboat"], 150, 450, 1.8)
 	# Brown scenic-route signs on the right
 	t.scatter(["sign_brown", "sign_brown", "sign_brown", "sign_brown", "sign_brown"], 120, 800, 1.5, 1)
+	# Set pieces (WS-21): a fishing camp out on the water, a gator crossing back on the bank
+	t.add_set_piece("fishing_camp", causeways[1].x + 60, [["piling", 0, -1.6], ["piling", 2, -2.3],
+		["crab_shack", 4, -2.4], ["piling", 5, -2.7], ["heron", 7, -1.6, true], ["riverboat", 9, 3.4]])
+	t.add_set_piece("gator_crossing", causeways[1].y + 100, [["crawfish_sign", 0, 1.6], ["reeds_a", 2, -1.2],
+		["gator", 3, -1.4], ["cattails", 4, 1.2], ["gator", 5, 1.5, true], ["live_oak", 6, -2.6]])
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()
+	t.fill_bare(["reeds_b", "cattails", "mist_a"])  # no bare roadside longer than Track.MAX_BARE (WS-21)
 	return t
 
 

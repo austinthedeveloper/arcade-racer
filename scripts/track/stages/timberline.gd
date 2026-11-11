@@ -99,9 +99,15 @@ static func build() -> Track:
 	t.scatter(["chapel", "moose", "chairlift", "woodpile", "frozen_falls", "snowman"], 200, 450, 1.8)
 	# Brown scenic-route signs on the right
 	t.scatter(["sign_brown", "sign_brown", "sign_brown", "sign_brown", "sign_brown"], 120, 800, 1.5, 1)
+	# Set pieces (WS-21): a logging camp in the forest, the ski lift's base up in the snow
+	t.add_set_piece("logging_camp", 620, [["woodpile", 0, 1.6], ["fallen_log", 2, 1.5], ["fallen_log", 4, -1.6, true],
+		["cabin", 6, 2.3], ["pine_a", 8, 3.0], ["woodpile", 9, -1.7, true]])
+	t.add_set_piece("ski_base", snow_start + 60, [["chairlift", 0, 2.6], ["snowman", 2, 1.6], ["snowbank", 3, -1.3],
+		["snowman", 6, -1.7, true], ["snowbank", 8, 1.3], ["pine_e", 5, -2.6]])
 	t.add_road_signs(false)  # the bends have their own chevron boards (_decorate)
 	t.add_race_furniture()
 	t.add_finish_crowd()
+	t.fill_bare(["snowbank", "pine_e", "pine_f"])  # no bare roadside longer than Track.MAX_BARE (WS-21)
 	return t
 
 

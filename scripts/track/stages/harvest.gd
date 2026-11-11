@@ -80,9 +80,15 @@ static func build() -> Track:
 	t.scatter(["grain_elevator", "produce_cart", "balloon", "farm_truck", "crop_duster", "pumpkins"], 200, 450, 2.0)
 	# Brown scenic-route signs on the right
 	t.scatter(["sign_brown", "sign_brown", "sign_brown", "sign_brown", "sign_brown"], 120, 800, 1.5, 1)
+	# Set pieces (WS-21): a pumpkin patch and a hay yard out in the wheat
+	t.add_set_piece("pumpkin_patch", fields_start + 320, [["pumpkins", 0, 1.5], ["hay_bale", 1, 1.4], ["pumpkins", 3, 1.9],
+		["hay_round", 4, -1.6], ["scarecrow", 5, 2.3], ["produce_cart", 7, 1.7]])
+	t.add_set_piece("hay_yard", fields_start + 940, [["hay_round", 0, -1.5], ["hay_round", 2, -1.9], ["hay_bale", 4, -1.5],
+		["farm_truck", 6, -2.3, true], ["grain_elevator", 8, -3.6], ["hay_bale", 5, 1.6]])
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()
+	t.fill_bare(["sunflowers", "corn", "sunflowers"])  # no bare roadside longer than Track.MAX_BARE (WS-21)
 	return t
 
 

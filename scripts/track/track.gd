@@ -35,6 +35,15 @@ const HAZARD_REACH := 60  # segments: a jump's length (jump), so its crest is wi
 const CHEVRON_EVERY := 8
 const RAIL_REACH := 10  # segments: rails stand every 10 (Bayou, Timberline), so a run has one this close
 const CHEVRONS := ["chevron_a", "chevron_b", "chevron_c"]
+## Scenery (WS-21): roadside on one side of a segment is bare when nothing stands on that side
+## within BARE_REACH road half-widths of the road and it isn't under a span or in a tunnel.
+## No stage has a bare stretch longer than MAX_BARE segments on either side: fill_bare plants
+## something every FILL_EVERY segments of a longer one.
+const BARE_REACH := 4.0
+const MAX_BARE := 30
+const FILL_EVERY := 24
+const FILL_OFFSET := 1.8  # road half-widths out, clear of the cars
+const FILL_SPREAD := 1.4
 ## Roadside art that reads wrong mirrored (lettering, numbers): on a mirrored stage it moves
 ## to the other side but keeps its art the right way round.
 const MIRROR_KEEPS_ART := ["slot_machine"]
@@ -58,6 +67,8 @@ var checkpoints: Array[int] = []
 var finish_index := 0
 ## First segment of every jump and bumpy stretch, for the bump signs (add_road_signs).
 var hazards: Array[int] = []
+## Set pieces (WS-21, add_set_piece): each one's name and the segment it starts at.
+var set_pieces: Array[Dictionary] = []
 ## Stage flow (StageFlow.dress): the next stage's theme, and this stage's palette mixed toward
 ## it in StageFlow.STEPS steps. Empty on the last stage, which keeps its own end.
 var next_theme: Dictionary = {}
@@ -391,6 +402,73 @@ func scatter(ids: Array, first: int, every: int, offset: float, side := 0) -> vo
 		var s := float(side) if side != 0 else (-1.0 if k % 2 == 0 else 1.0)
 		add_sprite(i, ids[k], s * offset)
 		at = i + every
+
+
+## A set piece (WS-21): a small roadside scene of `props`, each [id, segments on from its
+## start, offset (road half-widths, + right as built), flip], at the first free spot at or after
+## `index` (no race gate or span near, no part of it in a tunnel). Kept as `name` in set_pieces.
+## The segment it starts at, or -1 if there's no room.
+func add_set_piece(name_: String, index: int, props: Array) -> int:
+	var reach := 0
+	for p: Array in props:
+		reach = maxi(reach, p[1])
+	var at := free_spot(index, 4)
+	while at >= 0 and not _open_run(at, reach):
+		at = free_spot(at + 1, 4)
+	if at < 0:
+		return -1
+	for p: Array in props:
+		add_sprite(at + int(p[1]), p[0], p[2], p[3] if p.size() > 3 else false)
+	set_pieces.append({"name": name_, "at": at})
+	return at
+
+
+func _open_run(first: int, length: int) -> bool:
+	for i in range(first, first + length + 1):
+		if not open_roadside(i):
+			return false
+	return true
+
+
+## Plants `ids` in turn wherever roadside on either side has been bare (bare) for FILL_EVERY
+## segments, FILL_OFFSET to FILL_OFFSET + FILL_SPREAD out, so no bare stretch runs past
+## MAX_BARE. Call last in a stage's build, once everything else stands.
+func fill_bare(ids: Array) -> void:
+	var k := 0
+	for side: float in [-1.0, 1.0]:
+		var run := 0
+		for i in segments.size():
+			run = run + 1 if bare(i, side) else 0
+			if run <= FILL_EVERY or not open_roadside(i):
+				continue
+			var out := FILL_OFFSET + FILL_SPREAD * fposmod(k * 0.37, 1.0)
+			add_sprite(i, ids[k % ids.size()], side * out, side < 0.0)
+			k += 1
+			run = 0
+
+
+## Whether nothing stands on `side` (-1 left, 1 right) of segment `index` within BARE_REACH
+## and it's out in the open (no span over it, not in a tunnel).
+func bare(index: int, side: float) -> bool:
+	var seg := segments[index]
+	if seg.covered or not seg.spans.is_empty():
+		return false
+	for sp: Dictionary in seg.sprites:
+		var o: float = sp["offset"]
+		if signf(o) == side and absf(o) <= BARE_REACH:
+			return false
+	return true
+
+
+## The longest run of segments bare on `side` (-1 left, 1 right), as (first segment, length).
+func longest_bare(side: float) -> Vector2i:
+	var best := Vector2i(0, 0)
+	var run := 0
+	for i in segments.size():
+		run = run + 1 if bare(i, side) else 0
+		if run > best.y:
+			best = Vector2i(i - run + 1, run)
+	return best
 
 
 ## Crowds behind barriers, a grandstand, a camera tower and a flagman before the finish line.

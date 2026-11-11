@@ -425,6 +425,58 @@ func test_a_warning_sign_moves_off_a_taken_spot() -> void:
 	eq(count, 1, "one sign for the jump and its crest")
 
 
+const SET_PIECES := [["surf_break", "pier_head"], ["cattle_crossing", "rock_garden"],
+	["premiere", "fountain_court"], ["logging_camp", "ski_base"], ["fishing_camp", "gator_crossing"],
+	["pumpkin_patch", "hay_yard"], ["storm_chasers", "substation"], ["news_crew", "waterfront_cafe"]]
+
+
+func test_no_stage_has_a_long_bare_roadside() -> void:
+	# WS-21: Harvest's wheat ran 62 segments bare on the left, Timberline's summit 35
+	for i in Stages.count():
+		for mirror in [false, true]:
+			var t := Stages.build(i, mirror)
+			for side in [-1.0, 1.0]:
+				var run := t.longest_bare(side)
+				check(run.y <= Track.MAX_BARE, "%s%s: %d segments bare on the %s from %d" % [t.name,
+					" mirrored" if mirror else "", run.y, "left" if side < 0.0 else "right", run.x])
+
+
+func test_every_stage_has_its_two_set_pieces() -> void:
+	for i in Stages.count():
+		var t := Stages.build(i)
+		var names: Array = t.set_pieces.map(func(p: Dictionary) -> String: return p["name"])
+		eq(names, SET_PIECES[i], t.name + "'s set pieces")
+		for p in t.set_pieces:
+			var at: int = p["at"]
+			var props := 0
+			for k in range(at, at + 13):
+				check(t.open_roadside(k), "%s: %s out in the open (segment %d)" % [t.name, p["name"], k])
+				props += t.segments[k].sprites.size()
+			check(props >= 5, "%s: %s stands (%d sprites)" % [t.name, p["name"], props])
+
+
+func test_set_piece_moves_off_a_gate_and_bare_stretches_get_filled() -> void:
+	var t := Track.new()
+	t.straight(Track.LENGTH_LONG)
+	t.finish_building(t.segments.size() - 5)
+	t.add_checkpoint(60)
+	eq(t.longest_bare(-1.0), Vector2i(0, t.segments.size()), "an empty road is bare end to end")
+	var at := t.add_set_piece("camp", 58, [["woodpile", 0, 1.6], ["cabin", 6, -2.3]])
+	check(at > 64, "clear of the gate (%d)" % at)
+	eq(t.segments[at].sprites[0]["id"], "woodpile", "first prop at the start")
+	eq(t.segments[at + 6].sprites[0]["offset"], -2.3, "the rest along from it")
+	eq(t.set_pieces, [{"name": "camp", "at": at}], "kept by name")
+	check(t.bare(at, -1.0) and not t.bare(at, 1.0), "the woodpile covers its side only")
+	t.fill_bare(["bush"])
+	for side in [-1.0, 1.0]:
+		check(t.longest_bare(side).y <= Track.MAX_BARE, "filled (%s)" % t.longest_bare(side))
+	for seg in t.segments:
+		for sp in seg.sprites:
+			if sp["id"] == "bush":
+				check(absf(sp["offset"]) >= Track.FILL_OFFSET, "fill stands back from the road")
+	eq(t.add_set_piece("late", t.segments.size() - 3, [["bush", 0, 1.5]]), -1, "no room at the end")
+
+
 func test_race_furniture_around_the_start_and_checkpoints() -> void:
 	for t in _stages():
 		var near_start := {}
