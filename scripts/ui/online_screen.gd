@@ -30,6 +30,8 @@ var regions: Array[Dictionary] = []
 var region := 0  # into regions: the one HOST and JOIN go through
 var on_region := false  # the cursor on the region row rather than HOST / JOIN
 var _fetch: HTTPRequest
+## The updater UPDATE uses (ON-14): the Updates autoload unless a test or screenshot gives its own.
+var updater: Updater
 
 
 ## Asks the relay for its regions, in a window (not in the headless tests).
@@ -137,7 +139,10 @@ func handle(m: MenuInput) -> void:
 		View.LOBBY:
 			_handle_lobby(m)
 		View.ERROR:
-			if m.confirm_pressed or m.back_pressed:
+			if m.confirm_pressed and game.online.needs_update:
+				Audio.play("beep")
+				update_game()
+			elif m.confirm_pressed or m.back_pressed:
 				game.leave_room()
 				view = View.CHOOSE
 				Audio.play("beep")
@@ -273,6 +278,9 @@ func tap(pos: Vector2) -> void:
 				if lobby_row_rect(i).has_point(pos) and game.online.hosting():
 					row = i
 					handle(_confirm())
+		View.ERROR:
+			if game.online.needs_update and update_rect().has_point(pos):
+				handle(_confirm())
 
 
 ## A tick of menu input with only a confirm in it, for a tap.
@@ -319,8 +327,11 @@ func _draw() -> void:
 		View.LOBBY:
 			_draw_lobby()
 		View.ERROR:
-			_message(game.online.error, "")
-			_footer("Enter / A: back")
+			if game.online.needs_update:
+				_draw_update()
+			else:
+				_message(game.online.error, "")
+				_footer("Enter / A: back")
 
 
 func _message(line: String, sub: String) -> void:
@@ -353,6 +364,52 @@ func _draw_choose() -> void:
 			_arrow(Vector2(r.position.x + 78, r.get_center().y), -1, GOLD)
 			_arrow(Vector2(r.end.x - 12, r.get_center().y), 1, GOLD)
 	_footer(hints(true) + ("    Up / Down: server" if shows_regions() else ""))
+
+
+# --- Online across versions (ON-14) -----------------------------------------------------
+
+## What UPDATE does with the updater in `state` on this build: "screen", the update screen
+## (an exported desktop game, which downloads the new version or links to it); "reload" on the
+## Web build (a reload gets the version online); "page", the releases page (a checkout).
+static func update_route(state: int, web := OS.has_feature("web")) -> String:
+	if state != Updater.State.OFF:
+		return "screen"
+	return "reload" if web else "page"
+
+
+## UPDATE TO PLAY ONLINE's button: out of the room, to the updater (update_route). A check
+## that said up to date (or failed) asks again, as the host's newer version may be new.
+func update_game() -> void:
+	var u: Updater = updater if updater != null else get_node_or_null("/root/Updates")
+	game.leave_room()
+	view = View.CHOOSE
+	match update_route(u.state if u != null else Updater.State.OFF):
+		"screen":
+			if u.state in [Updater.State.IDLE, Updater.State.LATEST, Updater.State.FAILED]:
+				u.check()
+			game.show_update(updater)
+		"reload":
+			JavaScriptBridge.eval("location.reload()")
+		"page":
+			if u != null:
+				u.open_page()
+
+
+## The UPDATE button under the message.
+static func update_rect() -> Rect2:
+	return Rect2(Cfg.SCREEN_W / 2.0 - 75, 218, 150, 30)
+
+
+## UPDATE TO PLAY ONLINE: the versions under it, and the updater's button.
+func _draw_update() -> void:
+	var why := String(game.online.error)
+	var versions := why.get_slice(": ", 1) if why.contains(": ") else ""
+	_message(OnlineSession.UPDATE_TO_PLAY, versions)
+	var r := update_rect()
+	_frame(r, Color(GOLD, 0.4 + 0.15 * sin(time * 4.0)))
+	draw_rect(r, Color("#1d3fa8"))
+	_text_centered(Vector2(r.get_center().x, r.get_center().y + 6), "UPDATE", 16, GOLD)
+	_footer("Enter / A: update    Esc / B: back")
 
 
 ## HOST (0) or JOIN (1) on screen.
@@ -468,7 +525,8 @@ func _draw_lobby() -> void:
 
 # --- Dev helper: --screen=online:<view> --menu-shot=... ------------------------------
 # (online:menu, online:regions the region picker on two made-up regions, online:code with two letters in, online:lobby hosting with two guests in,
-# online:guest the lobby as a guest sees it, online:error a refusal; all on an in-memory relay.)
+# online:guest the lobby as a guest sees it, online:error a refusal, online:update a guest on an
+# older build than the host's (ON-14); all on an in-memory relay.)
 
 func stage_shot(which: String) -> void:
 	var relay := LoopLink.Relay.new()
@@ -507,3 +565,20 @@ func stage_shot(which: String) -> void:
 			g.join("ZZZZ")
 			game.online = OnlineSession.joining_on(g, "car_vega")
 			game.online.poll(0.0)
+		"update":  # a guest on an older build than the host's (ON-14)
+			var h := LoopLink.new(relay)
+			h.host(_newer(Updater.version()))
+			var host_room := OnlineSession.hosting_on(h, "car_vega")
+			var g := LoopLink.new(relay)
+			g.join(h.room)
+			game.online = OnlineSession.joining_on(g, "car_vega")
+			for i in 3:
+				host_room.poll(0.0)
+				game.online.poll(0.0)
+			_staged = [host_room]
+
+
+## The version after `v` (its minor up one), for the update screenshot's host.
+static func _newer(v: String) -> String:
+	var parts := v.split(".")
+	return "%s.%d.0" % [parts[0], int(parts[1]) + 1] if parts.size() >= 2 else v + ".1"

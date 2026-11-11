@@ -9,6 +9,7 @@ extends NetLink
 class Relay:
 	extends RefCounted
 	var guests := 3
+	var oldest := ""  # the oldest version it takes, named to every game (NetLink.oldest_version)
 	var rooms := {}  # code -> {"host": LoopLink, "guests": [LoopLink or null]}
 	var _next := 61873  # the first room is BXKM-like rather than BBBB
 
@@ -22,6 +23,7 @@ class Relay:
 		var seats: Array = []
 		seats.resize(guests)
 		rooms[code] = {"host": h, "guests": seats, "version": version}
+		h.oldest_version = oldest
 		h.room = code
 
 	func enter(g: LoopLink, code: String, version: String) -> void:
@@ -37,6 +39,7 @@ class Relay:
 		g.room = code
 		g.you = seat
 		g.host_version = r["version"]
+		g.oldest_version = oldest
 		(r["host"] as LoopLink)._inbox.append([seat, [NetLink.JOINED, version]])
 
 	func leave(l: LoopLink) -> void:

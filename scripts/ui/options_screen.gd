@@ -11,7 +11,7 @@ extends MenuScreen
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
 	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP,
-	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE, RESTORE, CAMERA, CO_PILOT }
+	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE, RESTORE, CAMERA, CO_PILOT, PLAYTEST }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -19,7 +19,7 @@ const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
 const PAGE_ROWS := [
 	[Row.AUTO_GAS, Row.TRAFFIC, Row.DIFFICULTY, Row.TIMER, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.RESET_OPTIONS,
 		Row.RESET_SAVE, Row.RESTORE],
-	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS, Row.CAMERA],
+	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS, Row.CAMERA, Row.PLAYTEST],
 	[Row.MUSIC, Row.SFX, Row.RADIO],
 	[Row.CALIBRATE, Row.WHEEL, Row.REMAP, Row.KEY_STEER_IN, Row.KEY_STEER_OUT, Row.RUMBLE],
 	[Row.SCREEN_SHAKE, Row.FLASH, Row.REDUCE_MOTION, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.CO_PILOT, Row.GEARS],
@@ -31,7 +31,7 @@ const SLOTS := 12
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
-	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE", "RESTORE BACKUP", "CAMERA VIEW", "CO-PILOT"]
+	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE", "RESTORE BACKUP", "CAMERA VIEW", "CO-PILOT", "PLAYTEST LOG"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -68,10 +68,11 @@ const HELP := [
 	"Options, progress and wheel setups as they were before this version changed them.",
 	"Where the race is seen from: close behind, further back, or low on the bumper. V changes it while you drive.",
 	"Steers for you, in your lane and round every bend. Steer to change lanes.",
+	"A note of each race (crashes, slow stretches) in the game's log folder. Never sent anywhere.",
 ]
 ## The rows that show ON or OFF.
 const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES,
-	Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.SUBTITLES, Row.REDUCE_MOTION, Row.CO_PILOT]
+	Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.SUBTITLES, Row.REDUCE_MOTION, Row.CO_PILOT, Row.PLAYTEST]
 const CONFIRM_HELP := "Select again to erase your progress. Any other key cancels."
 const RESTORE_CONFIRM_HELP := "Select again to put the backups back. Any other key cancels."
 const NO_BACKUP_HELP := "No backups: nothing has been updated from an older version."
@@ -238,6 +239,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.vsync = not s.vsync
 		Row.SCANLINES:
 			s.scanlines = not s.scanlines
+		Row.PLAYTEST:
+			s.playtest_log = not s.playtest_log
 		Row.STEER_ASSIST:
 			s.steer_assist = not s.steer_assist
 		Row.BRAKE_ASSIST:
@@ -319,6 +322,8 @@ static func toggled(row: int) -> bool:
 			return s.vsync
 		Row.SCANLINES:
 			return s.scanlines
+		Row.PLAYTEST:
+			return s.playtest_log
 		Row.STEER_ASSIST:
 			return s.steer_assist
 		Row.BRAKE_ASSIST:

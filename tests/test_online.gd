@@ -417,3 +417,89 @@ func test_tapping_letters_types_a_room() -> void:
 func test_no_restart_hint_online() -> void:
 	check(Hud.keys_hint(false).ends_with("R restart"), "offline: R restarts")
 	check(not Hud.keys_hint(true).contains("restart"), "online: restart is off, so no hint")
+
+
+func test_version_refusals() -> void:
+	# ON-14: older than the host (or than the relay takes) is the guest's to update.
+	eq(OnlineSession.version_refusal("0.5.2", "0.5.2"), "", "the same version: in")
+	eq(OnlineSession.version_refusal("0.5.2", ""), "", "a host version unknown: in")
+	eq(OnlineSession.version_refusal("0.5.2", "0.6.0"), "UPDATE TO PLAY ONLINE: THE HOST HAS 0.6.0, YOU HAVE 0.5.2", "older than the host")
+	eq(OnlineSession.version_refusal("0.5.10", "0.5.9"), "OLD VERSION: THE HOST HAS 0.5.9, YOU HAVE 0.5.10", "newer: the host's is old (by number, not text)")
+	eq(OnlineSession.version_refusal("0.5.2", "0.5.2", "0.6.0"), "UPDATE TO PLAY ONLINE: THE SERVER TAKES 0.6.0 OR LATER, YOU HAVE 0.5.2", "older than the relay takes")
+	eq(OnlineSession.version_refusal("0.6.0", "0.6.0", "0.6.0"), "", "the oldest it takes is fine")
+
+
+func test_an_older_guest_is_told_to_update() -> void:
+	var relay := LoopLink.Relay.new()
+	var h := LoopLink.new(relay)
+	h.host("99.0.0")
+	var host_room := OnlineSession.hosting_on(h, "car_vega")
+	var g := LoopLink.new(relay)
+	g.join(h.room)
+	var guest := OnlineSession.joining_on(g, "car_mesa")
+	settle([host_room, guest])
+	check(guest.error.begins_with("UPDATE TO PLAY ONLINE: THE HOST HAS 99.0.0"), "update to play: " + guest.error)
+	check(guest.needs_update, "with the updater's button")
+	eq(guest.phase, OnlineSession.Phase.CLOSED, "the room closed for it")
+	eq(host_room.players.size(), 1, "and it isn't in the room")
+	# A newer guest: the host is the old one, no update offered
+	var h2 := LoopLink.new(relay)
+	h2.host("0.0.1")
+	var g2 := LoopLink.new(relay)
+	g2.join(h2.room)
+	var guest2 := OnlineSession.joining_on(g2, "car_mesa")
+	settle([OnlineSession.hosting_on(h2, "car_vega"), guest2])
+	check(guest2.error.begins_with("OLD VERSION") and not guest2.needs_update, "a newer guest: " + guest2.error)
+
+
+func test_the_host_tells_an_older_guest_too() -> void:
+	# A guest whose relay welcome named no host version learns it from the host's NOPE.
+	var relay := LoopLink.Relay.new()
+	var h := LoopLink.new(relay)
+	h.host()
+	var host_room := OnlineSession.hosting_on(h, "car_vega")
+	var g := LoopLink.new(relay)
+	g.join(h.room, "0.0.1")
+	g.host_version = ""
+	var guest := OnlineSession.joining_on(g, "car_mesa")
+	settle([host_room, guest])
+	eq(guest.error, "UPDATE TO PLAY ONLINE: THE HOST HAS %s, YOU HAVE 0.0.1" % Updater.version(), "the host's refusal")
+	check(guest.needs_update, "offers the update")
+
+
+func test_the_oldest_version_the_relay_takes() -> void:
+	var relay := LoopLink.Relay.new()
+	relay.oldest = "99.0.0"
+	var h := LoopLink.new(relay)
+	h.host()
+	var host_room := OnlineSession.hosting_on(h, "car_vega")
+	settle([host_room])
+	check(host_room.needs_update and host_room.error.contains("THE SERVER TAKES 99.0.0"), "a host too old: " + host_room.error)
+	var fine := room()
+	for s: OnlineSession in fine:
+		eq([s.error, s.needs_update], ["", false], "no oldest named: in")
+	# The relay's own words for it, when it refuses outright, and its welcome's field
+	var rl := RelayLink.new()
+	rl._control({"op": "error", "reason": "OLD VERSION"})
+	check(rl.error.begins_with(OnlineSession.UPDATE_TO_PLAY), "a relay refusal reads as update: " + rl.error)
+	rl._control({"op": "welcome", "you": 1, "ver": "0.6.0", "oldest": "0.6.0"})
+	eq([rl.host_version, rl.oldest_version], ["0.6.0", "0.6.0"], "the welcome's oldest version read")
+
+
+func test_the_update_screen_from_the_online_error() -> void:
+	eq(OnlineScreen.update_route(Updater.State.FULL, false), "screen", "an exported game: the update screen")
+	eq(OnlineScreen.update_route(Updater.State.OFF, true), "reload", "the Web build reloads")
+	eq(OnlineScreen.update_route(Updater.State.OFF, false), "page", "a checkout: the releases page")
+	var g: Node = load("res://scenes/main.tscn").instantiate()
+	g._ready()
+	_nodes.append(g)
+	g.show_online()
+	var o: OnlineScreen = g.menu
+	o.stage_shot("update")
+	eq(o.current(), OnlineScreen.View.ERROR, "refused")
+	check(g.online.needs_update, "as too old")
+	o.updater = g.staged_updater("full")
+	o.tap(OnlineScreen.update_rect().get_center())
+	eq(g.screen, g.Screen.UPDATE, "UPDATE opens the update screen")
+	eq(g.online, null, "out of the room")
+	eq((g.menu as UpdateScreen).choices(), ["page", "play"] as Array[String], "with its own buttons")

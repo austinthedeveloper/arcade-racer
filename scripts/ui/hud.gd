@@ -8,6 +8,8 @@ extends Control
 const LOGO := "res://assets/sprites/ui/logo.png"
 const DEMO_LOGO_SCALE := 0.6
 const CALLOUT_Y := 120.0  # the middle of the callouts
+const FIRST_DRIVE_Y := 178.0  # the top of the first drive's prompt (MP-15), under the callouts
+const FIRST_DRIVE_SIZE := Vector2(340, 44)
 const LINE2_SIZE := 18  # a starburst's second headline (TIME EXTENDED under CHECKPOINT)
 const SUB_SIZE := 11  # and its small line
 const LINE_GAP := 4.0  # pixels between a starburst's lines
@@ -164,6 +166,9 @@ func _draw() -> void:
 		StageIntro.draw(self, race.countdown_elapsed(), lay["intro"], intro_text())
 	if not race.callouts.current.is_empty() and not race.results.visible and not watching_shown():
 		_draw_callout(race.callouts.current, Vector2(w / 2.0, CALLOUT_Y))
+	var fd: FirstDrive = race.first_drive
+	if fd != null and fd.current >= 0 and not race.paused:
+		_draw_first_drive(fd)
 	if Settings.subtitles:
 		_draw_subtitle(lay["subtitle"], race.audio.announcer.subtitle())
 	if race.notice_time > 0.0:
@@ -200,6 +205,23 @@ static func tag_slide(age: float, shown: float) -> float:
 		return 0.0
 	var k := minf(age, shown - age) / TAG_SLIDE
 	return clampf(k, 0.0, 1.0)
+
+
+## The first drive's prompt (MP-15): FIRST DRIVE and which of how many, what to do, big,
+## and how on the device in use. It grows in as it comes up.
+func _draw_first_drive(fd: FirstDrive) -> void:
+	var w := float(Cfg.SCREEN_W)
+	var k := clampf(fd.shown_for / 0.2, 0.0, 1.0)
+	var size := FIRST_DRIVE_SIZE * Vector2(lerpf(0.85, 1.0, k), 1.0)
+	var r := Rect2(Vector2(w / 2.0 - size.x / 2.0, FIRST_DRIVE_Y), size)
+	draw_rect(r.grow(2), Color(GOLD, 0.8 * k))
+	draw_rect(r, Color(PALETTE["panel"], 0.85 * k))
+	draw_rect(Rect2(r.position, Vector2(4, r.size.y)), GOLD)
+	var tag := "FIRST DRIVE  %d/%d" % [fd.number(), FirstDrive.count()]
+	_text(r.position + Vector2(10, 11), tag, 8, Color(GOLD, k))
+	_text_centered(Vector2(w / 2.0, r.position.y + 25), FirstDrive.TEXT[fd.current], 16, Color(1, 1, 1, k))
+	var dev := ControlsCard.device_now()
+	_text_centered(Vector2(w / 2.0, r.position.y + 39), FirstDrive.how(fd.current, dev, ControlsCard.profile_for(dev)), 9, Color(1, 1, 1, 0.8 * k))
 
 
 ## The connection dot (ON-12), top right of the time panel: green, amber or red for the
