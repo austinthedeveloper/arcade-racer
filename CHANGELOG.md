@@ -7,6 +7,18 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- First drive (MP-15): a new driver's first race on Palm Coast is a guided run, one prompt at a
+  time when the road allows (gas, steer, nitro on a straight, draft a truck, a power slide), each
+  cleared by doing it. SKIP FIRST DRIVE on the pause menu; it never comes back once done or skipped.
+- Who's driving (AC-16): the first start, and every new profile, asks KID, NEW or RACER and sets
+  the assists and difficulty to match. Change them any time in Options.
+- Wheel first run (WH-16): plug in a wheel the game hasn't seen and the title offers to calibrate
+  it now, once per wheel. Pads are never asked.
+- Controls card (PR-22): CONTROLS on the title and the pause menu shows every control for the
+  keyboard, pad, wheel or touch controls, with your own rebinds.
+
 ### Changed
 
 - Car select: every car's picture is now rendered from its 3D model, all from the same angle on

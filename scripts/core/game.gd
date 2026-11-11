@@ -54,7 +54,8 @@ var _menu_shot := ""
 var news_allowed := true
 ## The onboarding (who's driving AC-16, the wheel's first run WH-16, the first drive MP-15)
 ## may come up: not for a staged screenshot (--menu-shot) unless it stages one of them, and
-## the first drive not in a race the dev flags started (--first-drive asks for it there).
+## the first drive not in a race the dev flags started or a screenshot (--first-drive asks
+## for it there).
 ## WhosDriving.enabled turns all of it off (the test runners).
 var onboarding := true
 var first_drive_allowed := true
@@ -119,7 +120,7 @@ func _ready() -> void:
 			_menu_shot = arg.get_slice("=", 1)
 		elif arg.begins_with("--attract-delay="):
 			attract_delay = float(arg.get_slice("=", 1))
-	first_drive_allowed = not quick or DevArgs.has("--first-drive")
+	first_drive_allowed = (not quick and news_allowed) or DevArgs.has("--first-drive")
 	var auto := DevArgs.value("--online")
 	if auto != "":
 		online_from_flags(auto, int(DevArgs.value("--players", "2")))
@@ -216,7 +217,7 @@ func onboarding_on() -> bool:
 ## Whether a race on `stage` starts as the first drive (MP-15): a new profile's first race on
 ## Palm Coast (FirstDrive.wanted), from the menus, not a demo or online.
 func first_drive_for(stage: int, demo: bool) -> bool:
-	return onboarding_on() and first_drive_allowed and not demo and FirstDrive.wanted(stage, SaveData)
+	return WhosDriving.enabled and first_drive_allowed and not demo and FirstDrive.wanted(stage, SaveData)
 
 
 ## CONTROLS on the title (PR-22): the controls card, back to the title on CONTROLS.
