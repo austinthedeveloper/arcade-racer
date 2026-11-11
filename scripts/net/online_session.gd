@@ -41,6 +41,7 @@ const NOPE := "NOPE"
 const AGAIN := "AGAIN"
 const PING := "PING"
 const PONG := "PONG"
+const UPDATE_TO_PLAY := "UPDATE TO PLAY ONLINE"
 ## Connection quality (ON-12): a PING every PING_EVERY seconds each way; the round trip shown
 ## is the worst of the room's (the host's to each guest, a guest's to the host), and one not
 ## heard from in STALE seconds counts as at least that slow. Under GOOD_MS green, under
@@ -61,6 +62,10 @@ var players := {}  # slot -> car id: everyone in the room, this game too
 var stage := 0  # into Stages, the host's pick
 var mirror := false
 var error := ""  # why the room is gone, in capitals for the screen
+## The room is gone because this game is older than the host's (or than the oldest the relay
+## takes, NetLink.oldest_version): the screen says UPDATE TO PLAY ONLINE and offers the
+## updater (ON-14). `error` then holds the versions.
+var needs_update := false
 ## A START came in (or the host started): the game opens the race and clears it.
 var started := false
 var go := false  # the GO came in: the race's countdown runs from it
@@ -133,6 +138,7 @@ func poll(dt: float) -> void:
 			break
 	if error == "" and link.error != "":
 		error = link.error
+		needs_update = error.begins_with(UPDATE_TO_PLAY)
 	if error != "":
 		phase = Phase.CLOSED
 		link.close()
@@ -146,14 +152,32 @@ func poll(dt: float) -> void:
 			_go()
 
 
+## Why a game on version `mine` can't join a host on `host` ("" when either is unknown), or
+## a relay whose oldest accepted version is `oldest` ("" when it names none): "" when it can.
+## Older than either: UPDATE TO PLAY ONLINE (the guest updates, ON-14). Newer than the host:
+## OLD VERSION (the host's to update). Said from the guest's side, so the host sends it too.
+static func version_refusal(mine: String, host: String, oldest := "") -> String:
+	if oldest != "" and BootTree.compare(mine, oldest) < 0:
+		return "%s: THE SERVER TAKES %s OR LATER, YOU HAVE %s" % [UPDATE_TO_PLAY, oldest, mine]
+	if host == "" or host == mine:
+		return ""
+	if BootTree.compare(host, mine) > 0:
+		return "%s: THE HOST HAS %s, YOU HAVE %s" % [UPDATE_TO_PLAY, host, mine]
+	return "OLD VERSION: THE HOST HAS %s, YOU HAVE %s" % [host, mine]
+
+
 ## The line is up: the host's lobby opens; a guest checks the host's version and says hello.
 func _in_room() -> void:
-	if hosting():
+	if hosting() and version_refusal(Updater.version(), "", link.oldest_version) != "":
+		error = version_refusal(Updater.version(), "", link.oldest_version)
+		needs_update = true
+	elif hosting():
 		slot = 0
 		players = {0: car_id}
 		phase = Phase.LOBBY
-	elif link.host_version != "" and link.host_version != Updater.version():
-		error = "OLD VERSION: THE HOST HAS %s, THIS IS %s" % [link.host_version, Updater.version()]
+	elif version_refusal(Updater.version(), link.host_version, link.oldest_version) != "":
+		error = version_refusal(Updater.version(), link.host_version, link.oldest_version)
+		needs_update = error.begins_with(UPDATE_TO_PLAY)
 	else:
 		slot = link.you + 1
 		_hello = true
@@ -196,8 +220,9 @@ func _host_got(guest: int, msg: Array) -> void:
 	var s := guest + 1
 	match String(msg[0]):
 		NetLink.JOINED:
-			if String(msg[1]) != Updater.version():
-				link.send_to(guest, [NOPE, "OLD VERSION: THE HOST HAS %s, YOU HAVE %s" % [Updater.version(), msg[1]]])
+			var refusal := version_refusal(String(msg[1]), Updater.version())
+			if refusal != "":
+				link.send_to(guest, [NOPE, refusal])
 			elif phase == Phase.LOADING or phase == Phase.RACING:
 				link.send_to(guest, [NOPE, "A RACE IS UNDER WAY: TRY AGAIN SOON"])
 		NetLink.LEFT:
@@ -292,6 +317,7 @@ func _guest_got(msg: Array) -> void:
 			_dropped(int(msg[1]))
 		NOPE:
 			error = String(msg[1])
+			needs_update = error.begins_with(UPDATE_TO_PLAY)
 		PING:
 			if msg.size() >= 2:
 				link.send_to(NetLink.HOST, [PONG, msg[1]])

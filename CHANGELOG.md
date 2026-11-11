@@ -14,6 +14,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Playtest log (EQ-25): Options > Display > PLAYTEST LOG (off unless you turn it on) keeps a
   note of each race on your computer: crashes, checkpoints and where you lost time.
   tools/playtest_report.py charts a folder of them per stage. Nothing is sent anywhere.
+- Update to play online (ON-14): joining a host on a newer version says UPDATE TO PLAY ONLINE
+  and offers an UPDATE button, instead of only OLD VERSION.
 
 ### Changed
 
