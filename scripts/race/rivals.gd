@@ -16,6 +16,8 @@ const GRID_X := 0.5
 const BAND_EASE := 0.05  # normal difficulty: most a rival ahead gives up...
 const BAND_BOOST := 0.04  # ...and most a rival behind gains
 const CONTACT_LENGTH := 300.0  # world units along the road two racers touch within
+const STANDSTILL := 100.0  # world units per second under which a car in the way counts as stopped
+const SQUEEZE := 0.01  # road half-widths a tick a car stuck behind a stopped one edges round it
 
 var cars: Array[RivalCar] = []
 var band_ease := BAND_EASE
@@ -178,6 +180,12 @@ static func resolve_contacts(racers: Array, track: Track) -> void:
 				back.speed = minf(back.speed, front.speed * Tuning.v("ai/contact_slowdown"))
 				back.move_to(front.position - CONTACT_LENGTH, track)
 				back.bumped = true
+				# Held to a standstill behind a car stopped for good (not one crashed, which gets
+				# going again), it couldn't steer out, steering needs speed, and sat there for good
+				# (EQ-22's soak found one): it edges round instead
+				if front.speed < STANDSTILL and front.crash_time <= 0.0:
+					var way := signf(back.x - front.x) if back.x != front.x else track.side()
+					back.x = move_toward(back.x, front.x + way * reach, SQUEEZE)
 			else:
 				var push := (reach - absf(a.x - b.x)) * 0.5
 				var side := 1.0 if a.x >= b.x else -1.0

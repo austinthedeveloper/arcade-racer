@@ -237,6 +237,47 @@ func test_running_into_a_racer_drops_in_behind_it() -> void:
 	eq(front.speed, 5000.0, "the car in front keeps its speed")
 
 
+func test_a_rival_stuck_behind_a_stopped_car_edges_round_it() -> void:
+	# Regression (EQ-22's soak): a rival that ran up behind the player stopped at TIME UP was
+	# held at a standstill every tick, and with no speed it couldn't steer out: it sat there.
+	var t := flat_track(2000)
+	var p := _player()
+	p.reset(20000.0)
+	p.x = 0.2
+	var f := _field(t, 1)
+	var r: RivalCar = f.cars[0]
+	r.reset(19500.0)
+	r.x = 0.54
+	r.speed = 3000.0
+	for i in 60 * 10:
+		f.update(DT, t, p, true, 1e12)
+		p.update(DT, DriveInput.new(), t, false)
+		Rivals.resolve_contacts(f.everyone(p), t)
+	check(r.position > p.position, "it got by (%.0f, the stopped car at %.0f)" % [r.position, p.position])
+	var front := PlayerCar.new()
+	front.reset(2000.0)
+	var back := PlayerCar.new()
+	back.reset(1500.0)
+	back.x = 0.3
+	back.speed = 100.0
+	back.position = 1900.0
+	Rivals.resolve_contacts([back, front], t)
+	near(back.x, 0.3 + Rivals.SQUEEZE, 0.0001, "edged away from it")
+	back.x = 0.3
+	back.position = 1900.0
+	back.last_position = 1500.0
+	front.crash_time = 1.0
+	Rivals.resolve_contacts([back, front], t)
+	eq(back.x, 0.3, "a crashed car gets going again: waited for")
+	front.crash_time = 0.0
+	front.speed = 5000.0
+	back.x = 0.3
+	back.position = 2000.0 - Rivals.CONTACT_LENGTH + 100.0
+	back.last_position = 1500.0
+	Rivals.resolve_contacts([back, front], t)
+	eq(back.x, 0.3, "behind a moving car it stays in line")
+
+
 func test_racers_side_by_side_are_pushed_apart() -> void:
 	var t := flat_track()
 	var a := RivalCar.new()
