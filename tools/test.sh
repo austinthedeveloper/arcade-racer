@@ -38,6 +38,10 @@ if [ -n "$all" ]; then
   printf "\ntuning adopt tool:\n"
   "$PYTHON" -m unittest tools/test_tuning_adopt.py >"$out" 2>&1 || { cat "$out"; status=1; }
   tail -1 "$out"
+  # The playtest report tool (EQ-25): plain Python too (its PNG test skips without Pillow)
+  printf "\nplaytest report tool:\n"
+  "$PYTHON" -m unittest tools/test_playtest_report.py >"$out" 2>&1 || { cat "$out"; status=1; }
+  tail -1 "$out"
   # The sprite tools' helpers (tools/test_spritelib.py), when their libraries are installed.
   printf "\nsprite tool helpers:\n"
   if "$PYTHON" -c "import PIL, numpy, scipy" >/dev/null 2>&1; then

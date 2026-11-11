@@ -137,6 +137,10 @@ var results: ResultsScreen  # after the finish (RC-5)
 var new_best_time := false  # this finish set the best time for the stage and car
 var best_before := {}  # SaveData.best for the stage and car before this finish
 var stats_recorded := false  # this run is in the stats page's counters (record_stats)
+## This run's playtest log (EQ-25), with the option on; null when off. last_playtest_log is
+## the file the last one wrote ("" for none), for tests.
+var playtest: PlaytestLog
+var last_playtest_log := ""
 var _start_distance := 0.0  # where the player started this run, for the miles driven
 
 var background: Background
@@ -234,6 +238,7 @@ func _ready() -> void:
 
 func start_race() -> void:
 	record_stats(false)  # a run restarted partway: its miles, crashes and near misses
+	end_playtest("quit")
 	InputRouter.speed_factor = 0.0
 	_frame = 0
 	track = Stages.build(stage_index, mirror)
@@ -341,6 +346,8 @@ func start_race() -> void:
 	# Started partway in (--at-segment): past the checkpoints behind it
 	while next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
+	if Settings.playtest_log and not demo:
+		playtest = PlaytestLog.new(Stages.POSTCARDS[stage_index], car_id, playtest_mode(), mirror, finish_distance)
 	background.set_theme(track.theme, track.next_theme)
 	background.mirrored = track.mirrored
 	road.flow = not free_drive  # (its road loops straight back to its own start)
@@ -360,12 +367,14 @@ func start_race() -> void:
 	fx.clear()
 	fx.set_weather(track.theme, _lightning_at)
 	fx.player = player
+	fx.exhaust_anchor = FxLayer.exhaust_for(car["strip"])
 	set_view(Settings.camera_view)
 
 
 ## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
 func _exit_tree() -> void:
 	record_stats(false)  # quit partway (or after the results, already counted)
+	end_playtest("quit")
 	InputRouter.speed_factor = 0.0
 	if debug_panel != null and debug_panel.race == self:
 		debug_panel.race = null
@@ -741,6 +750,7 @@ func _physics_process(dt: float) -> void:
 				time_left = 0.0
 				state = State.TIME_UP
 				record_stats(true)
+				end_playtest("time_up")
 				_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", Callouts.HOLD)
 
 	# Past the line the world drops into slow motion for a moment (sim, the world's tick), and
@@ -783,6 +793,8 @@ func _physics_process(dt: float) -> void:
 			recording.record(player, track.side())
 		if replay_offered():
 			replay_trace.record([player] + rivals.cars, traffic.cars)
+		if playtest != null:
+			playtest.tick(sim, player.distance, player.speed * sim, player.crashed)
 		_check_progress()
 		_callouts_after_tick(earned, place_before)
 	if first_drive != null:
@@ -968,6 +980,8 @@ func _check_progress() -> void:
 	if next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
 		score.checkpoint()
+		if playtest != null:
+			playtest.checkpoint(next_checkpoint)
 		if time_attack:
 			split = race_time - ghost.time_at(player.distance, 1.0 / Engine.physics_ticks_per_second) if ghost != null else NAN
 			_banner("CHECKPOINT", "" if is_nan(split) else split_text(split) + " vs best", 2.0, Callouts.Kind.CHECKPOINT)
@@ -992,6 +1006,7 @@ func _check_progress() -> void:
 		var before_unlocks: Array = SaveData.unlocks.duplicate()
 		new_best_time = record_finish()
 		record_stats(true)
+		end_playtest("finish")
 		if time_attack:
 			_save_ghost()
 		var mins := int(race_time) / 60
@@ -1068,6 +1083,25 @@ func record_stats(counted: bool) -> void:
 	stats_recorded = true
 	var won := counted and state == State.FINISHED and place == 1 and not rivals.cars.is_empty()
 	SaveData.record_run(stage_index, car_id, counted, won, score.crashes, near_misses(score), Settings.miles(driven))
+
+
+## The playtest log's mode name for this run (PlaytestLog.mode).
+func playtest_mode() -> String:
+	if online != null:
+		return "online"
+	if free_drive:
+		return "free_drive"
+	if time_attack:
+		return "time_attack"
+	return "tour" if tour else "single"
+
+
+## Ends this run's playtest log (EQ-25), if there is one: written, then gone.
+func end_playtest(how: String) -> void:
+	if playtest == null:
+		return
+	last_playtest_log = playtest.finish(how)
+	playtest = null
 
 
 ## The near misses in a stage's bonuses.

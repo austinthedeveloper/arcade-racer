@@ -1,0 +1,66 @@
+{
+	"format": 1,
+	"version": "0.5.2",
+	"started": "2026-11-11T10:00:00",
+	"stage": "palm_coast",
+	"car": "car_vega",
+	"mode": "single",
+	"mirror": false,
+	"result": "finish",
+	"time": 71.5,
+	"length": 100000.0,
+	"stretch_length": 20000,
+	"checkpoints": [
+		{
+			"index": 1,
+			"time": 20.1
+		},
+		{
+			"index": 2,
+			"time": 40.2
+		},
+		{
+			"index": 3,
+			"time": 60.3
+		}
+	],
+	"crashes": [
+		{
+			"time": 12.0,
+			"distance": 25000.0,
+			"segment": 125
+		}
+	],
+	"stretches": [
+		{
+			"index": 0,
+			"from": 0,
+			"seconds": 1.87,
+			"lost": 0.2
+		},
+		{
+			"index": 1,
+			"from": 20000,
+			"seconds": 3.47,
+			"lost": 1.8
+		},
+		{
+			"index": 2,
+			"from": 40000,
+			"seconds": 1.77,
+			"lost": 0.1
+		},
+		{
+			"index": 3,
+			"from": 60000,
+			"seconds": 1.67,
+			"lost": 0.0
+		},
+		{
+			"index": 4,
+			"from": 80000,
+			"seconds": 1.97,
+			"lost": 0.3
+		}
+	]
+}

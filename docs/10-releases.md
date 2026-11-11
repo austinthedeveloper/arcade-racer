@@ -27,6 +27,10 @@ pre-release on GitHub, and the auto-updater still offers it.
    **Unreleased** above it. Every line says what a player notices, not which file changed.
 3. Set `config/version="x.y.z"` in `project.godot`. `test_export` checks that the changelog has
    a section for this version, so a bump without notes fails the tests.
+   In the same change, write this version's save fixture (EQ-27):
+   `godot --headless --path . -s res://tests/save_fixture.gd` writes the save, settings and wheel
+   profile files this build makes into `tests/fixtures/saves/vx.y.z/`. Commit the folder;
+   `test_save_compat` fails without it, and loads every release's folder from then on.
 4. Merge that, then `git tag vx.y.z && git push origin vx.y.z`.
 5. The release workflow stops at once if `tools/changelog.py` finds no section for the tag;
    otherwise it runs the tests, exports, and publishes the release with the changelog section
@@ -36,6 +40,18 @@ pre-release on GitHub, and the auto-updater still offers it.
    first ": ", so start each with a short name ("Photo key (PR-21): ...").
 6. Start the previous release's desktop build and check it updates itself to the new one, and
    that the title shows what's new in it once.
+
+## The save promise (EQ-27)
+
+From 1.0 a save, settings and wheel profile file from any released version loads in every
+later one, with every value in it. `tests/fixtures/saves/` keeps one folder per release, each
+holding exactly what that version wrote (`tests/save_fixture.gd` has the values; the folders
+for v0.1.0 to v0.5.2 were recreated from each tag's save code). `test_save_compat` loads each
+one in the current build: every option and every best time as the release saved it, keys a
+release didn't have at their defaults, and a save in the current version (with a `.bak` of
+the old file, EQ-21) after. A format change therefore needs a migration step
+(`CfgVersion.migrate`), never a reinterpretation of an old key. A folder is never edited once
+committed.
 
 ## Decision: no code signing yet (2026-11-01)
 

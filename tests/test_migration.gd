@@ -318,6 +318,22 @@ func test_settings_v12_to_v13_adds_the_camera_view() -> void:
 	_clean()
 
 
+func test_settings_v13_to_v14_adds_the_playtest_log() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v13.cfg")
+	eq(Settings.migrate(cfg), 13, "from version 13")
+	eq([CfgVersion.of(cfg), cfg.get_value("game", "playtest_log")], [Settings.VERSION, false], "migrated on: off")
+	_clean()
+	_load_settings("settings_v13.cfg")
+	eq([Settings.playtest_log, Settings.camera_view, Settings.rumble], [false, 2, 6], "v13 loads with the log off, the rest as saved")
+	Settings.playtest_log = true
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.playtest_log], [Settings.VERSION, true], "saved and loaded back")
+	_clean()
+	eq(Settings.playtest_log, false, "off by default")
+
+
 func test_settings_newer_version_loads_what_it_knows() -> void:
 	_clean()
 	var future := _load_settings("settings_future.cfg")
@@ -705,7 +721,7 @@ func test_save_v4_to_v5_counts_an_older_driver_as_onboarded() -> void:
 	_clean()
 
 
-func test_settings_v13_to_v14_adds_the_wheels_offered() -> void:
+func test_settings_v14_to_v15_adds_the_wheels_offered() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(FIXTURES + "settings_v13.cfg")
 	eq(Settings.migrate(cfg), 13, "from version 13")
