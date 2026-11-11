@@ -53,7 +53,7 @@ func test_the_log_from_a_scripted_run() -> void:
 	var path := pl.finish("time_up", _dir())
 	check(path.begins_with(_dir()) and path.ends_with(".json"), "written in its folder: " + path)
 	var back: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
-	eq([back["result"], back["format"], back["version"]], ["time_up", PlaytestLog.FORMAT, Updater.version()], "how it ended")
+	eq([back["result"], int(back["format"]), back["version"]], ["time_up", PlaytestLog.FORMAT, Updater.version()], "how it ended")
 	eq(PlaytestLog.new().finish("quit", _dir()), "", "a run that never ticked writes nothing")
 	_done()
 
