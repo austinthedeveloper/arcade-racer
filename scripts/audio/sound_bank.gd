@@ -39,10 +39,32 @@ const CUES := {
 	"thunder": ["sfx", false, -9.0],  # a beat after a lightning flash (Weather)
 	"radio_tune": ["sfx", false, -10.0],  # changing station
 	"shutter": ["sfx", false, -6.0],  # the photo key (Photo)
-	"station_rock": ["music", true, -11.0],  # the radio (Radio)
-	"station_synthwave": ["music", true, -9.5],
-	"station_funk": ["music", true, -10.0],
-	"station_techno": ["music", true, -10.5],
+	# The radio (Radio): each station's songs, played once each in turn (RaceAudio.radio_tick),
+	# then its sting between them. Leveled to about -22 dB RMS once turned down.
+	"station_rock": ["music", false, -11.0],
+	"station_synthwave": ["music", false, -9.5],
+	"station_funk": ["music", false, -10.0],
+	"station_techno": ["music", false, -10.5],
+	"rock_dust_devil": ["music", false, -12.0],
+	"rock_mesa_run": ["music", false, -12.1],
+	"rock_high_noon": ["music", false, -12.1],
+	"rock_salt_flats": ["music", false, -11.7],
+	"synthwave_afterglow": ["music", false, -9.1],
+	"synthwave_chrome_heart": ["music", false, -9.5],
+	"synthwave_night_drive": ["music", false, -9.1],
+	"synthwave_palm_static": ["music", false, -9.5],
+	"funk_slick_back": ["music", false, -10.3],
+	"funk_double_parked": ["music", false, -10.2],
+	"funk_velvet_turn": ["music", false, -9.6],
+	"funk_tailwind": ["music", false, -10.1],
+	"techno_redline": ["music", false, -10.3],
+	"techno_overpass": ["music", false, -10.4],
+	"techno_grid_lock": ["music", false, -10.9],
+	"techno_static_bloom": ["music", false, -10.5],
+	"sting_rock": ["music", false, -11.8],
+	"sting_synthwave": ["music", false, -8.3],
+	"sting_funk": ["music", false, -9.9],
+	"sting_techno": ["music", false, -4.7],
 }
 
 ## The announcer's lines (Announcer.LINES) are cues too: vo_<id>, one-shots at this level.
