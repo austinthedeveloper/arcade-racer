@@ -12,6 +12,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Car select: every car's picture is now rendered from its 3D model, all from the same angle on
   the same coast road, and painted like the car you then drive.
 - Rival balance (RC-21): on Easy, rivals ahead of you wait for you a little longer.
+- Crash feel (RC-22): the harder the hit, the longer the car tumbles; a big hit holds a moment
+  of slow motion (not with Reduce motion on); back on the road the car is see-through for a
+  second, so nothing can hit it again at once. Medal times move with the new autodrive times.
 
 ### Fixed
 

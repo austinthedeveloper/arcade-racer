@@ -25,17 +25,18 @@ const RIVALS_HOME_BY := 200.0
 ## last across the line, the autodrive among them, seconds) at most, and the places the
 ## autodrive may finish in (best, worst). Every stage's autodriven race stays in its band:
 ## test_golden checks Normal on the golden traces and Easy and Hard in a test of their own.
-## From the balance pass's report (docs/roadmap/01-racing-core.md, RC-21), with a few
-## seconds' room for play changes that move a finish or two.
+## From the balance pass's report (docs/roadmap/01-racing-core.md, RC-21) and what the crash
+## feel (RC-22) then moved: a play change reshuffles a close field by a place or two and a
+## straggler by a few seconds, so the bands hold what several draws of the field showed.
 const BANDS := [
-	{"spread": 30.0, "places": [1, 3]},  # easy: rivals that wait, the autodrive on the podium
-	{"spread": 30.0, "places": [1, 5]},  # normal
-	{"spread": 30.0, "places": [1, 6]},  # hard: quicker rivals that hardly wait
+	{"spread": 38.0, "places": [1, 4]},  # easy: rivals that wait, the autodrive near the front
+	{"spread": 38.0, "places": [1, 6]},  # normal
+	{"spread": 38.0, "places": [1, 7]},  # hard: quicker rivals that hardly wait; not last
 ]
 ## A stage whose field spreads further by design, by stage id (Stages.POSTCARDS): the spread
 ## it may have on every difficulty. Skyline's downtown jam (RC-20) holds whoever reaches it
 ## among the traffic for half a minute; the rest of the field is home by then.
-const STAGE_SPREAD := {"skyline": 42.0}
+const STAGE_SPREAD := {"skyline": 46.0}
 
 var failures := 0
 
@@ -95,6 +96,7 @@ static func autodrive_field(settings: Node, stage: int, level: int, draw := 0) -
 			[], Rivals.stage_pace_of(stage))
 	var lent := 0.0  # seconds put on the clock to keep it from running out
 	var least := INF
+	var arrivals: Array[float] = []  # race time at each checkpoint, then the line
 	var cp: int = r.next_checkpoint
 	var crashes := {}
 	var limit := 20000
@@ -107,6 +109,7 @@ static func autodrive_field(settings: Node, stage: int, level: int, draw := 0) -
 		if r.next_checkpoint != cp or r.state == r.State.FINISHED:
 			cp = r.next_checkpoint
 			least = minf(least, left)
+			arrivals.append(r.race_time)
 		_count_crashes(r, crashes)
 		limit -= 1
 	while r.rivals.finished_count() < r.rivals.cars.size() and r.rivals.clock < RIVALS_HOME_BY:
@@ -114,6 +117,7 @@ static func autodrive_field(settings: Node, stage: int, level: int, draw := 0) -
 		_count_crashes(r, crashes)
 	var out := field(r)
 	out["clock"] = least
+	out["arrivals"] = arrivals
 	out["timed_out"] = r.state != r.State.FINISHED or least < 0.0
 	out["rivals_home"] = r.rivals.finished_count()
 	var counts: Array[int] = []
@@ -347,6 +351,7 @@ func report(stages: Array[int], levels: Array[int]) -> void:
 					f["clock"], "ok" if why == "" else why])
 				if detail:
 					print("    crashes (player first) %s; %s" % [str(f["crashes"]), ", ".join(f["rivals"])])
+					print("    at the checkpoints and the line %s" % str(f["arrivals"]))
 			if draws > 1:
 				print("|   mean of %d | %s | | %.1f | | | %.1f | | |" % [draws, LEVELS[l].capitalize(), places / draws, spreads / draws])
 

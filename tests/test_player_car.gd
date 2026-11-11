@@ -219,7 +219,7 @@ func test_a_crash_into_traffic_is_a_short_spin_not_a_stop() -> void:
 	var c := _traffic_car(t, p, 0.0, Cfg.MAX_SPEED * 0.4)
 	p.collide(t)
 	check(p.crashed, "still a crash")
-	near(p.crash_time, Tuning.v("crashes/traffic_spin_time"), 0.001, "a short one")
+	near(p.crash_time, PlayerCar.tumble_length(Tuning.v("crashes/traffic_spin_time"), Cfg.MAX_SPEED - c.speed), 0.001, "a short one, for the closing speed")
 	near(p.speed, c.speed * Tuning.v("crashes/traffic_spin_keep"), 0.001, "at a share of the car's speed")
 	check(p.position + Cfg.PLAYER_Z < c.z, "dropped in behind it")
 	var lowest := p.speed
@@ -229,7 +229,7 @@ func test_a_crash_into_traffic_is_a_short_spin_not_a_stop() -> void:
 	near(lowest, c.speed * Tuning.v("crashes/traffic_spin_keep"), 1.0, "doesn't slow to a stop")
 	var palm := _car(Cfg.MAX_SPEED)
 	palm.crash()
-	near(palm.crash_time, Tuning.v("crashes/crash_time"), 0.001, "a roadside crash is the full length...")
+	near(palm.crash_time, PlayerCar.tumble_length(Tuning.v("crashes/crash_time"), Cfg.MAX_SPEED), 0.001, "a roadside crash is the full length...")
 	for i in 60:
 		palm.update(DT, input(1.0), t, true)
 	eq(palm.speed, 0.0, "...and stops the car")
@@ -808,7 +808,7 @@ func test_a_head_on_crashes_even_when_stopped() -> void:
 	var c := _oncoming(t, p, 2000.0)
 	tr.cars.append(c)
 	check(_drive_into(t, p, tr, 120), "an oncoming car runs into a car standing in its lane")
-	near(p.crash_length, Tuning.v("crashes/head_on_time"), 0.001, "the longer head-on spin")
+	near(p.crash_length, PlayerCar.tumble_length(Tuning.v("crashes/head_on_time"), c.speed), 0.01, "the longer head-on spin, for its speed")
 	check(c.flung > 0.0, "and is knocked aside")
 
 
@@ -859,3 +859,76 @@ func test_a_ram_plate_flings_oncoming_traffic() -> void:
 		rammed = rammed or p.rammed
 	check(rammed and not p.crashed, "rammed out of the way")
 	check(c.flung > 0.0 or c.returning, "flying")
+
+
+# RC-22: crash feel v2
+func test_the_tumble_lasts_longer_the_harder_the_hit() -> void:
+	var base := Tuning.v("crashes/crash_time")
+	near(PlayerCar.tumble_length(base, 0.0), base * Tuning.v("crashes/tumble_slow"), 0.0001, "a nudge: the short end")
+	near(PlayerCar.tumble_length(base, Cfg.MAX_SPEED), base * Tuning.v("crashes/tumble_fast"), 0.0001, "top speed: the long end")
+	near(PlayerCar.tumble_length(base, Cfg.MAX_SPEED * 3.0), base * Tuning.v("crashes/tumble_fast"), 0.0001, "no longer past it")
+	var last := 0.0
+	for k in 11:
+		var l := PlayerCar.tumble_length(base, Cfg.MAX_SPEED * k / 10.0)
+		check(l > last, "longer at %d%% (%.2f s)" % [k * 10, l])
+		last = l
+	var slow := _car(Cfg.MAX_SPEED * 0.3)
+	slow.crash()
+	var fast := _car(Cfg.MAX_SPEED * 0.95)
+	fast.crash()
+	check(fast.crash_time > slow.crash_time + 0.3, "a palm at speed tumbles longer (%.2f against %.2f s)" % [fast.crash_time, slow.crash_time])
+	eq(fast.crash_length, fast.crash_time, "the drawn tumble is that long")
+	near(fast.hit_speed, Cfg.MAX_SPEED * 0.95, 0.001, "the hit's speed kept")
+	check(PlayerCar.big_hit(fast.hit_speed) and not PlayerCar.big_hit(slow.hit_speed), "a big hit, and not")
+
+
+func test_a_spin_off_traffic_tumbles_for_the_speed_it_hit_at() -> void:
+	var t := flat_track()
+	var p := _car(Cfg.MAX_SPEED)
+	p.position = 2000.0
+	_traffic_car(t, p, 0.0, Cfg.MAX_SPEED * 0.3)
+	p.collide(t)
+	near(p.hit_speed, Cfg.MAX_SPEED * 0.7, 0.001, "the closing speed it hit at, not the speed it was left with")
+
+
+func test_back_from_a_crash_the_car_is_ghosted_a_moment() -> void:
+	var t := flat_track()
+	var p := _car(Cfg.MAX_SPEED * 0.8)
+	p.position = 2000.0
+	p.crash()
+	var ticks := 0
+	while p.crash_time > 0.0:
+		check(not p.ghosted(), "not while crashing")
+		p.update(DT, input(1.0), t, true)
+		ticks += 1
+	near(p.respawn_ghost, Tuning.v("crashes/respawn_ghost"), 0.001, "ghosted as the crash ends")
+	check(p.ghosted(), "ghosted")
+	# A slower car in its lane right ahead: driven through, not hit
+	p.speed = Cfg.MAX_SPEED * 0.8
+	_traffic_car(t, p, p.x, Cfg.MAX_SPEED * 0.2)
+	p.update(DT, input(1.0), t, true)
+	p.collide(t)
+	check(not p.crashed and not p.bumped and not p.hit_traffic, "nothing hits it")
+	var held := 1
+	while p.respawn_ghost > 0.0:
+		p.update(DT, input(1.0), t, true)
+		held += 1
+	near(held * DT, Tuning.v("crashes/respawn_ghost"), DT * 1.5, "for crashes/respawn_ghost (%d ticks)" % held)
+	check(not p.ghosted(), "then solid again")
+	p.respawn_ghost = 0.5
+	p.reset(0.0)
+	eq(p.respawn_ghost, 0.0, "a restart clears it")
+
+
+func test_a_car_back_from_a_crash_is_not_touched_by_the_field() -> void:
+	var t := flat_track()
+	var a := _car(Cfg.MAX_SPEED * 0.5)
+	a.position = 2000.0
+	a.last_position = 2000.0
+	a.respawn_ghost = 0.5
+	var b := _car(Cfg.MAX_SPEED * 0.9)
+	b.position = 1900.0
+	b.last_position = 1500.0
+	Rivals.resolve_contacts([b, a], t)
+	check(not a.bumped and not b.bumped, "a racer drives through it")
+	eq(b.position, 1900.0, "and isn't dropped in behind")

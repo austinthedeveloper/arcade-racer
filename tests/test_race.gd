@@ -651,3 +651,57 @@ func test_the_horn_button_moves_the_car_ahead() -> void:
 	honking.horn = true
 	drive(r, 1, honking)
 	check(car.honk_in < INF, "the horn: it gives way after a beat")
+
+
+# RC-22: a big hit holds a few frames of slow motion, none with reduce motion (AC-13)
+func test_a_big_hit_holds_a_moment_of_slow_motion() -> void:
+	var race_script: GDScript = load("res://scripts/race/race.gd")
+	var p := PlayerCar.new()
+	p.reset()
+	p.speed = Cfg.MAX_SPEED * 0.95
+	eq(race_script.hit_slowmo_for(p, false, false), 0.0, "no crash, none")
+	p.crash()
+	near(race_script.hit_slowmo_for(p, false, false), Tuning.v("crashes/slowmo_time"), 0.0001, "a big hit")
+	eq(race_script.hit_slowmo_for(p, true, false), 0.0, "none with reduce motion")
+	eq(race_script.hit_slowmo_for(p, false, true), 0.0, "none online")
+	p.speed = Cfg.MAX_SPEED * 0.3
+	p.crash()
+	eq(race_script.hit_slowmo_for(p, false, false), 0.0, "a small hit: none")
+
+
+func test_the_slow_motion_slows_the_race_then_lets_go() -> void:
+	var r := race(false, false)
+	drive(r, 300, input(1.0))  # (racing)
+	var t0: float = r.race_time
+	r.hit_slowmo = Tuning.v("crashes/slowmo_time")
+	drive(r, 1, input(1.0))
+	near(r.race_time - t0, DT * Tuning.v("crashes/slowmo_scale"), 0.0001, "the clock slowed with it")
+	var ticks := 1
+	while r.hit_slowmo > 0.0 and ticks < 600:
+		drive(r, 1, input(1.0))
+		ticks += 1
+	near(ticks * DT, Tuning.v("crashes/slowmo_time"), DT * 1.5, "for crashes/slowmo_time of real time")
+	t0 = r.race_time
+	drive(r, 1, input(1.0))
+	near(r.race_time - t0, DT, 0.0001, "then full speed")
+
+
+func test_reduce_motion_skips_the_slow_motion_in_a_race() -> void:
+	var settings: Node = runner.root.get_node("Settings")
+	var held := []
+	for reduce in [false, true]:
+		settings.reduce_motion = reduce
+		var r := race(false, false)
+		drive(r, 300, input(1.0))  # up to speed
+		var crashed := false
+		for i in 600:
+			r.player.x = 1.8  # off the road at speed, into the palms
+			r.player.speed = Cfg.MAX_SPEED * 0.95
+			drive(r, 1, input(1.0))
+			if r.player.crashed:
+				crashed = true
+				break
+		check(crashed and PlayerCar.big_hit(r.player.hit_speed), "a big hit on the roadside (%.0f)" % r.player.hit_speed)
+		held.append(r.hit_slowmo > 0.0)
+	settings.reduce_motion = false
+	eq(held, [true, false], "slow motion held, then skipped with reduce motion")

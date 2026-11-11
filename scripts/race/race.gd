@@ -154,6 +154,7 @@ var calibration: CalibrationWizard
 var debug_panel: DebugPanel
 var audio: RaceAudio
 
+var hit_slowmo := 0.0  # real seconds left of a big hit's slow motion (RC-22, hit_slowmo_for)
 var _shake := 0.0  # camera shake as designed, in pixels; the screen shake option scales what shows
 var _fov_stretch := 0.0  # 0..camera/nitro_fov_stretch (Tuning), eased while nitro burns
 var _was_airborne := false
@@ -258,6 +259,7 @@ func start_race() -> void:
 	pickup_age = 99.0
 	ram_flash = 0.0
 	_shake = 0.0
+	hit_slowmo = 0.0
 	_fov_stretch = 0.0
 	_was_airborne = false
 	traffic = Traffic.new()
@@ -608,6 +610,9 @@ func _physics_process(dt: float) -> void:
 		_redraw()
 		return
 	dt *= debug_panel.logic.slow_motion()
+	if hit_slowmo > 0.0 and not paused:  # a big hit: the whole race, clock and all, slows a moment
+		hit_slowmo = maxf(0.0, hit_slowmo - dt)
+		dt *= Tuning.v("crashes/slowmo_scale")
 	if paused:
 		if replug_count > 0.0:  # the joypad back: 3, 2, 1 (WH-12)
 			replug_tick(dt, inp.pause_pressed or InputRouter.menu.back_pressed)
@@ -720,6 +725,8 @@ func _physics_process(dt: float) -> void:
 	if online != null:
 		_online_tick(sim)
 	player.collide(track)
+	if state == State.RACING:
+		hit_slowmo = maxf(hit_slowmo, hit_slowmo_for(player, Settings.reduce_motion, online != null))
 	if state == State.FINISHED:
 		player.speed = move_toward(player.speed, 0.0, FINISH_BRAKING * sim)
 		player.braking = player.speed > 0.0
@@ -829,6 +836,15 @@ func set_view(v: int) -> void:
 	view = clampi(v, 0, CameraView.View.size() - 1)
 	road.view = view
 	fx.view = view
+
+
+## The slow motion (real seconds) a tick's crash of `p` starts (RC-22): crashes/slowmo_time
+## for a big hit (PlayerCar.big_hit), none for a small one, with reduce motion (AC-13) or online,
+## where the race can't slow for one player.
+static func hit_slowmo_for(p: PlayerCar, reduce_motion: bool, is_online: bool) -> float:
+	if not p.crashed or reduce_motion or is_online or not PlayerCar.big_hit(p.hit_speed):
+		return 0.0
+	return Tuning.v("crashes/slowmo_time")
 
 
 ## Camera shake (pixels, as designed) after a tick: a crash sets it, a landing, a takeoff

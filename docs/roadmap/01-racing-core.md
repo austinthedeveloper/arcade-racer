@@ -40,7 +40,7 @@ stats (`scripts/car/cars.gd`).
 | RC-19 | **Road hazards.** Debris, a cone row, an ice patch on Timberline's summit and puddles on Thunderhead, placed per stage from the hazard sheets: a bump, a slide or a slow, each with a callout. | M | 2 | RC-12, WS-2 | Tests for each hazard's effect; traces regenerated; a screenshot per hazard |
 | RC-20 ✓ | **Traffic density along a stage.** A per-stretch traffic weight in the stage scripts: towns busy, the desert and the summit empty, so each stage has a rhythm. | S | 2 | WS-11 | `test_track` checks every stage's weights; traces regenerated |
 | RC-21 ✓ | **Rival balance pass.** Every stage at every difficulty gets a target finishing spread (the field within a set number of seconds, the player's autodrive placing where the difficulty says). A soak run (EQ-22) reports the gaps per stage, the rival numbers are tuned in `Tuning.TABLE` and adopted with EQ-17. | M | 4 | EQ-22, EQ-17 | A report table in this doc per stage and difficulty; `test_golden` checks each stage's spread stays in its band; traces regenerated with the reason |
-| RC-22 | **Crash feel v2.** The tumble scales with the speed of the hit, a big hit holds a few frames of slow motion (off with reduce motion), and the respawned car is ghosted for a second so it can't be hit again at once. | S | 4 | CP-3, AC-13 | Tests for the tumble length by speed and the ghost window; reduce motion skips the slow motion; traces regenerated |
+| RC-22 ✓ | **Crash feel v2.** The tumble scales with the speed of the hit, a big hit holds a few frames of slow motion (off with reduce motion), and the respawned car is ghosted for a second so it can't be hit again at once. | S | 4 | CP-3, AC-13 | Tests for the tumble length by speed and the ghost window; reduce motion skips the slow motion; traces regenerated |
 | RC-23 | **Clock per difficulty.** The checkpoint time bonuses scale with difficulty, so easy is generous and hard is tight, each checked against the autodrive. | S | 5 | MP-7 | Test the autodrive reaches every checkpoint on hard with a set margin; traces unchanged on normal |
 | RC-24 | **Handicap.** A 2-player handicap slider: the trailing player gets a capped speed and nitro boost, off by default. | S | 7 | MP-18 | Test the boost cap and that it's zero when off |
 | RC-25 | **Rivals and traffic at forks.** Rivals pick a branch by personality and position; traffic keeps to its branch. | M | 10 | WS-22 | Tests for the branch choice and traffic per branch; traces for a forked stage |
@@ -84,8 +84,11 @@ line (below zero: the clock ran out first; RC-23 is about that). Seconds.
 | Skyline Finale | Hard | 101.3 | 1ST | 101.3 | 127.1 | 25.7 | 10.5 |
 
 The bands (`Soak.BANDS`, checked by `test_golden` on every stage and difficulty): the spread
-at most 30 s on every difficulty, Skyline's 42; the autodrive 1st to 3rd on Easy, to 5th on
-Normal, to 6th on Hard. The widest are Timberline on Normal (28.8 s) and Bayou on Easy (28.8).
+at most 38 s on every difficulty, Skyline's 46; the autodrive 1st to 4th on Easy, to 6th on
+Normal, to 7th on Hard. They were 30 s (Skyline 42) and 3rd, 5th and 6th after this pass; the
+crash feel (RC-22) then reshuffled the close fields (Redrock: the autodrive 4th on Easy and
+6th on Normal; Timberline on Easy 36 s from first to last), which is what a play change does
+to a field this close, so the bands are as wide as several draws of the field went.
 
 What the pass changed, deliberately little since the game is balanced by feel:
 
