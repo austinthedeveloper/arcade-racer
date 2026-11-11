@@ -7,6 +7,13 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Corner warnings (WS-20): every sharp bend on every stage has its turn arrow on the outside
+  before it and chevrons (or a rail) along its outside, and every blind crest a crest sign
+  before it, mirrored stages too. Where a sign's spot is taken by a gate or a bridge, it now
+  stands just beside it instead of going missing.
+
 ### Changed
 
 - Car select: every car's picture is now rendered from its 3D model, all from the same angle on

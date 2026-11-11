@@ -20,9 +20,18 @@ const FINISH_INTO_STRAIGHT := 60  # segments into the final straight
 const TUNNEL_RAMP := 10.0  # segments from a tunnel mouth to its darkest
 const CREST_SPAN := 8  # segments either side of a crest its slopes are measured over (blind_crests)
 
-## Curves this sharp or sharper get a turn sign before them and chevrons on the outside.
+## Corner warnings (WS-5, WS-20): what the road signs warn of, decided here and nowhere else.
+## A bend is sharp where its curve is SHARP_CURVE or more (sharp_curves): it gets a turn arrow
+## before it and chevrons along its outside. A crest is blind by blind_crests (CREST_SPAN and
+## traffic/blind_crest, the same crests traffic keeps out from behind): it gets CREST_SIGN
+## before it. Every jump and bumpy stretch (hazards) gets one too.
 const SHARP_CURVE := CURVE_MEDIUM
-const SIGN_AHEAD := 30  # segments before a sharp curve, jump or bumps that its warning sign stands
+const SIGN_AHEAD := 30  # segments before a sharp curve, crest, jump or bumps that its warning sign stands
+## Where that spot is taken (a race gate, a span, a tunnel), the sign stands at the nearest open
+## segment up to SIGN_SLACK either side of it, so every bend and crest still has one.
+const SIGN_SLACK := 20
+const CREST_SIGN := "bump_sign"
+const HAZARD_REACH := 60  # segments: a jump's length (jump), so its crest is within this of its start
 const CHEVRON_EVERY := 8
 const RAIL_REACH := 10  # segments: rails stand every 10 (Bayou, Timberline), so a run has one this close
 const CHEVRONS := ["chevron_a", "chevron_b", "chevron_c"]
@@ -395,16 +404,18 @@ func add_finish_crowd() -> void:
 	add_sprite(f - 4, "flagman", 1.15)
 
 
-## Warning signs: a turn arrow before every sharp curve (SHARP_CURVE) and, with `chevrons`,
-## chevrons along its outside where no rail already runs; a bump sign before every jump and
-## bumpy stretch. Call after the stage's spans, tunnels and rails: nothing goes under a span,
-## in a tunnel or on a race gate.
+## Warning signs (WS-5, WS-20), placed from the track data: a turn arrow before every sharp
+## curve (SHARP_CURVE) on its outside and, with `chevrons`, chevrons along its outside where no
+## rail already runs; a bump sign before every jump and bumpy stretch, and a crest sign before
+## every blind crest (blind_crests) that one doesn't already warn of. Call after the stage's
+## spans, tunnels and rails: nothing goes under a span, in a tunnel or on a race gate. Built
+## for the stage as it stands; mirror() then moves every sign across with its bend.
 func add_road_signs(chevrons := true) -> void:
 	for run in sharp_curves():
 		var first: int = run.x
 		var dir := signf(segments[first].curve)
 		var outside := -dir
-		_add_sign(first - SIGN_AHEAD, "turn_right" if dir > 0.0 else "turn_left", outside * 1.5, false)
+		_warn(first, "turn_right" if dir > 0.0 else "turn_left", outside * 1.5, false)
 		if chevrons:
 			var k := 0
 			for i in range(first, run.y, CHEVRON_EVERY):
@@ -414,7 +425,36 @@ func add_road_signs(chevrons := true) -> void:
 				_add_sign(i, CHEVRONS[k % CHEVRONS.size()], outside * 1.5, dir < 0.0)
 				k += 1
 	for h in hazards:
-		_add_sign(h - SIGN_AHEAD, "bump_sign", 1.3, false)
+		_warn(h, CREST_SIGN, 1.3, false)
+	for c in blind_crests():
+		if hazard_before(c) < 0:
+			_warn(c, CREST_SIGN, 1.3, false)
+
+
+## The jump or bumpy stretch (hazards) that crest `crest` is the top of: one starting at most
+## HAZARD_REACH segments before it, or -1. Its bump sign already warns of the crest.
+func hazard_before(crest: int) -> int:
+	for h in hazards:
+		if h <= crest and crest - h <= HAZARD_REACH:
+			return h
+	return -1
+
+
+## The farthest before a bend or crest its warning sign can stand (SIGN_AHEAD + SIGN_SLACK).
+static func warning_reach() -> int:
+	return SIGN_AHEAD + SIGN_SLACK
+
+
+## Puts sign `id` SIGN_AHEAD segments before segment `target`, or at the nearest open
+## segment within SIGN_SLACK of that (nearer first on a tie). The segment it stands on, or -1.
+func _warn(target: int, id: String, offset: float, flip: bool) -> int:
+	var ideal := target - SIGN_AHEAD
+	for d in SIGN_SLACK + 1:
+		for i in ([ideal + d, ideal - d] if d > 0 else [ideal]):
+			if i < target and open_roadside(i):
+				add_sprite(i, id, offset, flip)
+				return i
+	return -1
 
 
 ## Whether a rail (a "rail_" or "guardrail" sprite) stands on `side` (-1 left, 1 right) within
