@@ -17,8 +17,8 @@ The radio plays each station's five songs in turn, once each, with the station's
 them (`RaceAudio.radio_tick`), so the songs don't loop. The radio's newer songs and stings
 (`SONGS` in `make_audio.py`) render after everything else, each on its own seeded random stream,
 so adding them left every older file byte for byte the same; add new sounds the same way.
-The songs are in `radio/`, which the Web build leaves out to stay inside its download budget
-(EQ-23): there each station plays its first song with its sting between (`Radio.songs`).
+The songs and stings are in `radio/`, which the Web build leaves out to stay inside its download
+budget (EQ-23): there each station loops its first song, as before (`Radio.songs`, `Radio.has_sting`).
 
 ## Swapping in a sound pack
 
@@ -74,7 +74,7 @@ seamless; the engine loops are pitch-shifted, so a steady single-note recording 
 | `synthwave_afterglow`, `synthwave_chrome_heart`, `synthwave_night_drive`, `synthwave_palm_static` | radio | no | 104.7 NEON FM's other four; NIGHT DRIVE also plays under the tour's finale and the credits |
 | `funk_slick_back`, `funk_double_parked`, `funk_velvet_turn`, `funk_tailwind` | radio | no | 92.1 SOUL STOP's other four |
 | `techno_redline`, `techno_overpass`, `techno_grid_lock`, `techno_static_bloom` | radio | no | 107.9 PULSE's other four |
-| `sting_rock`, `sting_synthwave`, `sting_funk`, `sting_techno` | music | no | Each station's ident, about 2.5 s, between its songs |
+| `sting_rock`, `sting_synthwave`, `sting_funk`, `sting_techno` | radio | no | Each station's ident, about 2.5 s, between its songs |
 
 ## The announcer
 

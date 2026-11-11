@@ -404,6 +404,24 @@ func test_radio_button_switches_without_a_gap() -> void:
 	eq(audio_node().music_cue, "", "no music back after the finish")
 
 
+## The Web build has no radio/ folder: no sting, so a song over goes straight to the next
+## (there the only one: the station's first song loops, as before PR-24).
+func test_no_sting_goes_straight_to_the_next_song() -> void:
+	var r := fresh_race()
+	step(r, 1)
+	var a: RaceAudio = r.audio
+	check(Radio.has_sting(a.station), "this build has the sting")
+	check(SoundBank.path_for(Radio.sting(a.station)).begins_with(SoundBank.ROOT + "radio/"), "the stings go with the newer songs")
+	var first := a.song
+	Radio._stings[a.station] = false
+	a.cue_left = DT * 0.5
+	step(r, 1, input(1.0))
+	check(not a.in_sting, "no sting")
+	eq(a.song, Radio.next_song(a.station, first), "the next song")
+	eq(audio_node().music_cue, Radio.song_cue(a.station, a.song), "playing")
+	Radio._stings.clear()
+
+
 ## Radio v2 (PR-24): a song plays out, the station's sting, then its next song, round the
 ## list; the radio button carries on at the same point.
 func test_the_sting_plays_between_songs() -> void:

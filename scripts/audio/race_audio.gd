@@ -148,7 +148,7 @@ func radio_tick(dt: float) -> void:
 		return
 	cue_left -= dt
 	if cue_left <= 0.0:
-		if in_sting:
+		if in_sting or not Radio.has_sting(station):
 			song = Radio.next_song(station, song)
 			_start_cue(false)
 		else:
