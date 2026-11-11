@@ -95,6 +95,8 @@ func test_controls_on_the_title_opens_the_card_and_back() -> void:
 	var g: Node = load("res://scenes/main.tscn").instantiate()
 	g._ready()
 	_nodes.append(g)
+	g.menu.news = []  # (what's new, if an earlier suite left it due)
+	g.menu.asking = false
 	g.menu.index = TitleScreen.items().find("CONTROLS")
 	eq(g.menu.index, 2, "CONTROLS after OPTIONS")
 	g.menu.handle(menu_input(true))
