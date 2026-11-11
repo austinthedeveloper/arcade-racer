@@ -113,11 +113,6 @@ func play_music(cue: String, from := 0.0) -> void:
 		music.play(fposmod(from, maxf(music.stream.get_length(), 0.001)))
 
 
-## How far into the music it is, in seconds (0 when none plays).
-func music_position() -> float:
-	return music.get_playback_position() if music != null and music.playing else 0.0
-
-
 ## Ducks the music for `seconds` (the announcer speaking), then brings it back.
 func duck(seconds: float) -> void:
 	_duck_left = maxf(_duck_left, seconds)

@@ -39,7 +39,7 @@ static func seed_for(stage: int) -> int:
 
 
 ## Lays out a stage's pickups, the same every time for a stage, and lists each in its segment.
-func place(track: Track, seed_value: int = 11) -> void:
+func place(track: Track, seed_value: int) -> void:
 	for p in pickups:
 		track.segments[p.segment].pickups.erase(p)
 	pickups = layout(track, seed_value)

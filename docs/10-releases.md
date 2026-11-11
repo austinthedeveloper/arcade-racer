@@ -40,6 +40,12 @@ pre-release on GitHub, and the auto-updater still offers it.
    first ": ", so start each with a short name ("Photo key (PR-21): ...").
 6. Start the previous release's desktop build and check it updates itself to the new one, and
    that the title shows what's new in it once.
+7. If this release can't race online with older builds (a changed message, a new field the
+   host needs), raise the relay's floor for the game so older builds see UPDATE TO PLAY ONLINE
+   instead of a broken room (ON-14). In the relay's deployment, set
+   `OLDEST_VERSIONS=sundown-run=x.y.z` (the relay's README, pickleball-relay), and deploy it
+   once this release's builds are up. A release that changes nothing online leaves it alone:
+   every older build keeps racing the new one.
 
 ## The save promise (EQ-27)
 
@@ -86,6 +92,25 @@ call). It fits without code changes: the Web zip is an HTML upload as it is, and
 zips upload as downloads (`butler push` from the release workflow, with an itch API key as a
 secret). The updater keeps reading GitHub, so an itch download updates itself too. Steam comes
 after that, if ever: a $100 app fee, a Steamworks account and its review.
+
+## The Web download budget (EQ-23)
+
+The Web build downloads its whole `.pck` before the game starts, so `test_export` holds it
+under `WEB_PCK_BUDGET` (28 MB). The suites check an estimate, and CI's export smoke job
+checks the real exported file, which comes out about 0.3 MB bigger. Raising the budget is
+Austin's decision, not the fix for a red build. When a change goes over:
+
+1. Look for what grew. The biggest files are the radio songs (about 0.4 MB each as QOA) and
+   the car strips; `ls -lS .godot/imported` lists them.
+2. Keep desktop-only extras out of the Web build. `assets/audio/radio/` (radio v2's songs and
+   stings) is left out by the Web preset's `exclude_filter` in `export_presets.cfg` and by
+   `WEB_EXCLUDED` in `test_export`; change both together. The game then has to cope without
+   those files: the radio plays only the songs it has (`Radio.songs`) and skips a missing
+   sting (`Radio.has_sting`).
+3. If nothing can go, ask Austin for a bigger budget, and give the new size and what it buys.
+
+At 0.6 the real `.pck` is about 27.97 MB, about 30 KB under, so the next asset that
+goes in the Web build will need one of these.
 
 ## Web: Azure Storage static website (2026-11-02)
 

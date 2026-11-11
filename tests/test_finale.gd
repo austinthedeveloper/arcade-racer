@@ -61,7 +61,6 @@ func test_the_pages_wait_for_select() -> void:
 	f = TourFinale.new()
 	f.standings = TourFinale.staged_standings(1)
 	f.page = TourFinale.Page.PODIUM
-	f.page_time = 0.0
 	check(not f.next_page_due(), "select on the podium")
 	eq(f.page, TourFinale.Page.STANDINGS, "the standings")
 	check(not f.next_page_due(), "select again")

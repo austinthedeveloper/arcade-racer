@@ -513,8 +513,9 @@ func test_make_audio_writes_the_new_songs_reproducibly() -> void:
 	if code != 0:
 		print("    (no python3 here: skipped) ", output)
 		return
-	var fresh := FileAccess.get_file_as_bytes(out.path_join("music/sting_techno.wav"))
-	var repo := FileAccess.get_file_as_bytes("res://assets/audio/music/sting_techno.wav")
+	var fresh := FileAccess.get_file_as_bytes(out.path_join("radio/sting_techno.wav"))
+	var repo := FileAccess.get_file_as_bytes("res://assets/audio/radio/sting_techno.wav")
+	check(repo.size() > 44 and fresh.size() > 44, "the sting written and read (%d, %d bytes)" % [fresh.size(), repo.size()])
 	eq(fresh.size(), repo.size(), "the same length")
 	var worst := 0
 	for i in range(44, mini(fresh.size(), repo.size()) - 1, 2):

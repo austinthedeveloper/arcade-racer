@@ -38,11 +38,12 @@ static func wanted(stage: int, save_data: Node) -> bool:
 	return stage == STAGE and save_data.first_drive_pending()
 
 
-## How many prompts there are in all, and which number the current one is (1 up).
+## How many prompts there are in all.
 static func count() -> int:
 	return Step.size()
 
 
+## Which number the current prompt is (1 up).
 func number() -> int:
 	return cleared.size() + 1
 
@@ -120,7 +121,7 @@ static func allowed(step: int, v: Dictionary) -> bool:
 	return false
 
 
-## Whether `step` has been done this tick (`v`), after `held` seconds of it before.
+## Whether `step` has been done this tick (`v`).
 static func doing(step: int, v: Dictionary) -> bool:
 	match step:
 		Step.GAS:

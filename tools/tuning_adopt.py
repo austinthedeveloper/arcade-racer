@@ -4,13 +4,14 @@
 The debug panel (F3, EQ-16) saves its overrides to user://tuning.cfg. Once a tuning session
 has been reviewed (the tuning log read, each change argued for or against), this writes the
 kept values into the registry's table in scripts/core/tuning.gd, regenerates the golden
-traces and prints a before-and-after table for the commit:
+traces and the medal times (tools/medals_from_golden.py) and prints before-and-after tables
+for the commit:
 
     python3 tools/tuning_adopt.py                     # the game's own user://tuning.cfg
     python3 tools/tuning_adopt.py PATH.cfg            # another override file (a preset)
     python3 tools/tuning_adopt.py --only driving/steer_rate,draft/speed_mult
     python3 tools/tuning_adopt.py --dry-run           # the table only, nothing written
-    python3 tools/tuning_adopt.py --no-golden         # write the table, leave the traces
+    python3 tools/tuning_adopt.py --no-golden         # write the table, leave the traces and medals
 
 Values are clamped and snapped as the game does (Tuning.set_value). Set GODOT for a binary
 that isn't `godot` on the PATH (the traces need it). Exits 1 when there is nothing to adopt.
@@ -176,7 +177,7 @@ def main():
         f.write(rewrite(source, table, changes))
     print("\nWrote %d new defaults to scripts/core/tuning.gd" % len(changes))
     if args.no_golden:
-        print("Golden traces not regenerated (--no-golden): run tests/golden.gd before committing.")
+        print("Golden traces not regenerated (--no-golden): run tests/golden.gd and tools/medals_from_golden.py before committing.")
         return 0
     godot = os.environ.get("GODOT", "godot")
     # Import first, or golden.gd silently writes one-line traces
@@ -184,7 +185,9 @@ def main():
     r = subprocess.run([godot, "--headless", "--path", ROOT, "-s", "res://tests/golden.gd"])
     if r.returncode != 0:
         sys.exit("golden.gd failed")
-    print("Golden traces regenerated. Run tools/test.sh, then commit with the table above.")
+    print("Golden traces regenerated. The medal times, from their new finish times:")
+    subprocess.run([sys.executable, os.path.join(ROOT, "tools", "medals_from_golden.py")], check=True)
+    print("Run tools/test.sh, then commit with the tables above.")
     return 0
 
 

@@ -12,9 +12,8 @@ extends MenuScreen
 ## anything else. A wheel plugged in with no saved profile is offered calibration once (WH-16).
 
 const LOGO := "res://assets/sprites/ui/logo.png"
-const PILL_STEP := 124.0  # the most from one pill to the next; six share the width
+const PILL_STEP := 124.0  # the most from one pill to the next; seven share the width (pill_step)
 const PILL := Vector2(112, 26)  # the widest a pill is, its height
-const PILL_GAP := 12.0
 const ANSWER_CARD := Vector2(150, 92)  # who's driving: each answer's card
 const DRIVER := Rect2(8, 8, 150, 34)  # who is driving (MP-10), top left
 const DRIVER_PIC := Vector2(56, 26)
@@ -258,7 +257,6 @@ func _draw() -> void:
 		_draw_question()
 	elif wheel_offer != "":
 		_draw_wheel_offer()
-
 
 
 ## Who's driving (AC-16): a card per answer, the cursor's lit, what it sets under each.
