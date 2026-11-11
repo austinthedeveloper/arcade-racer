@@ -31,24 +31,45 @@ static func count() -> int:
 	return STATIONS.size()
 
 
+static var _lists := {}  # station -> its songs that have files (songs_with)
+
+
 ## The station's first song.
 static func cue(station: int) -> String:
 	return STATIONS[station]["cue"]
 
 
+## The [cue, title] songs in `songs` that `has` (cue -> bool) says are there; the first
+## always, so a station never goes quiet. The Web build has no radio/ folder (its download
+## budget), so it plays each station's first song with its sting between.
+static func songs_with(songs: Array, has: Callable) -> Array:
+	var out := []
+	for i in songs.size():
+		if i == 0 or has.call(songs[i][0]):
+			out.append(songs[i])
+	return out
+
+
+## A station's songs this build has.
+static func songs(station: int) -> Array:
+	if not _lists.has(station):
+		_lists[station] = songs_with(STATIONS[station]["songs"], func(c: String) -> bool: return SoundBank.path_for(c) != "")
+	return _lists[station]
+
+
 ## How many songs a station plays.
 static func song_count(station: int) -> int:
-	return STATIONS[station]["songs"].size()
+	return songs(station).size()
 
 
 ## Song `song` of a station (wrapped round its list): its cue.
 static func song_cue(station: int, song: int) -> String:
-	return STATIONS[station]["songs"][posmod(song, song_count(station))][0]
+	return songs(station)[posmod(song, song_count(station))][0]
 
 
 ## Song `song` of a station: its title, for the now-playing tag.
 static func song_title(station: int, song: int) -> String:
-	return STATIONS[station]["songs"][posmod(song, song_count(station))][1]
+	return songs(station)[posmod(song, song_count(station))][1]
 
 
 ## The short ident a station plays between songs.

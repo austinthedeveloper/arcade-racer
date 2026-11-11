@@ -1278,38 +1278,40 @@ RIFF_A = [(0, 0, 2), (3, 12, 1), (4, 0, 1), (6, 10, 1), (7, 12, 1), (10, 0, 2), 
 RIFF_B = [(0, 0, 3), (3, 0, 1), (5, 12, 1), (7, 10, 1), (8, 0, 2), (11, 3, 1), (12, 4, 1), (14, 7, 2)]
 RIFF_C = [(0, 0, 1), (2, 0, 1), (3, 12, 1), (6, 0, 2), (9, 10, 1), (10, 12, 1), (12, 0, 1), (13, 7, 1), (15, 12, 1)]
 
-# Radio.STATIONS' songs after each station's first, and the stings: (file, seed, generator)
+# Radio.STATIONS' songs after each station's first, and the stings: (file, seed, generator).
+# The songs go in radio/, which the Web build leaves out (its download budget, EQ-23); the
+# stings stay in music/ with each station's first song.
 SONGS = [
-    ("music/rock_dust_devil.wav", 2401, lambda: rock_song(
+    ("radio/rock_dust_devil.wav", 2401, lambda: rock_song(
         152, 45, (0, 0, 3, 5, 0, 0, 7, 5), (-4, 3, -2, 0, -4, 3, 5, 7), "x.....x.x.......", "....x.......x...")),
-    ("music/rock_mesa_run.wav", 2402, lambda: rock_song(
+    ("radio/rock_mesa_run.wav", 2402, lambda: rock_song(
         136, 38, (0, 0, 5, 3, 0, 0, -2, -4), (5, 3, -2, 0, 5, 3, 7, 7), "x.x...x...x.....", "....x.......x...",
         gallop=True)),
-    ("music/rock_high_noon.wav", 2403, lambda: rock_song(
+    ("radio/rock_high_noon.wav", 2403, lambda: rock_song(
         160, 43, (0, 3, 5, 3, 0, 3, 7, 5), (-4, -2, 0, 0, -4, -2, 3, 5), "x...x...x...x...", "....x.......x..x")),
-    ("music/rock_salt_flats.wav", 2404, lambda: rock_song(
+    ("radio/rock_salt_flats.wav", 2404, lambda: rock_song(
         120, 40, (0, 0, 0, -2, 0, 0, 3, 2), (3, 5, 7, 5, 3, 5, 10, 7), "x.......x.x.....", "........x.......")),
-    ("music/synthwave_afterglow.wav", 2411, lambda: synth_song(
+    ("radio/synthwave_afterglow.wav", 2411, lambda: synth_song(
         96, [(41, [53, 57, 60]), (43, [55, 58, 62]), (45, [57, 60, 64]), (40, [55, 59, 64])])),
-    ("music/synthwave_chrome_heart.wav", 2412, lambda: synth_song(
+    ("radio/synthwave_chrome_heart.wav", 2412, lambda: synth_song(
         108, [(38, [57, 62, 65]), (46, [58, 62, 65]), (41, [57, 60, 65]), (45, [57, 61, 64])], bass_octaves=False)),
-    ("music/synthwave_night_drive.wav", 2413, lambda: synth_song(
+    ("radio/synthwave_night_drive.wav", 2413, lambda: synth_song(
         88, [(40, [55, 59, 64]), (36, [55, 60, 64]), (43, [55, 59, 62]), (38, [54, 57, 62])], arp_from=4)),
-    ("music/synthwave_palm_static.wav", 2414, lambda: synth_song(
+    ("radio/synthwave_palm_static.wav", 2414, lambda: synth_song(
         112, [(42, [54, 57, 61]), (38, [54, 57, 62]), (45, [57, 61, 64]), (40, [56, 59, 64])],
         hats="x.x.x.x.x.x.x.x.")),
-    ("music/funk_slick_back.wav", 2421, lambda: funk_song(
+    ("radio/funk_slick_back.wav", 2421, lambda: funk_song(
         100, 45, RIFF_B, (0, 0, 5, 0, 0, 0, 7, 5), "x..x..x...x..x..")),
-    ("music/funk_double_parked.wav", 2422, lambda: funk_song(
+    ("radio/funk_double_parked.wav", 2422, lambda: funk_song(
         110, 38, RIFF_A, (0, 5, 0, 7), "x.x...x..x.x....")),
-    ("music/funk_velvet_turn.wav", 2423, lambda: funk_song(
+    ("radio/funk_velvet_turn.wav", 2423, lambda: funk_song(
         96, 43, RIFF_C, (0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7), "x.....x.x..x....", clav_hits=(1, 4, 6, 9, 12, 14))),
-    ("music/funk_tailwind.wav", 2424, lambda: funk_song(
+    ("radio/funk_tailwind.wav", 2424, lambda: funk_song(
         116, 41, RIFF_A, (0, 0, 5, 5, 0, 0, 7, 7), "x..x...x..x..x..")),
-    ("music/techno_redline.wav", 2431, lambda: techno_song(132, 43, [67, 70, 74])),
-    ("music/techno_overpass.wav", 2432, lambda: techno_song(124, 38, [62, 65, 69], clap="....x.......x..x", sweeps=2.0)),
-    ("music/techno_grid_lock.wav", 2433, lambda: techno_song(136, 45, [69, 72, 76], sweeps=0.5)),
-    ("music/techno_static_bloom.wav", 2434, lambda: techno_song(128, 40, [64, 67, 71], clap="..x.x.......x...")),
+    ("radio/techno_redline.wav", 2431, lambda: techno_song(132, 43, [67, 70, 74])),
+    ("radio/techno_overpass.wav", 2432, lambda: techno_song(124, 38, [62, 65, 69], clap="....x.......x..x", sweeps=2.0)),
+    ("radio/techno_grid_lock.wav", 2433, lambda: techno_song(136, 45, [69, 72, 76], sweeps=0.5)),
+    ("radio/techno_static_bloom.wav", 2434, lambda: techno_song(128, 40, [64, 67, 71], clap="..x.x.......x...")),
     ("music/sting_rock.wav", 2441, lambda: sting("rock")),
     ("music/sting_synthwave.wav", 2442, lambda: sting("synthwave")),
     ("music/sting_funk.wav", 2443, lambda: sting("funk")),

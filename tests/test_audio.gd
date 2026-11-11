@@ -330,7 +330,7 @@ func test_radio_dial() -> void:
 	var titles := {}
 	for cue in Radio.all_cues():
 		check(not SoundBank.loops(cue), cue + " plays once")
-		eq(SoundBank.CUES.get(cue, [""])[0], "music", cue + " on the music bus")
+		check(SoundBank.CUES.get(cue, [""])[0] in ["music", "radio"], cue + " a music cue")
 	for i in Radio.count():
 		for k in Radio.song_count(i):
 			titles[Radio.song_title(i, k)] = true
@@ -506,7 +506,11 @@ func test_make_audio_writes_the_new_songs_reproducibly() -> void:
 	for cue in Radio.all_cues():
 		if cue.begins_with("station_"):
 			continue
-		check(src.contains('"music/%s.wav"' % cue), "make_audio.py writes " + cue)
+		check(src.contains('"%s/%s.wav"' % [SoundBank.CUES[cue][0], cue]), "make_audio.py writes " + cue)
+	# The Web build leaves radio/ out: a station plays what it has, its first song always
+	var all: Array = Radio.STATIONS[0]["songs"]
+	eq(Radio.songs_with(all, func(_c: String) -> bool: return true).size(), 5, "every song there")
+	eq(Radio.songs_with(all, func(_c: String) -> bool: return false), [all[0]], "none of radio/: the first song alone")
 
 
 func test_a_power_slide_squeals() -> void:
