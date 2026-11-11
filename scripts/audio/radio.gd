@@ -32,6 +32,7 @@ static func count() -> int:
 
 
 static var _lists := {}  # station -> its songs that have files (songs_with)
+static var _stings := {}  # station -> its sting has a file (has_sting)
 
 
 ## The station's first song.
@@ -41,7 +42,7 @@ static func cue(station: int) -> String:
 
 ## The [cue, title] songs in `songs` that `has` (cue -> bool) says are there; the first
 ## always, so a station never goes quiet. The Web build has no radio/ folder (its download
-## budget), so it plays each station's first song with its sting between.
+## budget), so it loops each station's first song with no sting between (has_sting).
 static func songs_with(songs: Array, has: Callable) -> Array:
 	var out := []
 	for i in songs.size():
@@ -75,6 +76,14 @@ static func song_title(station: int, song: int) -> String:
 ## The short ident a station plays between songs.
 static func sting(station: int) -> String:
 	return STATIONS[station]["sting"]
+
+
+## Whether this build has the station's sting (the Web build has no radio/ folder): without
+## it the radio goes straight on to the next song (RaceAudio.radio_tick).
+static func has_sting(station: int) -> bool:
+	if not _stings.has(station):
+		_stings[station] = SoundBank.path_for(sting(station)) != ""
+	return _stings[station]
 
 
 ## Every song and sting cue, every station.
