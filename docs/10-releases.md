@@ -6,16 +6,16 @@ Releases section.
 
 ## Cadence
 
-One pre-release tag a month, at the end of each roadmap month, the 1.0 candidate last:
+One tag a month, at the end of each roadmap month. The first months ran ahead of this table
+(v0.5.2 was out by 2026-11-07); from the second year (`docs/roadmap/00-overview.md`) it reads:
 
 | Tag | Month | Roadmap milestone |
 |---|---|---|
-| v0.2.0 | Nov 2026 | M1 |
-| v0.3.0 | Dec 2026 | M2 |
-| v0.4.0 | Jan 2027 | M3 |
-| v0.5.0 | Feb 2027 | M4 |
-| v0.6.0 | Mar 2027 | M5 |
-| v0.7.0 | Apr 2027 | M6, the 1.0 candidate |
+| v0.6.0 | Feb 2027 | M4, the first five minutes |
+| v0.7.0 | Mar 2027 | M5, the 1.0 candidate |
+| v1.0.0 | Apr 2027 | M6, 1.0 |
+| v1.1.0 to v1.8.0 | May to Dec 2027 | M7 to M14, one minor a month |
+| v2.0.0 | Jan 2028 | M15, seasons and 2.0 |
 
 A fix between them is a patch tag (v0.2.1). A tag with a suffix (v0.3.0-beta) is marked as a
 pre-release on GitHub, and the auto-updater still offers it.

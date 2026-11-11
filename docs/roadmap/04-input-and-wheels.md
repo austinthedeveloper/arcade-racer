@@ -33,6 +33,10 @@ carries on with the same profile (WH-7).
 | WH-13 ✓ | **Gamepad rumble.** Crashes, bumps, landings, nitro and off-road through `Input.start_joy_vibration`, with a rumble slider in Options > Controls. | S | 1 | | A plain function maps events to strength and length, tested; the slider at 0 sends nothing |
 | WH-14 | **Button glyphs.** Xbox, PlayStation, generic pad and wheel glyphs in the hints, the remap screen and the pause menu, picked from the active device's name; text labels stay the fallback. | M | 2 | WH-2 | A glyph lookup test per device family; screenshots of the remap screen on two families |
 | WH-15 | **TMX play session.** Austin drives a race and the menus on the Thrustmaster TMX: calibration, rotation and lock (WH-1), the F1 overlay, unplug and replug (WH-7), paddles; its profile becomes the first entry in WH-4 and the notes list what to fix. | S | 1 | WH-9 | Notes filed as issues; the TMX entry in `DeviceProfile`'s known table with a test |
+| WH-16 | **Wheel first run.** A wheel with no saved profile, plugged in at the title, gets a prompt to calibrate now (or use its known profile, WH-4) instead of being left to find the calibration in Options. | S | 4 | WH-4 | Test the prompt shows once per unknown device and not for a pad; a screenshot |
+| WH-17 | **Wheel report.** F4 on the calibration screen copies the device's name, GUID, axes and buttons as the game sees them, for a bug report or a new known profile (WH-4); the README gets a table of wheels known to work. | S | 6 | WH-4 | Test the report's lines from a fake device; the README table |
+| WH-18 | **Two players, two devices.** A PRESS A BUTTON TO JOIN screen assigns each player a device (pad, wheel, touch, or the keyboard split in halves), shown with its glyph. Unplugging pauses for that player only. | M | 7 | MP-18, WH-7 | Tests for assignment, the split keyboard and an unplug; a menu screenshot |
+| WH-19 | **Shifter.** An H-pattern shifter for manual gears; a clutch pedal stays ignored. Needs a shifter to test. | S | 13 | RC-10, WH-2 | Test the gear from each slot; remap screen shows it |
 
 ## Open decisions
 

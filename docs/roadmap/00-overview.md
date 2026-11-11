@@ -89,6 +89,48 @@ Open decision for Austin: whether CP-1 and CP-2 (re-rendering the twelve cars fr
 the two largest items left) are still worth it now that the concept-sheet cars have shipped in
 three releases, or whether CP-3 to CP-5 should work from the sheets instead.
 
+## The second year: February 2027 to January 2028 (added 2026-11-10)
+
+With most of the first list built by v0.5.2, a second year of 92 stories was added on
+2026-11-10, as roadmap months 4 to 15 (milestones M4 to M15; M4 to M6 re-opened and renamed).
+The open work in the table above stays in months 1 to 3. Four arcs of three months each:
+**1.0** (onboarding, the finale, the release itself), **two players** (split screen, party
+rules, leaderboards), **the second tour** (forks, four new stages, four new cars, a nemesis)
+and **make it yours** (the garage, the stage editor, seasons and 2.0). IDs start at RC-21,
+WS-20, CP-16, WH-16, PR-22, MP-15, AC-16, EQ-25 and ON-14.
+
+| Month | Theme | Headline items | Release |
+|---|---|---|---|
+| **4. Feb 2027** | The first five minutes | First drive (MP-15), who's driving (AC-16), rival balance pass (RC-21), crash feel (RC-22), corner warnings (WS-20), controls card (PR-22), wheel first run (WH-16), the playtest log (EQ-25) | v0.6.0 |
+| **5. Mar 2027** | The 1.0 candidate | Grand Tour ending and credits (MP-16, PR-23), radio v2 (PR-24), the accessibility audit (AC-17), the bug bash (EQ-26), the save promise (EQ-27), the scenery pass (WS-21), the clock per difficulty (RC-23), online across versions (ON-14) | v0.7.0 |
+| **6. Apr 2027** | 1.0 | The release (EQ-28), signing and a store page if Austin wants them (EQ-29, EQ-30), press kit and trailer (PR-25, PR-26), localization groundwork (AC-18), Steam Deck (EQ-31), the wheel report (WH-17), the completion page (MP-17) | **v1.0.0** |
+| **7. May 2027** | Split screen | Two players on one screen (MP-18), a device each (WH-18), the split HUD (PR-27), its performance (EQ-32), two-player select (MP-19), assists per player (AC-19), handicap (RC-24) | v1.1.0 |
+| **8. Jun 2027** | Party | Tag and elimination (MP-20), hot seat (MP-21), two at one screen online (ON-15), room options (ON-16), quick chat (ON-17), versus cards (PR-28), stunt run (MP-22) | v1.2.0 |
+| **9. Jul 2027** | Leaderboards and ghosts | Determinism across platforms (EQ-33), leaderboards and time checks (ON-18, ON-19), race the board (ON-20), weekly challenge (MP-23), friend codes (MP-24), online privacy (AC-20), service care (EQ-34) | v1.3.0 |
+| **10. Aug 2027** | Forks in the road | Road forks (WS-22), rivals at forks (RC-25), route map (PR-29), route tour (MP-25), preview and traces for forks (WS-23, EQ-35), banked turns and ramps (WS-24), the patrol car (RC-26) | v1.4.0 |
+| **11. Sep 2027** | The second tour | Concept art (CP-16), Saltflat Run, Ember Ridge, Blossom Heights and Aurora Fjord (WS-25 to WS-28), their traffic and presentation (CP-17, PR-30), the second Grand Tour (MP-26) | v1.5.0 |
+| **12. Oct 2027** | New cars and the nemesis | Four new cars (CP-18) and their traits (RC-27), the nemesis (RC-28), rival banter (PR-31), liveries (CP-19), car mastery (MP-27) | v1.6.0 |
+| **13. Nov 2027** | The garage | Garage parts and screen (CP-20, MP-28), car setup (RC-29), photo mode (PR-32), high contrast (AC-21), shifter (WH-19), weather everywhere (WS-29) | v1.7.0 |
+| **14. Dec 2027** | Make your own road | The stage format and editor (WS-30, WS-31), its prop palette and tests (CP-21, EQ-36), custom stages in races (MP-29), share by code (ON-21), winter dressing (PR-33) | v1.8.0 |
+| **15. Jan 2028** | Seasons and 2.0 | Championship seasons and the career page (MP-30, MP-31), the online cup (ON-22), the first languages (AC-22), the health pass and Godot upgrade (EQ-37, EQ-38), the 2.0 title (PR-34), the release (EQ-39) | **v2.0.0** |
+
+Decisions this year needs from Austin, each in its story: signing and a store page (EQ-29,
+EQ-30); where the leaderboard service runs and what it may cost (ON-18); the Tripo credit budget
+for the new cars (CP-18); generating the second tour's concept art (CP-16); a speaker to check
+each language (AC-22). Hardware: a Steam Deck (EQ-31) and a shifter (WH-19), both optional.
+
+New dependencies:
+
+- **Split screen before party and couch online.** MP-18 before WH-18, PR-27, MP-20 and ON-15;
+  EQ-32 decides how much of each half draws.
+- **Determinism before leaderboards.** A time is checked by replaying its trace (ON-19), so
+  EQ-33 lands first; ghosts from the board (ON-20), the weekly board, friend codes, car setup
+  splits and shared stages all sit on ON-18.
+- **Forks before the route tour.** WS-22, then the AI (RC-25) and the per-branch traces (EQ-35).
+- **Art before the second tour.** CP-16 is Austin's generation work; WS-25 to WS-28 wait on it,
+  so it can start any month before September.
+- **The stage format before the editor.** WS-30 before WS-31; ON-21 shares WS-30's files.
+
 ## Dependency chain
 
 The order above follows these dependencies. Moving an item earlier means moving what it needs.
@@ -144,14 +186,15 @@ Each group doc has the same shape: what is built today, a feature table, open de
 notes. Feature IDs are the group code plus a number (RC-1). Columns:
 
 - **Size.** S is a day or two. M is about a week. L is two weeks or more.
-- **Month.** 1 to 6 as in the table above. "Stretch" means after April 2027 unless a month runs light.
+- **Month.** 1 to 6 as in the first table, 4 to 15 for the second year (month 15 is Jan 2028). "Stretch" means after April 2027 unless a month runs light.
 - **Needs.** Other feature IDs or docs this depends on.
 - **Done when.** The check that closes the item, including the test it adds.
 
-## Out of these six months
+## Out of the plan
 
-Split-screen two player, road forks and route choice, car customization beyond paint,
-Steam Deck and Linux as supported platforms (EQ-13 only checks the build), and polygon anything.
+Polygon anything, realistic damage, free-text chat or names online, and a stage browser
+(stages are shared by code only, ON-21). Split screen, forks, customization and Steam Deck,
+once out of scope, are in the second year.
 Open questions 3 (which wheel) and 10 (which image generator) in `docs/04-open-questions.md`
 still need answers from Austin; 11 and 12 are decided by what was built.
 

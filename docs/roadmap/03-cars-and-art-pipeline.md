@@ -33,6 +33,12 @@ on level road and on hills to one review page.
 | CP-13 | **Driver portraits.** A face and a name per car for the rival cards (RC-18) and the results screen, generated from a prompt template and cut by `make_ui_sprites.py`. | S | 3 | RC-18 | Twelve portraits in the manifest; a screenshot of the rival cards |
 | CP-15 | **Wheels that turn.** Player cars' wheels don't spin: each strip has one frame per steering angle, so they look parked at speed, more so on the rendered Bruiser, whose wheels show their spokes. Two or three extra spin frames per strip from the 3D model (or a blur over the wheels), switched by speed. | M | 3 | CP-1 | Wheels visibly spin and speed up with the car; stopped at the grid; a screenshot pair from different frames |
 | CP-14 ✓ | **The hubcap in the slot.** A mystery pickup shows the spinning hubcap in the power-up slot for half a second before the reveal frames show what it turned into. | S | 1 | | `test_power_ups` checks the slot's icon over time; a screenshot mid-reveal |
+| CP-16 | **Second tour concept art.** Stage sheets for four new stages from `docs/templates/` and `assets/prompts/templates/`: sky, layers, roadside props, a traffic special and a postcard each. Austin generates them. | M | 11 |  | The sheets reviewed in a `docs/` review like rounds 1 to 4; the prompts committed |
+| CP-17 | **Traffic for the second tour.** Each new stage's traffic special (a salt-flat recovery truck, a lava hauler, the school bus, a snowplow) from the sheets. | S | 11 | CP-16 | Sprites in the manifest; `test_traffic` spawns each |
+| CP-18 | **Four new cars.** Four new cars from concept sheets to Tripo models to rendered strips (the CP-2 pipeline): a rally wagon, a microcar, a grand tourer and a pickup. Tripo credits within a budget Austin sets. | L | 12 | CP-2 | Every new car's strips installed, on car select and in the angles page (`tools/car_angles.sh`) |
+| CP-19 | **Rival liveries.** Each rival gets a livery (stripes and a number) through the paint shader's masks, so the field reads at a glance. | M | 12 | CP-4 | Shader test on a known pixel; a screenshot of the grid |
+| CP-20 | **Garage parts.** Decals, numbers, rims and underglow per car, drawn as overlays on the rendered strips. | L | 13 | CP-4, CP-15 | Overlay anchors in the manifest tested per car and frame; screenshots |
+| CP-21 | **Editor prop palette.** Thumbnails of every roadside sprite for the editor, cut by the sprite tools from the manifest. | S | 14 | WS-31 | `check_sprites.py` covers them |
 
 ## Open decisions
 
