@@ -7,6 +7,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-11
+
 ### Added
 
 - Grand Tour ending (MP-16): finishing the tour ends on a finale instead of stage select: the

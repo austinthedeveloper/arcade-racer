@@ -39,7 +39,7 @@ func test_a_folder_for_every_release() -> void:
 	for v in ["v0.1.0", "v0.2.0", "v0.3.0", "v0.3.1", "v0.4.0", "v0.5.0", "v0.5.1", "v0.5.2"]:
 		check(all.has(v), "a fixture for %s" % v)
 	# The release steps add this version's (docs/10-releases.md); a bump without one fails here.
-	check(all.has("v" + Updater.version()), "a fixture for this version, %s: tests/save_fixture.gd" % Updater.version())
+	check(all.has("v" + Updater.version()), "a fixture for this version, %s: tests/write_save_fixture.gd" % Updater.version())
 	eq(all[0], "v0.1.0", "oldest first")
 	for v in all:
 		for f in ["save.cfg", "settings.cfg", "input_profiles.cfg"]:
@@ -123,7 +123,7 @@ func test_every_release_wheel_profiles_load() -> void:
 
 
 func test_the_tool_writes_what_the_current_release_did() -> void:
-	# tests/save_fixture.gd, run at release time, writes this build's files; this build writes
+	# tests/write_save_fixture.gd, run at release time, writes this build's files; this build writes
 	# what the newest release folder holds when no format changed since.
 	var out := TestSuite.scratch("fixture_now/")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out))

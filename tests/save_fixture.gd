@@ -1,8 +1,9 @@
 ## The save compatibility fixtures (EQ-27): the save, settings and wheel profile files a
 ## release writes, in tests/fixtures/saves/v<version>/. test_save_compat loads every folder in
-## the current build. A release adds its own folder as it is cut (docs/10-releases.md):
+## the current build. A release adds its own folder as it is cut (docs/10-releases.md), with
+## tests/write_save_fixture.gd (this file names the autoloads, so it can't be run with -s):
 ##
-##   godot --headless --path . -s res://tests/save_fixture.gd [-- --version=0.6.0 --out=DIR]
+##   godot --headless --path . -s res://tests/write_save_fixture.gd [-- --version=0.7.0 --out=DIR]
 ##
 ## The files are written by this build's own save functions (Settings.save, SaveData.save and
 ## make_profile, InputRouter's profile write) from the values below, so they are exactly what
@@ -59,19 +60,6 @@ static func versions() -> Array[String]:
 			out.append(d)
 	out.sort_custom(func(a: String, b: String) -> bool: return BootTree.compare(a.substr(1), b.substr(1)) < 0)
 	return out
-
-
-func _initialize() -> void:
-	_write.call_deferred()
-
-
-func _write() -> void:
-	var version := DevArgs.value("--version", str(ProjectSettings.get_setting("application/config/version")))
-	var out := DevArgs.value("--out", DIR + "v" + version)
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out))
-	write_all(out)
-	print("wrote ", out)
-	quit()
 
 
 ## Writes the three files (and the second driver's save and the roster) into `out`, then points
