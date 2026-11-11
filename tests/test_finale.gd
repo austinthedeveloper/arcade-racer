@@ -49,18 +49,17 @@ func test_the_podium_shows_each_drivers_own_car() -> void:
 		eq(TourFinale.car_of(r.driver, "car_mesa"), r.car_id, r.driver + "'s car")
 
 
-func test_the_pages_go_on_by_themselves_and_with_select() -> void:
+func test_the_pages_wait_for_select() -> void:
+	# AC-17: no page moves on by itself, so the standings can be read at any pace
 	var f := TourFinale.new()
 	f.standings = TourFinale.staged_standings(1)
 	eq(f.page, TourFinale.Page.PODIUM, "opens on the podium")
-	var ticks := 0
-	while not f.advance(DT) and ticks < 10000:
-		ticks += 1
-	eq(f.page, TourFinale.Page.CARD, "the clock runs through the standings to the card")
-	var total := 0.0
-	for p: int in TourFinale.PAGE_TIME:
-		total += TourFinale.PAGE_TIME[p]
-	near(ticks * DT, total, 0.1, "a page at a time")
+	for i in 60 * 120:
+		f._process(DT)
+	eq(f.page, TourFinale.Page.PODIUM, "still on the podium after two minutes")
+	f.free()
+	f = TourFinale.new()
+	f.standings = TourFinale.staged_standings(1)
 	f.page = TourFinale.Page.PODIUM
 	f.page_time = 0.0
 	check(not f.next_page_due(), "select on the podium")

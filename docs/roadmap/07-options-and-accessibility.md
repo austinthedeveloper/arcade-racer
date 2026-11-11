@@ -40,6 +40,22 @@ for rows; a wheel steers through rows and presses gas to change a value.
 | AC-21 | **High contrast.** An option that outlines the road edges, traffic and rivals and darkens the scenery. | S | 13 | AC-4 | A screenshot per stage through `tools/colorblind.py` |
 | AC-22 | **First languages.** Spanish and French, from the CSV (AC-18 groundwork), checked by a speaker before shipping. | M | 15 | AC-18 | Menu screenshots in each; a test every key has a translation |
 
+## Accessibility audit (AC-17, 2026-11-11)
+
+Every screen shot at 640x360 (36: title, modes, every options page, stages, cars, stats,
+profiles, credits, the finale's three pages, pause and its controls card, unplugged, results,
+the demo, update and its failure, what's new, the controls card per device, who's driving, the
+wheel offer, the six online screens, remap, wheel), each run through `tools/colorblind.py`
+for protanopia, deuteranopia and tritanopia, and the input and timers read from the code.
+
+| Check | Result | Fix or note |
+|---|---|---|
+| Readable at 640x360 | One failure | The credits' small grey lines sat straight on the sea and the skyline and were lost: the roll now runs down a dark column as wide as its widest line (`CreditsScreen.column`, `test_credits`), the small lines a little brighter. Smallest text anywhere is 8 to 9 px, on panels. |
+| Readable with UI scale | Not checked | UI scale (AC-12) isn't built; its own "nothing overlaps" test covers this when it is. |
+| Color alone carries nothing | Pass | Under all three simulations every state also reads by its word or shape: ON and OFF are words, medals are named, locked stages have a padlock, the HUD's states have shapes (AC-4). |
+| Keyboard, pad, wheel, touch | Pass | Every screen reads `MenuInput`: keyboard, pad, a wheel as a pad (WH-10) and the touch overlay's D-pad, OK and BACK (ON-5). The new screens (who's driving, the wheel offer, the controls card, the finale, the credits, UPDATE TO PLAY ONLINE) take the same input, and the e2e drives them through the input map. No screen needs typing; the room code's letter grid takes typing as an extra. |
+| No menu on a timer | One failure | The Grand Tour finale's podium, standings and end card each moved on after 7 to 9 seconds: they now wait for select (`test_finale.test_the_pages_wait_for_select`). Left as they are: the credits roll (any button speeds it, back leaves), the attract demo after 20 s idle on the title (any input returns, nothing lost), the update's 1.25 s "installed" before the restart (nothing to choose), and the replug countdown (a race, and pause stops it). |
+
 ## Open decisions
 
 - Does a wheel-only player need a way to type nothing at all anywhere? Yes: every option must stay a list or slider; no text entry.
