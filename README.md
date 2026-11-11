@@ -68,6 +68,7 @@ Pick **OPTIONS** on the title screen or in the pause menu. Options are saved to 
 | Game | Reset options / Reset save data | Options back to defaults, or erase progress (asks first). Wheel setups are kept either way. |
 | Display | Fullscreen, integer scaling, V-Sync, scanlines | |
 | Display | Speed units | MPH or KPH. |
+| Display | Playtest log | Off by default. On, each race writes a note of itself into the log folder (below). |
 | Audio | Music / sound FX volume | 0 to 10. |
 | Audio | Radio station | The station races start on, or shuffle. M changes it mid-race. |
 | Controls | Calibrate wheel | Opens the wheel calibration (same as F2). |
@@ -79,6 +80,16 @@ Pick **OPTIONS** on the title screen or in the pause menu. Options are saved to 
 | Accessibility | Gears | Automatic (the default) or manual: you shift through five gears, each with a rev limiter, for about 3% more top speed. |
 
 On the keyboard and gamepad, Up / Down picks a row and Left / Right changes it; Enter / A also toggles or cycles it. A wheel has no up and down, so there you turn the wheel to pick a row and press the gas to change it. Brake goes back.
+
+### Playtest log
+
+With **Options > Display > Playtest log** on, every race writes one JSON file into `playtest/`
+beside the crash log (`user://logs/`, or `--log-dir`): the stage, car and mode, how it ended,
+each checkpoint's time, every crash and where on the route, and the time lost against top speed
+in each stretch of the road. Nothing is sent anywhere; the files stay until you delete them.
+Put the folders from a few players together and run
+`python3 tools/playtest_report.py FOLDER --out=report.html` for a chart per stage of where
+people crash and slow down (`--png=DIR` also writes PNGs, with Pillow).
 
 ### Using a wheel
 
@@ -123,6 +134,22 @@ brake and nitro under the right, pause at the top left. In the menus they're a D
 BACK, and the online letter grid can be tapped directly. A key or a pad button hides them;
 `--touch` shows them for screenshots.
 
+## Known issues
+
+What's known and not fixed yet (the full list, with reasons, is
+[docs/09-known-bugs-and-cleanup.md](docs/09-known-bugs-and-cleanup.md)):
+
+- Every stage has the same five power-ups on the road, and never a nitro can or a mystery
+  hubcap (G7; fixing it moves the pickups, so it waits for a gameplay change).
+- The builds aren't code-signed: Windows SmartScreen and macOS Gatekeeper warn the first time
+  (see Releases).
+- Wheels have no force feedback yet; turn on your wheel software's centering spring.
+- 0.1.0 has no updater: download a later version by hand once.
+- Online, a game on 0.5.2 or older that joins a newer host says OLD VERSION rather than offering
+  the update (it's the old build's own message); update it from the title's update screen or the
+  releases page.
+- The Linux zip is for testing only.
+
 ## Project layout
 
 ```
@@ -146,7 +173,7 @@ tools/                      test.sh, shots.sh, sprite-cutting scripts, make_audi
                             tuning_adopt.py (tuned values in as the new defaults)
 ```
 
-For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--car=car_mesa` picks a car by id (the ids are in `scripts/car/cars.gd`), `--at-segment=N` starts N segments into the stage, `--no-traffic` removes traffic, `--no-rivals` removes the rivals, `--drive-x=1.8` starts the car on that line (past 1 is off the road) and keeps autodrive on it, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|modes|options|stages|cars|stats|profiles|pause|unplugged|results|update|remap|wheel --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits (`options:audio` opens an options page, `update:failed` an update state). `--callout=near_miss` holds a callout up after GO, `--time-left=9` starts on a low clock, `--pickup=mystery` (or nitro, clock, ram, ghost) takes that pickup at GO, and `--lightning-at=5` forces a lightning strike on Thunderhead. `CLAUDE.md` lists more examples. Left on the title for 20 seconds, the game plays an autodriven demo race (attract mode) until any key or button; `--attract-delay=N` changes the wait and `--screen=demo` starts one straight away.
+For a test drive without input, run `godot --path . -- --autodrive`. `--stage=N` starts on stage N (2 is Redrock Canyon), `--car=car_mesa` picks a car by id (the ids are in `scripts/car/cars.gd`), `--at-segment=N` starts N segments into the stage, `--no-traffic` removes traffic, `--no-rivals` removes the rivals, `--drive-x=1.8` starts the car on that line (past 1 is off the road) and keeps autodrive on it, and `--screenshots=60,300 --shot-dir=/tmp/shots` saves frames. These flags (and `--race`) skip the menus. `--screen=title|modes|options|stages|cars|stats|profiles|controls|credits|finale|pause|unplugged|results|update|remap|wheel --menu-shot=/tmp/stages.png` saves a screenshot of a menu and quits (`options:audio` opens an options page, `update:failed` an update state, `finale:card:2` the Grand Tour's end card for second place, `controls:wheel` the controls card for a wheel, `pause:controls` the card over a race; `whos_driving` and `wheel_offer` stage the first-run questions, which a menu shot otherwise never shows). `--first-drive` makes a race the flags start the guided first drive when the save is a new profile's. `--callout=near_miss` holds a callout up after GO, `--time-left=9` starts on a low clock, `--pickup=mystery` (or nitro, clock, ram, ghost) takes that pickup at GO, and `--lightning-at=5` forces a lightning strike on Thunderhead. `CLAUDE.md` lists more examples. Left on the title for 20 seconds, the game plays an autodriven demo race (attract mode) until any key or button; `--attract-delay=N` changes the wait and `--screen=demo` starts one straight away.
 
 ## Tests
 
@@ -227,6 +254,25 @@ To try it without publishing: export two versions, serve the newer one's `.pck`,
 - [Known bugs and cleanup plan](docs/09-known-bugs-and-cleanup.md)
 - [Releases](docs/10-releases.md): monthly tags, the changelog, why the builds aren't signed yet, where the game is published
 - [Roadmap, November 2026 to April 2027](docs/roadmap/00-overview.md): the six-month feature list (feature IDs like RC-1), split into eight group docs in `docs/roadmap/`
+
+## Credits
+
+Made by Austin Stewart, with Claude. The game's CREDITS screen (from the title, and after the
+Grand Tour) lists the same; `tests/test_credits.gd` checks that it names every tool and font here.
+Every sound and song is synthesized in code by `tools/make_audio.py`: no samples, no recordings.
+
+### Tools
+
+- **Godot Engine** 4.7 (MIT License): the engine
+- **Python** 3 (PSF License): the sprite, audio and release tools
+- **Pillow** (MIT-CMU License), **NumPy** and **SciPy** (BSD 3-Clause): the sprite tools' libraries
+- **Blender** (GPL 2.0 or later): renders the cars from their 3D models
+- **Tripo**: image to 3D, the cars' models
+- **Claude Code**: written with it
+
+### Fonts
+
+- **Open Sans SemiBold** (SIL Open Font License 1.1): Godot's built-in font, used for all the text
 
 ## Concept art prompts
 

@@ -18,6 +18,9 @@ var room := ""  # the room's four letters, once the relay names it
 var hosting := false
 var you := -1  # a guest's number in the room, once in
 var host_version := ""  # a guest's: the host's game version (from the relay's welcome)
+## The oldest game version the relay takes, when it names one ("oldest" in its room or welcome
+## message; ON-14). Today's relay doesn't, and only the host's version is checked.
+var oldest_version := ""
 
 
 ## Whether the line is up: the host has its room, the guest is in it.

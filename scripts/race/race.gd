@@ -121,6 +121,10 @@ var banner := ""
 var banner_sub := ""
 var banner_time := 0.0
 var callouts := Callouts.new()  # what the HUD shows of the banners, and the starbursts (PR-5)
+## The first drive (MP-15): the game sets first_drive_on for a new profile's first race on
+## Palm Coast; first_drive is its prompts while they run (null when it's over, or not on).
+var first_drive_on := false
+var first_drive: FirstDrive
 var paused := false
 var pause_menu: PauseMenu
 ## The GUID of the joypad driving while it's unplugged (WH-7), or "". The pause menu says so.
@@ -133,6 +137,10 @@ var results: ResultsScreen  # after the finish (RC-5)
 var new_best_time := false  # this finish set the best time for the stage and car
 var best_before := {}  # SaveData.best for the stage and car before this finish
 var stats_recorded := false  # this run is in the stats page's counters (record_stats)
+## This run's playtest log (EQ-25), with the option on; null when off. last_playtest_log is
+## the file the last one wrote ("" for none), for tests.
+var playtest: PlaytestLog
+var last_playtest_log := ""
 var _start_distance := 0.0  # where the player started this run, for the miles driven
 
 var background: Background
@@ -230,6 +238,7 @@ func _ready() -> void:
 
 func start_race() -> void:
 	record_stats(false)  # a run restarted partway: its miles, crashes and near misses
+	end_playtest("quit")
 	InputRouter.speed_factor = 0.0
 	_frame = 0
 	track = Stages.build(stage_index, mirror)
@@ -323,6 +332,10 @@ func start_race() -> void:
 	next_checkpoint = 0
 	banner = ""
 	callouts.clear()
+	if first_drive_on and first_drive == null and stage_index == FirstDrive.STAGE and SaveData.first_drive_pending():
+		first_drive = FirstDrive.new()  # (a restart keeps the prompts already cleared)
+	elif first_drive != null and stage_index != FirstDrive.STAGE:
+		first_drive = null  # (on to the next stage of a tour)
 	_final_stretch = false
 	_led_at = -INF
 	resume()
@@ -333,6 +346,8 @@ func start_race() -> void:
 	# Started partway in (--at-segment): past the checkpoints behind it
 	while next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
+	if Settings.playtest_log and not demo:
+		playtest = PlaytestLog.new(Stages.POSTCARDS[stage_index], car_id, playtest_mode(), mirror, finish_distance)
 	background.set_theme(track.theme, track.next_theme)
 	background.mirrored = track.mirrored
 	road.flow = not free_drive  # (its road loops straight back to its own start)
@@ -352,12 +367,14 @@ func start_race() -> void:
 	fx.clear()
 	fx.set_weather(track.theme, _lightning_at)
 	fx.player = player
+	fx.exhaust_anchor = FxLayer.exhaust_for(car["strip"])
 	set_view(Settings.camera_view)
 
 
 ## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
 func _exit_tree() -> void:
 	record_stats(false)  # quit partway (or after the results, already counted)
+	end_playtest("quit")
 	InputRouter.speed_factor = 0.0
 	if debug_panel != null and debug_panel.race == self:
 		debug_panel.race = null
@@ -417,6 +434,7 @@ func pause() -> void:
 	paused = true
 	rumble.stop(InputRouter.last_active_device)  # (the keyboard's -1: nothing to stop)
 	pause_menu.has_options = not options_requested.get_connections().is_empty()
+	pause_menu.can_skip = first_drive != null
 	pause_menu.open()
 
 
@@ -529,8 +547,42 @@ func pause_action(action: int) -> void:
 		PauseMenu.Action.OPTIONS:
 			pause_menu.close()
 			options_requested.emit()
+		PauseMenu.Action.SKIP:
+			skip_first_drive()
+			resume()
 		PauseMenu.Action.QUIT:
 			quit_requested.emit()
+
+
+## One tick of the first drive (MP-15) on `inp` (the input driven on): a cleared prompt
+## bursts NICE!, the last one FIRST DRIVE DONE. Every prompt cleared, or the race over (a
+## finish, TIME UP), and it's done for good.
+func first_drive_tick(dt: float, inp: DriveInput) -> void:
+	if state == State.FINISHED or state == State.TIME_UP:
+		end_first_drive(false)
+		return
+	var step := first_drive.tick(dt, FirstDrive.look(self, inp))
+	if step >= 0:
+		callouts.push_message(FirstDrive.CLEARED, FirstDrive.TEXT[step], Callouts.SHOW_TIME)
+	if first_drive.done:
+		callouts.push_message(FirstDrive.DONE_TEXT, FirstDrive.DONE_SUB, 2.0)
+		end_first_drive(false)
+
+
+## SKIP FIRST DRIVE on the pause menu: no more prompts, and never again for this profile.
+func skip_first_drive() -> void:
+	end_first_drive(true)
+
+
+## The first drive over, done or `skipped`: the prompts gone, and the profile's save says so
+## (not for a race that saves nothing: an autodriven run, a staged screenshot).
+func end_first_drive(skipped: bool) -> void:
+	if first_drive == null:
+		return
+	first_drive = null
+	first_drive_on = false
+	if _saves():
+		SaveData.end_first_drive(skipped)
 
 
 ## Carries out the tuning panel's action (TuningPanel.Action), with its values in `panel`.
@@ -698,6 +750,7 @@ func _physics_process(dt: float) -> void:
 				time_left = 0.0
 				state = State.TIME_UP
 				record_stats(true)
+				end_playtest("time_up")
 				_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", Callouts.HOLD)
 
 	# Past the line the world drops into slow motion for a moment (sim, the world's tick), and
@@ -740,8 +793,12 @@ func _physics_process(dt: float) -> void:
 			recording.record(player, track.side())
 		if replay_offered():
 			replay_trace.record([player] + rivals.cars, traffic.cars)
+		if playtest != null:
+			playtest.tick(sim, player.distance, player.speed * sim, player.crashed)
 		_check_progress()
 		_callouts_after_tick(earned, place_before)
+	if first_drive != null:
+		first_drive_tick(dt, inp)
 	if demo and demo_over():
 		quit_requested.emit()
 		return
@@ -923,6 +980,8 @@ func _check_progress() -> void:
 	if next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
 		score.checkpoint()
+		if playtest != null:
+			playtest.checkpoint(next_checkpoint)
 		if time_attack:
 			split = race_time - ghost.time_at(player.distance, 1.0 / Engine.physics_ticks_per_second) if ghost != null else NAN
 			_banner("CHECKPOINT", "" if is_nan(split) else split_text(split) + " vs best", 2.0, Callouts.Kind.CHECKPOINT)
@@ -947,6 +1006,7 @@ func _check_progress() -> void:
 		var before_unlocks: Array = SaveData.unlocks.duplicate()
 		new_best_time = record_finish()
 		record_stats(true)
+		end_playtest("finish")
 		if time_attack:
 			_save_ghost()
 		var mins := int(race_time) / 60
@@ -991,12 +1051,12 @@ func _tour_finish() -> String:
 	tour_state.complete = true
 	after = After.TOUR_DONE
 	if not tour_state.full():
-		return "Tour complete! Start from stage 1 for the Zenith.   Enter: menu"
+		return "Tour complete! Start from stage 1 for the Zenith.   Enter: finale"
 	if _saves():
 		SaveData.unlock(Tour.FINISH_UNLOCK)
 		SaveData.total_points += int(tour_state.points.get(Tour.YOU, 0))
 		SaveData.save()
-	return "Tour complete!   Enter: menu"
+	return "Tour complete!   Enter: finale"
 
 
 ## Saves the finish (SaveData): best time for this stage and car, and the tour's progress
@@ -1023,6 +1083,25 @@ func record_stats(counted: bool) -> void:
 	stats_recorded = true
 	var won := counted and state == State.FINISHED and place == 1 and not rivals.cars.is_empty()
 	SaveData.record_run(stage_index, car_id, counted, won, score.crashes, near_misses(score), Settings.miles(driven))
+
+
+## The playtest log's mode name for this run (PlaytestLog.mode).
+func playtest_mode() -> String:
+	if online != null:
+		return "online"
+	if free_drive:
+		return "free_drive"
+	if time_attack:
+		return "time_attack"
+	return "tour" if tour else "single"
+
+
+## Ends this run's playtest log (EQ-25), if there is one: written, then gone.
+func end_playtest(how: String) -> void:
+	if playtest == null:
+		return
+	last_playtest_log = playtest.finish(how)
+	playtest = null
 
 
 ## The near misses in a stage's bonuses.

@@ -291,6 +291,33 @@ func wheel_hint() -> String:
 	return ""
 
 
+## The joypads plugged in now: GUID -> name.
+func plugged_joypads() -> Dictionary:
+	var out := {}
+	for d in Input.get_connected_joypads():
+		out[Input.get_joy_guid(d)] = Input.get_joy_name(d)
+	return out
+
+
+## The wheel's first run (WH-16): the first of `plugged` (GUID -> name) that the title should
+## offer to calibrate, or "": a wheel (by its name) with no saved profile that hasn't been
+## offered it yet (`offered`, Settings.wheels_prompted). Never a pad, never a wheel already set up.
+func first_run_wheel(plugged: Dictionary, offered: Array) -> String:
+	for guid: String in plugged:
+		if guid == "" or _saved.has(guid) or offered.has(guid):
+			continue
+		if looks_like_wheel(str(plugged[guid])):
+			return guid
+	return ""
+
+
+## A known wheel's ready-made profile (WH-4) for a wheel called `joy_name`, or null. WH-4 is
+## not built yet, so there are none: when it is, the first-run prompt (TitleScreen) offers
+## USE ITS PROFILE beside CALIBRATE NOW for a wheel this returns one for.
+func known_profile_for(_joy_name: String) -> DeviceProfile:
+	return null
+
+
 func save_profile(profile: DeviceProfile) -> void:
 	_saved[profile.guid] = profile
 	_write_profiles()

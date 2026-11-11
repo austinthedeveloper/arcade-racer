@@ -9,6 +9,33 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
+- Grand Tour ending (MP-16): finishing the tour ends on a finale instead of stage select: the
+  top three on the podium under the Skyline bridge with fireworks over the harbor, the final
+  tour standings, then an end card for where you finished (the champion, a podium place or the
+  rest), and the credits rolling over the harbor.
+- Credits (PR-23): CREDITS on the title rolls who made the game, the tools and the font with
+  their licenses, and how every sound is synthesized in code. It scrolls by itself; hold any
+  key or button to speed it up.
+- Radio v2 (PR-24): four new songs on every station, twenty in all, played in turn with the
+  station's own sting between them, and a now-playing tag on the HUD as each song starts.
+  Still all synthesized in code. The browser version keeps one song per station, to stay
+  quick to load.
+- First drive (MP-15): a new driver's first race on Palm Coast is a guided run, one prompt at a
+  time when the road allows (gas, steer, nitro on a straight, draft a truck, a power slide), each
+  cleared by doing it. SKIP FIRST DRIVE on the pause menu; it never comes back once done or skipped.
+- Who's driving (AC-16): the first start, and every new profile, asks KID, NEW or RACER and sets
+  the assists and difficulty to match. Change them any time in Options.
+- Wheel first run (WH-16): plug in a wheel the game hasn't seen and the title offers to calibrate
+  it now, once per wheel. Pads are never asked.
+- Controls card (PR-22): CONTROLS on the title and the pause menu shows every control for the
+  keyboard, pad, wheel or touch controls, with your own rebinds.
+- Save promise (EQ-27): a save, the options and wheel setups from any version since 0.1.0 load
+  in this one with everything in them, and every build is checked against all of them.
+- Playtest log (EQ-25): Options > Display > PLAYTEST LOG (off unless you turn it on) keeps a
+  note of each race on your computer: crashes, checkpoints and where you lost time.
+  tools/playtest_report.py charts a folder of them per stage. Nothing is sent anywhere.
+- Update to play online (ON-14): joining a host on a newer version says UPDATE TO PLAY ONLINE
+  and offers an UPDATE button, instead of only OLD VERSION.
 - Corner warnings (WS-20): every sharp bend on every stage has its turn arrow on the outside
   before it and chevrons (or a rail) along its outside, and every blind crest a crest sign
   before it, mirrored stages too. Where a sign's spot is taken by a gate or a bridge, it now
@@ -25,6 +52,12 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 - Car select: every car's picture is now rendered from its 3D model, all from the same angle on
   the same coast road, and painted like the car you then drive.
+
+### Fixed
+
+- Nitro flames (EQ-26): the Cyclone's, Bruiser's and Kestrel's now come out of their own pipes.
+- Missing art (EQ-26): a traffic or power-up picture that fails to load no longer crashes the
+  race; that vehicle is just left off the road.
 
 ## [0.5.2] - 2026-11-07
 

@@ -5,11 +5,15 @@ extends Node
 ## --online=host or --online=join:CODE straight into a room (online_from_flags).
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES, FINALE, CREDITS, CONTROLS }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
 const STAGED_JOYPAD := 99  # stage_unplug's joypad
+## Under the tour's finale and the credits: NIGHT DRIVE (Radio), or where the build has no
+## radio/ folder (the Web), NEON FM's first song.
+static func finale_song() -> String:
+	return "synthwave_night_drive" if SoundBank.path_for("synthwave_night_drive") != "" else "station_synthwave"
 
 var screen := Screen.TITLE
 var mode_index := 0  # into ModeSelect.Item, the last mode picked
@@ -52,6 +56,13 @@ var _menu_shot := ""
 ## What's new (WhatsNew) may come up on the title: not for a staged screenshot (--menu-shot),
 ## which neither shows it nor marks it seen; --screen=whats_new stages it.
 var news_allowed := true
+## The onboarding (who's driving AC-16, the wheel's first run WH-16, the first drive MP-15)
+## may come up: not for a staged screenshot (--menu-shot) unless it stages one of them, and
+## the first drive not in a race the dev flags started or a screenshot (--first-drive asks
+## for it there).
+## WhosDriving.enabled turns all of it off (the test runners).
+var onboarding := true
+var first_drive_allowed := true
 ## Where the options screen goes back to (close_options): the title unless whoever opened
 ## it says otherwise.
 var _options_back := Callable()
@@ -80,19 +91,22 @@ func _ready() -> void:
 	var unplug_shot := false
 	var replug_shot := ""  # --screen=replugged (a different wheel) or replugged:same
 	var debug_page := ""  # --screen=debug[:page]: the tuning panel, over a race given race flags
+	var controls_shot := false  # --screen=pause:controls: the controls card over the paused race
 	var car := DevArgs.value("--car")
 	if car != "":
 		car_index = maxi(0, Cars.LIST.find(Cars.find(car)))
 	mirror = DevArgs.has("--mirror")
 	news_allowed = DevArgs.value("--menu-shot") == ""
+	onboarding = news_allowed
 	var mode := DevArgs.value("--mode")
 	if mode != "":
 		mode_index = ModeSelect.Item.get(mode.to_upper(), mode_index)
 	for arg in OS.get_cmdline_user_args():
 		for flag: String in RACE_FLAGS:
 			quick = quick or arg.begins_with(flag)
-		if arg == "--screen=pause":
+		if arg == "--screen=pause" or arg == "--screen=pause:controls":
 			pause_shot = true
+			controls_shot = arg.ends_with(":controls")
 		elif arg == "--screen=unplugged":
 			pause_shot = true
 			unplug_shot = true
@@ -110,6 +124,7 @@ func _ready() -> void:
 			_menu_shot = arg.get_slice("=", 1)
 		elif arg.begins_with("--attract-delay="):
 			attract_delay = float(arg.get_slice("=", 1))
+	first_drive_allowed = (not quick and news_allowed) or DevArgs.has("--first-drive")
 	var auto := DevArgs.value("--online")
 	if auto != "":
 		online_from_flags(auto, int(DevArgs.value("--players", "2")))
@@ -126,6 +141,8 @@ func _ready() -> void:
 			stage_replug(replug_shot == "same")
 	elif pause_shot:
 		race.pause()
+		if controls_shot:
+			race.pause_menu.open_controls()
 	if debug_page != "":
 		if menu == null and race == null:
 			show_title()
@@ -154,7 +171,7 @@ func _physics_process(dt: float) -> void:
 		_swallow -= 1
 		return
 	if screen == Screen.TITLE:
-		var reading := menu is TitleScreen and not (menu as TitleScreen).news.is_empty()  # (what's new up)
+		var reading := menu is TitleScreen and (menu as TitleScreen).busy()  # (what's new, a question up)
 		idle = 0.0 if woke or reading else idle + dt
 		if idle >= attract_delay:
 			start_demo()
@@ -191,7 +208,27 @@ func show_title(item := 0) -> void:
 	if news_allowed:
 		t.news = WhatsNew.take()
 		t.news_version = Updater.version()
+	t.offers = onboarding_on()
+	t.asking = onboarding_on() and WhosDriving.due(SaveData)
 	_set_menu(t, Screen.TITLE)
+
+
+## Whether the onboarding comes up (onboarding, WhosDriving.enabled).
+func onboarding_on() -> bool:
+	return onboarding and WhosDriving.enabled
+
+
+## Whether a race on `stage` starts as the first drive (MP-15): a new profile's first race on
+## Palm Coast (FirstDrive.wanted), from the menus, not a demo or online.
+func first_drive_for(stage: int, demo: bool) -> bool:
+	return WhosDriving.enabled and first_drive_allowed and not demo and FirstDrive.wanted(stage, SaveData)
+
+
+## CONTROLS on the title (PR-22): the controls card, back to the title on CONTROLS.
+func show_controls() -> void:
+	var c := ControlsCard.new()
+	c.on_back = show_title.bind(TitleScreen.items().find("CONTROLS"))
+	_set_menu(c, Screen.CONTROLS)
 
 
 ## The update check, before the title. `staged` (tests and --screen=update) shows that
@@ -413,6 +450,34 @@ func start_online_race() -> void:
 	add_child(race)
 
 
+## The Grand Tour's ending (MP-16), on `page` (a TourFinale.Page): the podium, the standings
+## and the end card for `standings` (Tour.standings), then the credits over the harbor.
+func show_finale(standings: Array[Dictionary], car_id: String, page := TourFinale.Page.PODIUM) -> void:
+	var f := TourFinale.new()
+	f.standings = standings
+	f.car_id = car_id
+	f.page = page
+	_set_menu(f, Screen.FINALE)
+	if Audio.music_cue != finale_song():
+		Audio.play_music(finale_song())
+
+
+## The credits (PR-23): from the title, or after the tour (`after_tour`: over the harbor,
+## the finale's song playing on).
+func show_credits(after_tour := false) -> void:
+	var c := CreditsScreen.new()
+	c.harbor = after_tour
+	_set_menu(c, Screen.CREDITS)
+	if Audio.music_cue != finale_song():
+		Audio.play_music(finale_song())
+
+
+## The credits are over (or left): the title, on CREDITS.
+func close_credits() -> void:
+	Audio.stop_music()
+	show_title(maxi(0, TitleScreen.items().find("CREDITS")))
+
+
 ## The stats page (MP-11), from the title.
 func show_stats() -> void:
 	_set_menu(StatsScreen.new(), Screen.STATS)
@@ -474,6 +539,7 @@ func _spawn_race(stage: int, car: int, demo: bool) -> void:
 	race.time_attack = not demo and mode_index == ModeSelect.Item.TIME_ATTACK
 	race.free_drive = not demo and mode_index == ModeSelect.Item.FREE_DRIVE
 	race.mirror = not demo and mirror_for(stage)
+	race.first_drive_on = first_drive_for(stage, demo)
 	race.debug_overlay = debug_overlay
 	race.calibration = calibration
 	race.debug_panel = debug_panel
@@ -507,7 +573,15 @@ func _on_race_quit() -> void:
 ## A Single Race or Time Attack run finished: back to stage select for the next one. Online,
 ## back to the room's lobby (or what ended it).
 func _on_race_over() -> void:
+	var finale: bool = race.tour and race.after == race.After.TOUR_DONE and race.tour_state != null
+	var standings: Array[Dictionary] = []
+	if finale:
+		standings = race.tour_state.standings()
+	var car: String = race.car_id
 	_drop_race()
+	if finale:
+		show_finale(standings, car)  # the tour is done: its ending, then the credits (MP-16)
+		return
 	if online != null:
 		online.to_lobby()
 		show_online()
@@ -555,6 +629,14 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # --screen=debug opens the F3 tuning panel (debug:camera, debug:actions etc. for a page:
 # Tuning.AREAS, actions, presets), over the title, or over a race given race flags.
 # --screen=stats opens the stats page (MP-11); --screen=profiles the driver picker (MP-10).
+# --screen=credits rolls the credits (PR-23; credits:harbor as after the tour, credits:600 rolled on 600 px). --screen=finale
+# stages the Grand Tour's ending (MP-16): finale:standings and finale:card for its later pages,
+# finale:card:2 (or any place) for where the player finished; --car=ID for the player's car.
+# --screen=controls the controls card (PR-22; controls:gamepad, controls:wheel, controls:touch
+# for another device), --screen=pause:controls the card over a paused race.
+# --screen=whos_driving asks who's driving over the title (AC-16); --screen=wheel_offer offers
+# a staged wheel calibration (WH-16). Neither is saved. --first-drive makes a race the flags
+# start the first drive (MP-15) when the save is a new profile's.
 # --screen=whats_new shows this version's notes over the title (PR-17), without marking them seen.
 # --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
 # a download; update:checking, update:failed, update:full and update:ready the other states.)
@@ -577,6 +659,31 @@ func _open(which: String) -> void:
 			show_stats()
 		"profiles":
 			show_profiles()
+		_ when which.begins_with("credits"):
+			# credits, credits:harbor (as after the tour), either with :PIXELS rolled on
+			var parts := which.split(":")
+			show_credits(parts.has("harbor"))
+			if parts.size() > 1 and parts[-1].is_valid_int():
+				(menu as CreditsScreen).scroll = float(parts[-1])
+		_ when which.begins_with("finale"):
+			# finale[:podium|standings|card[:PLACE]]: the tour's ending on made-up standings,
+			# the player PLACE overall (1 unless given)
+			var parts := which.split(":")
+			var page: int = TourFinale.Page.get(parts[1].to_upper(), 0) if parts.size() > 1 else 0
+			var place := int(parts[2]) if parts.size() > 2 else 1
+			show_finale(TourFinale.staged_standings(place), Cars.get_car(car_index)["id"], page)
+		_ when which.begins_with("controls"):
+			show_controls()
+			var dev := ControlsCard.DEVICE_NAMES.find(which.get_slice(":", 1).to_upper()) if which.contains(":") else -1
+			if dev >= 0:
+				(menu as ControlsCard).device = dev
+		"whos_driving":
+			show_title()
+			(menu as TitleScreen).asking = true
+		"wheel_offer":
+			show_title()
+			(menu as TitleScreen).wheel_offer = "staged-wheel"
+			(menu as TitleScreen).wheel_offer_name = "Logitech G29 Driving Force Racing Wheel"
 		"whats_new":
 			show_title()
 			(menu as TitleScreen).news = WhatsNew.items(WhatsNew.notes(Updater.version()))

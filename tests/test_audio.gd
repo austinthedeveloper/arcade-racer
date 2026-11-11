@@ -20,11 +20,11 @@ func count(cue: String) -> int:
 	return audio_node().history.count(cue)
 
 
-## How many times a station started.
+## How many times a song or sting started.
 func music_starts() -> int:
 	var n := 0
-	for i in Radio.count():
-		n += count(Radio.cue(i))
+	for cue in Radio.all_cues():
+		n += count(cue)
 	return n
 
 
@@ -85,7 +85,7 @@ func test_tires_squeal_braking_and_cornering_only() -> void:
 func test_countdown_beeps_then_go_and_music() -> void:
 	var r := fresh_race()
 	step(r, 1)
-	eq(audio_node().music_cue, Radio.cue(r.audio.station), "the radio starts with the race")
+	eq(audio_node().music_cue, Radio.song_cue(r.audio.station, r.audio.song), "the radio starts with the race")
 	eq(music_starts(), 1, "once")
 	step(r, 185)
 	eq(count("beep"), 3, "three, two, one")
@@ -323,8 +323,18 @@ func test_radio_dial() -> void:
 		var s := Radio.start_station(Radio.SHUFFLE, roll)
 		check(s >= 0 and s < Radio.count(), "shuffle lands on a station (%d)" % roll)
 	for i in Radio.count():
-		check(SoundBank.loops(Radio.cue(i)), Radio.genre(i) + " loops")
-		eq(SoundBank.CUES[Radio.cue(i)][0], "music", Radio.genre(i) + " on the music bus")
+		eq(Radio.song_count(i), 5, Radio.genre(i) + ": five songs (PR-24)")
+		eq(Radio.song_cue(i, 0), Radio.cue(i), "the first is the station's own loop")
+		eq(Radio.song_cue(i, Radio.song_count(i)), Radio.cue(i), "round the list")
+		eq(Radio.next_song(i, Radio.song_count(i) - 1), 0, "and back to the first")
+	var titles := {}
+	for cue in Radio.all_cues():
+		check(not SoundBank.loops(cue), cue + " plays once")
+		check(SoundBank.CUES.get(cue, [""])[0] in ["music", "radio"], cue + " a music cue")
+	for i in Radio.count():
+		for k in Radio.song_count(i):
+			titles[Radio.song_title(i, k)] = true
+	eq(titles.size(), Radio.count() * 5, "every song has its own title")
 
 
 func test_race_starts_on_the_chosen_station() -> void:
@@ -333,7 +343,7 @@ func test_race_starts_on_the_chosen_station() -> void:
 	var r := fresh_race()
 	step(r, 1)
 	eq(r.audio.station, 3, "the setting's station")
-	eq(audio_node().music_cue, Radio.cue(3), "playing it")
+	eq(audio_node().music_cue, Radio.song_cue(3, r.audio.song), "playing one of its songs")
 	Settings.radio = saved
 
 
@@ -355,7 +365,7 @@ func test_a_station_per_stage() -> void:
 		audio_node().history.clear()
 		step(r, 1)
 		eq(r.audio.station, Radio.for_theme(Stages.theme(stage)), Stages.stage_name(stage) + ": its own station")
-		eq(audio_node().music_cue, Radio.cue(r.audio.station), "playing it")
+		eq(audio_node().music_cue, Radio.song_cue(r.audio.station, r.audio.song), "playing it")
 		# the radio button still switches
 		var n := input(1.0)
 		n.radio_pressed = true
@@ -382,7 +392,7 @@ func test_radio_button_switches_without_a_gap() -> void:
 	r.callouts.clear()
 	step(r, 1, n)
 	eq(r.audio.station, Radio.next(was), "the next station")
-	eq(audio_node().music_cue, Radio.cue(Radio.next(was)), "playing at once")
+	eq(audio_node().music_cue, Radio.song_cue(Radio.next(was), r.audio.song), "playing at once")
 	eq(count("radio_tune"), 1, "a burst of tuning")
 	var shown: Array = [r.callouts.current.get("text", "")]
 	for c: Dictionary in r.callouts.waiting:
@@ -392,6 +402,115 @@ func test_radio_button_switches_without_a_gap() -> void:
 	step(r, 3)
 	r.audio.next_station()
 	eq(audio_node().music_cue, "", "no music back after the finish")
+
+
+## Radio v2 (PR-24): a song plays out, the station's sting, then its next song, round the
+## list; the radio button carries on at the same point.
+func test_the_sting_plays_between_songs() -> void:
+	var r := fresh_race()
+	step(r, 1)
+	var a: RaceAudio = r.audio
+	var first := a.song
+	eq(audio_node().music_cue, Radio.song_cue(a.station, first), "a song first")
+	check(not a.in_sting, "not the sting")
+	near(a.cue_left, RaceAudio.cue_length(Radio.song_cue(a.station, first)) - DT, 0.02, "the whole song to go")
+	check(RaceAudio.cue_length(Radio.song_cue(a.station, first)) > 20.0, "a song lasts")
+	a.cue_left = DT * 2.5  # near its end
+	audio_node().history.clear()
+	step(r, 3, input(1.0))
+	check(a.in_sting, "the song over: the sting")
+	eq(audio_node().music_cue, Radio.sting(a.station), "the station's sting playing")
+	var sting_len := RaceAudio.cue_length(Radio.sting(a.station))
+	check(sting_len > 1.0 and sting_len < 4.0, "a short one (%.2f s)" % sting_len)
+	step(r, int(sting_len / DT) + 2, input(1.0))
+	check(not a.in_sting, "then a song again")
+	eq(a.song, Radio.next_song(a.station, first), "the next one")
+	eq(audio_node().music_cue, Radio.song_cue(a.station, a.song), "playing")
+	var seen: Array = audio_node().history.filter(func(c: String) -> bool: return c in Radio.all_cues())
+	eq(seen, [Radio.sting(a.station), Radio.song_cue(a.station, a.song)], "song, sting, song")
+	# Every song and sting, round a whole station
+	for k in Radio.song_count(a.station) * 2:
+		a.cue_left = DT * 0.5
+		step(r, 1, input(1.0))
+	eq(a.song, Radio.next_song(a.station, first), "round the whole list and back")
+	# Switching station mid-sting: the new station's sting, at the same point
+	a.cue_left = DT * 0.5
+	step(r, 1, input(1.0))
+	check(a.in_sting, "in a sting")
+	var left := a.cue_left
+	a.next_station()
+	eq(audio_node().music_cue, Radio.sting(a.station), "the new station's sting")
+	near(a.cue_left, RaceAudio.cue_length(Radio.sting(a.station)) - (sting_len - left), 0.05, "carrying on where it was")
+	# The finish: no more songs or stings
+	run_until(r, func() -> bool:
+		r.audio.update(DT)
+		return r.state == r.State.RACING, 2000, input(1.0))
+	r.next_checkpoint = r.checkpoint_distances.size()
+	r.player.distance = r.finish_distance + 1.0
+	step(r, 3)
+	check(not a.radio_on, "the radio off at the finish")
+	a.cue_left = 0.0
+	step(r, 2)
+	eq(audio_node().music_cue, "", "and nothing starts after it")
+
+
+## The now-playing tag (PR-24): up as a song starts, held back until past GO, then gone.
+func test_the_now_playing_tag_shows_as_a_song_starts() -> void:
+	var r := fresh_race()
+	step(r, 1)
+	var a: RaceAudio = r.audio
+	check(a.tag_pending and a.tag_age < 0.0, "the first song waits for its tag through the countdown")
+	run_until(r, func() -> bool:
+		r.audio.update(DT)
+		return r.state == r.State.RACING and r.race_time >= RaceAudio.TAG_AFTER_GO, 2000, input(1.0))
+	step(r, 1, input(1.0))
+	check(a.tag_age >= 0.0, "up once the race is under way")
+	var words := Radio.now_playing(a.station, a.song)
+	eq(words, [Radio.song_title(a.station, a.song), Radio.station_name(a.station)], "the song's title and its station")
+	step(r, int(RaceAudio.TAG_TIME / DT) + 2, input(1.0))
+	eq(a.tag_age, -1.0, "gone after TAG_TIME")
+	# The next song tags at once
+	a.cue_left = DT * 0.5
+	step(r, 1, input(1.0))
+	check(a.in_sting and a.tag_age < 0.0, "not for the sting")
+	a.cue_left = DT * 0.5
+	step(r, 2, input(1.0))
+	check(a.tag_age >= 0.0, "the next song's tag")
+	# The tag slides in and out
+	eq(Hud.tag_slide(0.0, 4.0), 0.0, "off the edge as it starts")
+	eq(Hud.tag_slide(2.0, 4.0), 1.0, "in, held")
+	eq(Hud.tag_slide(4.0, 4.0), 0.0, "out again at the end")
+	eq(Hud.tag_slide(-1.0, 4.0), 0.0, "not up")
+	var lay := Hud.layout()
+	check(lay["now_playing"].size.x >= UiText.width("SOUL STOP STRUT", 11) + 30, "room for the longest title")
+
+
+## make_audio.py writes the radio's new files reproducibly: a station's sting rendered again
+## (on its own random stream, so it renders alone) comes out as the repository's.
+func test_make_audio_writes_the_new_songs_reproducibly() -> void:
+	var out := ProjectSettings.globalize_path(TestSuite.scratch("audio"))
+	var project := ProjectSettings.globalize_path("res://")
+	var output: Array = []
+	var code := OS.execute("python3", [project.path_join("tools/make_audio.py"), project, "--only=sting_techno", "--out=" + out], output, true)
+	if code != 0:
+		print("    (no python3 here: skipped) ", output)
+		return
+	var fresh := FileAccess.get_file_as_bytes(out.path_join("music/sting_techno.wav"))
+	var repo := FileAccess.get_file_as_bytes("res://assets/audio/music/sting_techno.wav")
+	eq(fresh.size(), repo.size(), "the same length")
+	var worst := 0
+	for i in range(44, mini(fresh.size(), repo.size()) - 1, 2):
+		worst = maxi(worst, absi(fresh.decode_s16(i) - repo.decode_s16(i)))
+	check(worst <= 2, "the same samples (off by at most %d)" % worst)
+	var src := FileAccess.get_file_as_string("res://tools/make_audio.py")
+	for cue in Radio.all_cues():
+		if cue.begins_with("station_"):
+			continue
+		check(src.contains('"%s/%s.wav"' % [SoundBank.CUES[cue][0], cue]), "make_audio.py writes " + cue)
+	# The Web build leaves radio/ out: a station plays what it has, its first song always
+	var all: Array = Radio.STATIONS[0]["songs"]
+	eq(Radio.songs_with(all, func(_c: String) -> bool: return true).size(), 5, "every song there")
+	eq(Radio.songs_with(all, func(_c: String) -> bool: return false), [all[0]], "none of radio/: the first song alone")
 
 
 func test_a_power_slide_squeals() -> void:

@@ -216,7 +216,8 @@ func test_stats_on_the_title_opens_the_stats_page_and_back() -> void:
 	var g := _game()
 	g.menu.handle(menu_input(false, false, 1))
 	g.menu.handle(menu_input(false, false, 1))
-	eq(TitleScreen.items()[g.menu.index], "STATS", "two right: STATS")
+	g.menu.handle(menu_input(false, false, 1))
+	eq(TitleScreen.items()[g.menu.index], "STATS", "three right: STATS")
 	g.menu.handle(menu_input(true))
 	eq(g.screen, g.Screen.STATS, "the stats page")
 	check(g.menu is StatsScreen, "drawn by StatsScreen")
@@ -226,8 +227,8 @@ func test_stats_on_the_title_opens_the_stats_page_and_back() -> void:
 
 
 func test_quit_on_the_title_closes_the_game() -> void:
-	eq(TitleScreen.items(false), ["START", "OPTIONS", "STATS", "PROFILE", "QUIT"], "START, OPTIONS, STATS, PROFILE, QUIT")
-	eq(TitleScreen.items(true), ["START", "OPTIONS", "STATS", "PROFILE"], "no QUIT in a browser")
+	eq(TitleScreen.items(false), ["START", "OPTIONS", "CONTROLS", "STATS", "PROFILE", "CREDITS", "QUIT"], "START, OPTIONS, CONTROLS, STATS, PROFILE, CREDITS, QUIT")
+	eq(TitleScreen.items(true), ["START", "OPTIONS", "CONTROLS", "STATS", "PROFILE", "CREDITS"], "no QUIT in a browser")
 	var g := _game()
 	var quits := [0]
 	g.on_quit = func() -> void: quits[0] += 1

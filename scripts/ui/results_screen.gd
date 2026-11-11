@@ -80,6 +80,8 @@ static func choice_label(c: int, after: int) -> String:
 			return "NEXT STAGE"
 		1:  # RETRY: the tour's continue
 			return "USE CONTINUE"
+		3:  # TOUR_DONE: on to the tour's ending (MP-16)
+			return "FINALE"
 	return "CONTINUE"
 
 

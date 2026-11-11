@@ -10,7 +10,15 @@ for leveling in `SoundBank.CUES`):
 ```sh
 python3 tools/make_audio.py                 # every sound
 python3 tools/make_audio.py --only=crash    # just one (still the same file a full run writes)
+python3 tools/make_audio.py --only=sting_rock   # a radio song or sting renders alone: its own random stream
 ```
+
+The radio plays each station's five songs in turn, once each, with the station's sting between
+them (`RaceAudio.radio_tick`), so the songs don't loop. The radio's newer songs and stings
+(`SONGS` in `make_audio.py`) render after everything else, each on its own seeded random stream,
+so adding them left every older file byte for byte the same; add new sounds the same way.
+The songs are in `radio/`, which the Web build leaves out to stay inside its download budget
+(EQ-23): there each station plays its first song with its sting between (`Radio.songs`).
 
 ## Swapping in a sound pack
 
@@ -58,10 +66,15 @@ seamless; the engine loops are pitch-shifted, so a steady single-note recording 
 | `thunder` | sfx | no | A beat after a lightning flash, on a stage with lightning (Thunderhead) |
 | `radio_tune` | sfx | no | Changing radio station (in the race or on car select) |
 | `shutter` | sfx | no | The photo key (F12, or a button bound to PHOTO) saving a picture |
-| `station_rock` | music | yes | 98.3 THE CANYON: rock, E minor, 144 bpm. On SHUFFLE, Redrock, Timberline and Harvest start on it |
-| `station_synthwave` | music | yes | 104.7 NEON FM: synthwave, A minor, 100 bpm. Neon Strip and Skyline |
-| `station_funk` | music | yes | 92.1 SOUL STOP: funk, E, 104 bpm. Palm Coast and Bayou |
-| `station_techno` | music | yes | 107.9 PULSE: techno, F minor, 128 bpm. Thunderhead |
+| `station_rock` | music | no | 98.3 THE CANYON: rock, E minor, 144 bpm. On SHUFFLE, Redrock, Timberline and Harvest start on it |
+| `station_synthwave` | music | no | 104.7 NEON FM: synthwave, A minor, 100 bpm. Neon Strip and Skyline |
+| `station_funk` | music | no | 92.1 SOUL STOP: funk, E, 104 bpm. Palm Coast and Bayou |
+| `station_techno` | music | no | 107.9 PULSE: techno, F minor, 128 bpm. Thunderhead |
+| `rock_dust_devil`, `rock_mesa_run`, `rock_high_noon`, `rock_salt_flats` | radio | no | 98.3 THE CANYON's other four songs (PR-24): 152, 136, 160 and 120 bpm |
+| `synthwave_afterglow`, `synthwave_chrome_heart`, `synthwave_night_drive`, `synthwave_palm_static` | radio | no | 104.7 NEON FM's other four; NIGHT DRIVE also plays under the tour's finale and the credits |
+| `funk_slick_back`, `funk_double_parked`, `funk_velvet_turn`, `funk_tailwind` | radio | no | 92.1 SOUL STOP's other four |
+| `techno_redline`, `techno_overpass`, `techno_grid_lock`, `techno_static_bloom` | radio | no | 107.9 PULSE's other four |
+| `sting_rock`, `sting_synthwave`, `sting_funk`, `sting_techno` | music | no | Each station's ident, about 2.5 s, between its songs |
 
 ## The announcer
 
