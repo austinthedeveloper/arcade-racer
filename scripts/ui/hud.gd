@@ -20,6 +20,7 @@ const RADAR_TIME := 1.0  # seconds behind or ahead a rival gets a radar arrow
 const RADAR_REACH := 2.0  # road half-widths either side the radar strip spans
 const RADAR_ARROW := Vector2(9, 7)  # an arrow's width and height
 const GOLD := Color("#ffd23a")
+const TAG_SLIDE := 0.3  # seconds the now-playing tag takes to slide in, and out (PR-24)
 const DIAL_START := PI * 0.75  # the speedometer's zero, bottom left...
 const DIAL_SWEEP := PI * 1.5  # ...round to top speed at the bottom right
 ## The power-up slot (CP-14): a mystery hubcap spins there this long, then its reveal frames
@@ -172,6 +173,38 @@ func _draw() -> void:
 		_draw_subtitle(lay["subtitle"], race.audio.announcer.subtitle())
 	if race.notice_time > 0.0:
 		_draw_notice(Vector2(w / 2.0, 72), race.notice, notice_alpha(race.notice_time))
+	if race.audio != null and race.audio.tag_age >= 0.0:
+		_draw_now_playing(lay["now_playing"], Radio.now_playing(race.audio.station, race.audio.song), race.audio.tag_age)
+
+
+## The now-playing tag (PR-24): the song's title and its station, sliding in from the left
+## as a song starts and back out after RaceAudio.TAG_TIME.
+func _draw_now_playing(r: Rect2, words: Array[String], age: float) -> void:
+	var at := r
+	at.position.x -= (r.end.x + 4.0) * (1.0 - tag_slide(age, RaceAudio.TAG_TIME))
+	_panel(at, Color(0.04, 0.03, 0.1, 0.75))
+	draw_rect(Rect2(at.position, Vector2(3, at.size.y)), GOLD)
+	_draw_note(at.position + Vector2(12, 17))
+	_text(at.position + Vector2(22, 10), "NOW PLAYING", 8, Color("#3ad0ff"))
+	_text(at.position + Vector2(22, 23), words[0], 11, Color.WHITE)
+	_text(Vector2(at.end.x - 6 - UiText.width(words[1], 8), at.position.y + 10), words[1], 8, Color(1, 1, 1, 0.6))
+
+
+## A beamed pair of eighth notes, its lower left at `base`.
+func _draw_note(base: Vector2) -> void:
+	for dx in [0.0, 6.0]:
+		draw_circle(base + Vector2(dx, 0), 2.0, GOLD)
+		draw_line(base + Vector2(dx + 1.5, 0), base + Vector2(dx + 1.5, -9), GOLD, 1.0)
+	draw_line(base + Vector2(1.5, -9), base + Vector2(7.5, -10), GOLD, 2.0)
+
+
+## How far the now-playing tag is in, 0 (off the left edge) to 1, `age` seconds after it
+## showed: in over TAG_SLIDE, held, out over the last TAG_SLIDE of `shown`.
+static func tag_slide(age: float, shown: float) -> float:
+	if age < 0.0 or age > shown:
+		return 0.0
+	var k := minf(age, shown - age) / TAG_SLIDE
+	return clampf(k, 0.0, 1.0)
 
 
 ## The first drive's prompt (MP-15): FIRST DRIVE and which of how many, what to do, big,
@@ -246,7 +279,7 @@ func intro_text() -> Dictionary:
 ## Where each HUD element goes on the 640x360 screen (the window scales the whole picture):
 ## the clock, the place, the route bar (with its markers) and the stage under it, the nitro
 ## flames, the power-up slot, the bonus feed, the slipstream bar, the speedometer, the
-## input device, the announcer's subtitle, the rival cards, the radar and the stage intro card. With the touch controls up (`touch`,
+## input device, the announcer's subtitle, the rival cards, the radar, the stage intro card and the now-playing tag. With the touch controls up (`touch`,
 ## TouchControls), the speedometer sits between the thumbs and the device line goes.
 static func layout(touch := false) -> Dictionary:
 	var w := float(Cfg.SCREEN_W)
@@ -257,6 +290,7 @@ static func layout(touch := false) -> Dictionary:
 		lay["slipstream"] = Rect2(w / 2.0 - 53, h - 112, 106, 10)
 		lay["device"] = Rect2()
 		lay["cards"] = Rect2(w / 2.0 - CARD_SIZE.x - 3, 150, CARD_SIZE.x * 2 + 6, 4 * (CARD_SIZE.y + CARD_GAP) - CARD_GAP)
+		lay["now_playing"] = Rect2(6, 118, 190, 28)  # (clear of the thumbs)
 		return lay
 	return {
 		"timer": Rect2(6, 6, 92, 58),
@@ -274,6 +308,7 @@ static func layout(touch := false) -> Dictionary:
 		"cards": Rect2(6, 120, CARD_SIZE.x, Rivals.COUNT * (CARD_SIZE.y + CARD_GAP) - CARD_GAP),
 		"radar": Rect2(w / 2.0 - 90, 192, 180, 16),
 		"intro": Rect2(Vector2(w - 14 - StageIntro.CARD.x, 76), StageIntro.CARD),
+		"now_playing": Rect2(6, 296, 190, 28),
 	}
 
 

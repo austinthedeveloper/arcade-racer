@@ -5,11 +5,15 @@ extends Node
 ## --online=host or --online=join:CODE straight into a room (online_from_flags).
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES, CONTROLS }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES, FINALE, CREDITS, CONTROLS }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
 const STAGED_JOYPAD := 99  # stage_unplug's joypad
+## Under the tour's finale and the credits: NIGHT DRIVE (Radio), or where the build has no
+## radio/ folder (the Web), NEON FM's first song.
+static func finale_song() -> String:
+	return "synthwave_night_drive" if SoundBank.path_for("synthwave_night_drive") != "" else "station_synthwave"
 
 var screen := Screen.TITLE
 var mode_index := 0  # into ModeSelect.Item, the last mode picked
@@ -446,6 +450,34 @@ func start_online_race() -> void:
 	add_child(race)
 
 
+## The Grand Tour's ending (MP-16), on `page` (a TourFinale.Page): the podium, the standings
+## and the end card for `standings` (Tour.standings), then the credits over the harbor.
+func show_finale(standings: Array[Dictionary], car_id: String, page := TourFinale.Page.PODIUM) -> void:
+	var f := TourFinale.new()
+	f.standings = standings
+	f.car_id = car_id
+	f.page = page
+	_set_menu(f, Screen.FINALE)
+	if Audio.music_cue != finale_song():
+		Audio.play_music(finale_song())
+
+
+## The credits (PR-23): from the title, or after the tour (`after_tour`: over the harbor,
+## the finale's song playing on).
+func show_credits(after_tour := false) -> void:
+	var c := CreditsScreen.new()
+	c.harbor = after_tour
+	_set_menu(c, Screen.CREDITS)
+	if Audio.music_cue != finale_song():
+		Audio.play_music(finale_song())
+
+
+## The credits are over (or left): the title, on CREDITS.
+func close_credits() -> void:
+	Audio.stop_music()
+	show_title(maxi(0, TitleScreen.items().find("CREDITS")))
+
+
 ## The stats page (MP-11), from the title.
 func show_stats() -> void:
 	_set_menu(StatsScreen.new(), Screen.STATS)
@@ -541,7 +573,15 @@ func _on_race_quit() -> void:
 ## A Single Race or Time Attack run finished: back to stage select for the next one. Online,
 ## back to the room's lobby (or what ended it).
 func _on_race_over() -> void:
+	var finale: bool = race.tour and race.after == race.After.TOUR_DONE and race.tour_state != null
+	var standings: Array[Dictionary] = []
+	if finale:
+		standings = race.tour_state.standings()
+	var car: String = race.car_id
 	_drop_race()
+	if finale:
+		show_finale(standings, car)  # the tour is done: its ending, then the credits (MP-16)
+		return
 	if online != null:
 		online.to_lobby()
 		show_online()
@@ -589,6 +629,9 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # --screen=debug opens the F3 tuning panel (debug:camera, debug:actions etc. for a page:
 # Tuning.AREAS, actions, presets), over the title, or over a race given race flags.
 # --screen=stats opens the stats page (MP-11); --screen=profiles the driver picker (MP-10).
+# --screen=credits rolls the credits (PR-23; credits:harbor as after the tour, credits:600 rolled on 600 px). --screen=finale
+# stages the Grand Tour's ending (MP-16): finale:standings and finale:card for its later pages,
+# finale:card:2 (or any place) for where the player finished; --car=ID for the player's car.
 # --screen=controls the controls card (PR-22; controls:gamepad, controls:wheel, controls:touch
 # for another device), --screen=pause:controls the card over a paused race.
 # --screen=whos_driving asks who's driving over the title (AC-16); --screen=wheel_offer offers
@@ -616,6 +659,19 @@ func _open(which: String) -> void:
 			show_stats()
 		"profiles":
 			show_profiles()
+		_ when which.begins_with("credits"):
+			# credits, credits:harbor (as after the tour), either with :PIXELS rolled on
+			var parts := which.split(":")
+			show_credits(parts.has("harbor"))
+			if parts.size() > 1 and parts[-1].is_valid_int():
+				(menu as CreditsScreen).scroll = float(parts[-1])
+		_ when which.begins_with("finale"):
+			# finale[:podium|standings|card[:PLACE]]: the tour's ending on made-up standings,
+			# the player PLACE overall (1 unless given)
+			var parts := which.split(":")
+			var page: int = TourFinale.Page.get(parts[1].to_upper(), 0) if parts.size() > 1 else 0
+			var place := int(parts[2]) if parts.size() > 2 else 1
+			show_finale(TourFinale.staged_standings(place), Cars.get_car(car_index)["id"], page)
 		_ when which.begins_with("controls"):
 			show_controls()
 			var dev := ControlsCard.DEVICE_NAMES.find(which.get_slice(":", 1).to_upper()) if which.contains(":") else -1

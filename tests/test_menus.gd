@@ -227,8 +227,8 @@ func test_stats_on_the_title_opens_the_stats_page_and_back() -> void:
 
 
 func test_quit_on_the_title_closes_the_game() -> void:
-	eq(TitleScreen.items(false), ["START", "OPTIONS", "CONTROLS", "STATS", "PROFILE", "QUIT"], "START, OPTIONS, CONTROLS, STATS, PROFILE, QUIT")
-	eq(TitleScreen.items(true), ["START", "OPTIONS", "CONTROLS", "STATS", "PROFILE"], "no QUIT in a browser")
+	eq(TitleScreen.items(false), ["START", "OPTIONS", "CONTROLS", "STATS", "PROFILE", "CREDITS", "QUIT"], "START, OPTIONS, CONTROLS, STATS, PROFILE, CREDITS, QUIT")
+	eq(TitleScreen.items(true), ["START", "OPTIONS", "CONTROLS", "STATS", "PROFILE", "CREDITS"], "no QUIT in a browser")
 	var g := _game()
 	var quits := [0]
 	g.on_quit = func() -> void: quits[0] += 1

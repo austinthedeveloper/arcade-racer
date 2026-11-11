@@ -12,6 +12,11 @@ const RIVAL_HEAR := 2500.0  # world units along the road a rival's engine carrie
 const WHOOSH_REACH := 1.0  # road half-widths to the side a passed car whooshes within
 const PASS_WINDOW := 1000.0  # world units: a gap jump bigger than this is a wrap, not a pass
 const SLIDE_SQUEAL := 0.6  # a power slide's squeal at a standstill, up to full at top speed
+## The radio (PR-24): the now-playing tag stays up this long once it shows, and the race's
+## first song waits for it until this far past GO (the countdown has the stage card).
+const TAG_TIME := 4.0
+const TAG_AFTER_GO := 5.0
+const SONG_FALLBACK := 30.0  # seconds a song with no file counts as
 ## The announcer's line for each callout kind (Callouts.Kind).
 const CALLOUT_LINES := {
 	Callouts.Kind.GO: "go", Callouts.Kind.LAUNCH: "launch", Callouts.Kind.CHECKPOINT: "checkpoint",
@@ -40,6 +45,14 @@ var _tick := 0
 var _paused := false
 var _draft_time := 0.0
 var station := 0  # the radio station playing (Radio)
+var song := 0  # its song playing, or the one the sting leads into (Radio.song_cue)
+var in_sting := false  # the station's sting is playing, between songs
+var cue_left := 0.0  # seconds left of the song or sting playing
+var radio_on := false  # music is playing (it stops at the finish and at TIME UP)
+## The now-playing tag: seconds it has been up (-1 when it's not), and a song that started
+## and is still to be tagged (it waits for TAG_AFTER_GO).
+var tag_age := -1.0
+var tag_pending := false
 var announcer := Announcer.new()
 var _callout := {}  # the callout up last tick, to notice a new one
 var _hurried := false
@@ -79,6 +92,7 @@ func update(dt: float) -> void:
 	if race.player != _player:
 		_new_race()
 	_events()
+	radio_tick(dt)
 	_announce(dt)
 	_set_loops(dt)
 
@@ -94,21 +108,78 @@ func _new_race() -> void:
 	_draft_time = 0.0
 	_gaps.clear()
 	station = Radio.start_station(Settings.radio, _rng.randi(), Radio.for_theme(race.track.theme))
-	Audio.play_music(Radio.cue(station))
+	song = posmod(_rng.randi(), Radio.song_count(station))
+	radio_on = true
+	tag_age = -1.0
+	_start_cue(false)
 	announcer.reset()
 	announcer.say("ready")
 	_callout = {}
 	_hurried = false
 
 
-## The radio button: the next station, carrying on at the same point in the loop, so the
-## music never drops out.
+## The radio button: the next station, its song (or sting) carrying on at the same point,
+## so the music never drops out.
 func next_station() -> void:
-	var at := Audio.music_position()
+	var at := cue_length(current_cue()) - cue_left
 	station = Radio.next(station)
 	Audio.play("radio_tune")
-	if race != null and race.state != race.State.FINISHED and race.state != race.State.TIME_UP:
-		Audio.play_music(Radio.cue(station), at)
+	if radio_on and race != null and race.state != race.State.FINISHED and race.state != race.State.TIME_UP:
+		_start_cue(in_sting, at)
+
+
+## What the radio is playing: the station's song, or its sting between songs.
+func current_cue() -> String:
+	return Radio.sting(station) if in_sting else Radio.song_cue(station, song)
+
+
+## A cue's length in seconds (SONG_FALLBACK without a file).
+static func cue_length(cue: String) -> float:
+	var s := SoundBank.stream(cue)
+	var n := s.get_length() if s != null else 0.0
+	return n if n > 0.0 else SONG_FALLBACK
+
+
+## The radio's clock (PR-24): a song plays once, then the station's sting, then its next
+## song, round the list. A new song is tagged on the HUD (tag_age) once the race is
+## TAG_AFTER_GO past GO.
+func radio_tick(dt: float) -> void:
+	if not radio_on:
+		return
+	cue_left -= dt
+	if cue_left <= 0.0:
+		if in_sting or not Radio.has_sting(station):
+			song = Radio.next_song(station, song)
+			_start_cue(false)
+		else:
+			_start_cue(true)
+	if tag_pending and race.state == race.State.RACING and race.race_time >= TAG_AFTER_GO:
+		tag_pending = false
+		tag_age = 0.0
+	elif tag_age >= 0.0:
+		tag_age += dt
+		if tag_age > TAG_TIME:
+			tag_age = -1.0
+
+
+## Starts the song (or, `sting`, the sting) `from` seconds in.
+func _start_cue(sting: bool, from := 0.0) -> void:
+	in_sting = sting
+	var cue := current_cue()
+	var length := cue_length(cue)
+	from = fposmod(from, length)
+	Audio.play_music(cue, from)
+	cue_left = length - from
+	if not sting:
+		tag_pending = true
+		tag_age = -1.0
+
+
+func _radio_off() -> void:
+	radio_on = false
+	tag_pending = false
+	tag_age = -1.0
+	Audio.stop_music()
 
 
 func _events() -> void:
@@ -123,12 +194,12 @@ func _events() -> void:
 			race.State.RACING:
 				Audio.play("go")
 			race.State.FINISHED:
-				Audio.stop_music()
+				_radio_off()
 				Audio.play("finish")
 				Audio.play("crowd")
 				announcer.say(Announcer.finish_line(race.place, not race.rivals.cars.is_empty()))
 			race.State.TIME_UP:
-				Audio.stop_music()
+				_radio_off()
 				Audio.play("time_up")
 				announcer.say("time_up")
 		_state = state

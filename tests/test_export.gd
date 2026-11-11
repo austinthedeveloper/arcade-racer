@@ -102,7 +102,11 @@ func test_export_bundles_whats_new() -> void:
 		"never committed")
 	for preset in ["Windows", "macOS", "Web", "Linux"]:
 		var filter: String = presets().get_value(section(presets(), preset), "exclude_filter", "")
-		check(not filter.contains("assets"), preset + " exports assets/")
+		var bundled := WhatsNew.BUNDLED.trim_prefix("res://")
+		var left_out := false
+		for pattern in filter.split(",", false):
+			left_out = left_out or bundled.match(pattern.strip_edges())
+		check(not left_out, preset + " exports " + bundled)
 
 
 ## A tag's Web build goes to Azure (tools/deploy_web.sh, the release workflow's web job). The
@@ -134,7 +138,7 @@ const WEB_PCK_BUDGET := 28_000_000
 const EXPORTED_AS_IS := ["gd", "tscn", "tres", "gdshader", "json", "uid", "import"]
 ## How far the estimate may sit from the real .pck (CI compares them).
 const ESTIMATE_TOLERANCE := 0.1
-const WEB_EXCLUDED := ["res://tests", "res://tools", "res://docs", "res://build", "res://.godot"]
+const WEB_EXCLUDED := ["res://tests", "res://tools", "res://docs", "res://build", "res://.godot", "res://assets/audio/radio"]
 
 
 ## The Web .pck's size worked out from the project, without exporting it: each imported
@@ -181,6 +185,16 @@ func test_the_web_build_has_its_own_loading_screen() -> void:
 	# Nothing to fetch before it shows: no pictures, fonts or scripts from elsewhere.
 	check(not html.contains("http://") and not html.contains("https://") and not html.contains("<img"),
 		"the loader is plain HTML and CSS")
+
+
+## The radio's newer songs and its stings (PR-24) are desktop only: the Web preset leaves
+## assets/audio/radio/ out (it would put the .pck about 7 MB over its budget), the others keep it.
+func test_the_web_build_leaves_the_radio_folder_out() -> void:
+	var cfg := presets()
+	for preset in ["Windows", "macOS", "Web", "Linux"]:
+		var filter: String = cfg.get_value(section(cfg, preset), "exclude_filter", "")
+		eq(filter.contains("assets/audio/radio/*"), preset == "Web", preset + (" leaves radio/ out" if preset == "Web" else " keeps radio/"))
+	check(DirAccess.get_files_at("res://assets/audio/radio").size() > 0, "radio/ has the songs")
 
 
 func test_the_web_pck_fits_its_budget() -> void:

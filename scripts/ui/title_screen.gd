@@ -2,7 +2,8 @@ class_name TitleScreen
 extends MenuScreen
 ## Attract screen: the logo over the Palm Coast sunset, with START (on to mode select),
 ## OPTIONS, CONTROLS (PR-22: the controls card), STATS (MP-11), PROFILE (MP-10: who is
-## driving) and QUIT side by side. A browser tab can't be quit, so the web build has no QUIT.
+## driving), CREDITS (PR-23) and QUIT side by side, narrower when they don't fit at full width
+## (pill_step). A browser tab can't be quit, so the web build has no QUIT.
 ## The driver's avatar and name show top left.
 ## After an error (CrashLog, EQ-20) the version line offers COPY REPORT: F4, or a click or tap
 ## on it, puts the report on the clipboard.
@@ -60,10 +61,20 @@ static func start_prompt() -> String:
 
 ## The title's choices: QUIT too, except in a browser.
 static func items(web := OS.has_feature("web")) -> Array[String]:
-	var out: Array[String] = ["START", "OPTIONS", "CONTROLS", "STATS", "PROFILE"]
+	var out: Array[String] = ["START", "OPTIONS", "CONTROLS", "STATS", "PROFILE", "CREDITS"]
 	if not web:
 		out.append("QUIT")
 	return out
+
+
+## A pill's label size: 14, or 12 for a label too wide for a narrow pill (seven on the title).
+static func label_size(text: String, pill_w: float) -> int:
+	return 14 if UiText.width(text, 14) < pill_w - 6 else 12
+
+
+## The spacing of `count` pills: PILL_STEP, or less so they fit across the screen.
+static func pill_step(count: int) -> float:
+	return minf(PILL_STEP, (Cfg.SCREEN_W - 16.0) / maxi(1, count))
 
 
 ## What the version line offers about the crash report: nothing without one.
@@ -203,6 +214,8 @@ func handle(m: MenuInput) -> void:
 				game.show_stats()
 			"PROFILE":
 				game.show_profiles()
+			"CREDITS":
+				game.show_credits()
 			"QUIT":
 				game.quit()
 
@@ -215,14 +228,15 @@ func _draw() -> void:
 		draw_texture(_logo, Vector2(roundf((w - _logo.get_width()) / 2.0), 22 + bob))
 	var names := items()
 	var step := pill_step(names.size())
+	var pill_w := PILL.x - (PILL_STEP - step)
 	for i in names.size():
-		var pill := Rect2(w / 2.0 - names.size() * step / 2.0 + PILL_GAP / 2.0 + i * step, 270, step - PILL_GAP, PILL.y)
+		var pill := Rect2(w / 2.0 - names.size() * step / 2.0 + (step - pill_w) / 2.0 + i * step, 270, pill_w, PILL.y)
 		var on := i == index
 		if on:
 			draw_rect(pill.grow(4), Color(GOLD, 0.45 + 0.2 * sin(time * 5.0)))
 		draw_rect(pill.grow(2), Color("#c9d4ff") if on else Color(1, 1, 1, 0.35))
 		draw_rect(pill, Color("#1d3fa8") if on else Color(0.07, 0.07, 0.2, 0.85))
-		_text_centered(Vector2(pill.get_center().x, 288), names[i], 14, Color.WHITE if on else Color(1, 1, 1, 0.55))
+		_text_centered(Vector2(pill.get_center().x, 288), names[i], label_size(names[i], pill_w), Color.WHITE if on else Color(1, 1, 1, 0.55))
 	_draw_driver()
 	if fmod(time, 1.0) < 0.65:
 		_text_centered(Vector2(w / 2.0, 314), start_prompt(), 10, Color(1, 1, 1, 0.85))
@@ -245,10 +259,6 @@ func _draw() -> void:
 	elif wheel_offer != "":
 		_draw_wheel_offer()
 
-
-## From one pill to the next for `n` of them: PILL_STEP, or less so they fit across.
-static func pill_step(n: int) -> float:
-	return minf(PILL_STEP, (Cfg.SCREEN_W - 16.0) / maxi(1, n))
 
 
 ## Who's driving (AC-16): a card per answer, the cursor's lit, what it sets under each.

@@ -9,7 +9,11 @@ pack can still replace any cue: drop a file with the same name (.ogg, .wav or .m
 next to it, see assets/audio/README.md.
 
 Usage:
-    python3 tools/make_audio.py [project_dir] [--only=crash --only=music]
+    python3 tools/make_audio.py [project_dir] [--only=crash --only=music] [--out=DIR]
+
+--out writes into DIR (sfx/, music/) instead of the project's assets/audio. The radio's
+songs and stings (SONGS) each have their own random stream, so --only=sting_rock renders
+just that one; the rest share one stream, so --only=crash still renders everything before it.
 """
 import math
 import os
@@ -1069,6 +1073,252 @@ def at_music_rate(make):
     return run
 
 
+# --- Radio v2 (PR-24): four more songs per station, and each station's sting ---
+#
+# Each song comes from its genre's generator with its own tempo, key, changes and drum
+# feel, and a lead line written by a seeded walk over the scale (melody). They render
+# last, each on its own random stream (own_rng), so adding them changed none of the files
+# above, and adding more later changes none of these. The stings are the station's
+# ident between songs: a two-second hit in the station's own sound.
+
+def own_rng(seed, make):
+    """Runs `make` with the shared random stream swapped for one seeded with `seed`."""
+    def run():
+        global rng
+        saved, rng = rng, random.Random(seed)
+        try:
+            return make()
+        finally:
+            rng = saved
+    return run
+
+
+MINOR_PENT = (0, 3, 5, 7, 10)
+MINOR = (0, 2, 3, 5, 7, 8, 10)
+MIXO = (0, 2, 4, 5, 7, 9, 10)
+CELLS = ((4, 4, 4, 4), (6, 2, 4, 4), (2, 2, 4, 8), (8, 8), (4, 2, 2, 8), (3, 3, 2, 8), (12, 4),
+         (2, 2, 2, 2, 8), (4, 4, 8), (6, 6, 4))
+
+
+def melody(tonic, scale, bars, rests=0.15):
+    """A lead line: (step, midi, length) over `bars` bars, a walk over `scale` (semitones
+    above `tonic`, two octaves) in rhythm cells, each four-bar phrase coming home on the
+    tonic. Reads the shared random stream (own_rng gives each song its own)."""
+    notes = [tonic + o * 12 + s for o in (0, 1) for s in scale] + [tonic + 24]
+    home = len(scale)  # the tonic an octave up: the middle of the range
+    at = home
+    out = []
+    for bar in range(bars):
+        cell = rng.choice(CELLS)
+        step = bar * 16
+        for k, length in enumerate(cell):
+            last = k == len(cell) - 1 and bar % 4 == 3
+            if last:
+                at = home if rng.random() < 0.7 else home - len(scale)
+            else:
+                at = max(0, min(len(notes) - 1, at + rng.choice((-2, -1, -1, 0, 1, 1, 2, 3))))
+            if last or rng.random() > rests:
+                out.append((step, notes[at], length))
+            step += length
+    return out
+
+
+def rock_song(bpm, key, a_prog, b_prog, kick, snare, gallop=False):
+    """98.3 THE CANYON's songs: power chords in the A section (palm-muted eighths, or a
+    gallop), open chords under a lead guitar in the B section."""
+    song = Song(bpm, 16)
+    for bar, shift in enumerate(a_prog):
+        root = key + shift
+        hits = (0, 3, 4, 6, 8, 11, 12, 14) if gallop else range(0, 16, 2)
+        for k, s16 in enumerate(hits):
+            song.add("gtr", guitar([root], song.secs(1.6), muted=k != 0), bar * 16 + s16, 0.8 if k else 1.0)
+        for e in range(8):
+            song.add("bass", rock_bass([root - 12], song.secs(1.8)), bar * 16 + e * 2)
+    for bar, shift in enumerate(b_prog):
+        b = 8 + bar
+        song.add("gtr", guitar([key + shift], song.secs(7.5)), b * 16)
+        song.add("gtr", guitar([key + shift], song.secs(7.5)), b * 16 + 8, 0.85)
+        for e in range(8):
+            song.add("bass", rock_bass([key + shift - 12], song.secs(1.8)), b * 16 + e * 2)
+    play_notes(song, "lead", melody(key + 12, MINOR_PENT, 8), lead_guitar, 1.0, offset=8 * 16)
+    pattern(song, "drums", kick, m_kick(), 1.0)
+    pattern(song, "drums", snare, m_snare(), 0.9)
+    pattern(song, "drums", "x.x.x.x.x.x.x.x.", m_hat(), 0.3)
+    for bar in (0, 8):
+        song.add("drums", m_crash(), bar * 16, 0.6)
+    for k, note in enumerate((key + 10, key + 10, key + 5, key + 5, key + 1, key + 1)):
+        song.add("drums", m_tom(note), 7 * 16 + 10 + k, 0.7)
+    gtr = loop_fx(song.part("gtr"), lambda x: reverb(x, 0.15, 0.8, 0.0))
+    lead_wet = loop_fx(song.part("lead"), lambda x: reverb(x, 0.3, 1.1, 0.0))
+    drums = loop_fx(song.part("drums"), lambda x: reverb(x, 0.12, 0.7, 0.0))
+    out = [0.33 * g + 0.5 * b + 0.3 * l + 0.75 * d
+           for g, b, l, d in zip(gtr, song.part("bass"), lead_wet, drums)]
+    return finish(out, 0.85)
+
+
+def synth_song(bpm, chords, bass_octaves=True, arp_from=8, hats="..x...x...x...x."):
+    """104.7 NEON FM's songs: bass in sixteenths under wide pads, an arpeggio, a gated
+    snare and a saw lead. `chords` are four (bass root, [pad notes]) bars, round and round."""
+    song = Song(bpm, 16)
+    for bar, (root, chord) in enumerate(chords * 4):
+        for s16 in range(16):
+            up = 12 if (bass_octaves and s16 % 2) else (7 if not bass_octaves and s16 % 4 == 2 else 0)
+            song.add("bass", synth_bass([root - 12 + up], song.secs(0.9)), bar * 16 + s16, 0.8)
+        song.add("pad", pad(chord, song.secs(16)), bar * 16)
+        if bar >= arp_from:
+            for s16 in range(0, 16, 2):
+                song.add("arp", arp_pluck([chord[(s16 // 2) % 3] + 12], song.secs(1.5)), bar * 16 + s16, 0.5)
+    tonic = chords[0][0] + 24
+    play_notes(song, "lead", melody(tonic, MINOR, 8, 0.1), synth_lead, 1.0, offset=8 * 16)
+    pattern(song, "kick", "x.......x.......", m_kick(1.2), 1.0)
+    pattern(song, "snare", "....x.......x...", m_snare(0.8), 1.0)
+    pattern(song, "hat", hats, m_hat(), 0.35)
+    pattern(song, "hat", "x.x.x.x.x.x.x.x.", m_hat(), 0.18, bars=range(8, 16))
+    song.add("hat", m_crash(), 8 * 16, 0.5)
+    snare = loop_fx(song.part("snare"), lambda x: reverb(x, 0.9, 1.6, 0.0))
+    pad_wet = loop_fx(song.part("pad"), lambda x: reverb(x, 0.4, 1.4, 0.0))
+    lead_wet = loop_fx(song.part("lead"), lambda x: reverb(x, 0.45, 1.3, 0.0))
+    arp_wet = loop_fx(song.part("arp"), lambda x: reverb(x, 0.35, 1.0, 0.0))
+    out = [0.55 * b + 0.18 * p + 0.28 * l + 0.25 * a + 0.9 * k + 0.6 * s + h
+           for b, p, l, a, k, s, h in zip(song.part("bass"), pad_wet, lead_wet, arp_wet, song.part("kick"),
+                                          snare, song.part("hat"))]
+    return finish(out, 0.85)
+
+
+def funk_song(bpm, key, riff, changes, kick, clav_hits=(2, 5, 7, 10, 13, 15)):
+    """92.1 SOUL STOP's songs: a slap bass riff over the changes (a semitone shift per bar),
+    wah clav on the off-sixteenths, ghost-note drums and horn lines in the B section."""
+    song = Song(bpm, 16)
+    for bar in range(16):
+        shift = changes[bar % len(changes)]
+        play_notes(song, "bass", [(s, key + n + shift, l) for s, n, l in riff], slap_bass, 1.0, offset=bar * 16)
+        chord = [key + 24 + shift, key + 28 + shift, key + 34 + shift]  # 3, 5, the 7th on top
+        for s16 in clav_hits:
+            song.add("clav", clav(chord, song.secs(0.8)), bar * 16 + s16, 0.8)
+    for bar in range(8, 16, 2):
+        shift = changes[bar % len(changes)]
+        hit = [key + 31 + shift, key + 35 + shift, key + 38 + shift]
+        line = [(s, [n], l) for s, n, l in melody(key + 24 + shift, MIXO, 1, 0.3) if s >= 6]
+        play_notes(song, "horns", [(0, hit, 2), (3, hit, 1)] + line, horns, 1.0, offset=bar * 16)
+    pattern(song, "drums", kick, m_kick(0.9), 1.0)
+    pattern(song, "drums", "....x..o....x.o.", m_snare(0.7), 0.85)
+    pattern(song, "drums", "xxxxxxxxxxxxxxxx", m_hat(), 0.16, accent=(0, 4, 8, 12))
+    pattern(song, "drums", "..............x.", m_hat(True), 0.3)
+    drums = loop_fx(song.part("drums"), lambda x: reverb(x, 0.12, 0.6, 0.0))
+    horns_wet = loop_fx(song.part("horns"), lambda x: reverb(x, 0.3, 1.0, 0.0))
+    out = [0.6 * b + 0.32 * c + 0.4 * h + 0.8 * d
+           for b, c, h, d in zip(song.part("bass"), song.part("clav"), horns_wet, drums)]
+    return finish(out, 0.85)
+
+
+def techno_song(bpm, key, chord, clap="....x.......x...", sweeps=1.0):
+    """107.9 PULSE's songs: four on the floor under an acid line (sixteen notes picked from
+    the minor scale), its filter opening `sweeps` times over the song, and stabs in the B
+    section after a riser."""
+    song = Song(bpm, 16)
+    line = [key] + [key + rng.choice((0, 0, 0, 12, 3, 7, 10, 15, 5)) for _ in range(15)]
+    accents = set(rng.sample(range(1, 16), 4))
+    for bar in range(16):
+        sweep = 600.0 + 2600.0 * (0.5 - 0.5 * math.cos(TAU * sweeps * bar / 16.0))
+        for k, note in enumerate(line):
+            song.add("acid", acid([note - 12 + (12 if bar >= 8 and k in accents else 0)], song.secs(0.9), sweep),
+                     bar * 16 + k, 1.0 if k in accents else 0.7)
+        if bar >= 8:
+            for s16 in (3, 11):
+                song.add("stab", stab(chord, song.secs(1.5)), bar * 16 + s16, 0.8)
+    pattern(song, "drums", "x...x...x...x...", m_kick(1.1), 1.0)
+    pattern(song, "drums", clap, m_clap(), 0.7)
+    pattern(song, "drums", "..x...x...x...x.", m_hat(True), 0.3)
+    pattern(song, "drums", "x.x.x.x.x.x.x.x.", m_hat(), 0.14, bars=range(4, 16))
+    riser_n = int(song.secs(32) * RATE)
+    riser = biquad(noise(riser_n), "bandpass", [300.0 * (20.0 ** (i / riser_n)) for i in range(riser_n)], 1.5)
+    riser = [x * (i / riser_n) ** 2 for i, x in enumerate(riser)]
+    song.add("fx", riser, 6 * 16, 0.6)
+    song.add("drums", m_crash(), 8 * 16, 0.5)
+    stab_wet = loop_fx(song.part("stab"), lambda x: reverb(x, 0.5, 1.3, 0.0))
+    acid_wet = loop_fx(song.part("acid"), lambda x: reverb(x, 0.15, 0.9, 0.0))
+    out = [0.4 * a + 0.3 * s + 0.85 * d + f
+           for a, s, d, f in zip(acid_wet, stab_wet, song.part("drums"), song.part("fx"))]
+    return finish(out, 0.85)
+
+
+def sting(kind):
+    """A station's ident between songs: about two seconds in its own sound, into a ring-out."""
+    out = silence(2.2)
+
+    def at(beat):
+        return int(beat * 0.18 * RATE)
+    if kind == "rock":  # three power-chord hits and a crash: E, G, A
+        for k, root in enumerate((40, 43, 45)):
+            add_at(out, guitar([root], 0.16 if k < 2 else 1.4), at(k), 0.8)
+            add_at(out, m_kick(), at(k), 0.7)
+        add_at(out, m_crash(), at(2), 0.5)
+    elif kind == "synthwave":  # an arpeggio up an A minor chord into a pad swell
+        for k, note in enumerate((57, 60, 64, 69, 72, 76)):
+            add_at(out, arp_pluck([note], 0.25), int(k * 0.09 * RATE), 0.5)
+        add_at(out, pad([57, 64, 72], 1.6), at(1), 0.5)
+        add_at(out, m_snare(0.8), at(3), 0.6)
+    elif kind == "funk":  # a slap pickup into a horn hit and a clav chord
+        for k, note in enumerate((40, 52, 50, 52)):
+            add_at(out, slap_bass([note], 0.12), int(k * 0.09 * RATE), 0.8)
+        add_at(out, horns([71, 75, 78], 1.0), at(2), 0.8)
+        add_at(out, clav([64, 68, 74], 0.25), at(2), 0.5)
+        add_at(out, m_snare(0.7), at(2), 0.6)
+    else:  # techno: a riser into a stab on the one
+        n = int(0.5 * RATE)
+        rise = biquad(noise(n), "bandpass", [400.0 * (12.0 ** (i / n)) for i in range(n)], 1.5)
+        add_at(out, [x * (i / n) ** 2 for i, x in enumerate(rise)], 0, 0.6)
+        add_at(out, stab([65, 68, 72], 1.2), n, 0.9)
+        add_at(out, m_kick(1.1), n, 0.9)
+        add_at(out, m_clap(), n, 0.5)
+    return shot(finish(trim(reverb(out, 0.35, 1.2, 0.6)), 0.8), fade_out=0.05)
+
+
+RIFF_A = [(0, 0, 2), (3, 12, 1), (4, 0, 1), (6, 10, 1), (7, 12, 1), (10, 0, 2), (12, 7, 1), (14, 10, 1), (15, 12, 1)]
+RIFF_B = [(0, 0, 3), (3, 0, 1), (5, 12, 1), (7, 10, 1), (8, 0, 2), (11, 3, 1), (12, 4, 1), (14, 7, 2)]
+RIFF_C = [(0, 0, 1), (2, 0, 1), (3, 12, 1), (6, 0, 2), (9, 10, 1), (10, 12, 1), (12, 0, 1), (13, 7, 1), (15, 12, 1)]
+
+# Radio.STATIONS' songs after each station's first, and the stings: (file, seed, generator).
+# The songs and the stings go in radio/, which the Web build leaves out (its download budget,
+# EQ-23); each station's first song stays in music/.
+SONGS = [
+    ("radio/rock_dust_devil.wav", 2401, lambda: rock_song(
+        152, 45, (0, 0, 3, 5, 0, 0, 7, 5), (-4, 3, -2, 0, -4, 3, 5, 7), "x.....x.x.......", "....x.......x...")),
+    ("radio/rock_mesa_run.wav", 2402, lambda: rock_song(
+        136, 38, (0, 0, 5, 3, 0, 0, -2, -4), (5, 3, -2, 0, 5, 3, 7, 7), "x.x...x...x.....", "....x.......x...",
+        gallop=True)),
+    ("radio/rock_high_noon.wav", 2403, lambda: rock_song(
+        160, 43, (0, 3, 5, 3, 0, 3, 7, 5), (-4, -2, 0, 0, -4, -2, 3, 5), "x...x...x...x...", "....x.......x..x")),
+    ("radio/rock_salt_flats.wav", 2404, lambda: rock_song(
+        120, 40, (0, 0, 0, -2, 0, 0, 3, 2), (3, 5, 7, 5, 3, 5, 10, 7), "x.......x.x.....", "........x.......")),
+    ("radio/synthwave_afterglow.wav", 2411, lambda: synth_song(
+        96, [(41, [53, 57, 60]), (43, [55, 58, 62]), (45, [57, 60, 64]), (40, [55, 59, 64])])),
+    ("radio/synthwave_chrome_heart.wav", 2412, lambda: synth_song(
+        108, [(38, [57, 62, 65]), (46, [58, 62, 65]), (41, [57, 60, 65]), (45, [57, 61, 64])], bass_octaves=False)),
+    ("radio/synthwave_night_drive.wav", 2413, lambda: synth_song(
+        88, [(40, [55, 59, 64]), (36, [55, 60, 64]), (43, [55, 59, 62]), (38, [54, 57, 62])], arp_from=4)),
+    ("radio/synthwave_palm_static.wav", 2414, lambda: synth_song(
+        112, [(42, [54, 57, 61]), (38, [54, 57, 62]), (45, [57, 61, 64]), (40, [56, 59, 64])],
+        hats="x.x.x.x.x.x.x.x.")),
+    ("radio/funk_slick_back.wav", 2421, lambda: funk_song(
+        100, 45, RIFF_B, (0, 0, 5, 0, 0, 0, 7, 5), "x..x..x...x..x..")),
+    ("radio/funk_double_parked.wav", 2422, lambda: funk_song(
+        110, 38, RIFF_A, (0, 5, 0, 7), "x.x...x..x.x....")),
+    ("radio/funk_velvet_turn.wav", 2423, lambda: funk_song(
+        96, 43, RIFF_C, (0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7), "x.....x.x..x....", clav_hits=(1, 4, 6, 9, 12, 14))),
+    ("radio/funk_tailwind.wav", 2424, lambda: funk_song(
+        116, 41, RIFF_A, (0, 0, 5, 5, 0, 0, 7, 7), "x..x...x..x..x..")),
+    ("radio/techno_redline.wav", 2431, lambda: techno_song(132, 43, [67, 70, 74])),
+    ("radio/techno_overpass.wav", 2432, lambda: techno_song(124, 38, [62, 65, 69], clap="....x.......x..x", sweeps=2.0)),
+    ("radio/techno_grid_lock.wav", 2433, lambda: techno_song(136, 45, [69, 72, 76], sweeps=0.5)),
+    ("radio/techno_static_bloom.wav", 2434, lambda: techno_song(128, 40, [64, 67, 71], clap="..x.x.......x...")),
+    ("radio/sting_rock.wav", 2441, lambda: sting("rock")),
+    ("radio/sting_synthwave.wav", 2442, lambda: sting("synthwave")),
+    ("radio/sting_funk.wav", 2443, lambda: sting("funk")),
+    ("radio/sting_techno.wav", 2444, lambda: sting("techno")),
+]
+
+
 FILES = {
     "sfx/engine_low.wav": lambda: engine(56.0, 0.0),
     "sfx/engine_high.wav": lambda: engine(112.0, 1.0),
@@ -1113,15 +1363,25 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     only = [a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--only=")]
     project = args[0] if args else os.path.join(os.path.dirname(__file__), "..")
+    outs = [a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--out=")]
+    out_dir = outs[0] if outs else os.path.join(project, "assets", "audio")
     files = dict(FILES)
     for line_id, text in announcer_lines(project).items():  # last, so the others don't move
         files["sfx/vo_%s.wav" % line_id] = (lambda t: lambda: voice(t))(text)
+    own = set()
+    for name, seed, make in SONGS:  # after everything on the shared stream, each on its own (PR-24)
+        files[name] = at_music_rate(own_rng(seed, make))
+        own.add(name)
+    shared_wanted = not only or any(n not in own and any(o in n for o in only) for n in files)
     for name, make in files.items():
+        wanted = not only or any(o in name for o in only)
+        if not wanted and (name in own or not shared_wanted):
+            continue  # on its own random stream, or nothing after it on the shared one is wanted
         sig = make()  # every sound, in order, so the shared random stream gives the same files
         sig, rate = sig if isinstance(sig, tuple) else (sig, RATE)
-        if only and not any(o in name for o in only):
+        if not wanted:
             continue
-        path = os.path.join(project, "assets", "audio", name)
+        path = os.path.join(out_dir, name)
         write(path, sig, rate)
         print("wrote %s (%.2f s, %.1f dB RMS)" % (os.path.relpath(path, project), len(sig) / rate, rms_db(sig)))
 
