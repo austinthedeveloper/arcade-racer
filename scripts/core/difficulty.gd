@@ -33,12 +33,11 @@ func catch_up_nitro(place: int, field: int) -> int:
 	return 1 if place > field - Tuning.i("power_ups/catch_up_places") else 0
 
 
-## The resource for a Level. Easy: slower rivals that wait for you, and a relaxed clock. Hard:
-## quicker rivals that hardly wait, a tight clock and no catch-up nitro.
+## The resource for a Level, its rival numbers from Tuning (difficulty/*, RC-21). Easy:
+## slower rivals that wait for you, and a relaxed clock. Hard: quicker rivals that hardly
+## wait, a tight clock and no catch-up nitro.
 static func of(level: int) -> Difficulty:
-	match level:
-		Level.EASY:
-			return make(0.94, 0.07, 0.02, 0)
-		Level.HARD:
-			return make(1.03, 0.02, 0.06, 2, false)
-	return make(1.0, Rivals.BAND_EASE, Rivals.BAND_BOOST, 1)
+	var name: String = ["easy", "normal", "hard"][clampi(level, 0, Level.size() - 1)]
+	var d := make(Tuning.v("difficulty/%s_pace" % name), Tuning.v("difficulty/%s_ease" % name),
+		Tuning.v("difficulty/%s_boost" % name), clampi(level, 0, Level.size() - 1), level != Level.HARD)
+	return d

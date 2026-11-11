@@ -11,6 +11,12 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 - Car select: every car's picture is now rendered from its 3D model, all from the same angle on
   the same coast road, and painted like the car you then drive.
+- Rival balance (RC-21): on Easy, rivals ahead of you wait for you a little longer.
+
+### Fixed
+
+- Stuck rivals (EQ-22): a rival that ran up behind a car standing still on the road (yours
+  after TIME UP, say) could sit behind it for the rest of the race; it now drives round.
 
 ## [0.5.2] - 2026-11-07
 

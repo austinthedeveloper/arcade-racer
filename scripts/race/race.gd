@@ -272,7 +272,7 @@ func start_race() -> void:
 	rivals = Rivals.new()
 	difficulty = Difficulty.of(Settings.difficulty)
 	rivals.spawn(track, player, car_id, 0 if _no_rivals or time_attack or free_drive or online != null else Rivals.COUNT,
-		Rivals.SEED + stage_index, difficulty, tour_state.drivers if tour else [])
+		Rivals.SEED + stage_index, difficulty, tour_state.drivers if tour else [], Rivals.stage_pace_of(stage_index))
 	_shown.clear()
 	if online != null:
 		for s: int in online.racers:

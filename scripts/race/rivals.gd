@@ -12,23 +12,26 @@ const GRID_FRONT := 2200.0  # world units the front of the grid is ahead of the 
 const GRID_STEP := 250.0
 const GRID_X := 0.5
 ## Rubber band: rivals ahead of the player ease off and rivals behind get a little more, in
-## full at ai/band_range away (Tuning). ai/band_max caps either way, whatever a difficulty asks for.
-const BAND_EASE := 0.05  # normal difficulty: most a rival ahead gives up...
-const BAND_BOOST := 0.04  # ...and most a rival behind gains
+## full at ai/band_range away (Tuning), by as much as the difficulty says (difficulty/*_ease,
+## difficulty/*_boost). ai/band_max caps either way, whatever a difficulty asks for.
+## The most a rival's base pace comes to, of its car's top speed, whatever the difficulty and
+## the stage ask for (the rubber band can still add a little).
+const MAX_PACE := 1.0
 const CONTACT_LENGTH := 300.0  # world units along the road two racers touch within
 const STANDSTILL := 100.0  # world units per second under which a car in the way counts as stopped
 const SQUEEZE := 0.01  # road half-widths a tick a car stuck behind a stopped one edges round it
 
 var cars: Array[RivalCar] = []
-var band_ease := BAND_EASE
-var band_boost := BAND_BOOST
+var band_ease := 0.05  # (spawn sets both from the difficulty)
+var band_boost := 0.04
 var clock := 0.0  # seconds since GO; runs on after the player finishes, unlike the race clock
 
 
 ## Puts `count` rivals on the grid ahead of `player` (already reset at its start), in cars
-## other than `player_car_id`, picked and tuned by `seed_value`.
+## other than `player_car_id`, picked and tuned by `seed_value`, at the difficulty's pace times
+## `stage_pace` (stage_pace_of, RC-21).
 func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = COUNT, seed_value: int = SEED,
-		difficulty: Difficulty = Difficulty.of(Difficulty.Level.NORMAL), drivers: Array = []) -> void:
+		difficulty: Difficulty = Difficulty.of(Difficulty.Level.NORMAL), drivers: Array = [], stage_pace := 1.0) -> void:
 	cars.clear()
 	band_ease = difficulty.band_ease
 	band_boost = difficulty.band_boost
@@ -49,7 +52,7 @@ func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = 
 		var car := Cars.find(prof.car_id)
 		var r := RivalCar.new(car, AIDriver.new(rng.randi(), prof.lane_bias, prof.style, track.side()))
 		r.profile = prof
-		r.top_speed *= prof.pace * difficulty.rival_pace
+		r.top_speed *= minf(prof.pace * difficulty.rival_pace * stage_pace, MAX_PACE)
 		r.base_top = r.top_speed
 		var ahead := GRID_FRONT - i * GRID_STEP
 		r.reset(player.position + ahead)
@@ -58,6 +61,12 @@ func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = 
 		r.road_y = track.height_at(r.position + Cfg.PLAYER_Z)
 		r.strips = CarSprites.strips(car["strip"])
 		cars.append(r)
+
+
+## The rivals' pace on stage `stage` (into Stages), on top of the difficulty's: the stage's
+## balance/* value (Tuning), so a stage whose field runs slow or fast is evened out (RC-21).
+static func stage_pace_of(stage: int) -> float:
+	return Tuning.v("balance/" + Stages.POSTCARDS[clampi(stage, 0, Stages.POSTCARDS.size() - 1)])
 
 
 ## One tick: every rival drives (no controls until `racing`), then hits traffic and roadside

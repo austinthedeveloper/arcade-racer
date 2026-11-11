@@ -24,12 +24,18 @@ const RIVALS_HOME_BY := 200.0
 ## RC-21: per difficulty (Difficulty.Level order), the field's finishing spread (first to
 ## last across the line, the autodrive among them, seconds) at most, and the places the
 ## autodrive may finish in (best, worst). Every stage's autodriven race stays in its band:
-## test_golden checks Normal on the golden traces, and every difficulty in its own test.
+## test_golden checks Normal on the golden traces and Easy and Hard in a test of their own.
+## From the balance pass's report (docs/roadmap/01-racing-core.md, RC-21), with a few
+## seconds' room for play changes that move a finish or two.
 const BANDS := [
-	{"spread": 26.0, "places": [1, 3]},  # easy: rivals that wait, the autodrive on the podium
-	{"spread": 24.0, "places": [1, 5]},  # normal
-	{"spread": 26.0, "places": [2, 7]},  # hard: quicker rivals that hardly wait
+	{"spread": 30.0, "places": [1, 3]},  # easy: rivals that wait, the autodrive on the podium
+	{"spread": 30.0, "places": [1, 5]},  # normal
+	{"spread": 30.0, "places": [1, 6]},  # hard: quicker rivals that hardly wait
 ]
+## A stage whose field spreads further by design, by stage id (Stages.POSTCARDS): the spread
+## it may have on every difficulty. Skyline's downtown jam (RC-20) holds whoever reaches it
+## among the traffic for half a minute; the rest of the field is home by then.
+const STAGE_SPREAD := {"skyline": 42.0}
 
 var failures := 0
 
@@ -85,7 +91,8 @@ static func autodrive_field(settings: Node, stage: int, level: int, draw := 0) -
 	settings.set_difficulty(level)
 	var r := new_race(stage, "car_vega", true)
 	if draw != 0:  # another field than the game's own (Rivals.SEED + stage)
-		r.rivals.spawn(r.track, r.player, "car_vega", Rivals.COUNT, Rivals.SEED + stage + 1000 * draw, r.difficulty)
+		r.rivals.spawn(r.track, r.player, "car_vega", Rivals.COUNT, Rivals.SEED + stage + 1000 * draw, r.difficulty,
+			[], Rivals.stage_pace_of(stage))
 	var lent := 0.0  # seconds put on the clock to keep it from running out
 	var least := INF
 	var cp: int = r.next_checkpoint
@@ -129,14 +136,20 @@ static func _count_crashes(r: Node, into: Dictionary) -> void:
 			into[c] = into.get(c, 0) + 1
 
 
-## Whether a field (field()) is in its difficulty's band (BANDS); "" if so, or what's out.
-static func out_of_band(f: Dictionary, level: int) -> String:
+## The spread a field on `stage` may have on `level` (BANDS, STAGE_SPREAD).
+static func spread_for(stage: int, level: int) -> float:
+	return STAGE_SPREAD.get(Stages.POSTCARDS[stage], BANDS[level]["spread"])
+
+
+## Whether a field (field()) on `stage` is in its difficulty's band (BANDS); "" if so, or
+## what's out. `clock`: a clock that ran out (autodrive_field) counts too.
+static func out_of_band(f: Dictionary, level: int, stage: int, clock := true) -> String:
 	var band: Dictionary = BANDS[level]
 	var why := PackedStringArray()
-	if f.get("timed_out", false):
+	if clock and f.get("timed_out", false):
 		why.append("the clock ran out (%.1f s)" % f.get("clock", NAN))
-	if f["spread"] > band["spread"]:
-		why.append("spread %.1f s over %.1f" % [f["spread"], band["spread"]])
+	if f["spread"] > spread_for(stage, level):
+		why.append("spread %.1f s over %.1f" % [f["spread"], spread_for(stage, level)])
 	if f["place"] < band["places"][0] or f["place"] > band["places"][1]:
 		why.append("placed %d, not %d-%d" % [f["place"], band["places"][0], band["places"][1]])
 	return ", ".join(why)
@@ -323,7 +336,7 @@ func report(stages: Array[int], levels: Array[int]) -> void:
 			for d in draws:
 				var f := autodrive_field(root.get_node("Settings"), s, l, d)
 				var times: Array = f["times"]
-				var why := out_of_band(f, l)
+				var why := out_of_band(f, l, s)
 				if why != "" and d == 0:
 					failures += 1  # (only the game's own field: the other draws are for the means)
 				spreads += f["spread"]

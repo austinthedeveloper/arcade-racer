@@ -54,14 +54,18 @@ func test_the_field_and_its_band() -> void:
 	eq(str(f["times"]), str([70.0, 74.0, 75.0, 78.0]), "the finishers' times, sorted, the player's among them")
 	near(f["spread"], 8.0, 0.001, "first to last")
 	near(f["winner_gap"], 5.0, 0.001, "behind the winner")
-	eq(Soak.out_of_band(f, Difficulty.Level.NORMAL), "", "in Normal's band")
+	eq(Soak.out_of_band(f, Difficulty.Level.NORMAL, 0), "", "in Normal's band")
 	f["spread"] = Soak.BANDS[Difficulty.Level.NORMAL]["spread"] + 1.0
-	check(Soak.out_of_band(f, Difficulty.Level.NORMAL).contains("spread"), "too spread out")
+	check(Soak.out_of_band(f, Difficulty.Level.NORMAL, 0).contains("spread"), "too spread out")
+	f["spread"] = Soak.BANDS[Difficulty.Level.NORMAL]["spread"] + 1.0
+	eq(Soak.out_of_band(f, Difficulty.Level.NORMAL, 7), "", "Skyline's field may spread further (its downtown jam)")
 	f["spread"] = 8.0
-	f["place"] = 1
-	check(Soak.out_of_band(f, Difficulty.Level.HARD).contains("placed"), "winning on hard is out of its band")
+	f["place"] = 7
+	check(Soak.out_of_band(f, Difficulty.Level.EASY, 0).contains("placed"), "seventh on easy is out of its band")
 	f["timed_out"] = true
-	check(Soak.out_of_band(f, Difficulty.Level.EASY).contains("clock"), "and so is running out of time")
+	f["place"] = 2
+	check(Soak.out_of_band(f, Difficulty.Level.EASY, 0).contains("clock"), "and so is running out of time")
+	eq(Soak.out_of_band(f, Difficulty.Level.EASY, 0, false), "", "unless the clock isn't asked about")
 	for band: Dictionary in Soak.BANDS:
 		check(band["places"][0] <= band["places"][1], "a band's places run best to worst")
 	eq(Soak.BANDS.size(), Difficulty.Level.size(), "a band per difficulty")

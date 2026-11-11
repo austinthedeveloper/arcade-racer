@@ -439,8 +439,8 @@ func test_the_band_reaches_the_race() -> void:
 	f.cars[0].distance = p.distance + Tuning.v("ai/band_range") * 2.0
 	f.cars[1].distance = p.distance - Tuning.v("ai/band_range") * 2.0
 	f.update(DT, t, p, true, 1e12)
-	near(f.cars[0].top_speed, f.cars[0].base_top * (1.0 - Rivals.BAND_EASE), 0.01, "the leader eases off")
-	near(f.cars[1].top_speed, f.cars[1].base_top * (1.0 + Rivals.BAND_BOOST), 0.01, "the straggler gains")
+	near(f.cars[0].top_speed, f.cars[0].base_top * (1.0 - Tuning.v("difficulty/normal_ease")), 0.01, "the leader eases off")
+	near(f.cars[1].top_speed, f.cars[1].base_top * (1.0 + Tuning.v("difficulty/normal_boost")), 0.01, "the straggler gains")
 
 
 func test_an_aggressive_driver_blocks_a_faster_car_behind() -> void:
@@ -519,6 +519,23 @@ func test_difficulty_levels() -> void:
 			check(absf(b - 1.0) <= Tuning.v("ai/band_max"), "band capped (%.3f)" % b)
 		# Base pace only: the rubber band (capped above) can add a little on top of this.
 		check(d.rival_pace * top_pace <= 1.0, "even a hard rival's base pace tops out at its car's speed")
+
+
+func test_a_rivals_pace_is_capped_at_its_cars_top_speed() -> void:
+	# RC-21: the difficulty and a stage's balance value multiply, but never past the car
+	var t := flat_track()
+	var f := Rivals.new()
+	f.spawn(t, _player(), "car_vega", Rivals.COUNT, Rivals.SEED, Difficulty.of(Difficulty.Level.HARD), [], 1.1)
+	for r in f.cars:
+		var car_top: float = Cfg.MAX_SPEED * Cars.tuning(Cars.find(r.car_id))["top"]
+		check(r.base_top <= car_top * Rivals.MAX_PACE + 0.001, "%s capped" % r.car_id)
+	for stage in Stages.count():
+		near(Rivals.stage_pace_of(stage), Tuning.v("balance/" + Stages.POSTCARDS[stage]), 0.0001, "the stage's balance value")
+	var plain := Rivals.new()
+	plain.spawn(t, _player(), "car_vega", Rivals.COUNT, Rivals.SEED, Difficulty.of(Difficulty.Level.EASY))
+	var slow := Rivals.new()
+	slow.spawn(t, _player(), "car_vega", Rivals.COUNT, Rivals.SEED, Difficulty.of(Difficulty.Level.EASY), [], 0.95)
+	near(slow.cars[0].base_top, plain.cars[0].base_top * 0.95, 0.01, "a stage's pace below 1 slows its field")
 
 
 func test_difficulty_reaches_the_field() -> void:
