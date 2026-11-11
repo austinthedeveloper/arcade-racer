@@ -15,6 +15,7 @@ var _mark := 0.0
 var _station := 0
 var _stage_before := -1  # the player's stage pick, which a demo leaves alone
 var _settings: Node
+var _save: Node
 var _router: Node
 
 
@@ -28,7 +29,8 @@ func _initialize() -> void:
 	TestSuite.use_scratch_profiles(_router)
 	_settings = root.get_node("Settings")  # autoloads aren't globals in a SceneTree script
 	TestSuite.use_scratch_settings(_settings)
-	TestSuite.use_scratch_save(root.get_node("SaveData"))
+	_save = root.get_node("SaveData")
+	TestSuite.use_scratch_save(_save)  # a new profile: who's driving and the first drive come up
 	TestSuite.use_scratch_ghosts()
 	TestSuite.use_scratch_logs()  # never the player's user://logs/
 	Tuning.use_defaults()  # never the player's user://tuning.cfg
@@ -41,7 +43,10 @@ func _initialize() -> void:
 func _menu_script() -> Array:
 	var g := _game
 	return [
-		["", func() -> bool: return g.screen == g.Screen.TITLE, "the game boots to the title screen"],
+		["", func() -> bool: return g.screen == g.Screen.TITLE and g.menu.asking, "the game boots to the title, asking who's driving (AC-16)"],
+		["steer_right", func() -> bool: return g.menu.answer == 2, "right picks RACER"],
+		["confirm", func() -> bool: return (not g.menu.asking and _save.driver_asked and _settings.difficulty == Difficulty.Level.NORMAL
+			and not _settings.steer_assist), "Enter on RACER answers it: no assists, normal"],
 		["steer_right", func() -> bool: return g.menu.index == 1, "right on the title picks OPTIONS"],
 		["confirm", func() -> bool: return g.screen == g.Screen.OPTIONS, "Enter opens the options"],
 		["confirm", func() -> bool: return _settings.auto_gas, "Enter on AUTO GAS turns it on"],
@@ -74,6 +79,11 @@ func _menu_script() -> Array:
 		["steer_right", func() -> bool: return g.menu.page == g.menu.Page.ACCESSIBILITY, "Right: Accessibility"],
 		["steer_right", func() -> bool: return g.menu.page == g.menu.Page.GAME, "Right wraps round to Game"],
 		["back", func() -> bool: return g.screen == g.Screen.TITLE and g.menu.index == 1, "Backspace goes back to the title, on OPTIONS"],
+		["steer_right", func() -> bool: return g.menu.items()[g.menu.index] == "CONTROLS", "right picks CONTROLS"],
+		["confirm", func() -> bool: return (g.screen == g.Screen.CONTROLS and g.menu.device == 0
+			and g.menu.current_rows()[3][1] == "N"), "Enter opens the keyboard's controls card, nitro on N as rebound (PR-22)"],
+		["back", func() -> bool: return g.screen == g.Screen.TITLE and g.menu.items()[g.menu.index] == "CONTROLS", "Backspace goes back to the title, on CONTROLS"],
+		["steer_left", func() -> bool: return g.menu.index == 1, "left: OPTIONS"],
 		["steer_left", func() -> bool: return g.menu.index == 0, "left picks START"],
 		["confirm", func() -> bool: return g.screen == g.Screen.MODES and g.menu.index == 0, "Enter on the title opens mode select, on GRAND TOUR"],
 		["steer_right", func() -> bool: return g.menu.index == 1, "right picks SINGLE RACE (played at the end)"],
@@ -192,7 +202,7 @@ func _next(wait_frames: int = 0) -> void:
 
 func _tick() -> void:
 	_frame += 1
-	if _frame > 3800 + 5 * (Replay.KEEP + 30):  # (five finishes sit through the instant replay, RC-17) first, so a script error in a step can't hang the run
+	if _frame > 4400 + 6 * (Replay.KEEP + 30):  # (six finishes sit through the instant replay, RC-17) first, so a script error in a step can't hang the run
 		printerr("  FAIL e2e timed out at step %d" % _step)
 		quit(1)
 		return
@@ -219,6 +229,8 @@ func _tick() -> void:
 		1:
 			_check(_race.state == _race.State.RACING, "GO after the countdown")
 			_check(p.speed > 0.0, "holding gas moves the car")
+			_check(_race.first_drive != null and _race.first_drive.current == 0,
+				"a new profile's first race is the first drive: HOLD THE GAS up (MP-15)")
 			_mark = p.x
 			_send("steer_left", true)
 			_next(40)
@@ -259,6 +271,7 @@ func _tick() -> void:
 		7:
 			_check(p.distance == _mark, "paused car doesn't move")
 			_check(_race.pause_menu.index == 0, "on RESUME, and the gas held since before the pause doesn't scroll it")
+			_check(_race.pause_menu.items.size() == 6, "SKIP FIRST DRIVE on the pause menu")
 			_send("accelerate", false)
 			_send("confirm", true)
 			_next(2)
@@ -289,6 +302,7 @@ func _tick() -> void:
 			_check(_race.track.name == "Redrock Canyon" and _race.state == _race.State.COUNTDOWN,
 				"Enter after the finish goes on to Redrock Canyon")
 			_check(_race.tour_state.points.get("YOU", 0) >= 20, "the tour scored the first stage")
+			_check(_race.first_drive == null and not _save.first_drive_pending(), "the first race run to the end: the first drive is done")
 			_next(200)
 		13:
 			# The second stage of the tour: to the line again
@@ -351,41 +365,56 @@ func _tick() -> void:
 			_next(2)
 		25:
 			_send("brake", false)
-			_check(_race.pause_menu.index == 3, "Down picks QUIT TO TITLE")
+			_check(_race.pause_menu.index == 3, "Down picks CONTROLS")
 			_send("confirm", true)
 			_next(2)
 		26:
 			_send("confirm", false)
+			_check(_race.paused and _race.pause_menu.card != null, "CONTROLS opens the controls card over the paused race (PR-22)")
+			_send("back", true)
+			_next(2)
+		27:
+			_send("back", false)
+			_check(_race.paused and _race.pause_menu.card == null and _race.pause_menu.visible, "back: the pause menu again")
+			_send("brake", true)
+			_next(2)
+		28:
+			_send("brake", false)
+			_check(_race.pause_menu.index == 4, "Down picks QUIT TO TITLE")
+			_send("confirm", true)
+			_next(2)
+		29:
+			_send("confirm", false)
 			_check(_game.screen == _game.Screen.TITLE and _game.race == null, "QUIT TO TITLE on the pause menu quits to the title")
 			_check(not is_instance_valid(_race) or _race.is_queued_for_deletion(), "the race is gone")
 			_next(2)
-		27:
+		30:
 			_send("confirm", true)
 			_next(2)
-		28:
+		31:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.MODES, "mode select")
 			_next(2)
-		29:
+		32:
 			_send("confirm", true)
 			_next(2)
-		30:
+		33:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES and _game.menu.index == 2,
 				"stage select opens on the stage the tour reached")
 			_settings.auto_gas = true  # (toggled through the options menu above)
 			_next(2)
-		31:
+		34:
 			_send("confirm", true)
 			_next(2)
-		32:
+		35:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.CARS, "car select")
 			_next(2)
-		33:
+		36:
 			_send("confirm", true)
 			_next(2)
-		34:
+		37:
 			_send("confirm", false)
 			_race = _game.race
 			_check(_race != null and _race.state == _race.State.COUNTDOWN, "a new race with auto gas on")
@@ -393,176 +422,177 @@ func _tick() -> void:
 				quit(1)
 				return
 			_next(260)  # the countdown, then over a second of driving
-		35:
+		38:
 			_check(_race.player.speed > Cfg.MAX_SPEED * 0.2, "auto gas: the car drives off with no key held")
 			_mark = _race.player.speed
 			_send("brake", true)
 			_next(30)
-		36:
+		39:
 			_send("brake", false)
 			_check(_race.player.speed < _mark, "auto gas: brake still slows the car")
 			_settings.auto_gas = false
 			# Single Race: quit, then title, mode select, stage, car, race once
 			_send("pause", true)
 			_next(2)
-		37:
+		40:
 			_send("pause", false)
 			_send("accelerate", true)
 			_next(2)
-		38:
+		41:
 			_send("accelerate", false)
-			_check(_race.pause_menu.index == 3, "Up from RESUME wraps to QUIT TO TITLE")
+			_check(_race.pause_menu.index == _race.pause_menu.items.size() - 1, "Up from RESUME wraps to QUIT TO TITLE")
 			_send("confirm", true)
 			_next(2)
-		39:
+		42:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.TITLE, "quit to the title")
 			_next(2)
-		40:
+		43:
 			_send("confirm", true)
 			_next(2)
-		41:
+		44:
 			_send("confirm", false)
 			_send("steer_right", true)
 			_next(2)
-		42:
+		45:
 			_send("steer_right", false)
 			_check(_game.screen == _game.Screen.MODES and _game.menu.index == 1, "mode select, on SINGLE RACE")
 			_send("confirm", true)
 			_next(2)
-		43:
+		46:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES, "SINGLE RACE opens stage select")
 			_next(2)
-		44:
+		47:
 			_send("confirm", true)
 			_next(2)
-		45:
+		48:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.CARS, "then car select")
 			_next(2)
-		46:
+		49:
 			_send("confirm", true)
 			_next(2)
-		47:
+		50:
 			_send("confirm", false)
 			_race = _game.race
 			_check(_race != null and not _race.tour, "a Single Race starts")
+			_check(_race != null and _race.first_drive == null, "the profile's first drive is done: no prompts")
 			if _race == null:
 				quit(1)
 				return
 			_send("accelerate", true)
 			_next(200)
-		48:
+		51:
 			_check(_race.state == _race.State.RACING, "racing")
 			_race.player.distance = _race.finish_distance + 1.0
 			_next(150 + Replay.KEEP + 30)  # past the finish spectacle and the instant replay (RC-17), to the results
-		49:
+		52:
 			_send("accelerate", false)
 			_check(_race.state == _race.State.FINISHED and "menu" in _race.banner_sub,
 				"the Single Race finishes, and offers the menu: " + _race.banner_sub)
 			_check(_race.results.visible and _race.results.labels[0] == "CONTINUE", "the results screen, on CONTINUE")
 			_send("confirm", true)
 			_next(2)
-		50:
+		53:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES and _game.race == null, "Enter after the finish goes back to stage select")
 			_check(not is_instance_valid(_race) or _race.is_queued_for_deletion(), "the race is gone")
 			# Time Attack: a first run sets the ghost, the second races it
 			_send("back", true)
 			_next(2)
-		51:
+		54:
 			_send("back", false)
 			_check(_game.screen == _game.Screen.MODES, "back to mode select")
 			_send("steer_right", true)
 			_next(2)
-		52:
+		55:
 			_send("steer_right", false)
 			_check(_game.menu.index == 2, "on TIME ATTACK")
 			_send("confirm", true)
 			_next(2)
-		53:
+		56:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES and _game.menu.time_attack(), "TIME ATTACK opens stage select")
 			_next()
-		54, 55, 56, 57:
-			_time_attack_start(54)
-		58:
+		57, 58, 59, 60:
+			_time_attack_start(57)
+		61:
 			_check(_race.state == _race.State.RACING and _race.rivals.cars.is_empty(), "racing alone")
 			_race.player.distance = _race.finish_distance + 1.0
 			_next(150 + Replay.KEEP + 30)  # past the finish spectacle and the instant replay (RC-17), to the results
-		59:
+		62:
 			_send("accelerate", false)
 			_check(_race.state == _race.State.FINISHED and "NEW BEST" in _race.banner_sub,
 				"the first run is the best so far: " + _race.banner_sub)
 			_send("confirm", true)
 			_next(2)
-		60:
+		63:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES, "back to stage select")
 			_next()
-		61, 62, 63, 64:
-			_time_attack_start(61)
-		65:
+		64, 65, 66, 67:
+			_time_attack_start(64)
+		68:
 			_check(_race.ghost != null and _race.ghost_now.x > 0.0, "the ghost of the first run drives along")
 			_race.player.distance = _race.finish_distance + 1.0
 			_next(150 + Replay.KEEP + 30)  # past the finish spectacle and the instant replay (RC-17), to the results
-		66:
+		69:
 			_send("accelerate", false)
 			_check(_race.state == _race.State.FINISHED and "vs best" in _race.banner_sub,
 				"the second run is timed against it: " + _race.banner_sub)
 			# Free Drive: in from mode select, past the finish line, then quit from the pause menu
 			_send("confirm", true)
 			_next(2)
-		67:
+		70:
 			_send("confirm", false)
 			_next(2)
-		68:
+		71:
 			_send("back", true)
 			_next(2)
-		69:
+		72:
 			_send("back", false)
 			_send("steer_right", true)
 			_next(2)
-		70:
+		73:
 			_send("steer_right", false)
 			_check(_game.screen == _game.Screen.MODES and _game.menu.index == 3, "mode select, on FREE DRIVE")
 			_send("confirm", true)
 			_next(2)
-		71:
+		74:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.STAGES and _game.menu.solo(), "FREE DRIVE opens stage select")
 			_next(2)
-		72, 73, 74, 75:
-			_time_attack_start(72)
-		76:
+		75, 76, 77, 78:
+			_time_attack_start(75)
+		79:
 			_check(_race.free_drive and _race.rivals.cars.is_empty(), "Free Drive: alone on the road")
 			_race.player.distance = _race.finish_distance + 1.0
 			_next(30)
-		77:
+		80:
 			_check(_race.state == _race.State.RACING, "past the line and still driving")
 			_send("accelerate", false)
 			_send("pause", true)
 			_next(2)
-		78:
+		81:
 			_send("pause", false)
 			_send("accelerate", true)
 			_next(2)
-		79:
+		82:
 			_send("accelerate", false)
-			_check(_race.pause_menu.index == 3, "QUIT TO TITLE")
+			_check(_race.pause_menu.index == _race.pause_menu.items.size() - 1, "QUIT TO TITLE")
 			_next(2)
-		80:
+		83:
 			_send("confirm", true)
 			_next(2)
-		81:
+		84:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.TITLE and _game.race == null, "Free Drive quits to the title")
 			# Attract mode: leave the title be (a short wait, not 20 s)
 			_game.attract_delay = 0.5
 			_stage_before = _game.stage_index
 			_next(40)  # the 0.5 s delay and a little
-		82:
+		85:
 			_race = _game.race
 			_check(_game.screen == _game.Screen.RACE and _race != null and _race.demo,
 				"left alone, the title starts a demo race")
@@ -572,18 +602,81 @@ func _tick() -> void:
 			_check(_race.traffic.cars.size() > 0, "with traffic")
 			_mark = _race.player.distance
 			_next(60)
-		83:
+		86:
 			_check(_race.player.distance > _mark and _race.player.speed > 0.0, "the demo drives itself")
 			_check(_game.stage_index == _stage_before, "the demo leaves the player's stage pick alone")
 			_send("confirm", true)
 			_next(2)
-		84:
+		87:
 			_send("confirm", false)
 			_check(_game.screen == _game.Screen.TITLE and _game.race == null, "any input ends the demo, back to the title")
 			_check(not is_instance_valid(_race) or _race.is_queued_for_deletion(), "the demo race is gone")
 			_next(4)
-		85:
+		88:
 			_check(_game.screen == _game.Screen.TITLE, "the press that ended it doesn't also pick START")
+			# The Grand Tour's ending (MP-16): a tour on its last stage, scripted to the line
+			_game.mode_index = 0  # GRAND_TOUR (ModeSelect.Item; named here, its script would compile before the autoloads)
+			_game.stage_index = Stages.count() - 1
+			_game.start_race()
+			_race = _game.race
+			_check(_race != null and _race.tour, "a tour on the last stage")
+			if _race == null:
+				quit(1)
+				return
+			_send("accelerate", true)
+			_next(200)
+		89:
+			_check(_race.state == _race.State.RACING, "racing the last stage")
+			_race.next_checkpoint = _race.checkpoint_distances.size()
+			_race.player.distance = _race.finish_distance + 1.0
+			_next(150 + Replay.KEEP + 30)  # past the finish spectacle and the instant replay, to the results
+		90:
+			_send("accelerate", false)
+			_check(_race.state == _race.State.FINISHED and _race.after == _race.After.TOUR_DONE and _race.results.visible,
+				"the last stage completes the tour: " + _race.banner_sub)
+			_send("confirm", true)
+			_next(2)
+		91:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.FINALE and _game.race == null, "CONTINUE: the tour's finale, on the podium")
+			_next(2)
+		92:
+			_send("confirm", true)
+			_next(2)
+		93:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.FINALE and _game.menu.page == 1, "Enter: the tour standings")
+			_next(2)
+		94:
+			_send("confirm", true)
+			_next(2)
+		95:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.FINALE and _game.menu.page == 2
+				and _game.menu.standings[0]["name"] == "YOU", "Enter: the end card, first overall")
+			_next(2)
+		96:
+			_send("confirm", true)
+			_next(2)
+		97:
+			_send("confirm", false)
+			_check(_game.screen == _game.Screen.CREDITS and _game.menu.harbor, "Enter: the credits, over the harbor")
+			_mark = _game.menu.scroll
+			_next(30)
+		98:
+			_check(_game.menu.scroll > _mark, "the credits roll by themselves")
+			_mark = _game.menu.scroll
+			_send("accelerate", true)
+			_next(30)
+		99:
+			_send("accelerate", false)
+			_check(_game.menu.scroll - _mark > 30.0 * _game.menu.SPEED / Engine.physics_ticks_per_second * 2.0,
+				"a button held speeds them up")
+			_send("back", true)
+			_next(2)
+		100:
+			_send("back", false)
+			_check(_game.screen == _game.Screen.TITLE, "back from the credits: the title")
 			_next()
 		_:
 			print("\n%s" % ("e2e passed" if _fails == 0 else "e2e: %d failed" % _fails))

@@ -342,6 +342,141 @@ func test_jumps_and_bumps_get_a_bump_sign_before_them() -> void:
 				check(signs.has(h - Track.SIGN_AHEAD), "%s: a bump sign before segment %d" % [t.name, h])
 
 
+## The arrow a turn sign shows as drawn: 1 right, -1 left (mirror() flips the art, not the id).
+func _arrow(sp: Dictionary) -> float:
+	var right: bool = (sp["id"] == "turn_right") != bool(sp["flip"])
+	return 1.0 if right else -1.0
+
+
+func _signs_before(t: Track, at: int, ids: Array) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for i in range(maxi(0, at - Track.warning_reach()), at):
+		for sp: Dictionary in t.segments[i].sprites:
+			if ids.has(sp["id"]):
+				out.append(sp)
+	return out
+
+
+func test_every_sharp_bend_is_signed_on_its_outside_mirrored_too() -> void:
+	# WS-20: a turn arrow before every sharp bend on every stage, on the outside, pointing into
+	# it; chevrons (or a rail) along the outside; the same on the stage mirrored.
+	for i in Stages.count():
+		for mirror in [false, true]:
+			var t := Stages.build(i, mirror)
+			var label := t.name + (" mirrored" if mirror else "")
+			var runs := t.sharp_curves()
+			check(not runs.is_empty(), label + " has sharp bends")
+			for run in runs:
+				var dir := signf(t.segments[run.x].curve)
+				var signs := _signs_before(t, run.x, ["turn_left", "turn_right"])
+				check(not signs.is_empty(), "%s: a turn sign before the bend at %d" % [label, run.x])
+				check(signs.any(func(sp: Dictionary) -> bool: return signf(sp["offset"]) == -dir and _arrow(sp) == dir),
+					"%s: the sign before %d on the outside, pointing into the bend" % [label, run.x])
+				var lined := false
+				for k in range(run.x, run.y):
+					if t.railed(k, -dir):
+						lined = true
+					for sp: Dictionary in t.segments[k].sprites:
+						if sp["id"].begins_with("chevron_"):
+							lined = true
+							check(signf(sp["offset"]) == -dir, "%s: chevron at %d on the outside" % [label, k])
+				check(lined or run.y - run.x < Track.CHEVRON_EVERY, "%s: chevrons or a rail along the bend at %d" % [label, run.x])
+
+
+func test_every_blind_crest_has_a_crest_sign_mirrored_too() -> void:
+	for i in Stages.count():
+		for mirror in [false, true]:
+			var t := Stages.build(i, mirror)
+			var label := t.name + (" mirrored" if mirror else "")
+			var crests := t.blind_crests()
+			check(not crests.is_empty(), label + " has blind crests")
+			for c in crests:
+				# A jump's crest is warned of by the bump sign before the jump itself
+				var h := t.hazard_before(c)
+				var signs := _signs_before(t, c if h < 0 else h, [Track.CREST_SIGN])
+				check(not signs.is_empty(), "%s: a crest sign before the crest at %d" % [label, c])
+				# On the right as built, so on the left mirrored
+				check(signs.any(func(sp: Dictionary) -> bool: return signf(sp["offset"]) == t.side()),
+					"%s: the crest sign at %d on its side of the road" % [label, c])
+
+
+func test_a_warning_sign_moves_off_a_taken_spot() -> void:
+	var t := Track.new()
+	t.straight(Track.LENGTH_MEDIUM)
+	t.jump()
+	t.straight(Track.LENGTH_MEDIUM)
+	t.finish_building(t.segments.size() - 5)
+	var h: int = t.hazards[0]
+	t.add_span(h - Track.SIGN_AHEAD, "palm_arch")
+	t.add_road_signs()
+	var at := -1
+	for seg in t.segments:
+		for sp in seg.sprites:
+			if sp["id"] == Track.CREST_SIGN:
+				at = seg.index
+	check(at >= 0 and at != h - Track.SIGN_AHEAD, "the sign stands elsewhere (%d)" % at)
+	check(at < h and h - at <= Track.warning_reach(), "but still before the jump (%d)" % at)
+	eq(t.blind_crests().size(), 1, "the jump is a blind crest")
+	eq(t.hazard_before(t.blind_crests()[0]), h, "the jump's own")
+	var count := 0
+	for seg in t.segments:
+		for sp in seg.sprites:
+			count += 1 if sp["id"] == Track.CREST_SIGN else 0
+	eq(count, 1, "one sign for the jump and its crest")
+
+
+const SET_PIECES := [["surf_break", "pier_head"], ["cattle_crossing", "rock_garden"],
+	["premiere", "fountain_court"], ["logging_camp", "ski_base"], ["fishing_camp", "gator_crossing"],
+	["pumpkin_patch", "hay_yard"], ["storm_chasers", "substation"], ["news_crew", "waterfront_cafe"]]
+
+
+func test_no_stage_has_a_long_bare_roadside() -> void:
+	# WS-21: Harvest's wheat ran 62 segments bare on the left, Timberline's summit 35
+	for i in Stages.count():
+		for mirror in [false, true]:
+			var t := Stages.build(i, mirror)
+			for side in [-1.0, 1.0]:
+				var run := t.longest_bare(side)
+				check(run.y <= Track.MAX_BARE, "%s%s: %d segments bare on the %s from %d" % [t.name,
+					" mirrored" if mirror else "", run.y, "left" if side < 0.0 else "right", run.x])
+
+
+func test_every_stage_has_its_two_set_pieces() -> void:
+	for i in Stages.count():
+		var t := Stages.build(i)
+		var names: Array = t.set_pieces.map(func(p: Dictionary) -> String: return p["name"])
+		eq(names, SET_PIECES[i], t.name + "'s set pieces")
+		for p in t.set_pieces:
+			var at: int = p["at"]
+			var props := 0
+			for k in range(at, at + 13):
+				check(t.open_roadside(k), "%s: %s out in the open (segment %d)" % [t.name, p["name"], k])
+				props += t.segments[k].sprites.size()
+			check(props >= 5, "%s: %s stands (%d sprites)" % [t.name, p["name"], props])
+
+
+func test_set_piece_moves_off_a_gate_and_bare_stretches_get_filled() -> void:
+	var t := Track.new()
+	t.straight(Track.LENGTH_LONG)
+	t.finish_building(t.segments.size() - 5)
+	t.add_checkpoint(60)
+	eq(t.longest_bare(-1.0), Vector2i(0, t.segments.size()), "an empty road is bare end to end")
+	var at := t.add_set_piece("camp", 58, [["woodpile", 0, 1.6], ["cabin", 6, -2.3]])
+	check(at > 64, "clear of the gate (%d)" % at)
+	eq(t.segments[at].sprites[0]["id"], "woodpile", "first prop at the start")
+	eq(t.segments[at + 6].sprites[0]["offset"], -2.3, "the rest along from it")
+	eq(t.set_pieces, [{"name": "camp", "at": at}], "kept by name")
+	check(t.bare(at, -1.0) and not t.bare(at, 1.0), "the woodpile covers its side only")
+	t.fill_bare(["bush"])
+	for side in [-1.0, 1.0]:
+		check(t.longest_bare(side).y <= Track.MAX_BARE, "filled (%s)" % t.longest_bare(side))
+	for seg in t.segments:
+		for sp in seg.sprites:
+			if sp["id"] == "bush":
+				check(absf(sp["offset"]) >= Track.FILL_OFFSET, "fill stands back from the road")
+	eq(t.add_set_piece("late", t.segments.size() - 3, [["bush", 0, 1.5]]), -1, "no room at the end")
+
+
 func test_race_furniture_around_the_start_and_checkpoints() -> void:
 	for t in _stages():
 		var near_start := {}

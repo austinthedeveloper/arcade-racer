@@ -46,10 +46,12 @@ func test_results_move_over_what_is_on_offer() -> void:
 func test_pause_menu_skips_options_both_ways() -> void:
 	var p := PauseMenu.new()
 	p.has_options = false
-	p.index = 3  # QUIT
+	var quit := PauseMenu.ITEMS.find(PauseMenu.Action.QUIT)
+	p.index = quit
 	eq(p.move(1), 0, "down from QUIT wraps to RESUME")
-	eq(p.move(-1), 3, "up from RESUME wraps to QUIT")
-	eq(p.move(-1), 1, "up from QUIT skips OPTIONS")
+	eq(p.move(-1), quit, "up from RESUME wraps to QUIT")
+	eq(p.move(-1), PauseMenu.ITEMS.find(PauseMenu.Action.CONTROLS), "up from QUIT: CONTROLS")
+	eq(p.move(-1), 1, "up from CONTROLS skips OPTIONS")
 	p.free()
 
 

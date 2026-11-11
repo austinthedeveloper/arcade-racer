@@ -82,9 +82,15 @@ static func build() -> Track:
 	t.scatter(["grain_bin", "storm_cellar", "windmill_old", "radar_dome", "flasher_barricade", "tree_bent"], 250, 450, 1.9)
 	# Highway signs: route and exit boards on the right
 	t.scatter(["sign_green", "sign_green", "sign_green", "sign_green", "sign_green"], 120, 800, 1.5, 1)
+	# Set pieces (WS-21): storm chasers' stop, a power substation
+	t.add_set_piece("storm_chasers", works_end + 150, [["radar_dome", 0, 3.2], ["flasher_barricade", 1, -1.3],
+		["storm_cellar", 2, 1.6], ["wrecked_sign", 4, -1.5], ["tree_snapped", 5, -2.3], ["tree_bent", 7, 2.3]])
+	t.add_set_piece("substation", int(t.segments.size() * 0.76), [["pylon", 0, -3.3], ["pole_transformer", 2, 1.5],
+		["drum", 3, -1.3], ["drum", 4, -1.4], ["pole_tanks", 5, 1.5], ["pylon", 8, 3.5]])
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()
+	t.fill_bare(["shrub_windswept", "tree_windswept", "puddle_a"])  # no bare roadside longer than Track.MAX_BARE (WS-21)
 	return t
 
 

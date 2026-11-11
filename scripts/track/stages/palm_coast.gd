@@ -76,9 +76,15 @@ static func build() -> Track:
 	_decorate(t, town_start, town_end)
 	t.add_spans_at("palm_arch", [0.03, 0.55])
 	t.scatter(["lighthouse", "pier", "ice_cream_stand", "surfboards", "bikes", "gull_post"], 200, 350, 2.2, -1)
+	# Set pieces (WS-21): a surf break on the beach, a pier head on the way home
+	t.add_set_piece("surf_break", 430, [["surfboards", 0, -1.6], ["umbrella", 2, -2.4], ["umbrella", 5, -3.4],
+		["lifeguard_tower", 8, -2.8], ["gull_post", 10, -1.5], ["bikes", 12, -1.7], ["palm_short_a", 4, -4.2]])
+	t.add_set_piece("pier_head", int(t.segments.size() * 0.86), [["pier", 0, -2.6], ["gull_post", 2, -1.5],
+		["gull_post", 7, -1.6], ["palm_cluster", 4, 2.6], ["ice_cream_stand", 10, 1.8], ["bikes", 12, 1.6, true]])
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()
+	t.fill_bare(["bush", "palm_short_b", "palm_fan"])  # no bare roadside longer than Track.MAX_BARE (WS-21)
 	return t
 
 

@@ -1,0 +1,67 @@
+{
+	"format": 1,
+	"version": "0.5.2",
+	"started": "2026-11-11T10:00:00",
+	"stage": "palm_coast",
+	"car": "car_mesa",
+	"mode": "single",
+	"mirror": false,
+	"result": "time_up",
+	"time": 80.0,
+	"length": 100000.0,
+	"stretch_length": 20000,
+	"checkpoints": [
+		{
+			"index": 1,
+			"time": 21.0
+		},
+		{
+			"index": 2,
+			"time": 42.0
+		}
+	],
+	"crashes": [
+		{
+			"time": 11.0,
+			"distance": 24100.0,
+			"segment": 120
+		},
+		{
+			"time": 30.0,
+			"distance": 61000.0,
+			"segment": 305
+		}
+	],
+	"stretches": [
+		{
+			"index": 0,
+			"from": 0,
+			"seconds": 2.07,
+			"lost": 0.4
+		},
+		{
+			"index": 1,
+			"from": 20000,
+			"seconds": 3.87,
+			"lost": 2.2
+		},
+		{
+			"index": 2,
+			"from": 40000,
+			"seconds": 1.97,
+			"lost": 0.3
+		},
+		{
+			"index": 3,
+			"from": 60000,
+			"seconds": 1.67,
+			"lost": 0.0
+		},
+		{
+			"index": 4,
+			"from": 80000,
+			"seconds": 1.77,
+			"lost": 0.1
+		}
+	]
+}

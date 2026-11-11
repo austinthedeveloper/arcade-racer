@@ -249,3 +249,18 @@ func test_a_power_slide_smokes() -> void:
 	check(not _has(p, "smoke"), "steering gently, no slide: no smoke")
 	p.slide = 1.0
 	check(_has(p, "smoke"), "sliding")
+
+
+func test_nitro_flames_sit_on_each_cars_pipes() -> void:
+	# A4 (docs/09): the flame anchor was the Vega's on every car.
+	eq(FxLayer.exhaust_for("vega"), Vector2(FxLayer.EXHAUST_X, FxLayer.EXHAUST_Y), "the usual place")
+	check(FxLayer.exhaust_for("cyclone").y > FxLayer.EXHAUST_Y, "the Cyclone's pipes are higher")
+	check(FxLayer.exhaust_for("bruiser").x < FxLayer.EXHAUST_X, "the Bruiser's in the middle")
+	for id: String in FxLayer.EXHAUSTS:
+		check(Cars.LIST.any(func(c: Dictionary) -> bool: return c["strip"] == id), "%s is a car's strip" % id)
+	var base := Vector2(320, 330)
+	eq(FxLayer.exhaust(base, 100.0, -1.0, Vector2(0.25, 0.3)), Vector2(295, 300), "left pipe, from the anchor")
+	var r := race(true, false, 0, false)
+	r.car_id = "car_cyclone"
+	r.start_race()
+	eq(r.fx.exhaust_anchor, FxLayer.exhaust_for("cyclone"), "the race gives the FX layer its car's")

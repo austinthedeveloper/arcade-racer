@@ -13,9 +13,9 @@ const PRESET_DIR := "user://tuning_presets"
 const LOG_PATH := "user://tuning_log.txt"
 ## The areas, in the debug panel's page order. A key is "area/name".
 const AREAS := ["driving", "slide", "crashes", "ai", "difficulty", "balance", "traffic", "draft", "launch", "power_ups", "scoring", "camera",
-	"world", "assists"]
+	"world", "assists", "first_drive"]
 const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "DIFFICULTY", "STAGE BALANCE", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "SCORING",
-	"CAMERA", "WORLD", "ASSISTS"]
+	"CAMERA", "WORLD", "ASSISTS", "FIRST DRIVE"]
 ## key: [default, min, max, step, what it is]. tools/tuning_adopt.py rewrites the defaults in
 ## place, so keep one value to a line, the default first.
 const TABLE := {
@@ -180,6 +180,18 @@ const TABLE := {
 	"assists/co_pilot_gain": [1.5, 0.5, 4.0, 0.1, "co-pilot: lock per road half-width off its lane's middle"],
 	"assists/co_pilot_edge": [4.0, 0.0, 10.0, 0.5, "co-pilot: extra lock per half-width past the outer lanes, back toward the road"],
 	"assists/co_pilot_nudge": [0.6, 0.1, 1.0, 0.05, "co-pilot: share of the steering a full push of the player's takes over"],
+	"first_drive/gas_hold": [1.0, 0.2, 3.0, 0.1, "first drive (MP-15): seconds of gas that clear HOLD THE GAS"],
+	"first_drive/steer_hold": [0.5, 0.1, 2.0, 0.1, "seconds of steering that clear STEER"],
+	"first_drive/steer_speed": [0.15, 0.0, 0.6, 0.05, "share of top speed before STEER comes up"],
+	"first_drive/nitro_speed": [0.3, 0.0, 0.8, 0.05, "share of top speed before NITRO comes up"],
+	"first_drive/straight_reach": [40, 10, 120, 5, "segments ahead that must run straight for NITRO"],
+	"first_drive/straight_curve": [0.5, 0.0, 3.0, 0.1, "the most curve there that still counts as straight"],
+	"first_drive/bend_reach": [30, 5, 100, 5, "segments ahead a bend brings up POWER SLIDE"],
+	"first_drive/bend_curve": [3.0, 1.0, 6.0, 0.25, "the least curve that counts as a bend to slide"],
+	"first_drive/truck_reach": [4000.0, 1000.0, 10000.0, 250.0, "world units ahead a big vehicle brings up DRAFT"],
+	"first_drive/min_show": [2.0, 0.5, 6.0, 0.25, "seconds a prompt stays up at least, the road allowing it or not"],
+	"first_drive/withdraw": [1.0, 0.0, 4.0, 0.25, "seconds of the road no longer allowing it before it goes back to wait"],
+	"first_drive/gap": [1.5, 0.0, 5.0, 0.25, "seconds between one prompt and the next"],
 }
 
 ## Where overrides are read from and saved to; "" keeps them in memory only (tests).

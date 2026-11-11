@@ -484,7 +484,7 @@ func test_pause_menu_selection() -> void:
 	m.open()
 	m.has_options = false
 	eq(m.move(1), 1, "down: RESTART")
-	eq(m.move(1), 3, "down skips OPTIONS with no options to show")
+	eq(m.move(1), PauseMenu.ITEMS.find(PauseMenu.Action.CONTROLS), "down skips OPTIONS with no options to show")
 	eq(m.move(-1), 1, "and so does up")
 	m.has_options = true
 	eq(m.move(1), 2, "OPTIONS when there are")
@@ -501,7 +501,7 @@ func test_pause_menu_selection() -> void:
 	eq(m.index, 0, "a direction held since before the pause doesn't move it")
 	m.choose(_menu())
 	m.choose(held)
-	eq(m.index, 3, "once let go, it does")
+	eq(m.index, PauseMenu.ITEMS.find(PauseMenu.Action.QUIT), "once let go, it does: up wraps to QUIT")
 	m.free()
 
 

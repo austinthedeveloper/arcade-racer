@@ -1,15 +1,21 @@
 class_name TitleScreen
 extends MenuScreen
 ## Attract screen: the logo over the Palm Coast sunset, with START (on to mode select),
-## OPTIONS, STATS (MP-11), PROFILE (MP-10: who is driving) and QUIT side by side. A browser
-## tab can't be quit, so the web build has no QUIT. The driver's avatar and name show top left.
+## OPTIONS, CONTROLS (PR-22: the controls card), STATS (MP-11), PROFILE (MP-10: who is
+## driving), CREDITS (PR-23) and QUIT side by side, narrower when they don't fit at full width
+## (pill_step). A browser tab can't be quit, so the web build has no QUIT.
+## The driver's avatar and name show top left.
 ## After an error (CrashLog, EQ-20) the version line offers COPY REPORT: F4, or a click or tap
 ## on it, puts the report on the clipboard.
 ## After an update, what's new in it (WhatsNew, PR-17) is up over the title until Enter or back.
+## A new profile (and the first boot) is asked who's driving (WhosDriving, AC-16) before
+## anything else. A wheel plugged in with no saved profile is offered calibration once (WH-16).
 
 const LOGO := "res://assets/sprites/ui/logo.png"
-const PILL_STEP := 124.0
-const PILL := Vector2(112, 26)
+const PILL_STEP := 124.0  # the most from one pill to the next; six share the width
+const PILL := Vector2(112, 26)  # the widest a pill is, its height
+const PILL_GAP := 12.0
+const ANSWER_CARD := Vector2(150, 92)  # who's driving: each answer's card
 const DRIVER := Rect2(8, 8, 150, 34)  # who is driving (MP-10), top left
 const DRIVER_PIC := Vector2(56, 26)
 const VERSION_X := 150.0  # the version line, from the right edge
@@ -25,6 +31,17 @@ var set_clipboard := Callable()
 ## What's new up over the title (WhatsNew.items), and its version; empty when it's not up.
 var news: Array = []
 var news_version := ""
+## Who's driving (AC-16) is up, asking; the cursor on `answer` (WhosDriving.Answer).
+var asking := false
+var answer: int = WhosDriving.DEFAULT
+## Whether the first-run prompts (the wheel's, WH-16) may come up: the game turns them off for
+## a staged screenshot, the test runners through WhosDriving.enabled.
+var offers := true
+## The wheel offered calibration (WH-16): its GUID and name, "" when no offer is up; the
+## cursor on `wheel_choice`, into wheel_choices().
+var wheel_offer := ""
+var wheel_offer_name := ""
+var wheel_choice := 0
 
 
 func _ready() -> void:
@@ -44,10 +61,20 @@ static func start_prompt() -> String:
 
 ## The title's choices: QUIT too, except in a browser.
 static func items(web := OS.has_feature("web")) -> Array[String]:
-	var out: Array[String] = ["START", "OPTIONS", "STATS", "PROFILE"]
+	var out: Array[String] = ["START", "OPTIONS", "CONTROLS", "STATS", "PROFILE", "CREDITS"]
 	if not web:
 		out.append("QUIT")
 	return out
+
+
+## A pill's label size: 14, or 12 for a label too wide for a narrow pill (seven on the title).
+static func label_size(text: String, pill_w: float) -> int:
+	return 14 if UiText.width(text, 14) < pill_w - 6 else 12
+
+
+## The spacing of `count` pills: PILL_STEP, or less so they fit across the screen.
+static func pill_step(count: int) -> float:
+	return minf(PILL_STEP, (Cfg.SCREEN_W - 16.0) / maxi(1, count))
 
 
 ## What the version line offers about the crash report: nothing without one.
@@ -90,11 +117,86 @@ func choice_count() -> int:
 	return items().size()
 
 
+## Something is up over the title (what's new, who's driving, a wheel's offer): no demo starts.
+func busy() -> bool:
+	return not news.is_empty() or asking or wheel_offer != ""
+
+
+## Who's driving answered: `a`'s options set and saved, and the profile asked.
+func answer_question(a: int) -> void:
+	WhosDriving.apply(a, Settings)
+	SaveData.mark_driver_asked()
+	asking = false
+
+
+## Who's driving passed over (back): the options left as they are, the profile asked anyway.
+func pass_question() -> void:
+	SaveData.mark_driver_asked()
+	asking = false
+
+
+## Looks for a wheel to offer calibration (InputRouter.first_run_wheel) in `plugged` (GUID ->
+## name; the joypads plugged in) and, finding one, puts the offer up and remembers it was
+## made (Settings.wheels_prompted), so each wheel is offered once. Returns its GUID or "".
+func offer_wheel(plugged: Dictionary = InputRouter.plugged_joypads()) -> String:
+	if not offers or not WhosDriving.enabled:
+		return ""
+	var guid := InputRouter.first_run_wheel(plugged, Settings.wheels_prompted)
+	if guid == "":
+		return ""
+	wheel_offer = guid
+	wheel_offer_name = str(plugged[guid])
+	wheel_choice = 0
+	Settings.wheels_prompted.append(guid)
+	Settings.save()
+	return guid
+
+
+## The offer's choices. WH-4 (known wheels' ready-made profiles) isn't built: once it is,
+## a wheel InputRouter.known_profile_for has a profile for gets USE ITS PROFILE here too,
+## taken in take_wheel_offer by saving that profile for it.
+static func wheel_choices() -> Array[String]:
+	return ["CALIBRATE NOW", "LATER"]
+
+
+## The offer answered: CALIBRATE NOW opens the calibration on that wheel; LATER (or back)
+## leaves it, calibration still a press of F2 or Options > Controls away.
+func take_wheel_offer(calibrate: bool) -> void:
+	var guid := wheel_offer
+	wheel_offer = ""
+	if calibrate and game != null:
+		game.calibration.open(InputRouter.device_for(guid))
+
+
 func handle(m: MenuInput) -> void:
 	if not news.is_empty():
 		if m.confirm_pressed or m.back_pressed:
 			Audio.play("beep")
 			news = []
+		return
+	if asking:
+		if m.step() != 0:
+			answer = posmod(answer + m.step(), WhosDriving.Answer.size())
+			Audio.play("tick")
+		elif m.confirm_pressed:
+			Audio.play("beep")
+			answer_question(answer)
+		elif m.back_pressed:
+			Audio.play("beep")
+			pass_question()
+		return
+	if wheel_offer != "":
+		if m.step() != 0:
+			wheel_choice = posmod(wheel_choice + m.step(), wheel_choices().size())
+			Audio.play("tick")
+		elif m.confirm_pressed:
+			Audio.play("beep")
+			take_wheel_offer(wheel_choices()[wheel_choice] == "CALIBRATE NOW")
+		elif m.back_pressed:
+			take_wheel_offer(false)
+		return
+	if offer_wheel() != "":
+		Audio.play("beep")
 		return
 	if m.step() != 0:
 		move(m.step())
@@ -106,10 +208,14 @@ func handle(m: MenuInput) -> void:
 				game.show_mode_select()
 			"OPTIONS":
 				game.show_options()
+			"CONTROLS":
+				game.show_controls()
 			"STATS":
 				game.show_stats()
 			"PROFILE":
 				game.show_profiles()
+			"CREDITS":
+				game.show_credits()
 			"QUIT":
 				game.quit()
 
@@ -121,14 +227,16 @@ func _draw() -> void:
 		var bob := roundf(sin(time * 2.0) * 2.0)
 		draw_texture(_logo, Vector2(roundf((w - _logo.get_width()) / 2.0), 22 + bob))
 	var names := items()
+	var step := pill_step(names.size())
+	var pill_w := PILL.x - (PILL_STEP - step)
 	for i in names.size():
-		var pill := Rect2(w / 2.0 - names.size() * PILL_STEP / 2.0 + (PILL_STEP - PILL.x) / 2.0 + i * PILL_STEP, 270, PILL.x, PILL.y)
+		var pill := Rect2(w / 2.0 - names.size() * step / 2.0 + (step - pill_w) / 2.0 + i * step, 270, pill_w, PILL.y)
 		var on := i == index
 		if on:
 			draw_rect(pill.grow(4), Color(GOLD, 0.45 + 0.2 * sin(time * 5.0)))
 		draw_rect(pill.grow(2), Color("#c9d4ff") if on else Color(1, 1, 1, 0.35))
 		draw_rect(pill, Color("#1d3fa8") if on else Color(0.07, 0.07, 0.2, 0.85))
-		_text_centered(Vector2(pill.get_center().x, 288), names[i], 14, Color.WHITE if on else Color(1, 1, 1, 0.55))
+		_text_centered(Vector2(pill.get_center().x, 288), names[i], label_size(names[i], pill_w), Color.WHITE if on else Color(1, 1, 1, 0.55))
 	_draw_driver()
 	if fmod(time, 1.0) < 0.65:
 		_text_centered(Vector2(w / 2.0, 314), start_prompt(), 10, Color(1, 1, 1, 0.85))
@@ -146,6 +254,76 @@ func _draw() -> void:
 		_text_centered(Vector2(w / 2.0, 330), hint, 10, GOLD)
 	if not news.is_empty():
 		_draw_news()
+	elif asking:
+		_draw_question()
+	elif wheel_offer != "":
+		_draw_wheel_offer()
+
+
+
+## Who's driving (AC-16): a card per answer, the cursor's lit, what it sets under each.
+func _draw_question() -> void:
+	var w := float(Cfg.SCREEN_W)
+	draw_rect(Rect2(0, 0, w, Cfg.SCREEN_H), Color(NIGHT, 0.72))
+	var panel := Rect2(40, 60, w - 80, 226)
+	_panel(panel, 0.95)
+	_text_centered(Vector2(w / 2.0, panel.position.y + 30), WhosDriving.QUESTION, 22, GOLD)
+	draw_rect(Rect2(panel.position.x + 20, panel.position.y + 40, panel.size.x - 40, 2), GOLD)
+	var n := WhosDriving.Answer.size()
+	var gap := 14.0
+	var x0 := w / 2.0 - (n * ANSWER_CARD.x + (n - 1) * gap) / 2.0
+	for i in n:
+		var r := Rect2(x0 + i * (ANSWER_CARD.x + gap), panel.position.y + 56, ANSWER_CARD.x, ANSWER_CARD.y)
+		var on := i == answer
+		_frame(r, Color(GOLD, 0.35 + 0.15 * sin(time * 5.0)) if on else Color.TRANSPARENT)
+		draw_rect(r, Color("#1d3fa8") if on else Color(0.07, 0.07, 0.2, 0.9))
+		_text_centered(Vector2(r.get_center().x, r.position.y + 34), WhosDriving.NAMES[i], 22, Color.WHITE if on else Color(1, 1, 1, 0.6))
+		var words: PackedStringArray = WhosDriving.LINES[i].split(" ")
+		var lines := _wrap(words, ANSWER_CARD.x - 16, 9)
+		for k in lines.size():
+			_text_centered(Vector2(r.get_center().x, r.position.y + 56 + k * 12), lines[k], 9, GOLD if on else Color(1, 1, 1, 0.55))
+	_text_centered(Vector2(w / 2.0, panel.end.y - 34), "It sets the assists and difficulty. Change them any time in Options.", 9, Color(1, 1, 1, 0.75))
+	_text_centered(Vector2(w / 2.0, panel.end.y - 14), MenuScreen.hints(true), 9, Color(1, 1, 1, 0.7))
+
+
+## The wheel's first run (WH-16): which wheel, and CALIBRATE NOW or LATER.
+func _draw_wheel_offer() -> void:
+	var w := float(Cfg.SCREEN_W)
+	draw_rect(Rect2(0, 0, w, Cfg.SCREEN_H), Color(NIGHT, 0.65))
+	var panel := Rect2(w / 2.0 - 200, 92, 400, 150)
+	_panel(panel, 0.95)
+	_text_centered(Vector2(w / 2.0, panel.position.y + 26), "NEW WHEEL", 20, GOLD)
+	draw_rect(Rect2(panel.position.x + 20, panel.position.y + 36, panel.size.x - 40, 2), GOLD)
+	_text_centered(Vector2(w / 2.0, panel.position.y + 56), wheel_offer_name.left(44), 11, Color.WHITE)
+	_text_centered(Vector2(w / 2.0, panel.position.y + 74), "Calibrate its steering and pedals now? It takes a minute.", 9, Color(1, 1, 1, 0.8))
+	var choices := wheel_choices()
+	var bw := 150.0
+	var x0 := w / 2.0 - (choices.size() * bw + (choices.size() - 1) * 16.0) / 2.0
+	for i in choices.size():
+		var r := Rect2(x0 + i * (bw + 16.0), panel.position.y + 90, bw, 24)
+		var on := i == wheel_choice
+		if on:
+			draw_rect(r.grow(3), Color(GOLD, 0.45 + 0.2 * sin(time * 5.0)))
+		draw_rect(r.grow(1), Color("#c9d4ff") if on else Color(1, 1, 1, 0.35))
+		draw_rect(r, Color("#1d3fa8") if on else Color(0.07, 0.07, 0.2, 0.9))
+		_text_centered(Vector2(r.get_center().x, r.position.y + 17), choices[i], 12, Color.WHITE if on else Color(1, 1, 1, 0.6))
+	_text_centered(Vector2(w / 2.0, panel.end.y - 12), "Later: F2, or Options > Controls > Calibrate", 9, Color(1, 1, 1, 0.6))
+
+
+## `words` in lines no wider than `width` at `size`.
+static func _wrap(words: PackedStringArray, width: float, size: int) -> Array[String]:
+	var out: Array[String] = []
+	var line := ""
+	for word in words:
+		var next := word if line == "" else line + " " + word
+		if line != "" and UiText.width(next, size) > width:
+			out.append(line)
+			line = word
+		else:
+			line = next
+	if line != "":
+		out.append(line)
+	return out
 
 
 ## What's new: a panel over the title listing the update's additions, changes and fixes.
