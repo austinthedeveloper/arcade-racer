@@ -67,6 +67,11 @@ static func items(web := OS.has_feature("web")) -> Array[String]:
 	return out
 
 
+## A pill's label size: 14, or 12 for a label too wide for a narrow pill (seven on the title).
+static func label_size(text: String, pill_w: float) -> int:
+	return 14 if UiText.width(text, 14) < pill_w - 6 else 12
+
+
 ## The spacing of `count` pills: PILL_STEP, or less so they fit across the screen.
 static func pill_step(count: int) -> float:
 	return minf(PILL_STEP, (Cfg.SCREEN_W - 16.0) / maxi(1, count))
@@ -231,7 +236,7 @@ func _draw() -> void:
 			draw_rect(pill.grow(4), Color(GOLD, 0.45 + 0.2 * sin(time * 5.0)))
 		draw_rect(pill.grow(2), Color("#c9d4ff") if on else Color(1, 1, 1, 0.35))
 		draw_rect(pill, Color("#1d3fa8") if on else Color(0.07, 0.07, 0.2, 0.85))
-		_text_centered(Vector2(pill.get_center().x, 288), names[i], 14, Color.WHITE if on else Color(1, 1, 1, 0.55))
+		_text_centered(Vector2(pill.get_center().x, 288), names[i], label_size(names[i], pill_w), Color.WHITE if on else Color(1, 1, 1, 0.55))
 	_draw_driver()
 	if fmod(time, 1.0) < 0.65:
 		_text_centered(Vector2(w / 2.0, 314), start_prompt(), 10, Color(1, 1, 1, 0.85))

@@ -117,10 +117,12 @@ func test_credits_from_the_title_and_back() -> void:
 	eq(g.screen, g.Screen.TITLE, "the end of the roll: the title")
 
 
-func test_six_title_pills_fit_across() -> void:
+func test_the_title_pills_fit_across() -> void:
 	var n := TitleScreen.items(false).size()
 	check(TitleScreen.pill_step(n) * n <= Cfg.SCREEN_W - 16.0 + 0.01, "%d pills fit" % n)
 	eq(TitleScreen.pill_step(5), TitleScreen.PILL_STEP, "five still at full width")
+	var pill_w := TitleScreen.PILL.x - (TitleScreen.PILL_STEP - TitleScreen.pill_step(n))
 	for item in TitleScreen.items(false):
-		check(UiText.width(item, 14) < TitleScreen.PILL.x - (TitleScreen.PILL_STEP - TitleScreen.pill_step(n)) - 6,
-			item + " fits its pill")
+		var size := TitleScreen.label_size(item, pill_w)
+		check(UiText.width(item, size) < pill_w - 6, "%s fits its pill at %d px" % [item, size])
+	eq(TitleScreen.label_size("START", pill_w), 14, "a short label keeps 14 px")
