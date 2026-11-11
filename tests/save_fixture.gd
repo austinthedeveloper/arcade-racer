@@ -28,6 +28,7 @@ const SETTINGS := [
 	["display", "units", "units", 1], ["display", "camera_view", "camera_view", 2],
 	["display", "fullscreen", "fullscreen", true], ["display", "integer_scale", "integer_scale", true],
 	["display", "vsync", "vsync", false], ["display", "scanlines", "scanlines", true],
+	["game", "playtest_log", "playtest_log", true],
 ]
 ## Profile 1's progress (the second driver's is the same with DRIVER_2's name and stage).
 const UNLOCKS := ["car_hauler", "mirror_palm_coast"]

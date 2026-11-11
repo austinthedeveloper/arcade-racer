@@ -1,0 +1,29 @@
+{
+	"format": 1,
+	"version": "0.5.2",
+	"started": "2026-11-11T10:00:00",
+	"stage": "redrock",
+	"car": "car_sol",
+	"mode": "single",
+	"mirror": false,
+	"result": "quit",
+	"time": 22.0,
+	"length": 100000.0,
+	"stretch_length": 20000,
+	"checkpoints": [],
+	"crashes": [],
+	"stretches": [
+		{
+			"index": 0,
+			"from": 0,
+			"seconds": 1.67,
+			"lost": 0.0
+		},
+		{
+			"index": 1,
+			"from": 20000,
+			"seconds": 2.17,
+			"lost": 0.5
+		}
+	]
+}

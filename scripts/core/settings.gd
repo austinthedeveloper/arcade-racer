@@ -30,7 +30,8 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 12: [news] seen, the last version whose notes the title showed (WhatsNew; missing: none,
 ## so an update from an older build shows its notes); [play] co_pilot (missing: off).
 ## 13: [display] camera_view (missing: CameraView.View.CHASE_NEAR, the only view before).
-const VERSION := 13
+## 14: [game] playtest_log (EQ-25; missing: off, as it always is until the player turns it on).
+const VERSION := 14
 ## Keyboard steering feel (AC-11): how fast a held key turns in and a released one comes back,
 ## snappy to smooth. Each multiplies its rate (shares of full lock per second); STANDARD is
 ## the rate every earlier build had.
@@ -77,6 +78,9 @@ var vsync := true
 var scanlines := false  # a CRT-style overlay (SCANLINE_SHADER)
 ## The last version whose notes the title showed (WhatsNew, PR-17); "" for none yet.
 var whats_new_seen := ""
+## The playtest log (EQ-25, PlaytestLog): a file per race next to the crash log. Off unless the
+## player turns it on; nothing is sent anywhere.
+var playtest_log := false
 ## The overlay apply_display() shows or hides; made on first use.
 var scanline_layer: CanvasLayer
 ## The version of the file last loaded (VERSION when there was no file).
@@ -120,6 +124,7 @@ func reset() -> void:
 	integer_scale = false
 	vsync = true
 	scanlines = false
+	playtest_log = false
 	apply_volumes()
 	apply_display()
 
@@ -161,13 +166,14 @@ func load_settings() -> void:
 		vsync = bool(cfg.get_value("display", "vsync", vsync))
 		scanlines = bool(cfg.get_value("display", "scanlines", scanlines))
 		whats_new_seen = str(cfg.get_value("news", "seen", whats_new_seen))
+		playtest_log = bool(cfg.get_value("game", "playtest_log", playtest_log))
 	apply_volumes()
 	apply_display()
 
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11, _v11_to_v12, _v12_to_v13])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11, _v11_to_v12, _v12_to_v13, _v13_to_v14])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -245,6 +251,11 @@ static func _v12_to_v13(cfg: ConfigFile) -> void:
 	cfg.set_value("display", "camera_view", CameraView.View.CHASE_NEAR)
 
 
+## Version 14 added the playtest log (EQ-25), off: nothing was ever logged before.
+static func _v13_to_v14(cfg: ConfigFile) -> void:
+	cfg.set_value("game", "playtest_log", false)
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -278,6 +289,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("display", "vsync", vsync)
 	cfg.set_value("display", "scanlines", scanlines)
 	cfg.set_value("news", "seen", whats_new_seen)
+	cfg.set_value("game", "playtest_log", playtest_log)
 	CfgVersion.backup_if_older(path, VERSION)  # (EQ-21)
 	cfg.save(path)
 	apply_volumes()

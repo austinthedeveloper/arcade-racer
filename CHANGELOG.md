@@ -11,6 +11,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 - Save promise (EQ-27): a save, the options and wheel setups from any version since 0.1.0 load
   in this one with everything in them, and every build is checked against all of them.
+- Playtest log (EQ-25): Options > Display > PLAYTEST LOG (off unless you turn it on) keeps a
+  note of each race on your computer: crashes, checkpoints and where you lost time.
+  tools/playtest_report.py charts a folder of them per stage. Nothing is sent anywhere.
 
 ### Changed
 

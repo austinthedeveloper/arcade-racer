@@ -68,6 +68,7 @@ Pick **OPTIONS** on the title screen or in the pause menu. Options are saved to 
 | Game | Reset options / Reset save data | Options back to defaults, or erase progress (asks first). Wheel setups are kept either way. |
 | Display | Fullscreen, integer scaling, V-Sync, scanlines | |
 | Display | Speed units | MPH or KPH. |
+| Display | Playtest log | Off by default. On, each race writes a note of itself into the log folder (below). |
 | Audio | Music / sound FX volume | 0 to 10. |
 | Audio | Radio station | The station races start on, or shuffle. M changes it mid-race. |
 | Controls | Calibrate wheel | Opens the wheel calibration (same as F2). |
@@ -79,6 +80,16 @@ Pick **OPTIONS** on the title screen or in the pause menu. Options are saved to 
 | Accessibility | Gears | Automatic (the default) or manual: you shift through five gears, each with a rev limiter, for about 3% more top speed. |
 
 On the keyboard and gamepad, Up / Down picks a row and Left / Right changes it; Enter / A also toggles or cycles it. A wheel has no up and down, so there you turn the wheel to pick a row and press the gas to change it. Brake goes back.
+
+### Playtest log
+
+With **Options > Display > Playtest log** on, every race writes one JSON file into `playtest/`
+beside the crash log (`user://logs/`, or `--log-dir`): the stage, car and mode, how it ended,
+each checkpoint's time, every crash and where on the route, and the time lost against top speed
+in each stretch of the road. Nothing is sent anywhere; the files stay until you delete them.
+Put the folders from a few players together and run
+`python3 tools/playtest_report.py FOLDER --out=report.html` for a chart per stage of where
+people crash and slow down (`--png=DIR` also writes PNGs, with Pillow).
 
 ### Using a wheel
 
