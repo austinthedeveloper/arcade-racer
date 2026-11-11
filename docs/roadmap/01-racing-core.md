@@ -41,7 +41,7 @@ stats (`scripts/car/cars.gd`).
 | RC-20 ✓ | **Traffic density along a stage.** A per-stretch traffic weight in the stage scripts: towns busy, the desert and the summit empty, so each stage has a rhythm. | S | 2 | WS-11 | `test_track` checks every stage's weights; traces regenerated |
 | RC-21 ✓ | **Rival balance pass.** Every stage at every difficulty gets a target finishing spread (the field within a set number of seconds, the player's autodrive placing where the difficulty says). A soak run (EQ-22) reports the gaps per stage, the rival numbers are tuned in `Tuning.TABLE` and adopted with EQ-17. | M | 4 | EQ-22, EQ-17 | A report table in this doc per stage and difficulty; `test_golden` checks each stage's spread stays in its band; traces regenerated with the reason |
 | RC-22 ✓ | **Crash feel v2.** The tumble scales with the speed of the hit, a big hit holds a few frames of slow motion (off with reduce motion), and the respawned car is ghosted for a second so it can't be hit again at once. | S | 4 | CP-3, AC-13 | Tests for the tumble length by speed and the ghost window; reduce motion skips the slow motion; traces regenerated |
-| RC-23 | **Clock per difficulty.** The checkpoint time bonuses scale with difficulty, so easy is generous and hard is tight, each checked against the autodrive. | S | 5 | MP-7 | Test the autodrive reaches every checkpoint on hard with a set margin; traces unchanged on normal |
+| RC-23 ✓ | **Clock per difficulty.** The checkpoint time bonuses scale with difficulty, so easy is generous and hard is tight, each checked against the autodrive. | S | 5 | MP-7 | Test the autodrive reaches every checkpoint on hard with a set margin; traces unchanged on normal |
 | RC-24 | **Handicap.** A 2-player handicap slider: the trailing player gets a capped speed and nitro boost, off by default. | S | 7 | MP-18 | Test the boost cap and that it's zero when off |
 | RC-25 | **Rivals and traffic at forks.** Rivals pick a branch by personality and position; traffic keeps to its branch. | M | 10 | WS-22 | Tests for the branch choice and traffic per branch; traces for a forked stage |
 | RC-26 | **Patrol car.** On the open stages a patrol car joins after a run of near misses at top speed and tries to box you in for a stretch; outrun it for a bonus. | M | 10 | RC-15, RC-11 | Tests for the trigger, the chase and the bonus; a screenshot |
@@ -106,6 +106,19 @@ What the pass changed, deliberately little since the game is balanced by feel:
 - The rival numbers are now in `Tuning.TABLE` for the F3 panel: each difficulty's pace and
   rubber band (`difficulty/*`) and a pace per stage on top (`balance/*`, all 1), with a rival's
   base pace capped at its car's top speed (`Rivals.MAX_PACE`).
+
+## Clock per difficulty (RC-23)
+
+Each checkpoint's time bonus is the stage's (WS-11) after the timer option, times the
+difficulty's `difficulty/*_clock`: 1.1 on Easy, 1 on Normal, 0.9 on Hard. Hard used to put the
+timer on TIGHT (x0.85 on the start time and every bonus), and on that the autodrive's clock ran
+out on Redrock, Timberline, Bayou and Thunderhead, the last three before the first checkpoint,
+where no bonus helps. So Hard now starts on ARCADE and is tight through its bonuses alone.
+The least time the autodrive has left at a checkpoint or the line on Hard (with crash feel,
+RC-22): Palm Coast 13.3 s, Redrock 2.9, Neon 22.8, Timberline 4.9, Bayou 3.2, Harvest 20.3,
+Thunderhead 3.0, Skyline 16.5 (Normal: 10.5, 6.8, 23.7, 5.6, 7.2, 22.0, 3.2, 16.3).
+`test_golden` holds every stage on Easy and Hard to `Soak.CLOCK_MARGIN`, 2 s; 0.85 would leave
+Redrock 0.9 s. Normal is unchanged, so are its traces.
 
 ## Open decisions
 

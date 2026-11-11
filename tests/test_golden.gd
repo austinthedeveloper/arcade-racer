@@ -97,14 +97,16 @@ func _finishes_in_time(r: Node) -> void:
 
 # RC-21: on Easy and Hard too, every stage's autodriven field finishes within its band
 # (Soak.BANDS), the autodrive placed where the difficulty says. (Normal: _finishes_in_time.)
-func test_every_stage_in_its_band_on_easy_and_hard() -> void:
+# RC-23: and the autodrive reaches every checkpoint with Soak.CLOCK_MARGIN on the clock at
+# least, on the difficulty's own timer and checkpoint bonuses.
+func test_every_stage_in_its_band_on_easy_and_hard_with_time_to_spare() -> void:
 	var settings: Node = runner.root.get_node("Settings")
 	for stage in Stages.count():
 		for level in [Difficulty.Level.EASY, Difficulty.Level.HARD]:
 			var f := Soak.autodrive_field(settings, stage, level)
 			eq(f["rivals_home"], Rivals.COUNT, "%s %s: every rival home" % [Stages.POSTCARDS[stage], Difficulty.NAMES[level]])
-			eq(Soak.out_of_band(f, level, stage, false), "", "%s %s: in its band (spread %.1f s, placed %d)" % [
-				Stages.POSTCARDS[stage], Difficulty.NAMES[level], f["spread"], f["place"]])
+			eq(Soak.out_of_band(f, level, stage), "", "%s %s: in its band (spread %.1f s, placed %d, %.1f s on the clock)" % [
+				Stages.POSTCARDS[stage], Difficulty.NAMES[level], f["spread"], f["place"], f["clock"]])
 	eq(settings.difficulty, Difficulty.Level.NORMAL, "Settings left as they were")
 
 

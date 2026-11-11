@@ -705,3 +705,31 @@ func test_reduce_motion_skips_the_slow_motion_in_a_race() -> void:
 		held.append(r.hit_slowmo > 0.0)
 	settings.reduce_motion = false
 	eq(held, [true, false], "slow motion held, then skipped with reduce motion")
+
+
+# RC-23: each checkpoint's time bonus scales with the difficulty (Difficulty.clock_bonus)
+func test_checkpoint_bonuses_scale_with_the_difficulty() -> void:
+	var settings: Node = runner.root.get_node("Settings")
+	var got := []
+	for level in [Difficulty.Level.EASY, Difficulty.Level.NORMAL, Difficulty.Level.HARD]:
+		settings.difficulty = level
+		settings.timer = settings.Clock.ARCADE
+		var r := race(false, false)
+		eq(r.checkpoint_bonus, roundf(r.clock[1] * Difficulty.of(level).clock_bonus), "%s: the first bonus" % Difficulty.NAMES[level])
+		eq(r.time_left, settings.race_time(r.clock[0]), "the start time as the timer has it")
+		got.append(r.checkpoint_bonus)
+		r.player.distance = r.checkpoint_distances[0] + 1.0
+		var before: float = r.time_left
+		var bonus: float = r.checkpoint_bonus
+		r.state = r.State.RACING
+		r._check_progress()
+		near(r.time_left - before, bonus, 0.001, "given at the checkpoint")
+		eq(r.checkpoint_bonus, roundf(r.clock[2] * Difficulty.of(level).clock_bonus), "and the next one scaled too")
+	check(got[0] > got[1] and got[1] > got[2], "easy generous, hard tight (%s)" % str(got))
+	settings.timer = settings.Clock.TIGHT
+	settings.difficulty = Difficulty.Level.HARD
+	var tight := race(false, false)
+	eq(tight.checkpoint_bonus, roundf(tight.clock[1] * Settings.TIMER_MULT[Settings.Clock.TIGHT] * Tuning.v("difficulty/hard_clock")),
+		"on top of the timer option")
+	settings.timer = settings.Clock.ARCADE
+	settings.difficulty = Difficulty.Level.NORMAL

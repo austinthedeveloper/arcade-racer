@@ -113,7 +113,7 @@ var player_finish := -1.0  # race time the player finished in, -1 still racing
 var touched_traffic := false  # the player has touched a traffic car this stage (Unlocks secret)
 var new_unlocks: Array[String] = []  # car ids (and a stage's mirror_id) this finish opened, for the HUD
 var finish_distance := 1.0
-var checkpoint_bonus := CHECKPOINT_BONUS  # the next checkpoint's, after the timer option
+var checkpoint_bonus := CHECKPOINT_BONUS  # the next checkpoint's, after the timer option and the difficulty (RC-23)
 var clock: Array[float] = []  # this stage's ARCADE clock: start, then each checkpoint (stage_clock)
 var checkpoint_distances: Array[float] = []
 var next_checkpoint := 0
@@ -296,7 +296,7 @@ func start_race() -> void:
 	if not is_nan(_time_left_shot):
 		time_left = _time_left_shot
 	after = After.RETRY
-	checkpoint_bonus = Settings.race_time(clock[1]) if clock.size() > 1 else 0.0
+	checkpoint_bonus = Settings.race_time(clock[1], difficulty.clock_bonus) if clock.size() > 1 else 0.0
 	race_time = 0.0
 	finish_age = 0.0
 	_results_shown = false
@@ -947,7 +947,7 @@ func _check_progress() -> void:
 			_banner("CHECKPOINT!", "TIME EXTENDED +%d" % checkpoint_bonus, 2.0, Callouts.Kind.NONE)
 			callouts.push(Callouts.Kind.CHECKPOINT)
 			callouts.push(Callouts.Kind.TIME_EXTENDED, "+%d SEC" % checkpoint_bonus)
-			checkpoint_bonus = Settings.race_time(clock[next_checkpoint + 1]) if next_checkpoint + 1 < clock.size() else 0.0
+			checkpoint_bonus = Settings.race_time(clock[next_checkpoint + 1], difficulty.clock_bonus) if next_checkpoint + 1 < clock.size() else 0.0
 			_catch_up()
 	if player.distance >= finish_distance:
 		state = State.FINISHED

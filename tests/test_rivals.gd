@@ -510,7 +510,10 @@ func test_difficulty_levels() -> void:
 	check(easy.rival_pace < normal.rival_pace and normal.rival_pace < hard.rival_pace, "rivals quicker as it gets harder")
 	check(easy.band_ease > hard.band_ease, "easy rivals wait for you more")
 	check(easy.band_boost < hard.band_boost, "hard rivals catch up more")
-	eq([easy.timer, normal.timer, hard.timer], [0, 1, 2], "relaxed, arcade and tight clocks")
+	eq([easy.timer, normal.timer, hard.timer], [0, 1, 1], "relaxed, arcade and arcade timers")
+	check(easy.clock_bonus > normal.clock_bonus and normal.clock_bonus > hard.clock_bonus,
+		"checkpoint bonuses bigger on easy, smaller on hard (RC-23)")
+	eq(normal.clock_bonus, 1.0, "normal's as the stage has them")
 	var top_pace: float = RivalProfile.roster().map(func(p: RivalProfile) -> float: return p.pace).max()
 	for d in [easy, normal, hard]:
 		check(d.band_ease <= Tuning.v("ai/band_max") and d.band_boost <= Tuning.v("ai/band_max"), "within the band's cap")

@@ -355,9 +355,10 @@ func traffic_count(base: int) -> int:
 	return roundi(base * TRAFFIC_MULT[traffic])
 
 
-## A stage's clock (start time or checkpoint bonus) for the timer option.
-func race_time(base: float) -> float:
-	return roundf(base * TIMER_MULT[timer])
+## A stage's clock (start time or checkpoint bonus) for the timer option, times `scale` (a
+## checkpoint bonus: the difficulty's, Difficulty.clock_bonus, RC-23).
+func race_time(base: float, scale := 1.0) -> float:
+	return roundf(base * TIMER_MULT[timer] * scale)
 
 
 func apply_volumes() -> void:

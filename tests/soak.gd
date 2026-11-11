@@ -37,6 +37,9 @@ const BANDS := [
 ## it may have on every difficulty. Skyline's downtown jam (RC-20) holds whoever reaches it
 ## among the traffic for half a minute; the rest of the field is home by then.
 const STAGE_SPREAD := {"skyline": 46.0}
+## RC-23: seconds the autodrive has left at least, arriving at every checkpoint and the line,
+## on every difficulty (its own timer and checkpoint bonuses).
+const CLOCK_MARGIN := 2.0
 
 var failures := 0
 
@@ -150,8 +153,9 @@ static func spread_for(stage: int, level: int) -> float:
 static func out_of_band(f: Dictionary, level: int, stage: int, clock := true) -> String:
 	var band: Dictionary = BANDS[level]
 	var why := PackedStringArray()
-	if clock and f.get("timed_out", false):
-		why.append("the clock ran out (%.1f s)" % f.get("clock", NAN))
+	if clock and (f.get("timed_out", false) or f.get("clock", INF) < CLOCK_MARGIN):
+		why.append("the clock ran out (%.1f s)" % f.get("clock", NAN) if f.get("timed_out", false)
+			else "only %.1f s on the clock at a checkpoint" % f.get("clock", NAN))
 	if f["spread"] > spread_for(stage, level):
 		why.append("spread %.1f s over %.1f" % [f["spread"], spread_for(stage, level)])
 	if f["place"] < band["places"][0] or f["place"] > band["places"][1]:

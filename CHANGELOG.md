@@ -15,6 +15,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Crash feel (RC-22): the harder the hit, the longer the car tumbles; a big hit holds a moment
   of slow motion (not with Reduce motion on); back on the road the car is see-through for a
   second, so nothing can hit it again at once. Medal times move with the new autodrive times.
+- Clock per difficulty (RC-23): checkpoint time bonuses are 10% bigger on Easy and 10% smaller
+  on Hard. Hard now starts you on the ARCADE timer instead of TIGHT (TIGHT is still there to
+  pick): on TIGHT the start time on some stages ran out before the first checkpoint.
 
 ### Fixed
 
