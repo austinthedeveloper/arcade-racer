@@ -47,6 +47,15 @@ and 11). Not yet checked on a phone (ON-6); the relay needs its `sundown-run` ch
 | ON-11 ✓ | **Disconnects.** A player who drops shows a notice and their car fades out; the host leaving ends the race with the results so far. | S | 1 | ON-3 | `test_online` covers both; a screenshot of the notice |
 | ON-12 ✓ | **Connection quality.** A dot on the HUD for the relay round trip (green, amber, red) and a region picker when the relay offers one. | S | 2 | ON-1 | Test the dot's color thresholds; a screenshot |
 | ON-13 | **AI rivals online.** The host drives the rivals and sends their states, so a two-player room still has a field. Open decision in this doc. | M | 3 | ON-3, RC-1 | A two-window run with rivals finishing in the same order on both |
+| ON-14 | **Online across versions.** A guest on an older build gets UPDATE TO PLAY ONLINE with the updater's button instead of OLD VERSION; the relay names the oldest version it accepts. | S | 5 | ON-2, EQ-14 | Test the message and button for an old hello; a screenshot |
+| ON-15 | **Two at one screen online.** Both split-screen players join one online room as two players. | M | 8 | MP-18, ON-3 | `test_online` with a two-player guest; a two-window run |
+| ON-16 | **Room options.** The host sets traffic, power-ups, the party rule and (once ON-13 is in) the rivals for the room. | S | 8 | ON-2, MP-20 | Lobby test that guests get the host's options; a screenshot |
+| ON-17 | **Quick chat.** Four set messages (GG, NICE ONE, REMATCH?, WAIT) on the D-pad in the lobby and after the finish. No typing. | S | 8 | ON-2 | Test a message reaches every player; a screenshot |
+| ON-18 | **Online leaderboards.** Best times per stage, car and mirror, sent after a race with its input trace. A small service next to the relay keeps the top times and the player's own. Where it runs is Austin's call. | L | 9 | EQ-33, MP-10 | The service's tests; a race's time shows on the board in a two-window run; a menu screenshot |
+| ON-19 | **Time checks.** The service replays a submitted trace headless before accepting the time and drops ones that don't match, or are from an unknown version. | M | 9 | ON-18 | Tests for a good trace, an edited one and an old version |
+| ON-20 | **Race the board.** Time Attack can race the leaderboard's top ghost, the one just above you, or a friend's. | M | 9 | ON-18, MP-5 | Test the downloaded ghost replays; a screenshot with the ghost |
+| ON-21 | **Share stages by code.** Upload a stage to the service and get a six-letter code; anyone can download it by the code. No browsing, a size limit. | M | 14 | WS-30, ON-18 | The service's tests; a round trip in a two-window run |
+| ON-22 | **Online cup.** A monthly cup on the leaderboard service: three stages, best combined time. | M | 15 | ON-18 | Service tests for the combined time; a screenshot |
 
 ## Open decisions
 

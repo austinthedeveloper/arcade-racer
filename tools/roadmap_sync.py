@@ -33,7 +33,9 @@ FULL_ROW = re.compile(r"^\| ([A-Z]{2}-\d+)( ✓)? \| \*\*(.+?)\.\*\* ?(.*?) \| *
 GROUPS = {"RC": "racing core", "WS": "world and stages", "CP": "cars and art pipeline",
           "WH": "input and wheels", "PR": "presentation and audio", "MP": "modes and progression",
           "AC": "options and accessibility", "EQ": "engineering and quality", "ON": "online and mobile"}
-MONTHS = ["Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027", "Apr 2027"]
+## Roadmap month 1 is Nov 2026; the second year (added 2026-11-10) runs months 4 to 15.
+MONTHS = ["Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027", "Apr 2027", "May 2027", "Jun 2027",
+          "Jul 2027", "Aug 2027", "Sep 2027", "Oct 2027", "Nov 2027", "Dec 2027", "Jan 2028"]
 ROW = re.compile(r"^\| ([A-Z]{2}-\d+)( ✓)? \| \*\*(.+?)\.\*\*.*?\| *(\S*) *\|")
 CELL = re.compile(r"^\| [A-Z]{2}-\d+(?: ✓)? \|")
 BEGIN, END = "<!-- roadmap-status:begin -->", "<!-- roadmap-status:end -->"
@@ -188,7 +190,7 @@ def doc_rows():
 
 def first_month(month):
     """The month number a row starts in (its Month cell: "1", "2, 3", "Stretch"), or 0."""
-    m = re.search(r"\d", month)
+    m = re.search(r"\d+", month)
     return int(m.group()) if m else 0
 
 
@@ -214,7 +216,8 @@ def create_issues(by_id, items, project_id):
     """An issue, labels, milestone and board item for every row without an issue; then the
     bodies that named a row created after them get its number."""
     fields = {f["name"]: f for f in gh("project", "field-list", str(PROJECT), "--owner", OWNER, "--format", "json")["fields"]}
-    milestones = {int(m["title"][1]): m["title"] for m in gh("api", "repos/%s/milestones?state=all" % REPO)}
+    milestones = {int(re.match(r"M(\d+)", m["title"]).group(1)): m["title"]
+                  for m in gh("api", "repos/%s/milestones?state=all" % REPO) if re.match(r"M\d+", m["title"])}
     created = []
     for row in doc_rows():
         known = row["id"] in by_id
