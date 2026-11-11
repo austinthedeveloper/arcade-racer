@@ -134,6 +134,22 @@ brake and nitro under the right, pause at the top left. In the menus they're a D
 BACK, and the online letter grid can be tapped directly. A key or a pad button hides them;
 `--touch` shows them for screenshots.
 
+## Known issues
+
+What's known and not fixed yet (the full list, with reasons, is
+[docs/09-known-bugs-and-cleanup.md](docs/09-known-bugs-and-cleanup.md)):
+
+- Every stage has the same five power-ups on the road, and never a nitro can or a mystery
+  hubcap (G7; fixing it moves the pickups, so it waits for a gameplay change).
+- The builds aren't code-signed: Windows SmartScreen and macOS Gatekeeper warn the first time
+  (see Releases).
+- Wheels have no force feedback yet; turn on your wheel software's centering spring.
+- 0.1.0 has no updater: download a later version by hand once.
+- Online, a game on 0.5.2 or older that joins a newer host says OLD VERSION rather than offering
+  the update (it's the old build's own message); update it from the title's update screen or the
+  releases page.
+- The Linux zip is for testing only.
+
 ## Project layout
 
 ```

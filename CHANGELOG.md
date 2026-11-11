@@ -20,6 +20,12 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Car select: every car's picture is now rendered from its 3D model, all from the same angle on
   the same coast road, and painted like the car you then drive.
 
+### Fixed
+
+- Nitro flames (EQ-26): the Cyclone's, Bruiser's and Kestrel's now come out of their own pipes.
+- Missing art (EQ-26): a traffic or power-up picture that fails to load no longer crashes the
+  race; that vehicle is just left off the road.
+
 ## [0.5.2] - 2026-11-07
 
 ### Changed

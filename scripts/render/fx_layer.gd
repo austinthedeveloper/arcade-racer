@@ -73,6 +73,11 @@ const SPEED_LINES_FROM := 0.85  # of top speed, before nitro
 const WHEEL_X := 0.36
 const EXHAUST_X := 0.2
 const EXHAUST_Y := 0.2
+## A car whose pipes aren't where EXHAUST_X and EXHAUST_Y put them (A4 in the known-bugs doc),
+## by strip id (Cars.LIST "strip"): (x, y) as above, measured on its rendered strip. The
+## Cyclone's twin pipes sit high and wide, above its one rear wheel; the Bruiser's and the
+## Kestrel's come out together in the middle.
+const EXHAUSTS := {"cyclone": Vector2(0.244, 0.336), "bruiser": Vector2(0.056, 0.14), "kestrel": Vector2(0.049, 0.18)}
 
 ## One pooled particle.
 class Particle:
@@ -95,6 +100,7 @@ var _firework_due := 0.0  # seconds to the next burst
 var spawned := 0  # this tick, against SPAWN_CAP
 var dropped := 0  # spawns refused for the cap or a full pool, since the race started
 var player: PlayerCar
+var exhaust_anchor := Vector2(EXHAUST_X, EXHAUST_Y)  # the player car's pipes (exhaust_for); the race sets it
 var view: int = CameraView.View.CHASE_NEAR  # the camera view (WS-15): where the car is on screen, or not
 var time := 0.0
 var weather := {}  # the stage's (Weather.of), {} for clear skies
@@ -258,7 +264,7 @@ func react(p: PlayerCar, track: Track) -> void:
 					spawn("puff", base + Vector2(side * w * WHEEL_X, 0), side < 0.0)
 			"nitro_burst":
 				for side in [-1.0, 1.0]:
-					spawn("nitro_burst", exhaust(base, w, side), false)
+					spawn("nitro_burst", exhaust(base, w, side, exhaust_anchor), false)
 	_last_speed = p.speed
 	_last_nitro = p.nitro_time
 
@@ -351,8 +357,13 @@ static func car_width(view: int = CameraView.View.CHASE_NEAR) -> float:
 	return CameraView.car_width(view, Tuning.v("camera/depth"))
 
 
-static func exhaust(base: Vector2, w: float, side: float) -> Vector2:
-	return base + Vector2(side * w * EXHAUST_X, -w * EXHAUST_Y)
+## Where car `strip_id`'s pipes are: EXHAUSTS, else the usual place.
+static func exhaust_for(strip_id: String) -> Vector2:
+	return EXHAUSTS.get(strip_id, Vector2(EXHAUST_X, EXHAUST_Y))
+
+
+static func exhaust(base: Vector2, w: float, side: float, anchor := Vector2(EXHAUST_X, EXHAUST_Y)) -> Vector2:
+	return base + Vector2(side * w * anchor.x, -w * anchor.y)
 
 
 ## Which nitro flame frame (1..NITRO_FRAMES) shows with `left` seconds of a `duration` burn
@@ -408,7 +419,7 @@ func _draw() -> void:
 		var tex := texture("nitro_%d" % f)
 		var size := Vector2(tex.get_width(), tex.get_height()) * (w / 180.0) * NITRO_SCALE
 		for side in [-1.0, 1.0]:
-			var at := exhaust(base, w, side)
+			var at := exhaust(base, w, side, exhaust_anchor)
 			# Head (the blue core) at the pipe, the tail streaming back toward the camera
 			var rect := Rect2(roundf(at.x - size.x / 2.0), roundf(at.y - size.y * 0.1), size.x, size.y)
 			if side > 0.0:

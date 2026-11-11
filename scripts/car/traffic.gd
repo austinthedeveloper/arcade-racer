@@ -93,7 +93,18 @@ static func first_lane(track: Track, lane_count: int) -> int:
 ## can if none of them can (Palm Coast's locals have no front views).
 static func with_fronts(kinds: Array) -> Array:
 	var out := kinds.filter(func(id: String) -> bool: return CarSprites.has_front(id))
-	return out if not out.is_empty() else with_fronts(CARS)
+	if out.is_empty() and kinds != CARS:
+		return with_fronts(CARS)
+	return out
+
+
+## The kinds in `kinds` whose sprite loaded (G6: a missing file is left out, not drawn); when
+## none did, the cars that did; empty when no traffic sprite loaded at all.
+static func loaded(kinds: Array) -> Array:
+	var out := kinds.filter(func(id: String) -> bool: return CarSprites.traffic.has(id))
+	if out.is_empty() and kinds != CARS:
+		return loaded(CARS)
+	return out
 
 
 ## `count` cars spread over the road, none where keep_clear says not (RC-14); `start_z` is
@@ -209,18 +220,19 @@ func _add_car(track: Track, z: float, specials: Array, start := -1, totals := Pa
 	car.lane = car.offset
 	car.oncoming = k < first
 	var roll := rng.randf()
+	var kinds: Array = CARS
+	var speeds: Array = CAR_SPEED
 	if roll < BIG_SHARE:
-		var pool: Array = with_fronts(BIG) if car.oncoming else BIG
-		car.sprite = pool[rng.randi() % pool.size()]
-		car.speed = Cfg.MAX_SPEED * rng.randf_range(BIG_SPEED[0], BIG_SPEED[1])
+		kinds = BIG
+		speeds = BIG_SPEED
 	elif roll < BIG_SHARE + SPECIAL_SHARE:
-		var pool: Array = with_fronts(specials) if car.oncoming else specials
-		car.sprite = pool[rng.randi() % pool.size()]
-		car.speed = Cfg.MAX_SPEED * rng.randf_range(SPECIAL_SPEED[0], SPECIAL_SPEED[1])
-	else:
-		var pool: Array = with_fronts(CARS) if car.oncoming else CARS
-		car.sprite = pool[rng.randi() % pool.size()]
-		car.speed = Cfg.MAX_SPEED * rng.randf_range(CAR_SPEED[0], CAR_SPEED[1])
+		kinds = specials
+		speeds = SPECIAL_SPEED
+	var pool := loaded(with_fronts(kinds) if car.oncoming else kinds)
+	if pool.is_empty():
+		return  # no traffic sprite loaded at all (G6): an empty road rather than a crash
+	car.sprite = pool[rng.randi() % pool.size()]
+	car.speed = Cfg.MAX_SPEED * rng.randf_range(speeds[0], speeds[1])
 	var changes := rng.randf() < Tuning.v("traffic/changer_share")
 	var first_change := rng.randf_range(CHANGE_EVERY[0], CHANGE_EVERY[1])
 	if changes and not car.oncoming and CarSprites.signals(car.sprite):

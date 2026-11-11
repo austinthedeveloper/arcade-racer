@@ -359,6 +359,7 @@ func start_race() -> void:
 	fx.clear()
 	fx.set_weather(track.theme, _lightning_at)
 	fx.player = player
+	fx.exhaust_anchor = FxLayer.exhaust_for(car["strip"])
 	set_view(Settings.camera_view)
 
 

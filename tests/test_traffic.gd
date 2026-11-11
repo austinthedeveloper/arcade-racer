@@ -569,3 +569,31 @@ func test_a_honked_car_on_a_mirrored_stage_moves_the_mirror_way() -> void:
 	for i in 170:
 		tr.update(DT, t)
 	near(c.offset, -0.75, 0.001, "over a lane to the left")
+
+
+func test_a_missing_sprite_is_left_out() -> void:
+	# G6 (docs/09): a traffic sprite that didn't load is never spawned, a whole kind missing
+	# falls back to the cars, and no sprite at all gives an empty road, not a crash.
+	var saved := CarSprites.traffic.duplicate()
+	var gone: Array = Traffic.BIG + ["compact_teal"]
+	for id in gone:
+		CarSprites.traffic.erase(id)
+	var tr := Traffic.new()
+	tr.spawn(PalmCoast.build(), 150)
+	eq(tr.cars.size(), 150, "every car placed")
+	var seen := {}
+	for c in tr.cars:
+		seen[c.sprite] = true
+	for id in gone:
+		check(not seen.has(id), "no %s" % id)
+	check(seen.has("sedan_beige"), "the cars still come")
+	CarSprites._add_traffic("no_such_car", "res://assets/sprites/traffic/no_such_car.png", 1.0)
+	check(not CarSprites.traffic.has("no_such_car"), "a missing file isn't added")
+	CarSprites.traffic.clear()
+	var empty := Traffic.new()
+	empty.spawn(PalmCoast.build(), 20)
+	eq(empty.cars.size(), 0, "no sprites: no cars")
+	CarSprites.traffic = saved
+	var tex := PowerUps.texture("no_such_power_up")
+	check(tex != null and tex.get_width() > 0, "a missing power-up sprite draws blank")
+	PowerUps._textures.erase("no_such_power_up")

@@ -98,9 +98,16 @@ func open(kind: int, time_left: float) -> int:
 
 
 ## A power-up sprite by name (pickup_nitro, icon_ram, fx_sparkle, reveal_2, ...), loaded once.
+## A missing file (G6) gives a small blank texture and one warning, so drawing it never crashes.
 static func texture(name: String) -> Texture2D:
 	if not _textures.has(name):
-		_textures[name] = load(SPRITES + name + ".png")
+		var path := SPRITES + name + ".png"
+		var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+		if tex == null:
+			push_warning("Missing power-up sprite: " + path)
+			var img := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+			tex = ImageTexture.create_from_image(img)
+		_textures[name] = tex
 	return _textures[name]
 
 

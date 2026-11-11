@@ -6,10 +6,28 @@ drive-throughs, the Skyline Finale, menus and options. Paths are relative to the
 checked in game. "Fixed (phase N)" marks what the cleanup below has done (2026-10-31, branches
 `feature/CLD-cleanup-1-fixes` to `-4-golden`).
 
-**G3 and G4 fixed in RC-9; A1 to A3 in CP-7.** **Still open:** A4 (nitro
-flame anchors, roadmap CP-3; the brake glow sits on each car's own lamps since CP-2), G6
-(a missing traffic sprite crashes; the manifest test makes it unlikely). Every loaded roadside sprite is now placed
+**G3 and G4 fixed in RC-9; A1 to A3 in CP-7; A4 and G6 in the 1.0 bug bash (EQ-26).**
+**Still open:** G7 (the power-up layout is the same on every stage, with no nitro cans or
+mystery hubcaps; deferred, see the row). Every loaded roadside sprite is now placed
 (roadmap WS-5): `Track.add_road_signs` and `Track.add_race_furniture`, and `test_track` asserts it.
+
+## The 1.0 bug bash (EQ-26, 2026-11-11)
+
+Every open item here and every open GitHub issue, fixed or deferred with a reason:
+
+- **GitHub:** no open issue has the `bug` label (the one there was, #137 WH-10, is closed). The
+  other 126 open issues are all roadmap stories (`roadmap` label, each with a milestone); none of
+  them reports a defect in what has shipped, so there is nothing to fix or defer from them.
+- **A4** fixed: the cars are rendered from 3D models now (0.5.2), so the flame anchor was checked
+  on a nitro screenshot of all twelve. Nine have their pipes, or a plain bumper, where the shared
+  anchor puts the flames; three didn't, and get their own (`FxLayer.EXHAUSTS`): the Cyclone's
+  pipes sit high and wide over its one rear wheel, the Bruiser's three and the Kestrel's two come
+  out together in the middle. It was only anchors: no art changed.
+- **G6** fixed: a traffic sprite that doesn't load is left out of the spawn pools (`Traffic.loaded`;
+  a whole kind missing falls back to the cars, none at all gives an empty road), a missing front
+  view or light frame falls back to the rear view, and a missing power-up sprite draws blank
+  instead of a null texture (`test_traffic.test_a_missing_sprite_is_left_out`).
+- **G7** found and deferred: below.
 
 ## Fixed in this pass
 
@@ -30,7 +48,7 @@ flame anchors, roadmap CP-3; the brake glow sits on each car's own lamps since C
 | A1 | Low | **Fixed (CP-7)** | **Magenta painted into the window glass.** The generator reflected the magenta background into the glass of the taxi, tractor cab, roadster, navy van, green SUV, dump truck and the trolley windscreen (one streak left), and the tuk-tuk's. The glass is opaque and drawn that way, so keying can't help. `make_car_sprites.GLASS` turns the purple in each window box blue. | concept sheets `trf0*`; `make_car_sprites.GLASS` |
 | A2 | Low | **Fixed (CP-7)** | **Pink halo around glowing parts.** The street sweeper's amber beacons have a pink glow halo: glow blended with magenta, kept because it touches the lamp. Phase 2's wide fringe left part of it, and a pink tinge on every car's outline; `spritelib.despill` now takes the spill out of pixels next to the background. | `traffic/street_sweeper.png` |
 | A3 | Low | **Fixed (CP-7)** | **Purple line under some vehicles.** A one-pixel purple line runs along the bottom edge of several traffic sprites (double-decker, dump truck, jeep). It is the ground shadow blended with the key and not caught by the one-pixel fringe pass. `spritelib.key_sheet` now keys two more pixels near the key's hue. | `spritelib.key_sheet` fringe step |
-| A4 | Low | Suspected | **Nitro flame placed for the Vega on all 12 cars.** The trike, buggy and van will likely look off. (Brake glow fixed in CP-2: each car's lamps are in `CarSprites.LAMPS`.) | `scripts/render/car_sprites.gd:115-119` |
+| A4 | Low | **Fixed (EQ-26)** | **Nitro flame placed for the Vega on all 12 cars.** Checked on the 3D-rendered cars: the buggy and van were fine; the Cyclone (trike), Bruiser and Kestrel weren't, and get their own anchors in `FxLayer.EXHAUSTS`. (Brake glow fixed in CP-2: each car's lamps are in `CarSprites.LAMPS`.) | `scripts/render/fx_layer.gd` |
 
 ### Gameplay
 
@@ -41,7 +59,8 @@ flame anchors, roadmap CP-3; the brake glow sits on each car's own lamps since C
 | G3 | Low | **Fixed (RC-9)** | **A side-swipe is treated as a rear-end.** `collide` doesn't check which car is ahead within the segment. Steering into a slower car alongside snaps you behind it or crashes you. | `player_car.gd:202-216` |
 | G4 | Low | **Fixed (RC-9)** | **Rammed cars never come back onto the road.** They stay at offset ±4 and become solid again after 0.8 s. A player far off-road can then crash into them. | `scripts/car/traffic.gd:59-61`, `player_car.gd:203` |
 | G5 | Low | **Fixed (phase 1)** | **Auto gas can drop new input fields.** `Settings.drive_input` copies a hand-written list of `DriveInput` fields, so a field added later is silently lost when auto gas is on. | `scripts/core/settings.gd:73-75` |
-| G6 | Low | Confirmed | **A missing traffic sprite crashes the game.** The loader only warns, but `Traffic.spawn` indexes the sprite table directly. `PowerUps.texture` caches a null. Tests check the files exist today, so this is low risk. | `traffic.gd:51`, `car_sprites.gd:78`, `power_ups.gd:100-103` |
+| G6 | Low | **Fixed (EQ-26)** | **A missing traffic sprite crashes the game.** The loader only warned, but `Traffic.spawn` indexed the sprite table directly, and `PowerUps.texture` cached a null. Now a missing sprite is left out of the pools (`Traffic.loaded`) and a missing power-up draws blank. | `traffic.gd`, `car_sprites.gd`, `power_ups.gd` |
+| G7 | Med | Confirmed, **deferred** | **Every stage has the same five power-ups, and never a nitro can or a mystery hubcap.** `PowerUps.place` lays them out with one seed (11) on every stage, and that seed's rolls give ram, clock, ghost, ghost, ram everywhere, though the road weights make mystery hubcaps the commonest kind. **Why deferred:** any fix (a seed per stage) moves the pickups, which is a play change: the golden traces must be regenerated with it, and that is Austin's call as a gameplay story (RC or MP, with the power-up balance), not a bug-bash change. | `scripts/race/power_ups.gd` `place`, `layout` |
 
 ### UI and flow
 
