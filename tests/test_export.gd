@@ -187,8 +187,8 @@ func test_the_web_build_has_its_own_loading_screen() -> void:
 		"the loader is plain HTML and CSS")
 
 
-## The radio's newer songs (PR-24) are desktop only: the Web preset leaves assets/audio/radio/
-## out (it would put the .pck about 7 MB over its budget), the others keep it.
+## The radio's newer songs and its stings (PR-24) are desktop only: the Web preset leaves
+## assets/audio/radio/ out (it would put the .pck about 7 MB over its budget), the others keep it.
 func test_the_web_build_leaves_the_radio_folder_out() -> void:
 	var cfg := presets()
 	for preset in ["Windows", "macOS", "Web", "Linux"]:

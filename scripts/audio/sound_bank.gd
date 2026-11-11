@@ -41,7 +41,8 @@ const CUES := {
 	"shutter": ["sfx", false, -6.0],  # the photo key (Photo)
 	# The radio (Radio): each station's songs, played once each in turn (RaceAudio.radio_tick),
 	# then its sting between them. Leveled to about -22 dB RMS once turned down. The newer songs
-	# are in radio/, which the Web build leaves out (Radio.has_song: it plays the rest).
+	# and the stings are in radio/, which the Web build leaves out (Radio.songs, Radio.has_sting:
+	# there each station loops its first song, as before PR-24).
 	"station_rock": ["music", false, -11.0],
 	"station_synthwave": ["music", false, -9.5],
 	"station_funk": ["music", false, -10.0],
@@ -62,10 +63,10 @@ const CUES := {
 	"techno_overpass": ["radio", false, -10.4],
 	"techno_grid_lock": ["radio", false, -10.9],
 	"techno_static_bloom": ["radio", false, -10.5],
-	"sting_rock": ["music", false, -11.8],
-	"sting_synthwave": ["music", false, -8.3],
-	"sting_funk": ["music", false, -9.9],
-	"sting_techno": ["music", false, -4.7],
+	"sting_rock": ["radio", false, -11.8],
+	"sting_synthwave": ["radio", false, -8.3],
+	"sting_funk": ["radio", false, -9.9],
+	"sting_techno": ["radio", false, -4.7],
 }
 
 ## The announcer's lines (Announcer.LINES) are cues too: vo_<id>, one-shots at this level.

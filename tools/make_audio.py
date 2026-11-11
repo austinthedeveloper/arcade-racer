@@ -1279,8 +1279,8 @@ RIFF_B = [(0, 0, 3), (3, 0, 1), (5, 12, 1), (7, 10, 1), (8, 0, 2), (11, 3, 1), (
 RIFF_C = [(0, 0, 1), (2, 0, 1), (3, 12, 1), (6, 0, 2), (9, 10, 1), (10, 12, 1), (12, 0, 1), (13, 7, 1), (15, 12, 1)]
 
 # Radio.STATIONS' songs after each station's first, and the stings: (file, seed, generator).
-# The songs go in radio/, which the Web build leaves out (its download budget, EQ-23); the
-# stings stay in music/ with each station's first song.
+# The songs and the stings go in radio/, which the Web build leaves out (its download budget,
+# EQ-23); each station's first song stays in music/.
 SONGS = [
     ("radio/rock_dust_devil.wav", 2401, lambda: rock_song(
         152, 45, (0, 0, 3, 5, 0, 0, 7, 5), (-4, 3, -2, 0, -4, 3, 5, 7), "x.....x.x.......", "....x.......x...")),
@@ -1312,10 +1312,10 @@ SONGS = [
     ("radio/techno_overpass.wav", 2432, lambda: techno_song(124, 38, [62, 65, 69], clap="....x.......x..x", sweeps=2.0)),
     ("radio/techno_grid_lock.wav", 2433, lambda: techno_song(136, 45, [69, 72, 76], sweeps=0.5)),
     ("radio/techno_static_bloom.wav", 2434, lambda: techno_song(128, 40, [64, 67, 71], clap="..x.x.......x...")),
-    ("music/sting_rock.wav", 2441, lambda: sting("rock")),
-    ("music/sting_synthwave.wav", 2442, lambda: sting("synthwave")),
-    ("music/sting_funk.wav", 2443, lambda: sting("funk")),
-    ("music/sting_techno.wav", 2444, lambda: sting("techno")),
+    ("radio/sting_rock.wav", 2441, lambda: sting("rock")),
+    ("radio/sting_synthwave.wav", 2442, lambda: sting("synthwave")),
+    ("radio/sting_funk.wav", 2443, lambda: sting("funk")),
+    ("radio/sting_techno.wav", 2444, lambda: sting("techno")),
 ]
 
 
