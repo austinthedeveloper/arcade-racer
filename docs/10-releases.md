@@ -28,7 +28,7 @@ pre-release on GitHub, and the auto-updater still offers it.
 3. Set `config/version="x.y.z"` in `project.godot`. `test_export` checks that the changelog has
    a section for this version, so a bump without notes fails the tests.
    In the same change, write this version's save fixture (EQ-27):
-   `godot --headless --path . -s res://tests/save_fixture.gd` writes the save, settings and wheel
+   `godot --headless --path . -s res://tests/write_save_fixture.gd` writes the save, settings and wheel
    profile files this build makes into `tests/fixtures/saves/vx.y.z/`. Commit the folder;
    `test_save_compat` fails without it, and loads every release's folder from then on.
 4. Merge that, then `git tag vx.y.z && git push origin vx.y.z`.
