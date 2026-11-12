@@ -13,10 +13,11 @@ static func count() -> int:
 
 
 ## Stage `index`, built, its end dressed like the next stage's start (StageFlow); flipped
-## left for right with `mirror` (WS-6, Track.mirror), dressing and all.
-static func build(index: int, mirror := false) -> Track:
+## left for right with `mirror` (WS-6, Track.mirror), dressing and all. `next` dresses the
+## end for that stage instead of the one after (StageFlow.dress; Survival).
+static func build(index: int, mirror := false, next := -2) -> Track:
 	var t := _build(index)
-	StageFlow.dress(t, index)
+	StageFlow.dress(t, index, next)
 	if mirror:
 		t.mirror()
 	return t

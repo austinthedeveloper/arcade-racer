@@ -4,7 +4,9 @@ extends MenuScreen
 ## field's places and times (rivals still out show RACING until they cross), the player's
 ## place, time, best-time mark, bonuses and points, then what's next: on (the next stage,
 ## the continue, or the menu), retry, or quit. Laid out after the ui06 results concept.
-## In a Grand Tour that's over, the panel shows the final standings instead.
+## In a Grand Tour that's over, the panel shows the final standings instead. Survival's
+## (MP-13, at TIME UP) show the distance against the best and the legs driven; the daily
+## run's (MP-14) the day's best tries in place of the field.
 ## `choose` turns a tick of input into a Choice; the race carries it out.
 
 enum Choice { NONE, CONTINUE, RETRY, QUIT }
@@ -130,6 +132,35 @@ static func best_line(new_best: bool, best_before: Dictionary) -> String:
 	return ""
 
 
+## The daily run's line under the time: this try the day's best, or the best to beat.
+static func daily_best_line(tries: Dictionary, finish: float) -> String:
+	var times: Array = tries.get("times", [])
+	if times.is_empty():
+		return ""
+	if finish > 0.0 and is_equal_approx(float(times[0]), finish):
+		return "BEST TRY TODAY!"
+	return "TODAY'S BEST  " + Hud.clock_text(float(times[0]))
+
+
+## Survival's legs, a row each, the last BEST_ROWS of them: {"leg" (from 1), "stage" (index),
+## "current" (the leg the clock ran out on)}.
+const LEG_ROWS := 7
+static func leg_rows(run: Survival) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for n in range(maxi(0, run.leg + 1 - LEG_ROWS), run.leg + 1):
+		out.append({"leg": n + 1, "stage": Survival.stage_for(n, run.stages), "current": n == run.leg})
+	return out
+
+
+## Survival's distance line against the best before the run (world units).
+static func survival_best_line(new_best: bool, best_before: float, units: int) -> String:
+	if new_best:
+		return "NEW BEST DISTANCE!"
+	if best_before > 0.0:
+		return "BEST  " + Settings.distance_text(best_before, units)
+	return ""
+
+
 ## The footer's hints; `stage_pick` adds the host's next stage on up and down (ON-9).
 static func results_hints(stage_pick := false) -> String:
 	var more := "    Up / Down: next stage" if stage_pick else ""
@@ -145,7 +176,12 @@ func _draw() -> void:
 	var w := float(Cfg.SCREEN_W)
 	draw_rect(Rect2(0, 0, w, Cfg.SCREEN_H), backdrop(race.track.theme, race.track.next_theme, flow_share))
 	_header("RESULTS")
-	_text(Vector2(16, 52), ("STAGE %d  " % (race.stage_index + 1)) + race.track.name.to_upper(), 10, Color(1, 1, 1, 0.8))
+	if race.survival:
+		_survival()
+		_choices()
+		_footer(results_hints())
+		return
+	_text(Vector2(16, 52), Hud.stage_line(race), 10, Color(1, 1, 1, 0.8))
 	if race.after == race.After.NEXT_STAGE:
 		var next := Stages.next(race.stage_index)
 		_text(Vector2(16, 64), "NEXT  " + Stages.stage_name(next).to_upper(), 9, Color(GOLD, 0.35 + 0.65 * flow_share))
@@ -156,6 +192,8 @@ func _draw() -> void:
 	var tour: Tour = race.tour_state if race.tour else null
 	if tour != null and (race.after == race.After.TOUR_DONE or race.after == race.After.TOUR_OVER):
 		_standings_panel(tour, "FINAL STANDINGS" if race.after == race.After.TOUR_DONE else "TOUR OVER")
+	elif not race.daily.is_empty():
+		_daily_panel()
 	else:
 		_field_panel(field)
 	var room: OnlineSession = race.online
@@ -191,6 +229,9 @@ func _summary(field: Array[Dictionary]) -> void:
 		Medals.draw(self, Vector2(mx, y + 17), medal, 6.0)
 		_text(Vector2(mx + 10, y + 21), Medals.medal_name(medal), 9, Medals.color(medal))
 	var best := best_line(race.new_best or race.new_best_time, race.best_before)
+	if not race.daily.is_empty():
+		var kept: Dictionary = race.daily_tries if not race.daily_tries.is_empty() else SaveData.daily_on(int(race.daily["day"]))
+		best = daily_best_line(kept, race.player_finish)
 	if best != "":
 		var lit: bool = race.new_best or race.new_best_time
 		_text(Vector2(16, y + 38), best, 10, Color("#5dff8a") if lit else Color(1, 1, 1, 0.7))
@@ -211,6 +252,80 @@ func _summary(field: Array[Dictionary]) -> void:
 	_text(Vector2(bx + 136, ty), str(race.score.total()), 10, GOLD)
 	if not race.new_unlocks.is_empty():
 		_text(Vector2(16, 172), Hud.unlock_line(race.new_unlocks), 10, Color("#5dff8a", 0.6 + 0.4 * sin(time * 6.0)))
+
+
+## Survival's results: how far, against the best, the legs and the time on the left, the car
+## on its step, the road the run took on the right.
+func _survival() -> void:
+	var run: Survival = race.run
+	_text(Vector2(16, 52), "SURVIVAL   " + Hud.stage_line(race), 10, Color(1, 1, 1, 0.8))
+	var y := 92.0
+	_text(Vector2(16, y), "TIME UP", 28, GOLD)
+	var dist := "DISTANCE  " + Settings.distance_text(race.survival_distance(), Settings.units)
+	_text(Vector2(16, y + 22), dist, 14, Color.WHITE)
+	var best := survival_best_line(race.survival_new_best, race.survival_best_before, Settings.units)
+	if best != "":
+		_text(Vector2(16, y + 38), best, 10, Color("#5dff8a") if race.survival_new_best else Color(1, 1, 1, 0.7))
+	_text(Vector2(16, y + 52), "LEGS  %d     TIME  %s" % [run.leg + 1, Hud.clock_text(race.race_time)], 10, GOLD)
+	var bx := 196.0
+	var rows_b: Array[Dictionary] = race.score.summary()
+	var by := 70.0
+	for i in mini(rows_b.size(), 6):
+		var r: Dictionary = rows_b[i]
+		var label: String = r["name"] if r["count"] == 1 else "%s x%d" % [r["name"], r["count"]]
+		_text(Vector2(bx, by + i * 12), label, 9, Color.WHITE)
+		_text(Vector2(bx + 136, by + i * 12), "+%d" % r["points"], 9, Color("#5dff8a"))
+	var ty := by + mini(rows_b.size(), 6) * 12 + 4
+	_text(Vector2(bx, ty), "POINTS", 10, GOLD)
+	_text(Vector2(bx + 136, ty), str(race.score.total()), 10, GOLD)
+	# The car on a step of its own
+	var block := Rect2(PODIUM_X - 50, PODIUM_Y - 44, 100, 44)
+	draw_rect(block, Color("#5a5f78"))
+	draw_rect(Rect2(block.position, Vector2(block.size.x, 4)), Color("#8a90aa"))
+	draw_rect(Rect2(block.position.x, block.end.y - 3, block.size.x, 3), Color("#3a3d52"))
+	var strips := _strips(race.car_id)
+	if not strips.is_empty():
+		CarSprites.draw_player(self, strips, Vector2(PODIUM_X, block.position.y), 64.0, 0.0, false)
+	_text_centered(Vector2(PODIUM_X, block.position.y + 28), Settings.distance_text(race.survival_distance(), Settings.units), 12, Color.WHITE)
+	# The road it took
+	_panel_frame()
+	_text_centered(Vector2(PANEL.get_center().x, PANEL.position.y + 26), "THE ROAD SO FAR", 13, GOLD)
+	var legs := leg_rows(run)
+	for i in legs.size():
+		var r: Dictionary = legs[i]
+		var ry := PANEL.position.y + 40 + i * 28
+		var band := Rect2(PANEL.position.x + 36, ry, PANEL.size.x - 44, 24)
+		var bcol: Color = BANDS[(int(r["stage"]) + 1) % BANDS.size()]  # (not the gold: that's the leg it ended on)
+		draw_rect(band, Color(bcol, 0.85 if r["current"] else 0.5))
+		if r["current"]:
+			draw_rect(Rect2(band.position.x - 2, band.position.y, 2, band.size.y), GOLD)
+		draw_circle(Vector2(PANEL.position.x + 20, ry + 12), 10.0, Color(GOLD, 0.9) if r["current"] else Color("#3a4a8a"))
+		_text_centered(Vector2(PANEL.position.x + 20, ry + 16), str(r["leg"]), 11, NIGHT if r["current"] else Color.WHITE)
+		_text(Vector2(band.position.x + 8, ry + 11), Stages.stage_name(int(r["stage"])).to_upper(), 9, Color.WHITE)
+		_text(Vector2(band.position.x + 8, ry + 21), "OUT OF TIME HERE" if r["current"] else "CLEAR", 8, GOLD if r["current"] else Color(1, 1, 1, 0.75))
+
+
+## The daily run's tries today, in place of the field: the best times, this one marked.
+func _daily_panel() -> void:
+	_panel_frame()
+	var day := int(race.daily["day"])
+	_text_centered(Vector2(PANEL.get_center().x, PANEL.position.y + 26), "DAILY RUN", 13, GOLD)
+	_text_centered(Vector2(PANEL.get_center().x, PANEL.position.y + 42), Daily.date_text(day), 9, Color(1, 1, 1, 0.75))
+	var t := DailyCard.lines(race.daily, day, race.daily_tries if not race.daily_tries.is_empty() else SaveData.daily)
+	var times: Array = Daily.tries_on(race.daily_tries if not race.daily_tries.is_empty() else SaveData.daily, day)["times"]
+	for i in times.size():
+		var ry := PANEL.position.y + 60 + i * ROW_H
+		var mine := is_equal_approx(float(times[i]), race.player_finish)
+		var band := Rect2(PANEL.position.x + 36, ry, PANEL.size.x - 44, ROW_H - 4)
+		draw_rect(band, Color(BANDS[i], 0.85 if mine else 0.5))
+		if mine:
+			draw_rect(Rect2(band.position.x - 2, band.position.y, 2, band.size.y), GOLD)
+		_badge(Vector2(PANEL.position.x + 20, ry + (ROW_H - 4) / 2.0), i + 1)
+		_text(Vector2(band.position.x + 8, ry + 17), "THIS TRY" if mine else "TRY", 9, Color.WHITE)
+		var tt := Hud.clock_text(float(times[i]))
+		_text(Vector2(band.end.x - 6 - _width(tt, 11), ry + 17), tt, 11, Color.WHITE)
+	_text_centered(Vector2(PANEL.get_center().x, PANEL.end.y - 40), t["tries"], 10, Color(1, 1, 1, 0.8))
+	_text_centered(Vector2(PANEL.get_center().x, PANEL.end.y - 24), "%s   %s TRAFFIC" % [t["weather"], t["traffic"]], 9, Color(1, 1, 1, 0.6))
 
 
 ## The top three on their steps: second left, first middle and higher, third right.

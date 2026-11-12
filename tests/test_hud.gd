@@ -79,8 +79,9 @@ func test_the_longest_text_fits_at_every_scale() -> void:
 			var e := func(n: String) -> float: return Hud.element_scale(n, touch, k)
 			# The stage under the route bar
 			for i in Stages.count():
-				var line := Hud.stage_line(i, Stages.stage_name(i))
-				check(UiText.width(line, _px(9, e.call("stage"))) <= lay["stage"].size.x, label + "fits: " + line)
+				var stage_name := Stages.stage_name(i).to_upper()
+				for line in [Hud.stage_text(i, Stages.stage_name(i)), "LEG 99  " + stage_name, "DAILY RUN  " + stage_name]:
+					check(UiText.width(line, _px(9, e.call("stage"))) <= lay["stage"].size.x, label + "fits: " + line)
 			# The device and the dev keys
 			if not touch:
 				var dev_w: float = lay["device"].size.x - 4.0 * e.call("device")

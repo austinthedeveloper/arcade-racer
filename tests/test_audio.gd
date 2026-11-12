@@ -564,7 +564,7 @@ func _finished(traffic := false) -> Node:
 
 func _car_loops(r: Node) -> float:
 	var most := 0.0
-	for cue in ["engine_low", "engine_high", "skid", "offroad", "wind", "draft", "rival", "horn"]:
+	for cue in ["engine_low", "engine_high", "turbo_whine", "skid", "offroad", "wind", "draft", "rival", "horn"]:
 		most = maxf(most, r.audio.levels[cue])
 	return most
 
@@ -605,3 +605,103 @@ func test_the_engine_stops_idling_once_time_is_up_and_the_car_stops() -> void:
 		step(r, 1, input(1.0))
 	step(r, 60, input(1.0))
 	near(_car_loops(r), 0.0, 0.01, "then quiet, not idling on under TIME UP")
+
+
+# --- Engine note per car (PR-18) ---------------------------------------------------------
+
+func test_every_car_has_an_engine_note() -> void:
+	var used := {}
+	for car: Dictionary in Cars.LIST:
+		var model := Cars.engine_model(car)
+		check(car.has("engine"), car["id"] + " picks its engine note in Cars.LIST")
+		check(EngineModels.MODELS.has(model), car["id"] + " maps to a model: " + model)
+		used[model] = true
+		for layer in ["low", "high"]:
+			var cue := EngineModels.cue(model, layer)
+			check(SoundBank.loops(cue), "%s's %s layer, %s, is a loop" % [model, layer, cue])
+	eq(used.size(), EngineModels.MODELS.size(), "every model is some car's")
+	eq(Cars.engine_model(Cars.find("car_hauler")), "v8", "the Hauler: a V8")
+	eq(Cars.engine_model(Cars.find("car_halo")), "small", "the Halo: the small, high-revving note")
+	eq(Cars.engine_model({}), EngineModels.DEFAULT, "a car with none: the turbo")
+
+
+func test_the_engine_models_pitch_curves_differ() -> void:
+	var names: Array = EngineModels.MODELS.keys()
+	for name: String in names:
+		for layer in ["low", "high"]:
+			var last := 0.0
+			for rpm in [0.0, 0.25, 0.5, 0.75, 1.0, 1.2]:
+				var p := EngineModels.pitch(name, layer, rpm)
+				check(p > last, "%s %s pitch rises with the revs (%.2f at %.2f)" % [name, layer, p, rpm])
+				last = p
+		near(EngineModels.low_mix(name, 0.0), 1.0, 0.001, name + " idles on its low layer")
+		near(EngineModels.high_mix(name, 0.0), 0.0, 0.001, name + " no high layer at idle")
+		check(EngineModels.high_mix(name, 1.0) > 0.5, name + " the high layer in at the top")
+	for i in names.size():
+		for j in range(i + 1, names.size()):
+			var a: String = names[i]
+			var b: String = names[j]
+			check(EngineModels.cue(a, "low") != EngineModels.cue(b, "low"), "%s and %s idle on different loops" % [a, b])
+			for rpm in [0.0, 1.0]:
+				check(absf(EngineModels.pitch(a, "low", rpm) - EngineModels.pitch(b, "low", rpm)) > 0.05,
+					"%s and %s at different pitches at %.1f revs" % [a, b, rpm])
+	# The small engine revs highest (its loop also fires fastest), the V8 lowest.
+	check(EngineModels.pitch("small", "low", 1.0) > EngineModels.pitch("turbo", "low", 1.0), "small over turbo at the top")
+	check(EngineModels.pitch("turbo", "low", 1.0) > EngineModels.pitch("v8", "low", 1.0), "turbo over V8 at the top")
+	check(EngineModels.high_mix("small", 0.5) > EngineModels.high_mix("turbo", 0.5), "the small one gets buzzy sooner")
+	check(EngineModels.high_mix("v8", 1.0) < 1.0 and EngineModels.low_mix("v8", 1.0) >= 0.5, "the V8 keeps its burble")
+
+
+func test_only_the_turbo_whines_and_pops() -> void:
+	for name: String in EngineModels.MODELS:
+		var turbo := name == "turbo"
+		eq(EngineModels.pops(name), turbo, name + " pops on a shift")
+		check((EngineModels.whine_level(name, 1.0, true) > 0.5) == turbo, name + " whines at full revs")
+	near(EngineModels.whine_level("turbo", 0.1, true), 0.0, 0.001, "no whine at low revs")
+	check(EngineModels.whine_level("turbo", 0.9, false) < EngineModels.whine_level("turbo", 0.9, true), "louder spooling")
+
+
+func test_the_race_plays_the_cars_engine_note() -> void:
+	var r := fresh_race()
+	eq(r.audio.engine_model, "turbo", "the Vega: turbo")
+	eq(r.audio.loop_cue("engine_low"), "engine_low", "its low layer")
+	step(r, 185 + 240, input(1.0))
+	check(r.audio.levels["turbo_whine"] > 0.1, "the whine spools under full throttle (%.2f)" % r.audio.levels["turbo_whine"])
+	check(count("turbo_pop") > 0, "a pop on an upshift")
+	near(r.audio.pitches["engine_low"], EngineModels.pitch("turbo", "low", RaceAudio.engine_rpm(r.player.speed_percent())),
+		0.001, "pitch from the model")
+	for id in ["car_hauler", "car_halo"]:
+		r.car_id = id
+		r.start_race()
+		audio_node().history.clear()
+		step(r, 185 + 240, input(1.0))
+		var model := Cars.engine_model(Cars.find(id))
+		eq(r.audio.engine_model, model, id + "'s note")
+		eq(r.audio.loop_cue("engine_low"), EngineModels.cue(model, "low"), id + " plays its model's low loop")
+		var p: AudioStreamPlayer = r.audio._loops.get("engine_low")
+		if p != null:
+			check(p.stream == SoundBank.stream(EngineModels.cue(model, "low")), id + "'s loop on the player")
+		near(r.audio.levels["turbo_whine"], 0.0, 0.001, id + " no whine")
+		eq(count("turbo_pop"), 0, id + " no pop")
+		near(r.audio.pitches["engine_low"], EngineModels.pitch(model, "low", RaceAudio.engine_rpm(r.player.speed_percent())),
+			0.001, id + " pitch from its model")
+
+
+func test_the_sweep_tool_renders_each_note_differently() -> void:
+	var sweep: GDScript = load("res://tools/engine_sweep.gd")
+	var crossings := {}
+	for name: String in EngineModels.MODELS:
+		var s: PackedFloat32Array = sweep.render(name, 1.0)
+		eq(s.size(), sweep.RATE, name + ": a second of sweep")
+		var peak := 0.0
+		var n := 0
+		for i in range(1, s.size()):
+			peak = maxf(peak, absf(s[i]))
+			if (s[i] >= 0.0) != (s[i - 1] >= 0.0):
+				n += 1
+		check(peak > 0.05 and peak < 1.0, "%s heard, unclipped (peak %.2f)" % [name, peak])
+		crossings[name] = n
+	check(crossings["small"] > crossings["v8"], "the small one buzzes, the V8 rumbles (%s)" % str(crossings))
+	var path := scratch("engine_v8.wav")
+	eq(sweep.write_wav(path, sweep.render("v8", 0.2)), OK, "writes a WAV")
+	check(FileAccess.get_file_as_bytes(path).size() > 44, "with samples")

@@ -15,6 +15,19 @@ the release workflow puts that section at the top of the GitHub Release notes
 - The attract mode tours the game: left on the title, the demo races run on one after another
   through every stage, each in the next car with a title card saying which, and the controls
   card shows once a loop before the title comes back.
+- Survival (MP-13), on mode select: one endless road. Cross a stage's finish line and you drive
+  straight on into the next stage you've reached, round and back to Palm Coast, with more
+  traffic on every leg and more cars up the road at every checkpoint. Each checkpoint still
+  adds time, but a little less than the last, until it adds none: the run ends when the clock
+  does, and the score is how far you got. The HUD shows the distance against your best, and
+  the results the road you took. Your best is kept per profile.
+- Daily Run (MP-14), on mode select: one stage, car, weather and traffic mix a day, the same
+  for everyone, raced alone against the clock. Its card shows today's pick and your best three
+  tries today; any car or stage can come up, reached or not.
+- Every car has its own engine note (PR-18): a buzzy, high-revving small engine (Solano Spyder,
+  Dune Skipper, Halo EV, Cyclone), a deep, lumpy V8 (Bruiser 440, Mesa Rumbler, Phantom, Hauler)
+  and a turbo with a whine that spools up and a pop on each upshift (Vega GT, Kestrel R,
+  Tempest LM, Zenith X).
 
 ### Changed
 

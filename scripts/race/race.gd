@@ -25,6 +25,10 @@ const FINISH_BRAKING := Cfg.MAX_SPEED / 3.0  # on top of coasting; stops from to
 ## The results come up once the slow-down is over (Enter brings them sooner).
 const RESULTS_AFTER := FINISH_SLOWMO_HOLD + FINISH_SLOWMO_EASE
 const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
+## Survival's checkpoint traffic (Survival.checkpoint_cars) comes in this far up the road,
+## past the draw distance, spread over the span after it.
+const SURVIVAL_BURST_FROM := Cfg.DRAW_DISTANCE * Cfg.SEGMENT_LENGTH
+const SURVIVAL_BURST_SPAN := 150000.0
 
 var track: Track
 var stage_index := 0  # into Stages
@@ -38,6 +42,19 @@ var demo := false
 var time_attack := false
 ## Free Drive: no clock, no rivals, no finish; the road loops on until you quit (pause menu).
 var free_drive := false
+## Survival (MP-13): the stages chained into one endless road, solo, the clock's bonuses
+## shrinking at each checkpoint until TIME UP ends the run; the score is the distance. `run`
+## is the run's legs and clock (Survival), made afresh by start_race.
+var survival := false
+var run: Survival
+var _leg_start := 0.0  # player.distance where this leg's driving started (the first: _start_distance)
+var survival_new_best := false  # this run beat the profile's best distance
+var survival_best_before := 0.0  # the best distance before this run (world units)
+var survival_score := -1.0  # the run's distance as TIME UP came (the car coasts on), -1 before
+## The daily run (MP-14): the day's pick (Daily.pick: stage, car, weather, traffic), {} for
+## any other race. Solo against the stage's clock; each finish or TIME UP is a try for the day.
+var daily: Dictionary = {}
+var daily_tries: Dictionary = {}  # the day's tries as kept after this one (SaveData.record_daily)
 ## Mirror mode (WS-6): the stage flipped left for right (Stages.build). It shares the stage's
 ## best times and ghost: the same road, the same distances.
 var mirror := false
@@ -242,9 +259,18 @@ func start_race() -> void:
 	end_playtest("quit")
 	InputRouter.speed_factor = 0.0
 	_frame = 0
-	track = Stages.build(stage_index, mirror)
+	if survival:
+		run = Survival.make(Survival.loop(func(i: int) -> bool: return Unlocks.stage_unlocked(i)))
+		stage_index = run.stage()
+		survival_new_best = false
+		survival_score = -1.0
+		survival_best_before = float(SaveData.survival["best"])
+	track = Stages.build(stage_index, mirror, run.next_stage() if survival else -2)
 	# The sun drops stage by stage in a Grand Tour; a single race keeps the stage's own hour
 	hour = Sundown.apply(track, stage_index, Stages.count(), tour)
+	if not daily.is_empty():
+		track.theme["weather"] = Daily.weather(daily, Weather.of(track.theme))
+	daily_tries = {}
 	CarSprites.shadow_length = Sundown.shadow_length(Sundown.lit_hour(track.theme))
 	player = PlayerCar.new()
 	var car := Cars.find(car_id)
@@ -254,6 +280,7 @@ func start_race() -> void:
 	player.reset(_start_segment * Cfg.SEGMENT_LENGTH)
 	player.distance = _start_segment * Cfg.SEGMENT_LENGTH  # that far along the route, so the finish is where it is drawn
 	_start_distance = player.distance
+	_leg_start = _start_distance
 	stats_recorded = false
 	if not is_nan(_drive_x):
 		player.x = _drive_x  # already on that line, past any roadside railing
@@ -274,15 +301,18 @@ func start_race() -> void:
 	traffic = Traffic.new()
 	var cars := int(track.theme.get("traffic", TRAFFIC_COUNT))
 	var traffic_count := cars if demo else Settings.traffic_count(cars)
+	if not daily.is_empty():
+		traffic_count = Daily.traffic_count(daily, traffic_count)
+		traffic.big_share = Daily.big_share(daily)
 	if _no_traffic or ((time_attack or free_drive) and not Settings.attack_traffic):
 		traffic_count = 0
-	traffic.spawn(track, traffic_count, 7, player.position + Cfg.PLAYER_Z)  # none just ahead of the start (RC-14)
+	traffic.spawn(track, traffic_count, int(daily.get("traffic_seed", 7)), player.position + Cfg.PLAYER_Z)  # none just ahead of the start (RC-14)
 	if tour and tour_state == null:
 		tour_state = Tour.new()
 		tour_state.start_stage = stage_index
 	rivals = Rivals.new()
 	difficulty = Difficulty.of(Settings.difficulty)
-	rivals.spawn(track, player, car_id, 0 if _no_rivals or time_attack or free_drive or online != null else Rivals.COUNT,
+	rivals.spawn(track, player, car_id, 0 if _no_rivals or solo() else Rivals.COUNT,
 		Rivals.SEED + stage_index, difficulty, tour_state.drivers if tour else [], Rivals.stage_pace_of(stage_index))
 	_shown.clear()
 	if online != null:
@@ -302,10 +332,14 @@ func start_race() -> void:
 	countdown = 0.0 if demo else COUNTDOWN_TIME
 	clock = stage_clock(track.theme, track.checkpoints.size())
 	time_left = Settings.race_time(clock[0]) + (tour_state.carried if tour else 0.0)
+	if survival:
+		time_left = Settings.race_time(Survival.start_time(clock[0]))
 	if not is_nan(_time_left_shot):
 		time_left = _time_left_shot
 	after = After.RETRY
 	checkpoint_bonus = Settings.race_time(clock[1], difficulty.clock_bonus) if clock.size() > 1 else 0.0
+	if survival:
+		checkpoint_bonus = survival_bonus(clock[1])
 	race_time = 0.0
 	finish_age = 0.0
 	_results_shown = false
@@ -700,7 +734,8 @@ func _physics_process(dt: float) -> void:
 				quit_requested.emit()
 				return
 	var over := state == State.TIME_UP or state == State.FINISHED
-	if state == State.FINISHED and not _results_shown and (inp.confirm_pressed or (finish_age >= RESULTS_AFTER and watching == null) or _staged):
+	var ended := state == State.FINISHED or (state == State.TIME_UP and survival)  # (Survival's results come at TIME UP)
+	if ended and not _results_shown and (inp.confirm_pressed or (finish_age >= RESULTS_AFTER and watching == null) or _staged):
 		if not inp.confirm_pressed and not _staged and replay_offered() and not _replay_done and not replay_trace.frames.is_empty():
 			start_replay()  # after the finish spectacle, the replay first (RC-17)
 			_redraw()
@@ -756,11 +791,18 @@ func _physics_process(dt: float) -> void:
 				state = State.TIME_UP
 				record_stats(true)
 				end_playtest("time_up")
-				_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", Callouts.HOLD)
+				if survival:
+					_survival_over()
+				else:
+					if not daily.is_empty() and _saves():
+						daily_tries = SaveData.record_daily(int(daily["day"]), INF)
+					_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", Callouts.HOLD)
 
 	# Past the line the world drops into slow motion for a moment (sim, the world's tick), and
 	# the car brakes itself to a stop
 	var sim := dt
+	if state == State.TIME_UP and survival:
+		finish_age += dt
 	if state == State.FINISHED:
 		finish_age += dt
 		sim = dt * finish_time_scale(finish_age)
@@ -998,7 +1040,9 @@ func _check_progress() -> void:
 		score.checkpoint()
 		if playtest != null:
 			playtest.checkpoint(next_checkpoint)
-		if time_attack:
+		if survival:
+			_survival_checkpoint(Settings.race_time(run.checkpoint(clock[next_checkpoint]), difficulty.clock_bonus))
+		elif time_attack:
 			split = race_time - ghost.time_at(player.distance, 1.0 / Engine.physics_ticks_per_second) if ghost != null else NAN
 			_banner("CHECKPOINT", "" if is_nan(split) else split_text(split) + " vs best", 2.0, Callouts.Kind.CHECKPOINT)
 		else:
@@ -1008,7 +1052,9 @@ func _check_progress() -> void:
 			callouts.push(Callouts.Kind.TIME_EXTENDED, "+%d SEC" % checkpoint_bonus)
 			checkpoint_bonus = Settings.race_time(clock[next_checkpoint + 1], difficulty.clock_bonus) if next_checkpoint + 1 < clock.size() else 0.0
 			_catch_up()
-	if player.distance >= finish_distance:
+	if player.distance >= finish_distance and survival:
+		next_leg()
+	elif player.distance >= finish_distance:
 		state = State.FINISHED
 		finish_age = 0.0
 		if online != null:
@@ -1023,6 +1069,8 @@ func _check_progress() -> void:
 		new_best_time = record_finish()
 		record_stats(true)
 		end_playtest("finish")
+		if not daily.is_empty() and _saves():
+			daily_tries = SaveData.record_daily(int(daily["day"]), race_time)
 		if time_attack:
 			_save_ghost()
 		var mins := int(race_time) / 60
@@ -1036,7 +1084,7 @@ func _check_progress() -> void:
 		elif time_attack:
 			var against := "" if ghost == null else split_text(race_time - ghost.time) + " vs best   "
 			prompt = ("NEW BEST!   " if new_best else "") + against + prompt
-		if _saves() and Unlocks.earns_secret(stage_index, touched_traffic, not traffic.cars.is_empty()):
+		if _saves() and daily.is_empty() and Unlocks.earns_secret(stage_index, touched_traffic, not traffic.cars.is_empty()):
 			SaveData.unlock(Unlocks.SECRET_CAR)
 		if _saves() and Unlocks.earns_mirror(place, not rivals.cars.is_empty()):
 			SaveData.unlock(Unlocks.mirror_id(stage_index))
@@ -1080,8 +1128,8 @@ func _tour_finish() -> String:
 ## Autodriven runs and partway starts (dev flags) aren't the player's, so they aren't saved.
 ## Returns true for a new best time.
 func record_finish() -> bool:
-	if not _saves():
-		return false
+	if not _saves() or not daily.is_empty():
+		return false  # (the daily run's traffic and car are the day's: no stage best from it)
 	var placed := not rivals.cars.is_empty()
 	var goes_on := tour and (not placed or Tour.advances(place))
 	return SaveData.record_finish(stage_index, car_id, race_time, place if placed else 0, goes_on)
@@ -1109,6 +1157,10 @@ func playtest_mode() -> String:
 		return "free_drive"
 	if time_attack:
 		return "time_attack"
+	if survival:
+		return "survival"
+	if not daily.is_empty():
+		return "daily"
 	return "tour" if tour else "single"
 
 
@@ -1154,6 +1206,104 @@ static func stage_clock(theme: Dictionary, checkpoints: int) -> Array[float]:
 ## Whether the clock runs down to TIME UP (not in Time Attack, Free Drive or online).
 func timed() -> bool:
 	return not time_attack and not free_drive and online == null
+
+
+## A race with no AI rivals: Time Attack, Free Drive, Survival, the daily run, online (where
+## the other players are the rivals).
+func solo() -> bool:
+	return time_attack or free_drive or survival or not daily.is_empty() or online != null
+
+
+## Survival (MP-13): the bonus for the next checkpoint, `base` seconds being the stage's own
+## for the stretch after it, after the run's checkpoints so far (Survival.bonus), the timer
+## option and the difficulty.
+func survival_bonus(base: float) -> float:
+	return Settings.race_time(Survival.bonus(base, run.passed), difficulty.clock_bonus)
+
+
+## The run's distance so far (Survival.distance), world units, held from TIME UP on; 0
+## outside Survival.
+func survival_distance() -> float:
+	if survival_score >= 0.0:
+		return survival_score
+	return run.distance(player.distance - _leg_start) if survival and run != null else 0.0
+
+
+## A Survival checkpoint (or a leg's finish line) passed, giving `bonus` seconds: the clock,
+## its callouts, the next one's bonus, and more traffic up the road (the ramp).
+func _survival_checkpoint(bonus: float) -> void:
+	time_left += bonus
+	var sub := "TIME EXTENDED +%d" % bonus if bonus > 0.0 else "NO MORE TIME: DRIVE ON"
+	_banner("CHECKPOINT!", sub, 2.0, Callouts.Kind.NONE)
+	callouts.push(Callouts.Kind.CHECKPOINT)
+	if bonus > 0.0:
+		callouts.push(Callouts.Kind.TIME_EXTENDED, "+%d SEC" % bonus)
+	checkpoint_bonus = survival_bonus(clock[next_checkpoint + 1]) if next_checkpoint + 1 < clock.size() else 0.0
+	if not _no_traffic:
+		traffic.burst(track, player.position + Cfg.PLAYER_Z + SURVIVAL_BURST_FROM, Survival.checkpoint_cars(), SURVIVAL_BURST_SPAN)
+
+
+## Survival (MP-13): the leg's finish line crossed. The run banks it and goes on into the next
+## stage's start at the same speed, on the same line: the next stage's road, traffic (more of
+## it: Survival.traffic_for), power-ups, sky and clock, the time it gives for the stretch to
+## its first checkpoint added.
+func next_leg() -> void:
+	var over := maxf(0.0, player.distance - finish_distance)
+	var next := run.next_stage()
+	var base := stage_clock(Stages.theme(next), Track.CHECKPOINT_FRACTIONS.size())[0]
+	var bonus := Settings.race_time(run.finish_leg(finish_distance - _leg_start, base), difficulty.clock_bonus)
+	stage_index = next
+	_load_leg(over)
+	_survival_checkpoint(bonus)
+	_banner("LEG %d" % (run.leg + 1), Stages.stage_name(stage_index).to_upper(), 2.5)
+
+
+## The next leg's stage put under the car, `over` world units past its start line's spot
+## (what it ran past the last finish line). Nothing else about the car changes.
+func _load_leg(over: float) -> void:
+	track = Stages.build(stage_index, false, run.next_stage())
+	hour = Sundown.apply(track, stage_index, Stages.count(), false)
+	CarSprites.shadow_length = Sundown.shadow_length(Sundown.lit_hour(track.theme))
+	player.position = over
+	player.last_position = over
+	player.distance = over
+	_leg_start = 0.0
+	player.x = clampf(player.x, -1.0, 1.0)
+	player.last_x = player.x
+	player.airborne = false
+	player.air_height = 0.0
+	player.road_y = track.height_at(player.position + Cfg.PLAYER_Z)
+	power_ups = PowerUps.new()
+	if Settings.power_ups:
+		power_ups.place(track, PowerUps.seed_for(stage_index))
+	traffic = Traffic.new()
+	var cars := 0 if _no_traffic else Survival.traffic_for(run.leg, Settings.traffic_count(int(track.theme.get("traffic", TRAFFIC_COUNT))))
+	traffic.spawn(track, cars, 7 + run.leg, player.position + Cfg.PLAYER_Z)
+	clock = stage_clock(track.theme, track.checkpoints.size())
+	finish_distance = track.finish_index * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z
+	checkpoint_distances.clear()
+	for c in track.checkpoints:
+		checkpoint_distances.append(c * Cfg.SEGMENT_LENGTH - Cfg.PLAYER_Z)
+	next_checkpoint = 0
+	background.set_theme(track.theme, track.next_theme)
+	background.mirrored = false
+	road.track = track
+	road.rivals = rivals.cars
+	fx.clear()
+	fx.set_weather(track.theme, NAN)
+
+
+## TIME UP in Survival: the run is over. Its distance against the profile's best (saved when
+## the run is the player's), then the results.
+func _survival_over() -> void:
+	finish_age = 0.0
+	after = After.MENU
+	survival_best_before = float(SaveData.survival["best"])
+	survival_score = survival_distance()
+	if _saves():
+		survival_new_best = SaveData.record_survival(survival_distance(), run.leg + 1, car_id)
+	var said := Settings.distance_text(survival_distance(), Settings.units)
+	_banner("TIME UP", "%s   %s" % [said, "NEW BEST!" if survival_new_best else "Enter: results"], Callouts.HOLD)
 
 
 ## Online after the finish (ON-10): who to watch among `cars` (the rivals), the player out in
@@ -1292,7 +1442,7 @@ func _saves() -> bool:
 
 ## Whether this race shows the instant replay at its finish (RC-17).
 func replay_offered() -> bool:
-	return instant_replay and not demo and online == null and not free_drive
+	return instant_replay and not demo and online == null and not free_drive and not survival
 
 
 ## The instant replay starts (RC-17): stand-in cars for the field, put where the trace's frames
@@ -1404,7 +1554,7 @@ func _callouts_after_tick(earned: int, place_before: int) -> void:
 		callouts.push(Callouts.for_bonus(b["name"]), "", Callouts.SHOW_TIME, b.get("chain", 0))
 	if state != State.RACING:
 		return  # (the finish has its own)
-	if not _final_stretch and not free_drive and Callouts.in_final_stretch(player.distance, finish_distance):
+	if not _final_stretch and not free_drive and not survival and Callouts.in_final_stretch(player.distance, finish_distance):
 		_final_stretch = true
 		callouts.push(Callouts.Kind.FINAL_STRETCH)
 	if place == 1 and place_before > 1 and not rivals.cars.is_empty() and race_time - _led_at >= Callouts.LEAD_GAP:
