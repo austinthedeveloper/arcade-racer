@@ -107,8 +107,9 @@ func choose(m: MenuInput, confirm: bool) -> int:
 	return Choice.NONE
 
 
-## The field in race order: {place, name, car, time (-1 still racing), you}.
-static func rows(standings: Array, player: PlayerCar, player_finish: float, player_car: String) -> Array[Dictionary]:
+## The field in race order: {place, name, car, time (-1 still racing), you}. A `split` race
+## (MP-18) names its two players P1 and P2, and both are "you".
+static func rows(standings: Array, player: PlayerCar, player_finish: float, player_car: String, split := false) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for i in standings.size():
 		var car: PlayerCar = standings[i]
@@ -116,11 +117,21 @@ static func rows(standings: Array, player: PlayerCar, player_finish: float, play
 		var r := car as RivalCar
 		out.append({
 			"place": i + 1,
-			"name": "YOU" if you else r.profile.driver,
+			"name": (SplitScreen.NAMES[0] if split else "YOU") if you else r.profile.driver,
 			"car": player_car if you else r.car_id,
 			"time": player_finish if you else (r.finish_time if r.finished else -1.0),
-			"you": you,
+			"you": you or (split and r.remote),
 		})
+	return out
+
+
+## A split race's two players (MP-18) in `field` (rows): P1's row, then P2's.
+static func split_rows(field: Array[Dictionary]) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for player_name: String in SplitScreen.NAMES:
+		for r in field:
+			if r["you"] and r["name"] == player_name:
+				out.append(r)
 	return out
 
 
@@ -187,8 +198,11 @@ func _draw() -> void:
 		var next := Stages.next(race.stage_index)
 		_text(Vector2(16, 64), "NEXT  " + Stages.stage_name(next).to_upper(), 9, Color(GOLD, 0.35 + 0.65 * flow_share))
 	var order: Array = race.rivals.standings(race.player, race.player_finish)
-	var field := rows(order, race.player, race.player_finish, race.car_id)
-	_summary(field)
+	var field := rows(order, race.player, race.player_finish, race.car_id, race.p2 != null)
+	if race.p2 != null:
+		_split_summary(field)
+	else:
+		_summary(field)
 	_podium(field)
 	var tour: Tour = race.tour_state if race.tour else null
 	if tour != null and (race.after == race.After.TOUR_DONE or race.after == race.After.TOUR_OVER):
@@ -255,6 +269,25 @@ func _summary(field: Array[Dictionary]) -> void:
 		_text(Vector2(16, 172), Hud.unlock_line(race.new_unlocks), 10, Color("#5dff8a", 0.6 + 0.4 * sin(time * 6.0)))
 	if not race.new_stickers.is_empty():
 		_new_stickers(race.new_stickers, Vector2(16, 156))  # (over the unlock line, clear of the podium)
+
+
+## A split race's two players (MP-18), top left in place of the one player's summary: each
+## one's tag, place and time.
+func _split_summary(field: Array[Dictionary]) -> void:
+	var y := 96.0
+	var players := split_rows(field)
+	for i in players.size():
+		var r: Dictionary = players[i]
+		var col: Color = SplitScreen.COLORS[i]
+		var tag := Rect2(16, y - 18, 30, 22)
+		draw_rect(tag, col)
+		_text_centered(Vector2(tag.get_center().x, tag.end.y - 6), r["name"], 12, Color("#14102a"))
+		var place: int = r["place"]
+		_text(Vector2(56, y + 2), Rivals.ordinal(place), 24, PLACE_COLORS[place - 1] if place <= 3 else Color.WHITE)
+		var t: float = r["time"]
+		var tt := "TIME  " + Hud.clock_text(t) if t >= 0.0 else "OUT OF TIME"
+		_text(Vector2(118, y - 2), tt, 11, Color.WHITE if t >= 0.0 else Color(1, 1, 1, 0.6))
+		y += 40.0
 
 
 ## The stickers this run earned (MP-12): NEW STICKER, then each one small with its name, as many
@@ -389,7 +422,7 @@ func _field_panel(field: Array[Dictionary]) -> void:
 		_text(Vector2(band.position.x + 46, y + 12), r["name"], 9, Color.WHITE)
 		_text(Vector2(band.position.x + 46, y + 22), String(Cars.find(r["car"])["name"]).to_upper(), 8, Color(1, 1, 1, 0.7))
 		var t: float = r["time"]
-		var tt := Hud.clock_text(t) if t >= 0.0 else ("OUT" if race.cut_short else "RACING")
+		var tt := Hud.clock_text(t) if t >= 0.0 else ("OUT" if race.cut_short or (race.p2 != null and r["you"]) else "RACING")
 		var tw := _width(tt, 10)
 		_text(Vector2(band.end.x - 6 - tw, y + 17), tt, 10, Color.WHITE if t >= 0.0 else Color(1, 1, 1, 0.55))
 

@@ -9,7 +9,12 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
-<<<<<<< HEAD
+- Split-screen two player (MP-18): 2 PLAYERS on mode select puts two players on one screen,
+  player 1 on top and player 2 below, each with their own camera, among the same rivals and
+  traffic, in a Single Race or Free Drive (up and down on the card picks which). Player 1
+  drives as ever; player 2 takes the second gamepad, or with only one plugged in the keyboard's
+  W A S D with Tab for nitro (player 1 keeps the arrows). Each half shows the time, the place
+  and the speed, and the results show both players. Nothing a split race does is saved.
 - Sticker book (MP-12): twenty-four stickers to collect, from a first win and a chain of five
   near misses to a win mirrored, gold on every stage and the Grand Tour won. Each comes once,
   with a chime and a NEW STICKER card after the line, and shows on the results. Find the book
@@ -17,7 +22,6 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Completion page (MP-17): what's left, stage by stage: finished, won, the three medals and a
   mirrored win ticked off with a percentage for each, and the whole game's percentage with the
   stickers and the cars. The third page beside STATS.
-=======
 - UI scale: Options > Accessibility > UI scale, Normal or Large. Large draws the HUD a quarter
   bigger (the clock, the place, the route bar, nitro, the speedometer, the subtitles and the
   rest), everything still on screen and clear of everything else, and the menus' text bigger.
@@ -37,7 +41,6 @@ the release workflow puts that section at the top of the GitHub Release notes
   Dune Skipper, Halo EV, Cyclone), a deep, lumpy V8 (Bruiser 440, Mesa Rumbler, Phantom, Hauler)
   and a turbo with a whine that spools up and a pop on each upshift (Vega GT, Kestrel R,
   Tempest LM, Zenith X).
->>>>>>> feature/CLD-attract-ui-scale
 
 ### Changed
 

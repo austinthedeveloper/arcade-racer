@@ -40,6 +40,17 @@ var last_active_device := -1  # -1 is the keyboard
 var keyboard := DeviceProfile.keyboard()
 ## The GUID of the joypad that was driving while it's unplugged, or "".
 var unplugged_driver := ""
+## Split-screen two player (MP-18): on in a split race (the race sets it). Player 2 drives on
+## `state2` from the second joypad (split_pad_of), or with no second joypad from the keyboard's
+## second set (SPLIT_KEYS: WASD, Tab for nitro), which player 1's keyboard then leaves out:
+## player 1 keeps the arrows and the rest of its bindings, and every other joypad. Device
+## assignment on a page of its own is WH-18's.
+var split := false
+var state2 := DriveInput.new()
+var split_pad := -1  # player 2's joypad this tick, -1 for the keyboard's second set
+const SPLIT_KEYS := {"steer_left": [KEY_A], "steer_right": [KEY_D], "accelerate": [KEY_W], "brake": [KEY_S], "nitro": [KEY_TAB]}
+var _kb2_steer := 0.0
+var _prev2 := {"nitro": false, "pause": false, "horn": false}
 
 var _saved: Dictionary = {}  # guid -> DeviceProfile
 var _transient: Dictionary = {}  # device id -> DeviceProfile, for devices without a saved profile
@@ -76,12 +87,14 @@ func _physics_process(dt: float) -> void:
 		"shift_up": false, "shift_down": false, "view": false, "photo": false}
 
 	# Keyboard: digital steering ramps in, and snaps back faster than it ramps (key_steer)
-	var kb_target := Input.get_action_strength("steer_right") - Input.get_action_strength("steer_left")
+	split_pad = split_pad_of(Input.get_connected_joypads()) if split else -1
+	var p2_keys := split and split_pad < 0  # (player 2 on the keyboard's second set)
+	var kb_target := _strength("steer_right", p2_keys) - _strength("steer_left", p2_keys)
 	_kb_steer = key_steer(_kb_steer, kb_target, dt, Settings.key_steer_rates())
 	steer = _kb_steer * lerpf(1.0, 0.75, speed_factor)
-	throttle = Input.get_action_strength("accelerate")
-	brake = Input.get_action_strength("brake")
-	down["nitro"] = Input.is_action_pressed("nitro")
+	throttle = _strength("accelerate", p2_keys)
+	brake = _strength("brake", p2_keys)
+	down["nitro"] = _strength("nitro", p2_keys) > 0.0
 	down["pause"] = Input.is_action_pressed("pause")
 	down["restart"] = Input.is_action_pressed("restart")
 	down["confirm"] = Input.is_action_pressed("confirm")
@@ -103,6 +116,11 @@ func _physics_process(dt: float) -> void:
 	for device in Input.get_connected_joypads():
 		var prof := get_profile(device)
 		var r: Dictionary = _read_wheel(device, prof) if prof.kind == DeviceProfile.Kind.WHEEL else _read_pad(device, prof, dt)
+		if device == split_pad:  # player 2's: its own state2, though either player works the menus
+			drive_split(r)
+			menu_down["confirm"] = menu_down["confirm"] or r["menu_confirm"]
+			menu_down["back"] = menu_down["back"] or r["menu_back"]
+			continue
 		if absf(r["steer"]) > absf(steer):
 			steer = r["steer"]
 		throttle = maxf(throttle, r["throttle"])
@@ -118,6 +136,11 @@ func _physics_process(dt: float) -> void:
 		if r["active"]:
 			last_active_device = device
 
+	if p2_keys:
+		var keys := split_keys(func(code: int) -> bool: return Input.is_physical_key_pressed(code))
+		_kb2_steer = key_steer(_kb2_steer, keys["steer"], dt, Settings.key_steer_rates())
+		keys["steer"] = _kb2_steer
+		drive_split(keys)
 	state.steer = clampf(steer, -1.0, 1.0)
 	state.throttle = clampf(throttle, 0.0, 1.0)
 	state.brake = clampf(brake, 0.0, 1.0)
@@ -147,6 +170,60 @@ func _physics_process(dt: float) -> void:
 		state.kind = DriveInput.Kind.KEYBOARD
 		state.device_name = "Keyboard"
 		state.mapped = true
+
+
+## How far `action` is held on the keyboard: its InputMap strength, or with `leave_out` (a split
+## race, player 2 on the keyboard) only its keys that aren't player 2's (SPLIT_KEYS).
+func _strength(action: String, leave_out: bool) -> float:
+	if not leave_out:
+		return Input.get_action_strength(action)
+	for ev in InputMap.action_get_events(action):
+		var key := ev as InputEventKey
+		if key != null and not split_key(key.physical_keycode) and Input.is_physical_key_pressed(key.physical_keycode):
+			return 1.0
+	return 0.0
+
+
+## Whether `code` (a physical keycode) is one of player 2's keys in a split race (SPLIT_KEYS).
+static func split_key(code: int) -> bool:
+	for keys: Array in SPLIT_KEYS.values():
+		if keys.has(code):
+			return true
+	return false
+
+
+## Player 2's joypad in a split race among the `pads` connected (Input.get_connected_joypads):
+## the second one (device 1 with two plugged in), -1 for none (player 2 on the keyboard).
+static func split_pad_of(pads: Array) -> int:
+	return int(pads[1]) if pads.size() >= 2 else -1
+
+
+## Player 2's keyboard set read through `down` (physical keycode -> held): the steering's
+## target (-1, 0, 1), gas and brake (0 or 1) and nitro, as _read_pad gives them.
+static func split_keys(down: Callable) -> Dictionary:
+	var held := func(action: String) -> bool:
+		for code: int in SPLIT_KEYS[action]:
+			if down.call(code):
+				return true
+		return false
+	return {
+		"steer": (1.0 if held.call("steer_right") else 0.0) - (1.0 if held.call("steer_left") else 0.0),
+		"throttle": 1.0 if held.call("accelerate") else 0.0, "brake": 1.0 if held.call("brake") else 0.0,
+		"nitro": held.call("nitro"), "pause": false, "horn": false,
+	}
+
+
+## Player 2's controls this tick (state2) from a reading `r` of its device: steer, throttle,
+## brake, and nitro, pause and horn held (their presses on the tick they go down).
+func drive_split(r: Dictionary) -> void:
+	state2.steer = clampf(float(r["steer"]), -1.0, 1.0)
+	state2.throttle = clampf(float(r["throttle"]), 0.0, 1.0)
+	state2.brake = clampf(float(r["brake"]), 0.0, 1.0)
+	var down := {"nitro": bool(r.get("nitro", false)), "pause": bool(r.get("pause", false)), "horn": bool(r.get("horn", false))}
+	state2.nitro_pressed = down["nitro"] and not _prev2["nitro"]
+	state2.pause_pressed = down["pause"] and not _prev2["pause"]
+	state2.horn = down["horn"]
+	_prev2 = down
 
 
 ## The keyboard's steering one tick on: from `current` toward the keys' `target` (-1, 0 or 1)

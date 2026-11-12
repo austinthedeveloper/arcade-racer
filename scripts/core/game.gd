@@ -8,7 +8,7 @@ extends Node
 enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES, FINALE, CREDITS, CONTROLS, STICKERS, COMPLETION, DAILY }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
-const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
+const RACE_FLAGS := ["--autodrive", "--race", "--stage=", "--split"]
 const STAGED_JOYPAD := 99  # stage_unplug's joypad
 ## Under the tour's finale and the credits: NIGHT DRIVE (Radio), or where the build has no
 ## radio/ folder (the Web), NEON FM's first song.
@@ -17,6 +17,9 @@ static func finale_song() -> String:
 
 var screen := Screen.TITLE
 var mode_index := 0  # into ModeSelect.Item, the last mode picked
+## Split-screen two player (MP-18): 2 after 2 PLAYERS on mode select (mode_index is then the
+## mode it races in: SINGLE_RACE or FREE_DRIVE) or --split; 1 after any other mode.
+var players := 1
 var stage_index := 0  # into Stages
 var car_index := 0  # into Cars
 ## The MIRROR toggle on stage select (WS-6): races a stage mirrored where that's open
@@ -106,6 +109,10 @@ func _ready() -> void:
 	var mode := DevArgs.value("--mode")
 	if mode != "":
 		mode_index = ModeSelect.Item.get(mode.to_upper(), mode_index)
+	if DevArgs.has("--split") or mode_index == ModeSelect.Item.TWO_PLAYERS:  # (a race the flags start goes split; a Single Race unless --mode=free_drive)
+		players = 2
+		if not split_offered():
+			mode_index = ModeSelect.Item.SINGLE_RACE
 	for arg in OS.get_cmdline_user_args():
 		for flag: String in RACE_FLAGS:
 			quick = quick or arg.begins_with(flag)
@@ -254,6 +261,10 @@ func show_update(staged: Updater = null) -> void:
 func show_mode_select(item := -1) -> void:
 	var m := ModeSelect.new()
 	m.index = mode_index if item < 0 else item
+	if players > 1:
+		m.two_player_mode = mode_index if split_offered() else ModeSelect.Item.SINGLE_RACE
+		if item < 0:
+			m.index = ModeSelect.Item.TWO_PLAYERS
 	_set_menu(m, Screen.MODES)
 
 
@@ -323,12 +334,27 @@ func close_options() -> void:
 ## DAILY RUN picks everything: its card.
 func choose_mode(item: int) -> void:
 	mode_index = item
+	players = 1
 	if item == ModeSelect.Item.ONLINE or item == ModeSelect.Item.SURVIVAL:
 		show_car_select()
 	elif item == ModeSelect.Item.DAILY_RUN:
 		show_daily()
 	else:
 		show_stage_select()
+
+
+## 2 PLAYERS on mode select (MP-18): a split-screen race in `mode` (ModeSelect.TWO_PLAYER_MODES),
+## on to stage select and car select as that mode goes. Player 1 picks the car; player 2's is
+## the next one open (SplitScreen.second_car) until two-player select (MP-19).
+func choose_two_players(mode: int) -> void:
+	mode_index = mode if mode in ModeSelect.TWO_PLAYER_MODES else ModeSelect.Item.SINGLE_RACE
+	players = 2
+	show_stage_select()
+
+
+## Whether the mode picked races split screen: a Single Race or Free Drive.
+func split_offered() -> bool:
+	return mode_index in ModeSelect.TWO_PLAYER_MODES
 
 
 ## Back from car select: stage select, or mode select for ONLINE and SURVIVAL (which have none).
@@ -613,7 +639,8 @@ func _spawn_race(stage: int, car: int, demo: bool) -> void:
 	if not demo and mode_index == ModeSelect.Item.DAILY_RUN:
 		race.daily = Daily.pick(daily_day())
 	race.mirror = not demo and mirror_for(stage)
-	race.first_drive_on = first_drive_for(stage, demo)
+	race.players = players if not demo and split_offered() else 1
+	race.first_drive_on = first_drive_for(stage, demo) and race.players < 2
 	race.debug_overlay = debug_overlay
 	race.calibration = calibration
 	race.debug_panel = debug_panel
@@ -705,7 +732,8 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # plugs a different wheel in (replugged:same the same one), for the 3, 2, 1 that follows.
 # --car=car_mesa opens car select on that car. --screen=results stages a finish.
 # --mode=single_race (a ModeSelect.Item) picks the mode stage select is in; --mirror turns
-# its MIRROR toggle on.
+# its MIRROR toggle on. --split makes the race the flags start split screen (MP-18; --car2=ID
+# for player 2's car), a Single Race unless --mode=free_drive.
 # --screen=debug opens the F3 tuning panel (debug:camera, debug:actions etc. for a page:
 # Tuning.AREAS, actions, presets), over the title, or over a race given race flags.
 # --screen=stats opens the stats page (MP-11); --screen=profiles the driver picker (MP-10).
