@@ -16,6 +16,12 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Online players go by their profile's name and avatar (ON-8): the lobby shows each one's
   picture and name, and the race's standings, notices and results their names, instead of P1
   to P4. A player on an older build still shows as P2.
+- Split-screen two player (MP-18): 2 PLAYERS on mode select puts two players on one screen,
+  player 1 on top and player 2 below, each with their own camera, among the same rivals and
+  traffic, in a Single Race or Free Drive (up and down on the card picks which). Player 1
+  drives as ever; player 2 takes the second gamepad, or with only one plugged in the keyboard's
+  W A S D with Tab for nitro (player 1 keeps the arrows). Each half shows the time, the place
+  and the speed, and the results show both players. Nothing a split race does is saved.
 - Sticker book (MP-12): twenty-four stickers to collect, from a first win and a chain of five
   near misses to a win mirrored, gold on every stage and the Grand Tour won. Each comes once,
   with a chime and a NEW STICKER card after the line, and shows on the results. Find the book

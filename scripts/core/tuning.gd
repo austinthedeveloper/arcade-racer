@@ -152,6 +152,8 @@ const TABLE := {
 	"camera/far_distance": [2600.0, 1500.0, 5000.0, 100.0, "and world units behind the car"],
 	"camera/bumper_height": [450.0, 150.0, 1500.0, 25.0, "BUMPER view: world units above the road"],
 	"camera/bumper_distance": [150.0, 50.0, 1500.0, 25.0, "and world units behind the car's nose"],
+	"camera/split_height": [850.0, 400.0, 2000.0, 50.0, "split screen (MP-18): world units above the road"],
+	"camera/split_distance": [2100.0, 1500.0, 4000.0, 100.0, "and world units behind the car (it must fit the half)"],
 	"camera/shake_crash": [5.0, 0.0, 15.0, 0.5, "screen pixels of shake on a crash"],
 	"camera/shake_landing": [3.0, 0.0, 10.0, 0.5, "on a landing"],
 	"camera/shake_takeoff": [1.5, 0.0, 10.0, 0.5, "leaving the road over a crest"],

@@ -16,6 +16,7 @@ godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screen
 godot --path . -- --autodrive --callout=near_miss --screenshots=300 --shot-dir=/tmp/shots   # hold a starburst callout up after GO (Callouts.IDS; near_miss:3 for a chain); --time-left=9 for the low clock
 godot --path . -- --autodrive --stage=7 --at-segment=300 --lightning-at=5 --screenshots=303 --shot-dir=/tmp/shots   # force a full lightning strike on Thunderhead at 5 s
 godot --path . -- --autodrive --stage=2 --mirror --screenshots=300 --shot-dir=/tmp/shots   # race the stage mirrored (WS-6), locked or not
+godot --path . -- --autodrive --split --stage=1 --car2=car_mesa --screenshots=300 --shot-dir=/tmp/shots   # split-screen two player (MP-18): both autodriven; --mode=free_drive for Free Drive; P2 on pad 2 or WASD + Tab
 godot --path . -- --save-file=/tmp/save.cfg --mode=single_race --mirror --screen=stages --menu-shot=/tmp/s.png   # stage select on another save, in a mode (ModeSelect.Item), MIRROR on
 godot --path . -- --mode=survival --autodrive --at-segment=4900 --screenshots=420 --shot-dir=/tmp/shots   # Survival (MP-13) over a leg's line into the next stage; --tuning-file with [survival] clock_scale=0.15 for a quick TIME UP
 godot --path . -- --day=20261111 --screen=daily --menu-shot=/tmp/d.png   # the daily run's card (MP-14) for that day (no --day: today); --mode=daily_run with race flags races it

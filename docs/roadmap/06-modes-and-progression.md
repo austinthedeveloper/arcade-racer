@@ -37,7 +37,7 @@ Four cars and stage 1 are open from the start; the rest unlock as the tour goes
 | MP-15 ✓ | **First drive.** A new profile's first race is a guided run on Palm Coast: one prompt at a time when the road allows it (gas, steer, nitro on a straight, draft behind a truck, a power slide), each cleared by doing it. Skippable from the pause menu, never shown again once done or skipped. | M | 4 | MP-10, PR-5 | `test_first_drive` steps every prompt from a scripted run and checks skip; the e2e smoke on a new profile sees the first prompt, an existing profile doesn't; a screenshot of a prompt |
 | MP-16 ✓ | **Grand Tour ending.** Finishing the tour ends on a finale: the podium on the Skyline bridge, the tour standings, then credits over the harbor. First place, a podium place and the rest get their own end card. | M | 5 | PR-9, MP-2 | A test that each standings place picks its end card; the e2e reaches the credits from a scripted last stage; screenshots |
 | MP-17 ✓ | **Completion page.** One page with what's left: medals, stickers, unlocks, mirror wins, as a percentage per stage. | S | 6 | MP-9, MP-12 | Test the percentage from a fixture save; a menu screenshot |
-| MP-18 | **Split-screen two player.** Two players on one screen, top and bottom halves, each with its own camera and road, sharing the rivals and the traffic. From mode select as 2 PLAYERS, in Single Race and Free Drive. | L | 7 | EQ-7 | `test_split` races two scripted players to both finishes; a screenshot; golden traces unchanged for one player |
+| MP-18 ✓ | **Split-screen two player.** Two players on one screen, top and bottom halves, each with its own camera and road, sharing the rivals and the traffic. From mode select as 2 PLAYERS, in Single Race and Free Drive. | L | 7 | EQ-7 | `test_split` races two scripted players to both finishes; a screenshot; golden traces unchanged for one player |
 | MP-19 | **Two-player select.** Both players pick their car side by side on car select, then one picks the stage. | S | 7 | MP-18 | The e2e drives two players through select; a screenshot |
 | MP-20 | **Party modes.** Two party rules for split screen and online: TAG (one car carries the flag, passing it steals it, most time holding wins) and ELIMINATION (last at each checkpoint drops out). | M | 8 | MP-18, ON-3 | Rule tests per mode; screenshots of each HUD |
 | MP-21 | **Hot-seat tournament.** Two to four players take turns at Time Attack on the same stages, with a standings board between runs. | S | 8 | MP-5, MP-10 | Test the standings over a scripted round; a screenshot of the board |
@@ -100,6 +100,31 @@ the next thing to go for. The sums are `scripts/core/completion.gd`, tested from
 `tests/fixtures/save_progress.cfg` (`test_completion`). The unlock-everything option counts for
 nothing.
 
+## Split screen (MP-18)
+
+2 PLAYERS on mode select (up and down on its card: SINGLE RACE or FREE DRIVE) races two players
+on one screen, player 1 on the top half and player 2 on the bottom, 640x180 each. Each half is
+a clipped `Control` holding its own `Background`, `RoadRenderer` and `FxLayer`, which draw their
+usual 640x360 frame moved up by `SplitScreen.crop_top()` so the horizon sits a third down the
+half; the split camera (`CameraView.SPLIT`, `camera/split_height` and `camera/split_distance`)
+sits further back than the near chase so the car fits under it. The two players' cars are the
+online model's extra player cars (`RivalCar.remote_player`): player 1's is the race's `player`,
+player 2's is in `rivals.cars`, so the standings, the contacts and both roads take them like
+any car. The rivals, the traffic, the pickups and the clock are shared; a checkpoint extends the
+clock for the first player to reach it, and after player 1's finish the clock runs on for player
+2. The results wait for both players and show both.
+
+Controls: player 1 as ever. Player 2 takes the second joypad connected
+(`InputRouter.split_pad_of`); with one joypad or none, the keyboard's second set, W A S D with
+Tab for nitro, which player 1's keyboard then leaves out (player 1 keeps the arrows and its
+other bindings). A split race saves nothing (no bests, stickers, unlocks or stats) and has no
+instant replay, hit slow motion or finish slow motion while the other player still races.
+`--split` starts one from the command line (`--car2=ID` for player 2's car).
+
+Left for later: two-player select (MP-19; player 2 gets the next car open after player 1's,
+`SplitScreen.second_car`), the split HUD's polish (PR-27, `SplitHud`), device assignment
+(WH-18) and assists per player (AC-19; `Race.split_input` gives player 2 none yet).
+
 ## Open decisions
 
 - Does the Grand Tour continue cost points, or just the standings place? Default: no points, you keep racing from the stage you failed.
@@ -108,5 +133,4 @@ nothing.
 
 ## Stretch
 
-Split-screen two player. The renderer would need two viewports and the HUD a layout per half.
-Keep `RoadRenderer` free of global state (see `docs/09` phase 3) so this stays possible.
+Split-screen two player is built (MP-18, above).
