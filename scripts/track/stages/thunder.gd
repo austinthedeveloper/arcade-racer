@@ -87,6 +87,11 @@ static func build() -> Track:
 		["storm_cellar", 2, 1.6], ["wrecked_sign", 4, -1.5], ["tree_snapped", 5, -2.3], ["tree_bent", 7, 2.3]])
 	t.add_set_piece("substation", int(t.segments.size() * 0.76), [["pylon", 0, -3.3], ["pole_transformer", 2, 1.5],
 		["drum", 3, -1.3], ["drum", 4, -1.4], ["pole_tanks", 5, 1.5], ["pylon", 8, 3.5]])
+	# Road hazards (RC-19): deep puddles standing on the storm-soaked highway, lane to lane
+	t.add_hazard(RoadHazards.Kind.PUDDLE, int(t.segments.size() * 0.2), 0.1, 16)
+	t.add_hazard(RoadHazards.Kind.PUDDLE, int(t.segments.size() * 0.37), 0.6, 16)
+	t.add_hazard(RoadHazards.Kind.PUDDLE, int(t.segments.size() * 0.54), 0.35, 16)
+	t.add_hazard(RoadHazards.Kind.PUDDLE, int(t.segments.size() * 0.7), 0.9, 16)
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()

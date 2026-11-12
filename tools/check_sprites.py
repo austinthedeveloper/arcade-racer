@@ -37,6 +37,7 @@ TOOLS = [
     ("make_powerup_sprites.py", CONCEPT, "."),
     ("make_fx_sprites.py", CONCEPT, "."),
     ("make_drawn_props.py", "."),
+    ("make_hazard_sprites.py", "."),
     ("make_lod_sprites.py", "."),
 ]
 

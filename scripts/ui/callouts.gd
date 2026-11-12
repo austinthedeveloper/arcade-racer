@@ -8,7 +8,9 @@ extends RefCounted
 ## at the line FINISH! comes first, then 1ST PLACE (`finish`). The race pushes them (race.gd
 ## `_banner`, `_callouts_after_tick`); the HUD draws `current` (Hud._draw_callout).
 
-enum Kind { NONE = -1, GO, CHECKPOINT, TIME_EXTENDED, NEAR_MISS, BIG_AIR, FINAL_STRETCH, LAUNCH, FIRST_PLACE, MESSAGE }
+## DEBRIS, CONES, ICE and SPLASH are the road hazards hitting the player (RoadHazards.callout).
+enum Kind { NONE = -1, GO, CHECKPOINT, TIME_EXTENDED, NEAR_MISS, BIG_AIR, FINAL_STRETCH, LAUNCH, FIRST_PLACE,
+	DEBRIS, CONES, ICE, SPLASH, MESSAGE }
 
 ## What each starburst says (MESSAGE brings its own text).
 const TEXT := {
@@ -20,12 +22,17 @@ const TEXT := {
 	Kind.FINAL_STRETCH: "FINAL STRETCH",
 	Kind.LAUNCH: "LAUNCH!",
 	Kind.FIRST_PLACE: "1ST PLACE",
+	Kind.DEBRIS: "DEBRIS!",
+	Kind.CONES: "CONES!",
+	Kind.ICE: "BLACK ICE!",
+	Kind.SPLASH: "SPLASH!",
 }
 ## The --callout=ID dev flag's names for the kinds (screenshots of one).
 const IDS := {
 	"go": Kind.GO, "checkpoint": Kind.CHECKPOINT, "time_extended": Kind.TIME_EXTENDED,
 	"near_miss": Kind.NEAR_MISS, "big_air": Kind.BIG_AIR, "final_stretch": Kind.FINAL_STRETCH,
 	"launch": Kind.LAUNCH, "first_place": Kind.FIRST_PLACE,
+	"debris": Kind.DEBRIS, "cones": Kind.CONES, "ice": Kind.ICE, "splash": Kind.SPLASH,
 }
 const SHOW_TIME := 1.2  # seconds a starburst stays up with nothing waiting behind it
 const MIN_SHOW := 0.55  # ...and at least, with a backlog

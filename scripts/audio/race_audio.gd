@@ -25,6 +25,11 @@ const CALLOUT_LINES := {
 	Callouts.Kind.BIG_AIR: "big_air", Callouts.Kind.FINAL_STRETCH: "final_stretch",
 	Callouts.Kind.FIRST_PLACE: "first_place",
 }
+## Each road hazard's cue and pitch as it hits the player (RoadHazards.Kind)
+const HAZARD_CUES := {
+	RoadHazards.Kind.DEBRIS: ["bump", 0.8], RoadHazards.Kind.CONES: ["bump", 1.4],
+	RoadHazards.Kind.ICE: ["land", 0.7], RoadHazards.Kind.PUDDLE: ["land", 1.5],
+}
 const PICKUP_CUES := {
 	PowerUps.Kind.NITRO: "pickup_nitro", PowerUps.Kind.CLOCK: "pickup_clock",
 	PowerUps.Kind.RAM: "pickup_ram", PowerUps.Kind.GHOST: "pickup_ghost",
@@ -251,6 +256,8 @@ func _events() -> void:
 		Audio.play("crash")
 	elif _player.bumped:
 		Audio.play("bump")
+	if _player.hazard_hit >= 0:  # (RoadHazards: placeholder cues until the hazards get their own)
+		Audio.play(HAZARD_CUES[_player.hazard_hit][0], HAZARD_CUES[_player.hazard_hit][1])
 	if _player.landed:
 		Audio.play("land")
 	if race.fx.thunder:

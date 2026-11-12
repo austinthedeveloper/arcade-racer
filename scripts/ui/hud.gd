@@ -87,6 +87,11 @@ const BURSTS := {
 	Callouts.Kind.BIG_AIR: {"rim": Color("#2a1a6a"), "fill": Color("#8a5aff"), "core": Color("#c8b0ff"), "text": Color.WHITE, "size": 24, "spikes": 14},
 	Callouts.Kind.FINAL_STRETCH: {"rim": Color("#5a0a0a"), "fill": Color("#ff3a3a"), "core": Color("#ffb21a"), "text": Color.WHITE, "size": 22, "spikes": 16},
 	Callouts.Kind.FIRST_PLACE: {"rim": Color("#6a4a00"), "fill": Color("#ffd23a"), "core": Color("#fff2a8"), "text": Color("#3a1a00"), "size": 28, "spikes": 20},
+	# The road hazards (RC-19): a jolt, knocked cones, a slide, a splash
+	Callouts.Kind.DEBRIS: {"rim": Color("#3a2a1a"), "fill": Color("#a8784a"), "core": Color("#e0c090"), "text": Color.WHITE, "size": 22, "spikes": 9},
+	Callouts.Kind.CONES: {"rim": Color("#6a2a00"), "fill": Color("#ff8a1a"), "core": Color("#ffffff"), "text": Color("#3a1400"), "size": 22, "spikes": 12},
+	Callouts.Kind.ICE: {"rim": Color("#1a4a7a"), "fill": Color("#8ad0ff"), "core": Color("#eaf8ff"), "text": Color("#0a2a4a"), "size": 22, "spikes": 16},
+	Callouts.Kind.SPLASH: {"rim": Color("#0a2a5a"), "fill": Color("#2a78d8"), "core": Color("#9ad0ff"), "text": Color.WHITE, "size": 22, "spikes": 14},
 }
 
 var race: Node  # race.gd

@@ -12,9 +12,9 @@ const PATH := "user://tuning.cfg"
 const PRESET_DIR := "user://tuning_presets"
 const LOG_PATH := "user://tuning_log.txt"
 ## The areas, in the debug panel's page order. A key is "area/name".
-const AREAS := ["driving", "slide", "crashes", "ai", "difficulty", "balance", "traffic", "draft", "launch", "power_ups", "scoring", "camera",
+const AREAS := ["driving", "slide", "crashes", "ai", "difficulty", "balance", "traffic", "draft", "launch", "power_ups", "hazards", "scoring", "camera",
 	"world", "assists", "first_drive", "survival"]
-const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "DIFFICULTY", "STAGE BALANCE", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "SCORING",
+const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "DIFFICULTY", "STAGE BALANCE", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "HAZARDS", "SCORING",
 	"CAMERA", "WORLD", "ASSISTS", "FIRST DRIVE", "SURVIVAL"]
 ## key: [default, min, max, step, what it is]. tools/tuning_adopt.py rewrites the defaults in
 ## place, so keep one value to a line, the default first.
@@ -134,6 +134,14 @@ const TABLE := {
 	"power_ups/ghost_time": [4.0, 1.0, 15.0, 0.5, "seconds the ghost lasts"],
 	"power_ups/catch_up_places": [2, 0, 7, 1, "the last this many places get a nitro back at each checkpoint (easy and normal)"],
 	"power_ups/reach": [0.3, 0.1, 1.0, 0.05, "road half-widths from a pickup's center that take it"],
+	"hazards/reach": [0.5, 0.0, 1.0, 0.05, "road hazards (RC-19): share of a car's half-width past a hazard's edge that still touches it"],
+	"hazards/debris_loss": [0.15, 0.0, 0.6, 0.01, "share of its speed a car loses hitting debris"],
+	"hazards/debris_hop": [1800.0, 0.0, 5000.0, 100.0, "world units per second debris bounces it up"],
+	"hazards/cones_loss": [0.12, 0.0, 0.6, 0.01, "share of its speed a car loses knocking a cone row flying"],
+	"hazards/puddle_loss": [0.1, 0.0, 0.6, 0.01, "share of its speed a deep puddle drags off"],
+	"hazards/ice_time": [0.9, 0.1, 3.0, 0.1, "seconds an ice patch keeps a car sliding after it leaves the ice"],
+	"hazards/ice_grip": [0.25, 0.0, 1.0, 0.05, "share of its steering a car keeps sliding on ice"],
+	"hazards/ice_drift": [0.6, 0.0, 2.0, 0.05, "road half-widths per second (at top speed) a car slides sideways on ice"],
 	"scoring/near_miss": [1, 0, 10, 1, "points for a near miss"],
 	"scoring/near_miss_room": [0.0, -0.3, 0.5, 0.05, "road half-widths between the two cars' sides that count as near"],
 	"scoring/near_miss_speed": [0.6, 0.0, 1.0, 0.05, "share of top speed a near miss needs, at least"],

@@ -262,6 +262,12 @@ func react(p: PlayerCar, track: Track) -> void:
 			"puff":
 				for side in [-1.0, 1.0]:
 					spawn("puff", base + Vector2(side * w * WHEEL_X, 0), side < 0.0)
+			"splash":
+				for n in 3:
+					_at_wheels("water", base, w)
+			"skid":
+				if steady:
+					_at_wheels("snow", base, w)
 			"nitro_burst":
 				for side in [-1.0, 1.0]:
 					spawn("nitro_burst", exhaust(base, w, side, exhaust_anchor), false)
@@ -276,8 +282,8 @@ func _at_wheels(effect: String, base: Vector2, w: float) -> void:
 
 ## The effects the car calls for this tick, from its state now and last tick's speed and
 ## nitro time: "smoke" (braking hard, wheelspin off the line, cornering on the limit, a power
-## slide, a crash slide), "kickup" (off the road), "sparks" (any hit), "impact" (a crash), "puff" (landing),
-## "nitro_burst" (nitro lit this tick).
+## slide, a crash slide), "kickup" (off the road), "sparks" (any hit, debris too), "impact" (a crash), "puff" (landing),
+## "nitro_burst" (nitro lit this tick), "splash" (into a puddle) and "skid" (sliding on ice) (RoadHazards).
 static func triggers(p: PlayerCar, last_speed: float, last_nitro: float) -> PackedStringArray:
 	var out := PackedStringArray()
 	var pct := p.speed_percent()
@@ -292,8 +298,12 @@ static func triggers(p: PlayerCar, last_speed: float, last_nitro: float) -> Pack
 		out.append("smoke")
 	if grounded and p.offroad and pct > 0.05 and p.crash_time <= 0.0:
 		out.append("kickup")
-	if p.crashed or p.bumped or p.rammed:
+	if p.crashed or p.bumped or p.rammed or p.hazard_hit == RoadHazards.Kind.DEBRIS:
 		out.append("sparks")
+	if p.hazard_hit == RoadHazards.Kind.PUDDLE:
+		out.append("splash")
+	if grounded and p.skid_time > 0.0 and p.speed > 0.0:
+		out.append("skid")
 	if p.crashed:
 		out.append("impact")
 	if p.landed:

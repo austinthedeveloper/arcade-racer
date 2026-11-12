@@ -106,6 +106,9 @@ static func build() -> Track:
 		["crab_shack", 4, -2.4], ["piling", 5, -2.7], ["heron", 7, -1.6, true], ["riverboat", 9, 3.4]])
 	t.add_set_piece("gator_crossing", causeways[1].y + 100, [["crawfish_sign", 0, 1.6], ["reeds_a", 2, -1.2],
 		["gator", 3, -1.4], ["cattails", 4, 1.2], ["gator", 5, 1.5, true], ["live_oak", 6, -2.6]])
+	# Road hazards (RC-19): a fallen load on the bank road, a cone row where the road is being patched
+	t.add_hazard(RoadHazards.Kind.DEBRIS, int(t.segments.size() * 0.38), 0.15, 2)
+	t.add_hazard(RoadHazards.Kind.CONES, int(t.segments.size() * 0.72), 0.85, 6)
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()

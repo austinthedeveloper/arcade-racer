@@ -110,6 +110,10 @@ static func build() -> Track:
 		["crowd_barrier_city", 4, 1.3], ["flag_c", 3, -1.3], ["dolphin_balloon", 6, -2.7]])
 	t.add_set_piece("waterfront_cafe", port + 220, [["cafe", 0, 1.8], ["flag_a", 2, -1.3], ["harbor_lamp", 3, 1.2],
 		["harbor_lamp", 3, -1.2], ["flag_b", 4, -1.3], ["ferry_terminal", 6, -2.5]])
+	# Road hazards (RC-19): cone rows downtown and on a bridge, debris near the port
+	t.add_hazard(RoadHazards.Kind.CONES, int(t.segments.size() * 0.2), 0.9, 6)
+	t.add_hazard(RoadHazards.Kind.CONES, int(t.segments.size() * 0.5), 0.1, 6)
+	t.add_hazard(RoadHazards.Kind.DEBRIS, int(t.segments.size() * 0.7), 0.6, 2)
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()

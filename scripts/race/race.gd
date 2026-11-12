@@ -210,6 +210,8 @@ var _led_at := -INF  # race time of the last 1ST PLACE callout
 var _callout_shot := Callouts.Kind.NONE  # --callout=ID: that starburst held up after GO (screenshots)
 var _callout_shot_count := 0  # --callout=ID:COUNT: with that count (NEAR MISS x3)
 var _pickup_shot := -1  # --pickup=ID (PowerUps.IDS): the player takes that pickup at GO (screenshots)
+var _hazard_shot := -1  # --at-hazard=ID (RoadHazards.IDS): start just short of the stage's first one, driving at it
+var _hazard_shot_n := 0  # --at-hazard=ID:N: the Nth (from 1) instead
 var _time_left_shot := NAN  # --time-left=S: start with this much on the clock (low-time screenshots)
 ## The dev flags are for the race the game starts with; later races come from the menus.
 static var _dev_args_read := false
@@ -274,6 +276,8 @@ func start_race() -> void:
 		survival_score = -1.0
 		survival_best_before = float(SaveData.survival["best"])
 	track = Stages.build(stage_index, mirror, run.next_stage() if survival else -2)
+	if _hazard_shot >= 0:
+		_aim_at_hazard()
 	# The sun drops stage by stage in a Grand Tour; a single race keeps the stage's own hour
 	hour = Sundown.apply(track, stage_index, Stages.count(), tour)
 	if not daily.is_empty():
@@ -833,6 +837,8 @@ func _physics_process(dt: float) -> void:
 	if online != null:
 		_online_tick(sim)
 	player.collide(track)
+	RoadHazards.drive_over(player, track)
+	RoadHazards.age(track, sim)
 	if state == State.RACING:
 		hit_slowmo = maxf(hit_slowmo, hit_slowmo_for(player, Settings.reduce_motion, online != null))
 	if state == State.FINISHED:
@@ -851,6 +857,10 @@ func _physics_process(dt: float) -> void:
 	if state == State.RACING:
 		score.watch(dt, player, track)
 		_check_pickups()
+		if player.hazard_hit >= 0:
+			callouts.push(RoadHazards.callout(player.hazard_hit))
+			if _log_banners:
+				print("[autodrive] %.1fs  hazard %s  frame %d" % [race_time, RoadHazards.IDS[player.hazard_hit], _frame])
 		if recording != null:
 			recording.record(player, track.side())
 		if replay_offered():
@@ -1676,6 +1686,10 @@ func _parse_dev_args() -> void:
 			var spec := arg.get_slice("=", 1)
 			_callout_shot = Callouts.IDS.get(spec.get_slice(":", 0), Callouts.Kind.NONE)
 			_callout_shot_count = int(spec.get_slice(":", 1)) if spec.contains(":") else 0
+		elif arg.begins_with("--at-hazard="):  # ID, or ID:N for the Nth of that kind on the stage
+			var spec := arg.get_slice("=", 1)
+			_hazard_shot = RoadHazards.IDS.find(spec.get_slice(":", 0))
+			_hazard_shot_n = maxi(0, int(spec.get_slice(":", 1)) - 1) if spec.contains(":") else 0
 		elif arg.begins_with("--pickup="):
 			_pickup_shot = PowerUps.IDS.find(arg.get_slice("=", 1))
 		elif arg.begins_with("--time-left="):
@@ -1721,8 +1735,10 @@ func _autodrive_lane() -> float:
 	var best: float = lanes[0]
 	var best_gap := -1
 	lanes.sort_custom(func(a: float, b: float) -> bool: return absf(a - player.x) < absf(b - player.x))
+	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
 	for lane: float in lanes:
-		var gap := LOOKAHEAD
+		# A hazard (RC-19) blocks a lane like a slow car
+		var gap := RoadHazards.room(track, player.position + Cfg.PLAYER_Z, lane, half_car, AIDriver.LANE_CLEARANCE, LOOKAHEAD)
 		for r in rivals.cars:
 			var ahead := wrapf(r.position - player.position, -track.length * 0.5, track.length * 0.5)
 			if ahead > 0.0 and absf(r.x - lane) < 0.3 and r.speed < want:
@@ -1740,6 +1756,19 @@ func _autodrive_lane() -> float:
 			best_gap = gap
 			best = lane
 	return best
+
+
+## --at-hazard=ID: the race starts HAZARD_LEAD segments short of the stage's chosen hazard of
+## that kind, the autodrive holding its line (--drive-x) so the car drives into it.
+const HAZARD_LEAD := 80
+func _aim_at_hazard() -> void:
+	var found := track.road_hazards.filter(func(h: RoadHazards.Hazard) -> bool: return h.kind == _hazard_shot)
+	if found.is_empty():
+		push_warning("--at-hazard: no %s on this stage" % RoadHazards.IDS[_hazard_shot])
+		return
+	var h: RoadHazards.Hazard = found[mini(_hazard_shot_n, found.size() - 1)]
+	_start_segment = maxi(0, h.segment - HAZARD_LEAD)
+	_drive_x = h.offset
 
 
 ## --screen=results: a rival over the line ahead, the player second, the rest still out.

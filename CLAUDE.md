@@ -16,6 +16,7 @@ godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screen
 godot --path . -- --autodrive --callout=near_miss --screenshots=300 --shot-dir=/tmp/shots   # hold a starburst callout up after GO (Callouts.IDS; near_miss:3 for a chain); --time-left=9 for the low clock
 godot --path . -- --autodrive --stage=7 --at-segment=300 --lightning-at=5 --screenshots=303 --shot-dir=/tmp/shots   # force a full lightning strike on Thunderhead at 5 s
 godot --path . -- --autodrive --stage=2 --mirror --screenshots=300 --shot-dir=/tmp/shots   # race the stage mirrored (WS-6), locked or not
+godot --path . -- --autodrive --stage=4 --at-hazard=ice --no-rivals --screenshots=300 --shot-dir=/tmp/shots   # start short of a road hazard (RoadHazards.IDS; cones:2 the second), driving into it (RC-19); the log says the hit's frame
 godot --path . -- --save-file=/tmp/save.cfg --mode=single_race --mirror --screen=stages --menu-shot=/tmp/s.png   # stage select on another save, in a mode (ModeSelect.Item), MIRROR on
 godot --path . -- --mode=survival --autodrive --at-segment=4900 --screenshots=420 --shot-dir=/tmp/shots   # Survival (MP-13) over a leg's line into the next stage; --tuning-file with [survival] clock_scale=0.15 for a quick TIME UP
 godot --path . -- --day=20261111 --screen=daily --menu-shot=/tmp/d.png   # the daily run's card (MP-14) for that day (no --day: today); --mode=daily_run with race flags races it
@@ -52,6 +53,7 @@ python3 tools/make_span_sprites.py assets/concept . # rebuild tunnels, bridges, 
 python3 tools/make_powerup_sprites.py assets/concept .   # rebuild the power-up pickups, icons and effects
 python3 tools/make_fx_sprites.py assets/concept .      # rebuild the FX layer's smoke, kick-up, sparks, nitro, speed lines, fireworks
 python3 tools/make_drawn_props.py .                 # redraw Palm Coast's six hand-drawn props
+python3 tools/make_hazard_sprites.py .              # redraw the road hazards (RC-19): debris, cone, ice, puddle
 python3 tools/manifest.py .                         # rewrite assets/sprites/manifest.json after editing a world height or collide fraction
 python3 tools/make_lod_sprites.py .                 # redo the roadside sprites' reduced copies (lod/, CP-9) and the manifest
 python3 tools/make_audio.py                         # rebuild the placeholder sounds (assets/audio/README.md)

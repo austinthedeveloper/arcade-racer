@@ -69,6 +69,13 @@ var hit_speed := 0.0  # how fast the car was going when the last crash hit (RC-2
 ## Seconds left ghosted after a crash (RC-22): back on the road, it neither hits nor is hit for
 ## crashes/respawn_ghost, drawn see-through like the GHOST power-up.
 var respawn_ghost := 0.0
+## Road hazards (RoadHazards, RC-19): the kind that hit the car this tick (-1 none), the ones
+## it is over (each hits once as the car drives onto it), and an ice slide's seconds left and
+## way (-1 left, 1 right): little steering, and the car drifting that way.
+var hazard_hit := -1
+var on_hazards: Array = []
+var skid_time := 0.0
+var skid_dir := 0.0
 
 var _alt := 0.0
 var _vy := 0.0
@@ -105,6 +112,10 @@ func reset(start_position: float = 0.0) -> void:
 	crash_time = 0.0
 	hit_speed = 0.0
 	respawn_ghost = 0.0
+	hazard_hit = -1
+	on_hazards = []
+	skid_time = 0.0
+	skid_dir = 0.0
 	gear = 1
 	shifted = 0
 	airborne = false
@@ -199,6 +210,8 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	ram_time = maxf(0.0, ram_time - dt)
 	ghost_time = maxf(0.0, ghost_time - dt)
 	respawn_ghost = maxf(0.0, respawn_ghost - dt)
+	var skidding := skid_time > 0.0 and not airborne
+	skid_time = maxf(0.0, skid_time - dt)
 
 	slide = slide_after(slide, speed, steer_in, brake, slides and not airborne and not offroad and crash_time <= 0.0)
 
@@ -213,9 +226,12 @@ func update(dt: float, inp: DriveInput, track: Track, controls: bool) -> void:
 	last_x = x
 	if airborne:
 		rate *= Tuning.v("driving/air_steer")
-	x += steer_in * rate * (1.0 if airborne else grip_for(seg.grip, offroad)) * (Tuning.v("slide/turn") if slide != 0.0 else 1.0)
+	x += steer_in * rate * (1.0 if airborne else grip_for(seg.grip, offroad)) * (Tuning.v("slide/turn") if slide != 0.0 else 1.0) \
+		* (Tuning.v("hazards/ice_grip") if skidding else 1.0)
 	if not airborne:
 		x -= rate / steer_mult * pct * seg.curve * Tuning.v("driving/centrifugal") * pull_mult
+	if skidding:  # on ice (RoadHazards): sliding off the way it went on
+		x += skid_dir * dt * Tuning.v("hazards/ice_drift") * pct
 	steer = lerpf(steer, steer_in, minf(1.0, dt * Tuning.v("driving/steer_smoothing")))
 
 	# Speed
@@ -274,15 +290,27 @@ static func slide_after(slide: float, speed: float, steer_in: float, brake: floa
 
 
 ## The steering the car's sprite shows: its smoothed steering, or the strip's last frame the
-## way it slides (the slide frames until CP-3 draws its own).
+## way it slides (the slide frames until CP-3 draws its own), on ice too (RoadHazards).
 func shown_steer() -> float:
-	return slide if slide != 0.0 else steer
+	if slide != 0.0:
+		return slide
+	return skid_dir if skid_time > 0.0 and not airborne else steer  # (on ice: slewed the way it slides)
 
 
 ## The share of its steering a car keeps on road of `grip` (Segment.grip), `off` it or not:
 ## off the road the wet or snow takes it away twice over. 1 on a dry road, on it or off.
 static func grip_for(grip: float, off: bool) -> float:
 	return grip * grip if off else grip
+
+
+## Bounced up off the road at `lift` world units per second (debris, RoadHazards): in the air a
+## moment, landing as off a crest. Already in the air, nothing.
+func hop(lift: float) -> void:
+	if airborne or lift <= 0.0:
+		return
+	airborne = true
+	_alt = road_y
+	_vy = lift
 
 
 ## Leaves the road when it drops away faster than gravity can pull the car down.

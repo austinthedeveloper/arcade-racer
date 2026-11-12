@@ -9,6 +9,11 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
+- Road hazards (RC-19): debris shed in a lane, cone rows closing one, black ice over Timberline's
+  summit and deep puddles along Thunderhead. Debris bumps the car up and costs speed, cones fly
+  off and slow you, a puddle drags at the tires, and the ice takes the steering and slides you
+  aside for a moment; each has its callout (DEBRIS!, CONES!, BLACK ICE!, SPLASH!). The rivals
+  pick a lane clear of them when there is one.
 <<<<<<< HEAD
 - Sticker book (MP-12): twenty-four stickers to collect, from a first win and a chain of five
   near misses to a win mirrored, gold on every stage and the Grand Tour won. Each comes once,

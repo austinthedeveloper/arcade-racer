@@ -89,6 +89,9 @@ static func build() -> Track:
 		["billboard_wide", 4, -2.1], ["palm_lights", 6, -1.5], ["casino_entrance", 8, 1.9], ["searchlight", 10, -1.7]])
 	t.add_set_piece("fountain_court", int(t.segments.size() * 0.72), [["fountain_show", 0, 2.1], ["palm_lit", 2, -1.4],
 		["palm_lights", 4, -1.7], ["neon_spiral", 4, 1.7, true], ["palm_lit", 6, 1.4, true], ["neon_cocktail", 8, -1.4]])
+	# Road hazards (RC-19): cone rows closing a lane for a show's set-up and a repair
+	t.add_hazard(RoadHazards.Kind.CONES, int(t.segments.size() * 0.22), 0.15, 6)
+	t.add_hazard(RoadHazards.Kind.CONES, int(t.segments.size() * 0.58), 0.85, 6)
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()
