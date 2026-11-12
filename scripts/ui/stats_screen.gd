@@ -3,6 +3,14 @@ extends MenuScreen
 ## The stats page (MP-11), from STATS on the title: races, wins, crashes, near misses and
 ## miles from the save (SaveData.stats), with the favourite car's showroom picture and the
 ## favourite stage's postcard. Back (or select) returns to the title.
+## It is the first of three tabs (PAGES): left and right go on to the sticker book
+## (StickerScreen, MP-12) and the completion page (CompletionScreen, MP-17), which share the
+## tab bar (draw_tabs) and go back to the title the same way.
+
+enum Page { STATS, STICKERS, COMPLETION }
+const PAGES: Array[String] = ["STATS", "STICKERS", "COMPLETION"]
+const TAB_Y := 14.0  # the tab bar's top, right of the header
+const TAB_H := 18.0
 
 const PANEL := Rect2(20, 54, 290, 232)
 const ROW_H := 30.0
@@ -47,14 +55,55 @@ static func favourites(car_id: String, stage: int) -> Array[String]:
 
 
 func handle(m: MenuInput) -> void:
-	if m.back_pressed or m.confirm_pressed:
+	if m.step() != 0:
+		Audio.play("tick")
+		game.show_records(Page.STATS + m.step())
+	elif m.back_pressed or m.confirm_pressed:
 		Audio.play("beep")
 		game.show_title(TitleScreen.items().find("STATS"))
+
+
+## The tabs' rectangles, right-aligned along the top: one per PAGES.
+static func tab_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var x := Cfg.SCREEN_W - 22.0  # (room for the right arrow)
+	for i in range(PAGES.size() - 1, -1, -1):
+		var w := UiText.width(PAGES[i], 10) + 18.0
+		x -= w
+		out.push_front(Rect2(x, TAB_Y, w, TAB_H))
+		x -= 6.0
+	return out
+
+
+## The tab bar on `screen`, `on` (a Page) lit; `lit` pulses it, for a cursor on the bar.
+static func draw_tabs(screen: MenuScreen, on: int, lit := false) -> void:
+	var rects := tab_rects()
+	screen._arrow(Vector2(rects[0].position.x - 12, TAB_Y + TAB_H / 2.0), -1, Color(1, 1, 1, 0.55))
+	screen._arrow(Vector2(rects[-1].end.x + 6, TAB_Y + TAB_H / 2.0), 1, Color(1, 1, 1, 0.55))
+	for i in rects.size():
+		var r := rects[i]
+		var here := i == on
+		if here and lit:
+			screen.draw_rect(r.grow(3), Color(GOLD, 0.45 + 0.2 * sin(screen.time * 5.0)))
+		screen.draw_rect(r.grow(1), Color("#c9d4ff") if here else Color(1, 1, 1, 0.3))
+		screen.draw_rect(r, Color("#1d3fa8") if here else Color(0.07, 0.07, 0.2, 0.85))
+		screen._text_centered(Vector2(r.get_center().x, r.position.y + 13), PAGES[i], 10, Color.WHITE if here else Color(1, 1, 1, 0.55))
+
+
+## The footer on the three pages: the tabs, then back.
+static func tab_hints(extra := "") -> String:
+	var pad := InputRouter.state.kind != DriveInput.Kind.KEYBOARD
+	var parts: Array[String] = [("D-pad" if pad else "Left / Right") + ": pages"]
+	if extra != "":
+		parts.append(extra)
+	parts.append("B: back" if pad else "Esc: back")
+	return "    ".join(parts)
 
 
 func _draw() -> void:
 	_backdrop(0.8)
 	_header("STATS")
+	draw_tabs(self, Page.STATS)
 	_panel(PANEL, 0.85)
 	var list := rows(SaveData.stats, Settings.units)
 	for i in list.size():
@@ -80,4 +129,4 @@ func _draw() -> void:
 	if _postcard != null:
 		draw_texture_rect(_postcard, POSTCARD, false)
 	_text(Vector2(POSTCARD.end.x + 10, POSTCARD.position.y + 36), fav[1], 10, Color.WHITE)
-	_footer("Esc: back" if InputRouter.state.kind == DriveInput.Kind.KEYBOARD else "B: back")
+	_footer(tab_hints())

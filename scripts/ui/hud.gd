@@ -10,6 +10,8 @@ const DEMO_LOGO_SCALE := 0.6
 const CALLOUT_Y := 120.0  # the middle of the callouts
 const FIRST_DRIVE_Y := 178.0  # the top of the first drive's prompt (MP-15), under the callouts
 const FIRST_DRIVE_SIZE := Vector2(340, 44)
+const STICKER_CARD := Rect2(12, 168, 176, 40)  # a new sticker's card (MP-12), left of the score tally
+const STICKER_CARD_TIME := 1.6  # seconds each new sticker's card shows, with more than one
 const LINE2_SIZE := 18  # a starburst's second headline (TIME EXTENDED under CHECKPOINT)
 const SUB_SIZE := 11  # and its small line
 const LINE_GAP := 4.0  # pixels between a starburst's lines
@@ -159,6 +161,9 @@ func _draw() -> void:
 
 	if ended and not race.new_unlocks.is_empty() and not race.results.visible:
 		_text_centered(Vector2(w / 2.0, 92), unlock_line(race.new_unlocks), 12, Color("#5dff8a", 0.6 + 0.4 * sin(race.road.time * 6.0)))
+	var card := sticker_card(race.new_stickers, race.sticker_age - race.STICKER_SHOW_AT)
+	if not card.is_empty() and not race.results.visible:
+		_draw_sticker_card(card)
 
 	# Banners
 	if race.counting_down():
@@ -263,6 +268,28 @@ func _draw_notice(center: Vector2, text: String, a: float) -> void:
 	draw_rect(Rect2(r.position.x, r.position.y, 2, r.size.y), Color(PALETTE["behind"], a))
 	draw_circle(Vector2(r.position.x + 10, center.y), 3.5, Color(PALETTE["behind"], a))
 	_text(Vector2(r.position.x + 20, center.y + 4), text, 11, Color(1, 1, 1, a))
+
+
+## The new-sticker card (MP-12) `age` seconds after it came up, with `ids` earned: {"id",
+## "slide" (0 off the screen .. 1 in), "more" (how many others)}, cycling through them
+## STICKER_CARD_TIME each; empty before it comes up or with none.
+static func sticker_card(ids: Array[String], age: float) -> Dictionary:
+	if ids.is_empty() or age < 0.0:
+		return {}
+	var i := int(age / STICKER_CARD_TIME) % ids.size()
+	return {"id": ids[i], "slide": clampf(age / 0.25, 0.0, 1.0), "more": ids.size() - 1}
+
+
+## NEW STICKER: the sticker and its name on a card, top left, sliding in.
+func _draw_sticker_card(card: Dictionary) -> void:
+	var r := Rect2(STICKER_CARD.position + Vector2((1.0 - float(card["slide"])) * -(STICKER_CARD.size.x + 16), 0), STICKER_CARD.size)
+	draw_rect(r, Color(0.04, 0.03, 0.1, 0.85))
+	draw_rect(Rect2(r.position.x, r.end.y, r.size.x, 2), GOLD)
+	var id: String = card["id"]
+	Stickers.draw(self, r.position + Vector2(24, r.size.y / 2.0), id, 15.0, true, -0.1)
+	var head := "NEW STICKER" + ("  +%d" % card["more"] if card["more"] > 0 else "")
+	_text(r.position + Vector2(48, 15), head, 9, GOLD)
+	_text(r.position + Vector2(48, 31), Stickers.info(id)["name"], 12, Color.WHITE)
 
 
 ## A notice's alpha with `left` seconds to go: whole, then fading over the last half second.

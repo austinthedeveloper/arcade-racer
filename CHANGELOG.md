@@ -7,6 +7,16 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Sticker book (MP-12): twenty-four stickers to collect, from a first win and a chain of five
+  near misses to a win mirrored, gold on every stage and the Grand Tour won. Each comes once,
+  with a chime and a NEW STICKER card after the line, and shows on the results. Find the book
+  beside STATS on the title (left and right switch the pages).
+- Completion page (MP-17): what's left, stage by stage: finished, won, the three medals and a
+  mirrored win ticked off with a percentage for each, and the whole game's percentage with the
+  stickers and the cars. The third page beside STATS.
+
 ### Changed
 
 - Every stage now changes width somewhere. Redrock Canyon runs six lanes wide across the open

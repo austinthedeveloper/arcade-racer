@@ -20,7 +20,10 @@ signal changed
 ## 3: [stats] (MP-11). 4: [profile] (MP-10): the save that was there becomes profile 1's.
 ## 5: [onboarding] (AC-16, MP-15): who's driving asked, the first drive done or skipped
 ## (missing: a new profile; a save from before is a driver who has been playing, so both done).
-const VERSION := 5
+## 6: [stickers] (MP-12) and [tour] mirror_wins (MP-17). A save from before has no stickers and
+## no mirror wins kept (they weren't), so both start empty; a sticker it already earns (every
+## stage finished, say) comes with its next race.
+const VERSION := 6
 const MAX_PROFILES := 4
 ## The names a profile can have (no typing: picked from this list).
 const NAMES: Array[String] = ["ACE", "BLAZE", "COMET", "DASH", "ECHO", "FLASH", "JET", "NOVA", "ROCKET",
@@ -53,6 +56,10 @@ var bests := {}
 var total_points := 0
 ## The stats (MP-11): STAT_COUNTS, "miles", "cars" {id: races}, "stages" {id: races}.
 var stats := fresh_stats()
+## The stages (ids, Stages.POSTCARDS) won mirrored, for the completion page (MP-17).
+var mirror_wins: Array[String] = []
+## The sticker book (MP-12): sticker id (Stickers.ALL) -> when it was earned (unix seconds).
+var stickers := {}
 ## The version of the file last loaded (VERSION when there was no file).
 var loaded_version := VERSION
 ## Who's driving (AC-16) has been answered for this profile (or passed over), so the title
@@ -233,6 +240,8 @@ func reset() -> void:
 	bests.clear()
 	total_points = 0
 	stats = fresh_stats()
+	stickers = {}
+	mirror_wins.clear()
 	driver_asked = false
 	first_drive = FirstDrive.PENDING
 	loaded_version = VERSION
@@ -303,13 +312,23 @@ func load_save() -> void:
 		if d is Dictionary:
 			for id in d:
 				stats[k][str(id)] = maxi(0, int(d[id]))
+	var mw = cfg.get_value("tour", "mirror_wins", [])
+	if mw is Array:
+		for id in mw:
+			if Stages.POSTCARDS.has(str(id)) and not mirror_wins.has(str(id)):
+				mirror_wins.append(str(id))
+	if cfg.has_section("stickers"):
+		var known := Stickers.ids()
+		for id: String in cfg.get_section_keys("stickers"):
+			if known.has(id):
+				stickers[id] = maxi(0, int(cfg.get_value("stickers", id, 0)))
 	driver_asked = bool(cfg.get_value("onboarding", "driver_asked", false))
 	first_drive = clampi(int(cfg.get_value("onboarding", "first_drive", FirstDrive.PENDING)), 0, FirstDrive.size() - 1)
 
 
 ## Brings a loaded save.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -376,6 +395,13 @@ static func _v4_to_v5(cfg: ConfigFile) -> void:
 	cfg.set_value("onboarding", "first_drive", FirstDrive.DONE)
 
 
+## Version 6 adds the sticker book (MP-12) and the mirror wins (MP-17): none of either, as no
+## build before kept them ([stickers] stays absent until the first is earned).
+static func _v5_to_v6(cfg: ConfigFile) -> void:
+	if not cfg.has_section_key("tour", "mirror_wins"):
+		cfg.set_value("tour", "mirror_wins", [])
+
+
 ## Writes the save. Over a file from a newer build, its other keys are kept (CfgVersion.to_write);
 ## `fresh` (resetting the save) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -385,6 +411,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("tour", "furthest_stage", furthest_stage)
 	cfg.set_value("tour", "total_points", total_points)
 	cfg.set_value("tour", "unlocks", Array(unlocks))
+	cfg.set_value("tour", "mirror_wins", Array(mirror_wins))
 	for key in bests:
 		var b = cfg.get_value("best", key, {})
 		var entry: Dictionary = b.duplicate() if b is Dictionary else {}
@@ -394,6 +421,8 @@ func save(fresh := false) -> void:
 		cfg.set_value("stats", k, stats[k])
 	cfg.set_value("onboarding", "driver_asked", driver_asked)
 	cfg.set_value("onboarding", "first_drive", first_drive)
+	for id: String in stickers:
+		cfg.set_value("stickers", id, stickers[id])
 	# Written whole to a side file and then renamed over the save, so a crash mid-write
 	# never leaves a cut-off save.
 	CfgVersion.backup_if_older(path, VERSION)  # (EQ-21)
@@ -489,6 +518,32 @@ func favourite_stage() -> int:
 			most = n
 			best = i
 	return best
+
+
+## A win on stage `stage` mirrored (WS-6), for the completion page (MP-17); saved.
+func record_mirror_win(stage: int) -> void:
+	var id: String = Stages.POSTCARDS[stage]
+	if not mirror_wins.has(id):
+		mirror_wins.append(id)
+		save()
+
+
+## Sticker `id` earned (MP-12).
+func has_sticker(id: String) -> bool:
+	return stickers.has(id)
+
+
+## Awards the stickers in `ids` not earned yet, dated `now` (unix seconds), and saves; returns
+## the new ones, in order. Each sticker is awarded once.
+func award_stickers(ids: Array[String], now: int = int(Time.get_unix_time_from_system())) -> Array[String]:
+	var out: Array[String] = []
+	for id in ids:
+		if not stickers.has(id) and not Stickers.info(id).is_empty():
+			stickers[id] = now
+			out.append(id)
+	if not out.is_empty():
+		save()
+	return out
 
 
 func unlock(id: String) -> void:

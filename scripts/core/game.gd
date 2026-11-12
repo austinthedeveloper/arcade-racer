@@ -5,7 +5,7 @@ extends Node
 ## --online=host or --online=join:CODE straight into a room (online_from_flags).
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES, FINALE, CREDITS, CONTROLS }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES, FINALE, CREDITS, CONTROLS, STICKERS, COMPLETION }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -483,6 +483,27 @@ func show_stats() -> void:
 	_set_menu(StatsScreen.new(), Screen.STATS)
 
 
+## The sticker book (MP-12), beside the stats page.
+func show_stickers() -> void:
+	_set_menu(StickerScreen.new(), Screen.STICKERS)
+
+
+## The completion page (MP-17), beside the stickers.
+func show_completion() -> void:
+	_set_menu(CompletionScreen.new(), Screen.COMPLETION)
+
+
+## The stats page's tab `page` (StatsScreen.Page): stats, stickers or completion.
+func show_records(page: int) -> void:
+	match posmod(page, StatsScreen.PAGES.size()):
+		StatsScreen.Page.STICKERS:
+			show_stickers()
+		StatsScreen.Page.COMPLETION:
+			show_completion()
+		_:
+			show_stats()
+
+
 ## Who is driving (MP-10), from PROFILE on the title.
 func show_profiles() -> void:
 	_set_menu(ProfileScreen.new(), Screen.PROFILES)
@@ -629,6 +650,8 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # --screen=debug opens the F3 tuning panel (debug:camera, debug:actions etc. for a page:
 # Tuning.AREAS, actions, presets), over the title, or over a race given race flags.
 # --screen=stats opens the stats page (MP-11); --screen=profiles the driver picker (MP-10).
+# --screen=stickers the sticker book (MP-12; stickers:5 with the cursor on the sixth sticker),
+# --screen=completion the completion page (MP-17).
 # --screen=credits rolls the credits (PR-23; credits:harbor as after the tour, credits:600 rolled on 600 px). --screen=finale
 # stages the Grand Tour's ending (MP-16): finale:standings and finale:card for its later pages,
 # finale:card:2 (or any place) for where the player finished; --car=ID for the player's car.
@@ -657,6 +680,12 @@ func _open(which: String) -> void:
 			show_mode_select()
 		"stats":
 			show_stats()
+		_ when which.begins_with("stickers"):
+			show_stickers()
+			if which.contains(":"):
+				(menu as StickerScreen).index = clampi(int(which.get_slice(":", 1)), -1, Stickers.count() - 1)
+		"completion":
+			show_completion()
 		"profiles":
 			show_profiles()
 		_ when which.begins_with("credits"):
