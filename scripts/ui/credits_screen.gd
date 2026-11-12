@@ -127,7 +127,7 @@ static func column() -> Rect2:
 	for line: Array in LINES:
 		var st: Dictionary = STYLE[line[0]]
 		if st["size"] > 0:
-			widest = maxf(widest, UiText.width(line[1], st["size"]))
+			widest = maxf(widest, _width(line[1], st["size"]))
 	var cw := minf(widest + 2.0 * COLUMN_MARGIN, Cfg.SCREEN_W)
 	return Rect2((Cfg.SCREEN_W - cw) / 2.0, 0, cw, Cfg.SCREEN_H)
 

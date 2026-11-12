@@ -69,7 +69,7 @@ static func items(web := OS.has_feature("web")) -> Array[String]:
 
 ## A pill's label size: 14, or 12 for a label too wide for a narrow pill (seven on the title).
 static func label_size(text: String, pill_w: float) -> int:
-	return 14 if UiText.width(text, 14) < pill_w - 6 else 12
+	return 14 if _width(text, 14) < pill_w - 6 else 12
 
 
 ## The spacing of `count` pills: PILL_STEP, or less so they fit across the screen.
@@ -90,7 +90,7 @@ func report_text() -> String:
 
 ## Where COPY REPORT is on the screen, for a click or tap.
 func report_rect() -> Rect2:
-	var wide := UiText.width("F4 COPY REPORT", 8)
+	var wide := _width("F4 COPY REPORT", 8)
 	return Rect2(Cfg.SCREEN_W - VERSION_X - wide - 16, Cfg.SCREEN_H - 20, wide + 12, 20)
 
 
@@ -248,7 +248,7 @@ func _draw() -> void:
 	var report := report_text()
 	if report != "":
 		var r := report_rect()
-		_text(Vector2(r.end.x - 6 - UiText.width(report, 8), Cfg.SCREEN_H - 8), report, 8, GOLD)
+		_text(Vector2(r.end.x - 6 - _width(report, 8), Cfg.SCREEN_H - 8), report, 8, GOLD)
 	var hint := InputRouter.wheel_hint()
 	if hint != "":
 		_text_centered(Vector2(w / 2.0, 330), hint, 10, GOLD)
@@ -315,7 +315,7 @@ static func _wrap(words: PackedStringArray, width: float, size: int) -> Array[St
 	var line := ""
 	for word in words:
 		var next := word if line == "" else line + " " + word
-		if line != "" and UiText.width(next, size) > width:
+		if line != "" and _width(next, size) > width:
 			out.append(line)
 			line = word
 		else:

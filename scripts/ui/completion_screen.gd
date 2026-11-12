@@ -68,7 +68,7 @@ func _draw() -> void:
 		draw_rect(bar, Color(1, 1, 1, 0.12))
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * pct / 100.0, bar.size.y)), GREEN if pct == 100 else GOLD)
 		var t := "%d%%" % pct
-		_text(Vector2(TABLE.end.x - 8 - UiText.width(t, 9), y - 1), t, 9, GREEN if pct == 100 else Color.WHITE)
+		_text(Vector2(TABLE.end.x - 8 - _width(t, 9), y - 1), t, 9, GREEN if pct == 100 else Color.WHITE)
 	var diff: String = ["EASY", "NORMAL", "HARD"][clampi(level, 0, 2)]
 	_text_centered(Vector2(TABLE.get_center().x, TABLE.end.y - 8), "Medals at " + diff + ", the difficulty picked in Options", 8, Color(1, 1, 1, 0.5))
 	_side(level)
@@ -86,7 +86,7 @@ func _side(level: int) -> void:
 	for p in Completion.parts(SaveData, level):
 		var n := "%d / %d" % [p["done"], p["total"]]
 		_text(Vector2(SIDE.position.x + 12, y), p["label"], 10, Color(1, 1, 1, 0.8))
-		_text(Vector2(SIDE.end.x - 12 - UiText.width(n, 10), y), n, 10, Color.WHITE)
+		_text(Vector2(SIDE.end.x - 12 - _width(n, 10), y), n, 10, Color.WHITE)
 		var bar := Rect2(SIDE.position.x + 12, y + 5, SIDE.size.x - 24, 4)
 		draw_rect(bar, Color(1, 1, 1, 0.12))
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * float(p["done"]) / maxf(1.0, float(p["total"])), bar.size.y)), GOLD)
@@ -95,7 +95,7 @@ func _side(level: int) -> void:
 	var tour := SaveData.is_unlocked(Tour.FINISH_UNLOCK)
 	_text(Vector2(SIDE.position.x + 12, y + 10), "GRAND TOUR", 10, Color(1, 1, 1, 0.8))
 	var tt := "DONE" if tour else "STAGE %d" % (SaveData.furthest_stage + 1)
-	_text(Vector2(SIDE.end.x - 12 - UiText.width(tt, 10), y + 10), tt, 10, GREEN if tour else Color.WHITE)
+	_text(Vector2(SIDE.end.x - 12 - _width(tt, 10), y + 10), tt, 10, GREEN if tour else Color.WHITE)
 	var next := next_up(SaveData, level)
 	_text(Vector2(SIDE.position.x + 12, y + 36), "NEXT UP", 9, GOLD)
 	if next.is_empty():

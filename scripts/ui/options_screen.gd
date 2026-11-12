@@ -11,7 +11,7 @@ extends MenuScreen
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
 	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP,
-	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE, RESTORE, CAMERA, CO_PILOT, PLAYTEST }
+	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE, RESTORE, CAMERA, CO_PILOT, PLAYTEST, UI_SCALE }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -22,7 +22,7 @@ const PAGE_ROWS := [
 	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS, Row.CAMERA, Row.PLAYTEST],
 	[Row.MUSIC, Row.SFX, Row.RADIO],
 	[Row.CALIBRATE, Row.WHEEL, Row.REMAP, Row.KEY_STEER_IN, Row.KEY_STEER_OUT, Row.RUMBLE],
-	[Row.SCREEN_SHAKE, Row.FLASH, Row.REDUCE_MOTION, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.CO_PILOT, Row.GEARS],
+	[Row.UI_SCALE, Row.SCREEN_SHAKE, Row.FLASH, Row.REDUCE_MOTION, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.CO_PILOT, Row.GEARS],
 ]
 ## Shown on a page with no rows yet.
 const PAGE_EMPTY := ["", "", "", "", ""]
@@ -31,7 +31,7 @@ const SLOTS := 12
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
-	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE", "RESTORE BACKUP", "CAMERA VIEW", "CO-PILOT", "PLAYTEST LOG"]
+	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE", "RESTORE BACKUP", "CAMERA VIEW", "CO-PILOT", "PLAYTEST LOG", "UI SCALE"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -69,6 +69,7 @@ const HELP := [
 	"Where the race is seen from: close behind, further back, or low on the bumper. V changes it while you drive.",
 	"Steers for you, in your lane and round every bend. Steer to change lanes.",
 	"A note of each race (crashes, slow stretches) in the game's log folder. Never sent anywhere.",
+	"Bigger HUD and menu text, for a TV across the room or a small screen.",
 ]
 ## The rows that show ON or OFF.
 const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES,
@@ -259,6 +260,8 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.key_steer_in = _step(s.key_steer_in, dir, s.STEER_FEEL_NAMES.size(), wrap)
 		Row.KEY_STEER_OUT:
 			s.key_steer_out = _step(s.key_steer_out, dir, s.STEER_FEEL_NAMES.size(), wrap)
+		Row.UI_SCALE:
+			s.ui_scale = _step(s.ui_scale, dir, UiScale.Size.size(), wrap)
 		_:
 			return false
 	s.save()
@@ -299,6 +302,8 @@ static func value_text(row: int) -> String:
 			return s.STEER_FEEL_NAMES[s.key_steer_in]
 		Row.KEY_STEER_OUT:
 			return s.STEER_FEEL_NAMES[s.key_steer_out]
+		Row.UI_SCALE:
+			return UiScale.NAMES[s.ui_scale]
 	if TOGGLES.has(row):
 		return "ON" if toggled(row) else "OFF"
 	return ""
@@ -461,12 +466,12 @@ func _draw() -> void:
 				pass
 			Row.RESET_OPTIONS, Row.RESET_SAVE, Row.RESTORE:
 				var t := row_text(row)
-				var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+				var tw := _width(t, 12)
 				var warn := Color("#ff5d5d") if t == "SURE?" else (Color(1, 1, 1, 0.45) if t == "NONE" else Color("#5dff8a"))
 				_text(Vector2(right - 60 - tw / 2.0, y + mid + 5), t, 12, warn)
 			_:
 				var t := value_text(row)
-				var tw := _font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+				var tw := _width(t, 12)
 				var lit := toggled(row)
 				var on_col := Color("#5dff8a") if lit else col
 				_text(Vector2(right - 60 - tw / 2.0, y + mid + 5), t, 12, on_col)
@@ -474,7 +479,7 @@ func _draw() -> void:
 					_small_arrow(Vector2(right - 120, y + mid), -1)
 					_small_arrow(Vector2(right, y + mid), 1)
 	var help: String = (RESTORE_CONFIRM_HELP if row() == Row.RESTORE else CONFIRM_HELP) if confirming else help_text()
-	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, panel.end.y + 20), help, 10, Color(1, 1, 1, 0.85))
+	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, panel.end.y + 20), help, fit_size(help, 10, Cfg.SCREEN_W - 16.0), Color(1, 1, 1, 0.85))
 	_footer(options_hints())
 
 
@@ -487,7 +492,7 @@ func _page_bar(r: Rect2, on: bool, wheel: bool) -> void:
 			draw_rect(Rect2(c.x - w / 2.0 + 2, r.position.y + 2, w - 4, r.size.y - 4), Color(SKY, 0.35 if on else 0.2))
 			draw_rect(Rect2(c.x - w / 2.0 + 2, r.end.y - 2, w - 4, 2), SKY)
 		var col := (GOLD if on else Color.WHITE) if p == page else Color(1, 1, 1, 0.55)
-		_text_centered(Vector2(c.x, c.y + 4), PAGE_NAMES[p], 10, col)
+		_text_centered(Vector2(c.x, c.y + 4), PAGE_NAMES[p], fit_size(PAGE_NAMES[p], 10, w - 6.0), col)
 	if on and not wheel:
 		_small_arrow(Vector2(r.position.x + 10, r.position.y + r.size.y / 2.0), -1)
 		_small_arrow(Vector2(r.end.x - 10, r.position.y + r.size.y / 2.0), 1)

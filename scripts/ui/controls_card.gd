@@ -29,6 +29,9 @@ var device: int = Device.KEYBOARD
 var on_back := Callable()
 ## Set over a race (the pause menu): a dimmer backdrop, the race showing through.
 var over_race := false
+## Up in the attract tour (PR-20, Attract): the game ends it on any input, and its foot
+## blinks PRESS START instead of the hints.
+var attract := false
 
 
 func _init() -> void:
@@ -166,6 +169,11 @@ func _draw() -> void:
 		if i % 2 == 0:
 			draw_rect(Rect2(panel.position.x + 12, y - 12, panel.size.x - 24, ROW_H), Color(1, 1, 1, 0.04))
 		var label: String = list[i][0]
-		_text(Vector2(panel.position.x + LABEL_X - UiText.width(label, 11), y), label, 11, SKY)
+		_text(Vector2(panel.position.x + LABEL_X - _width(label, 11), y), label, 11, SKY)
 		_text(Vector2(panel.position.x + VALUE_X, y), list[i][1], 11, Color.WHITE)
-	_footer(card_hints())
+	if attract:
+		draw_rect(Rect2(0, Cfg.SCREEN_H - 20, Cfg.SCREEN_W, 20), Color(0, 0, 0, 0.6))
+		if fmod(time, 1.0) < 0.65:
+			_text_centered(Vector2(w / 2.0, Cfg.SCREEN_H - 6), "PRESS START", 12, GOLD)
+	else:
+		_footer(card_hints())

@@ -778,3 +778,23 @@ func test_settings_v15_to_v16_brings_the_old_default_effects_down() -> void:
 		var want := Settings.DEFAULT_SFX if set_music == 10 else 10
 		eq(cfg.get_value("audio", "sfx"), want, "music %d, effects 10: effects now %d" % [set_music, want])
 	_clean()
+
+
+func test_settings_v16_to_v17_adds_the_ui_scale() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "settings_v16.cfg")
+	eq(Settings.migrate(cfg), 16, "from version 16")
+	eq([CfgVersion.of(cfg), cfg.get_value("accessibility", "ui_scale")], [Settings.VERSION, UiScale.Size.NORMAL],
+		"migrated on: Normal, the one size before")
+	_clean()
+	_load_settings("settings_v16.cfg")
+	eq([Settings.loaded_version, Settings.ui_scale, Settings.reduce_motion, Settings.wheels_prompted.size()],
+		[16, UiScale.Size.NORMAL, true, 1], "v16 loads at Normal, the rest as saved")
+	Settings.ui_scale = UiScale.Size.LARGE
+	Settings.save()
+	Settings.load_settings()
+	eq([Settings.loaded_version, Settings.ui_scale], [Settings.VERSION, UiScale.Size.LARGE], "saved and loaded back")
+	Settings.reset()
+	eq(Settings.ui_scale, UiScale.Size.NORMAL, "reset: Normal")
+	_clean()
+	eq(Settings.ui_scale, UiScale.Size.NORMAL, "no file: Normal")

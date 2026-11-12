@@ -13,9 +13,9 @@ const PRESET_DIR := "user://tuning_presets"
 const LOG_PATH := "user://tuning_log.txt"
 ## The areas, in the debug panel's page order. A key is "area/name".
 const AREAS := ["driving", "slide", "crashes", "ai", "difficulty", "balance", "traffic", "draft", "launch", "power_ups", "scoring", "camera",
-	"world", "assists", "first_drive"]
+	"world", "assists", "first_drive", "survival"]
 const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "DIFFICULTY", "STAGE BALANCE", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "SCORING",
-	"CAMERA", "WORLD", "ASSISTS", "FIRST DRIVE"]
+	"CAMERA", "WORLD", "ASSISTS", "FIRST DRIVE", "SURVIVAL"]
 ## key: [default, min, max, step, what it is]. tools/tuning_adopt.py rewrites the defaults in
 ## place, so keep one value to a line, the default first.
 const TABLE := {
@@ -192,6 +192,11 @@ const TABLE := {
 	"first_drive/min_show": [2.0, 0.5, 6.0, 0.25, "seconds a prompt stays up at least, the road allowing it or not"],
 	"first_drive/withdraw": [1.0, 0.0, 4.0, 0.25, "seconds of the road no longer allowing it before it goes back to wait"],
 	"first_drive/gap": [1.5, 0.0, 5.0, 0.25, "seconds between one prompt and the next"],
+	"survival/clock_scale": [1.0, 0.1, 2.0, 0.05, "survival (MP-13): each stage's clock times this, the start and every bonus"],
+	"survival/bonus_shrink": [0.05, 0.0, 0.2, 0.005, "share of a checkpoint's bonus gone for each checkpoint passed before it"],
+	"survival/traffic_ramp": [0.35, 0.0, 1.0, 0.05, "more traffic on each leg after the first, a share of the stage's own"],
+	"survival/traffic_cap": [2.5, 1.0, 4.0, 0.1, "the most traffic a leg has, times the stage's own"],
+	"survival/checkpoint_cars": [6, 0, 30, 1, "cars added up the road at each checkpoint"],
 }
 
 ## Where overrides are read from and saved to; "" keeps them in memory only (tests).

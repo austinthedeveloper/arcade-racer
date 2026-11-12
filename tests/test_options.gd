@@ -803,3 +803,36 @@ func test_gears_option_saves_and_reaches_the_race() -> void:
 	_clean()
 	r.start_race()
 	check(not r.player.manual, "the default keeps the automatic (golden traces)")
+
+
+func test_ui_scale_option_saves_and_grows_the_menus_and_hud() -> void:
+	# AC-12: UI SCALE, first on the accessibility page
+	_clean()
+	var o := OptionsScreen.new()
+	o.go_to(OptionsScreen.Row.UI_SCALE)
+	eq([o.page, o.index], [OptionsScreen.Page.ACCESSIBILITY, 1], "the accessibility page's first row")
+	check(OptionsScreen.PAGE_ROWS[o.page].size() + 2 <= OptionsScreen.SLOTS, "the page still fits the panel")
+	eq(OptionsScreen.value_text(OptionsScreen.Row.UI_SCALE), "NORMAL", "Normal by default")
+	eq(MenuScreen.px(12), 12, "menu text as laid out")
+	o.change(OptionsScreen.Row.UI_SCALE, 1, false)
+	eq(OptionsScreen.value_text(OptionsScreen.Row.UI_SCALE), "LARGE", "Large")
+	o.change(OptionsScreen.Row.UI_SCALE, 1, false)
+	eq(Settings.ui_scale, UiScale.Size.LARGE, "stops at Large going right")
+	Settings.load_settings()
+	eq(Settings.ui_scale, UiScale.Size.LARGE, "saved")
+	eq(MenuScreen.px(12), UiScale.menu_px(12, UiScale.Size.LARGE), "menu text drawn bigger")
+	check(MenuScreen._width("OPTIONS", 12) > UiText.width("OPTIONS", 12), "and measured at the size it's drawn")
+	# At Large every help line, page name and row label still fits its place
+	var tab := (420.0 - 40.0) / OptionsScreen.Page.size() - 6.0
+	for name: String in OptionsScreen.PAGE_NAMES:
+		check(MenuScreen._width(name, MenuScreen.fit_size(name, 10, tab)) <= tab, "page name fits: " + name)
+	for help: String in OptionsScreen.HELP:
+		var line := help % "the title screen" if help.contains("%s") else help
+		check(MenuScreen._width(line, MenuScreen.fit_size(line, 10, Cfg.SCREEN_W - 16.0)) <= Cfg.SCREEN_W - 16.0, "help fits: " + line)
+	for label: String in OptionsScreen.LABELS:
+		check(MenuScreen._width(label, 12) <= 420.0 - 16.0 - 190.0, "label clear of the values: " + label)
+	eq(MenuScreen.fit_size("OK", 10, 600.0), 10, "short text keeps its size")
+	o.change(OptionsScreen.Row.UI_SCALE, 1, true)
+	eq(Settings.ui_scale, UiScale.Size.NORMAL, "select wraps round to Normal")
+	o.free()
+	_clean()

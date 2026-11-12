@@ -20,6 +20,10 @@ signal changed
 ## 3: [stats] (MP-11). 4: [profile] (MP-10): the save that was there becomes profile 1's.
 ## 5: [onboarding] (AC-16, MP-15): who's driving asked, the first drive done or skipped
 ## (missing: a new profile; a save from before is a driver who has been playing, so both done).
+## Added within 5, no bump (a missing section is a fresh one, so older files need nothing):
+## [survival] (MP-13): best (the longest run, world units), best_leg (legs it reached), best_car,
+## runs. [daily] (MP-14): day (Daily.day_key of the tries kept), tries, times (the day's best
+## finishes, fastest first); a day that isn't today's reads as no tries.
 ## 6: [stickers] (MP-12) and [tour] mirror_wins (MP-17). A save from before has no stickers and
 ## no mirror wins kept (they weren't), so both start empty; a sticker it already earns (every
 ## stage finished, say) comes with its next race.
@@ -67,6 +71,10 @@ var loaded_version := VERSION
 var driver_asked := false
 ## This profile's first drive (MP-15), a FirstDrive.
 var first_drive: int = FirstDrive.PENDING
+## Survival's best (MP-13): {"best": world units, "best_leg", "best_car", "runs"}.
+var survival := fresh_survival()
+## The daily run's tries (MP-14, Daily.add_try): {"day", "tries", "times"}; {} for none yet.
+var daily := {}
 
 
 func _ready() -> void:
@@ -244,6 +252,8 @@ func reset() -> void:
 	mirror_wins.clear()
 	driver_asked = false
 	first_drive = FirstDrive.PENDING
+	survival = fresh_survival()
+	daily = {}
 	loaded_version = VERSION
 
 
@@ -266,6 +276,36 @@ func mark_driver_asked() -> void:
 		return
 	driver_asked = true
 	save()
+
+
+static func fresh_survival() -> Dictionary:
+	return {"best": 0.0, "best_leg": 0, "best_car": "", "runs": 0}
+
+
+## A Survival run over (MP-13): `distance` world units, `legs` reached (1 for the first), in
+## `car_id`. Counted and saved; returns true for a new best.
+func record_survival(distance: float, legs: int, car_id: String) -> bool:
+	survival["runs"] = int(survival["runs"]) + 1
+	var better := distance > float(survival["best"])
+	if better:
+		survival["best"] = distance
+		survival["best_leg"] = maxi(1, legs)
+		survival["best_car"] = car_id
+	save()
+	return better
+
+
+## A daily run try over (MP-14) on `day` (Daily.day_key): `time` seconds, INF for TIME UP.
+## Saved; returns the day's tries as now kept.
+func record_daily(day: int, time: float) -> Dictionary:
+	daily = Daily.add_try(daily, day, time)
+	save()
+	return daily
+
+
+## The daily run's tries on `day`: none when the ones kept are another day's.
+func daily_on(day: int) -> Dictionary:
+	return Daily.tries_on(daily, day)
 
 
 static func fresh_stats() -> Dictionary:
@@ -324,6 +364,20 @@ func load_save() -> void:
 				stickers[id] = maxi(0, int(cfg.get_value("stickers", id, 0)))
 	driver_asked = bool(cfg.get_value("onboarding", "driver_asked", false))
 	first_drive = clampi(int(cfg.get_value("onboarding", "first_drive", FirstDrive.PENDING)), 0, FirstDrive.size() - 1)
+	survival["best"] = maxf(0.0, float(cfg.get_value("survival", "best", 0.0)))
+	survival["best_leg"] = maxi(0, int(cfg.get_value("survival", "best_leg", 0)))
+	survival["best_car"] = str(cfg.get_value("survival", "best_car", ""))
+	survival["runs"] = maxi(0, int(cfg.get_value("survival", "runs", 0)))
+	if cfg.has_section("daily"):
+		var times: Array = []
+		var t = cfg.get_value("daily", "times", [])
+		if t is Array:
+			for x in t:
+				if float(x) > 0.0:
+					times.append(float(x))
+		times.sort()
+		daily = {"day": int(cfg.get_value("daily", "day", 0)), "tries": maxi(0, int(cfg.get_value("daily", "tries", 0))),
+			"times": times.slice(0, Daily.BEST_TRIES)}
 
 
 ## Brings a loaded save.cfg up to VERSION; returns the version it had.
@@ -423,6 +477,13 @@ func save(fresh := false) -> void:
 	cfg.set_value("onboarding", "first_drive", first_drive)
 	for id: String in stickers:
 		cfg.set_value("stickers", id, stickers[id])
+	if int(survival["runs"]) > 0:
+		for k: String in survival:
+			cfg.set_value("survival", k, survival[k])
+	if not daily.is_empty():
+		cfg.set_value("daily", "day", int(daily["day"]))
+		cfg.set_value("daily", "tries", int(daily["tries"]))
+		cfg.set_value("daily", "times", daily["times"])
 	# Written whole to a side file and then renamed over the save, so a crash mid-write
 	# never leaves a cut-off save.
 	CfgVersion.backup_if_older(path, VERSION)  # (EQ-21)

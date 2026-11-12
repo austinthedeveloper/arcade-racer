@@ -119,4 +119,4 @@ func _info() -> void:
 	var when := earned_text(int(SaveData.stickers[s["id"]])) if have else "NOT YET"
 	_text(Vector2(x, INFO.position.y + 62), when, 9, Color("#5dff8a") if have else Color(1, 1, 1, 0.45))
 	var n := "%d / %d" % [index + 1, Stickers.count()]
-	_text(Vector2(INFO.end.x - 12 - UiText.width(n, 9), INFO.position.y + 62), n, 9, Color(1, 1, 1, 0.45))
+	_text(Vector2(INFO.end.x - 12 - _width(n, 9), INFO.position.y + 62), n, 9, Color(1, 1, 1, 0.45))

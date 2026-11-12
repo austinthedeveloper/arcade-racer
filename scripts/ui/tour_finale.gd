@@ -219,7 +219,7 @@ func _draw_podium() -> void:
 			var src := Rect2(Vector2(cell.x * (CarSprites.PLAYER_FRAMES / 2), 0), cell)
 			draw_texture_rect_region(strip["tex"], Rect2(Vector2(top.x - size.x / 2.0, top.y - size.y + 3 + bob), size), src)
 		var label := "YOU" if who == Tour.YOU else who.to_upper()
-		var lw := UiText.width(label, 11) + 12.0
+		var lw := _width(label, 11) + 12.0
 		var ly := top.y - car_h - 18.0
 		draw_rect(Rect2(top.x - lw / 2.0, ly - 11, lw, 15), Color(0, 0, 0, 0.55))
 		_text_centered(Vector2(top.x, ly), label, 11, GOLD if who == Tour.YOU else Color.WHITE)
@@ -241,7 +241,7 @@ func _draw_standings() -> void:
 		_text(Vector2(panel.position.x + 24, y), Rivals.ordinal(i + 1), 12, STEP_COLORS[i] if i < 3 else Color(1, 1, 1, 0.6))
 		_text(Vector2(panel.position.x + 76, y), "YOU" if you else who.to_upper(), 12, col)
 		var pts := "%d PTS" % standings[i]["points"]
-		_text(Vector2(panel.end.x - 24 - UiText.width(pts, 12), y), pts, 12, col)
+		_text(Vector2(panel.end.x - 24 - _width(pts, 12), y), pts, 12, col)
 
 
 func _draw_card() -> void:

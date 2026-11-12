@@ -95,7 +95,7 @@ func _radio(r: Rect2) -> void:
 	_text(Vector2(r.position.x + 12, r.position.y + 15), "RADIO  " + Radio.setting_name(setting), 10, GOLD)
 	_text(Vector2(r.position.x + 12, r.position.y + 31), station, 10, Color(1, 1, 1, 0.85))
 	var key := "%s: change" % InputRouter.keyboard.binding_text("radio")
-	var kw := _font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+	var kw := _width(key, 9)
 	_text(Vector2(r.end.x - 10 - kw, r.position.y + 15), key, 9, Color(1, 1, 1, 0.6))
 
 

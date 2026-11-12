@@ -5,7 +5,7 @@ extends Node
 ## --online=host or --online=join:CODE straight into a room (online_from_flags).
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES, FINALE, CREDITS, CONTROLS, STICKERS, COMPLETION }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES, FINALE, CREDITS, CONTROLS, STICKERS, COMPLETION, DAILY }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -22,6 +22,9 @@ var car_index := 0  # into Cars
 ## The MIRROR toggle on stage select (WS-6): races a stage mirrored where that's open
 ## (mirror_for). Not saved; --mirror turns it on.
 var mirror := false
+## The daily run's day (MP-14, Daily.day_key): 0 for today on this machine's calendar;
+## --day=YYYYMMDD stages another (screenshots).
+var day := 0
 var menu: MenuScreen
 var race: Node  # race.gd, while racing
 ## The online room (ON-2), from HOST or JOIN until it's left; polled every tick, menus or race.
@@ -42,7 +45,8 @@ var _auto_room_said := false
 ## (the e2e sets it directly).
 var attract_delay := Attract.IDLE_SECONDS
 var idle := 0.0  # seconds on the title with no input
-var demo_count := 0  # demos played, for Attract.pick
+var tour_step := 0  # the attract tour's next step (Attract.step), counting on across loops
+var attract_time := 0.0  # seconds the tour's controls card has been up
 var on_quit := Callable()  # in place of quitting (quit), for tests
 ## Menu ticks to ignore after a demo ends, so the press that ended it doesn't also pick
 ## something on the title.
@@ -96,6 +100,7 @@ func _ready() -> void:
 	if car != "":
 		car_index = maxi(0, Cars.LIST.find(Cars.find(car)))
 	mirror = DevArgs.has("--mirror")
+	day = int(DevArgs.value("--day", "0"))
 	news_allowed = DevArgs.value("--menu-shot") == ""
 	onboarding = news_allowed
 	var mode := DevArgs.value("--mode")
@@ -162,8 +167,12 @@ func _physics_process(dt: float) -> void:
 			start_online_race()  # the host started (again): everyone into the race
 	var woke := Attract.is_input(InputRouter.state, InputRouter.menu)
 	if is_demo():
-		if woke:
+		if woke and _menu_shot == "":  # (a staged shot of the tour is hands-off, whatever a pad says)
 			end_demo()
+		elif race == null:  # the tour's controls card
+			attract_time += dt
+			if attract_time >= Attract.CONTROLS_SECONDS:
+				next_attract_step()
 		return
 	if screen == Screen.RACE or menu == null or calibration.visible or debug_panel.visible:
 		return
@@ -310,21 +319,37 @@ func close_options() -> void:
 
 
 ## A playable mode picked on mode select. ONLINE picks the car first; the host picks the
-## stage in the lobby.
+## stage in the lobby. SURVIVAL's road is set (it starts on Palm Coast): just the car. The
+## DAILY RUN picks everything: its card.
 func choose_mode(item: int) -> void:
 	mode_index = item
-	if item == ModeSelect.Item.ONLINE:
+	if item == ModeSelect.Item.ONLINE or item == ModeSelect.Item.SURVIVAL:
 		show_car_select()
+	elif item == ModeSelect.Item.DAILY_RUN:
+		show_daily()
 	else:
 		show_stage_select()
 
 
-## Back from car select: stage select, or mode select for ONLINE (which has none).
+## Back from car select: stage select, or mode select for ONLINE and SURVIVAL (which have none).
 func car_select_back() -> void:
-	if mode_index == ModeSelect.Item.ONLINE:
+	if mode_index == ModeSelect.Item.ONLINE or mode_index == ModeSelect.Item.SURVIVAL:
 		show_mode_select()
 	else:
 		show_stage_select()
+
+
+## The daily run's day: `day`, or today (Daily.today).
+func daily_day() -> int:
+	return day if day > 0 else Daily.today()
+
+
+## The daily run's card (MP-14): the day's stage, car, weather and traffic, and your tries.
+func show_daily() -> void:
+	var d := DailyCard.new()
+	d.day = daily_day()
+	d.pick = Daily.pick(d.day)
+	_set_menu(d, Screen.DAILY)
 
 
 ## ONLINE after car select: host or join, then the room's lobby (when in one).
@@ -526,25 +551,50 @@ func start_race() -> void:
 	if mode_index == ModeSelect.Item.ONLINE:
 		show_online()
 		return
+	if mode_index == ModeSelect.Item.DAILY_RUN:
+		var p := Daily.pick(daily_day())
+		_spawn_race(int(p["stage"]), maxi(0, Cars.LIST.find(Cars.find(p["car"]))), false)
+		return
 	_spawn_race(stage_index, car_index, false)
 
 
-## The title sat idle: an autodriven demo race on the next stage and car in turn. The
-## player's own stage and car picks stay as they were.
+## The title sat idle: the attract tour's next step (PR-20, Attract.step), an autodriven
+## demo race on the next stage and car in turn or the controls card. The player's own stage
+## and car picks stay as they were.
 func start_demo() -> void:
-	var pick := Attract.pick(demo_count)
-	demo_count += 1
+	var s := Attract.step(tour_step, Stages.count(), Attract.tour_cars_now())
+	tour_step += 1
 	idle = 0.0
-	_spawn_race(pick["stage"], pick["car"], true)
+	if s["kind"] == Attract.Step.CONTROLS:
+		var c := ControlsCard.new()
+		c.attract = true
+		attract_time = 0.0
+		_set_menu(c, Screen.CONTROLS)
+		return
+	_spawn_race(s["stage"], s["car"], true)
 
 
+## In the attract tour: a demo race, or its controls card.
 func is_demo() -> bool:
-	return race != null and race.demo
+	if race != null:
+		return race.demo
+	return menu is ControlsCard and (menu as ControlsCard).attract
 
 
-## Input during a demo (or the demo running out): back to the title.
+## A step of the tour ran its length: on to the next, or at the end of a loop the title.
+func next_attract_step() -> void:
+	if Attract.ends_loop(tour_step - 1, Stages.count()):
+		end_demo()
+		return
+	if race != null:
+		_drop_race()
+	start_demo()
+
+
+## Input during the tour (or a loop ending): back to the title.
 func end_demo() -> void:
-	_drop_race()
+	if race != null:
+		_drop_race()
 	show_title()
 	_swallow = 10
 
@@ -559,6 +609,9 @@ func _spawn_race(stage: int, car: int, demo: bool) -> void:
 	race.tour = not demo and mode_index == ModeSelect.Item.GRAND_TOUR
 	race.time_attack = not demo and mode_index == ModeSelect.Item.TIME_ATTACK
 	race.free_drive = not demo and mode_index == ModeSelect.Item.FREE_DRIVE
+	race.survival = not demo and mode_index == ModeSelect.Item.SURVIVAL
+	if not demo and mode_index == ModeSelect.Item.DAILY_RUN:
+		race.daily = Daily.pick(daily_day())
 	race.mirror = not demo and mirror_for(stage)
 	race.first_drive_on = first_drive_for(stage, demo)
 	race.debug_overlay = debug_overlay
@@ -577,14 +630,15 @@ func mirror_for(stage: int) -> bool:
 
 
 ## Mirror mode is for a single stage: a Single Race, Time Attack or Free Drive. The Grand
-## Tour runs on through stages whose mirrors may not be open, so it races them as built.
+## Tour and Survival run on through stages whose mirrors may not be open, so they race them
+## as built; the daily run is the same road for everyone.
 func mirror_offered() -> bool:
-	return mode_index != ModeSelect.Item.GRAND_TOUR
+	return not mode_index in [ModeSelect.Item.GRAND_TOUR, ModeSelect.Item.SURVIVAL, ModeSelect.Item.DAILY_RUN]
 
 
 func _on_race_quit() -> void:
 	if is_demo():
-		end_demo()
+		next_attract_step()  # (a demo quits when it's run its length)
 		return
 	_drop_race()
 	leave_room()
@@ -607,7 +661,12 @@ func _on_race_over() -> void:
 		online.to_lobby()
 		show_online()
 		return
-	show_stage_select()
+	if mode_index == ModeSelect.Item.SURVIVAL:
+		show_car_select()  # (the run again, in this car or another)
+	elif mode_index == ModeSelect.Item.DAILY_RUN:
+		show_daily()  # (the card, with this try on it)
+	else:
+		show_stage_select()
 
 
 ## OPTIONS on the pause menu: the options over the paused race, then back to its menu.
@@ -622,7 +681,7 @@ func _close_race_options() -> void:
 
 
 func _drop_race() -> void:
-	if not race.demo:
+	if not race.demo and not race.survival and race.daily.is_empty():
 		stage_index = race.stage_index  # stage select opens on the stage the tour reached
 	race.queue_free()
 	race = null
@@ -652,6 +711,9 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # --screen=stats opens the stats page (MP-11); --screen=profiles the driver picker (MP-10).
 # --screen=stickers the sticker book (MP-12; stickers:5 with the cursor on the sixth sticker),
 # --screen=completion the completion page (MP-17).
+# --screen=daily the daily run's card (MP-14); --day=YYYYMMDD for another day's run (the card,
+# mode select's DAILY RUN and --mode=daily_run races). --mode=survival with race flags races
+# Survival (MP-13).
 # --screen=credits rolls the credits (PR-23; credits:harbor as after the tour, credits:600 rolled on 600 px). --screen=finale
 # stages the Grand Tour's ending (MP-16): finale:standings and finale:card for its later pages,
 # finale:card:2 (or any place) for where the player finished; --car=ID for the player's car.
@@ -661,7 +723,8 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # a staged wheel calibration (WH-16). Neither is saved. --first-drive makes a race the flags
 # start the first drive (MP-15) when the save is a new profile's.
 # --screen=whats_new shows this version's notes over the title (PR-17), without marking them seen.
-# --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
+# --screen=demo starts an attract-mode demo, also with --at-segment=N; demo:N the attract
+# tour's Nth step (Attract.step: demo:1 is the controls card, demo:2 the second stage). --screen=update stages
 # a download; update:checking, update:failed, update:full and update:ready the other states.)
 
 func _open(which: String) -> void:
@@ -686,6 +749,9 @@ func _open(which: String) -> void:
 				(menu as StickerScreen).index = clampi(int(which.get_slice(":", 1)), -1, Stickers.count() - 1)
 		"completion":
 			show_completion()
+		"daily":
+			mode_index = ModeSelect.Item.DAILY_RUN
+			show_daily()
 		"profiles":
 			show_profiles()
 		_ when which.begins_with("credits"):
@@ -720,7 +786,9 @@ func _open(which: String) -> void:
 		_ when which.begins_with("online"):
 			show_online()
 			(menu as OnlineScreen).stage_shot(which.get_slice(":", 1) if which.contains(":") else "menu")
-		"demo":
+		_ when which.begins_with("demo"):
+			# demo, or demo:N for the attract tour's Nth step (demo:1 its controls card)
+			tour_step = int(which.get_slice(":", 1)) if which.contains(":") else 0
 			start_demo()
 		_ when which.begins_with("update"):
 			show_update(staged_updater(which.get_slice(":", 1) if which.contains(":") else "downloading"))

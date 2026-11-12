@@ -13,6 +13,12 @@ const EXTENSIONS: Array[String] = ["ogg", "wav", "mp3"]
 const CUES := {
 	"engine_low": ["sfx", true, -9.5],
 	"engine_high": ["sfx", true, -13.5],
+	# The engine notes (EngineModels, PR-18): the small engine's and the V8's low layer, and
+	# the turbo's whine and shift pop (the turbo's layers are engine_low and engine_high).
+	"engine_small": ["sfx", true, -10.0],
+	"engine_v8": ["sfx", true, -8.0],
+	"turbo_whine": ["sfx", true, -21.0],
+	"turbo_pop": ["sfx", false, -6.0],
 	"rival": ["sfx", true, -16.0],  # the nearest rival's engine, under the player's own
 	"skid": ["sfx", true, -10.0],
 	"offroad": ["sfx", true, -15.0],

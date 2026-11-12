@@ -68,7 +68,7 @@ static func tab_rects() -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	var x := Cfg.SCREEN_W - 22.0  # (room for the right arrow)
 	for i in range(PAGES.size() - 1, -1, -1):
-		var w := UiText.width(PAGES[i], 10) + 18.0
+		var w := MenuScreen._width(PAGES[i], 10) + 18.0
 		x -= w
 		out.push_front(Rect2(x, TAB_Y, w, TAB_H))
 		x -= 6.0
@@ -112,7 +112,7 @@ func _draw() -> void:
 			draw_rect(Rect2(PANEL.position.x + 10, y - 20, PANEL.size.x - 20, 1), Color(1, 1, 1, 0.12))
 		_text(Vector2(PANEL.position.x + 14, y), list[i]["label"], 11, Color(1, 1, 1, 0.75))
 		var v: String = list[i]["value"]
-		_text(Vector2(PANEL.end.x - 14 - UiText.width(v, 16), y + 1), v, 16, GOLD if i < 2 else Color.WHITE)
+		_text(Vector2(PANEL.end.x - 14 - _width(v, 16), y + 1), v, 16, GOLD if i < 2 else Color.WHITE)
 	var since := "Kept since this save began" if int(SaveData.stats["races"]) > 0 else "Race to start the count"
 	_text_centered(Vector2(PANEL.get_center().x, PANEL.end.y - 12), since, 9, Color(1, 1, 1, 0.5))
 
