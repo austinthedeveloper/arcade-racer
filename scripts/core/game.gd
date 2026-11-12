@@ -42,7 +42,8 @@ var _auto_room_said := false
 ## (the e2e sets it directly).
 var attract_delay := Attract.IDLE_SECONDS
 var idle := 0.0  # seconds on the title with no input
-var demo_count := 0  # demos played, for Attract.pick
+var tour_step := 0  # the attract tour's next step (Attract.step), counting on across loops
+var attract_time := 0.0  # seconds the tour's controls card has been up
 var on_quit := Callable()  # in place of quitting (quit), for tests
 ## Menu ticks to ignore after a demo ends, so the press that ended it doesn't also pick
 ## something on the title.
@@ -162,8 +163,12 @@ func _physics_process(dt: float) -> void:
 			start_online_race()  # the host started (again): everyone into the race
 	var woke := Attract.is_input(InputRouter.state, InputRouter.menu)
 	if is_demo():
-		if woke:
+		if woke and _menu_shot == "":  # (a staged shot of the tour is hands-off, whatever a pad says)
 			end_demo()
+		elif race == null:  # the tour's controls card
+			attract_time += dt
+			if attract_time >= Attract.CONTROLS_SECONDS:
+				next_attract_step()
 		return
 	if screen == Screen.RACE or menu == null or calibration.visible or debug_panel.visible:
 		return
@@ -508,22 +513,43 @@ func start_race() -> void:
 	_spawn_race(stage_index, car_index, false)
 
 
-## The title sat idle: an autodriven demo race on the next stage and car in turn. The
-## player's own stage and car picks stay as they were.
+## The title sat idle: the attract tour's next step (PR-20, Attract.step), an autodriven
+## demo race on the next stage and car in turn or the controls card. The player's own stage
+## and car picks stay as they were.
 func start_demo() -> void:
-	var pick := Attract.pick(demo_count)
-	demo_count += 1
+	var s := Attract.step(tour_step, Stages.count(), Attract.tour_cars_now())
+	tour_step += 1
 	idle = 0.0
-	_spawn_race(pick["stage"], pick["car"], true)
+	if s["kind"] == Attract.Step.CONTROLS:
+		var c := ControlsCard.new()
+		c.attract = true
+		attract_time = 0.0
+		_set_menu(c, Screen.CONTROLS)
+		return
+	_spawn_race(s["stage"], s["car"], true)
 
 
+## In the attract tour: a demo race, or its controls card.
 func is_demo() -> bool:
-	return race != null and race.demo
+	if race != null:
+		return race.demo
+	return menu is ControlsCard and (menu as ControlsCard).attract
 
 
-## Input during a demo (or the demo running out): back to the title.
+## A step of the tour ran its length: on to the next, or at the end of a loop the title.
+func next_attract_step() -> void:
+	if Attract.ends_loop(tour_step - 1, Stages.count()):
+		end_demo()
+		return
+	if race != null:
+		_drop_race()
+	start_demo()
+
+
+## Input during the tour (or a loop ending): back to the title.
 func end_demo() -> void:
-	_drop_race()
+	if race != null:
+		_drop_race()
 	show_title()
 	_swallow = 10
 
@@ -563,7 +589,7 @@ func mirror_offered() -> bool:
 
 func _on_race_quit() -> void:
 	if is_demo():
-		end_demo()
+		next_attract_step()  # (a demo quits when it's run its length)
 		return
 	_drop_race()
 	leave_room()
@@ -638,7 +664,8 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # a staged wheel calibration (WH-16). Neither is saved. --first-drive makes a race the flags
 # start the first drive (MP-15) when the save is a new profile's.
 # --screen=whats_new shows this version's notes over the title (PR-17), without marking them seen.
-# --screen=demo starts an attract-mode demo, also with --at-segment=N. --screen=update stages
+# --screen=demo starts an attract-mode demo, also with --at-segment=N; demo:N the attract
+# tour's Nth step (Attract.step: demo:1 is the controls card, demo:2 the second stage). --screen=update stages
 # a download; update:checking, update:failed, update:full and update:ready the other states.)
 
 func _open(which: String) -> void:
@@ -691,7 +718,9 @@ func _open(which: String) -> void:
 		_ when which.begins_with("online"):
 			show_online()
 			(menu as OnlineScreen).stage_shot(which.get_slice(":", 1) if which.contains(":") else "menu")
-		"demo":
+		_ when which.begins_with("demo"):
+			# demo, or demo:N for the attract tour's Nth step (demo:1 its controls card)
+			tour_step = int(which.get_slice(":", 1)) if which.contains(":") else 0
 			start_demo()
 		_ when which.begins_with("update"):
 			show_update(staged_updater(which.get_slice(":", 1) if which.contains(":") else "downloading"))

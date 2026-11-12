@@ -2,6 +2,8 @@ class_name MenuScreen
 extends Control
 ## Base for the front-end screens (title, stage select, car select). The game feeds each
 ## physics tick's MenuInput to `handle`; screens draw themselves in the Hud's style.
+## The UI scale (AC-12, UiScale): text drawn with _text and _text_centered comes out bigger at
+## LARGE; a screen that lines text up by its width measures it with _width (the drawn size).
 
 const GOLD := Color("#ffd23a")
 const SKY := Color("#3ad0ff")
@@ -75,7 +77,7 @@ func _header(s: String) -> void:
 
 func _footer(s: String) -> void:
 	draw_rect(Rect2(0, Cfg.SCREEN_H - 20, Cfg.SCREEN_W, 20), Color(0, 0, 0, 0.6))
-	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, Cfg.SCREEN_H - 6), s, 9, Color(1, 1, 1, 0.8))
+	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, Cfg.SCREEN_H - 6), s, fit_size(s, 9, Cfg.SCREEN_W - 12.0), Color(1, 1, 1, 0.8))
 
 
 ## A chrome-bevelled frame around `r`.
@@ -109,9 +111,34 @@ func _lock(c: Vector2, scale: float) -> void:
 	draw_rect(Rect2(c + Vector2(-1, 3) * scale, Vector2(2, 4) * scale), NIGHT)
 
 
+## Text laid out `size` high, drawn at the UI scale's size for it (UiScale.menu_px).
 func _text(pos: Vector2, s: String, size: int, col: Color) -> void:
-	UiText.draw(self, pos, s, size, col)
+	UiText.draw(self, pos, s, px(size), col)
 
 
 func _text_centered(pos: Vector2, s: String, size: int, col: Color) -> void:
-	UiText.draw_centered(self, pos, s, size, col)
+	UiText.draw_centered(self, pos, s, px(size), col)
+
+
+## The size menu text laid out `size` high is drawn at, with the UI scale the options set.
+static func px(size: int) -> int:
+	return UiScale.menu_px(size, UiScale.now())
+
+
+## How wide `s` comes out drawn with _text at `size`.
+static func _width(s: String, size: int) -> float:
+	return UiText.width(s, px(size))
+
+
+## The biggest size up to `size` at which `s`, drawn with _text, is no wider than `room`: for
+## labels in a fixed box, which the UI scale's bigger text could overrun (never under 8).
+static func fit_size(s: String, size: int, room: float) -> int:
+	var at := size
+	while at > UiText.MIN_SIZE and _width(s, at) > room:
+		at -= 1
+	return at
+
+
+## Where text drawn with _text at `size` starts so its middle is at `x`.
+static func _centered_x(x: float, s: String, size: int) -> float:
+	return x - _width(s, size) / 2.0

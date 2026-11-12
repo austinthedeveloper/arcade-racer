@@ -187,7 +187,7 @@ func _summary(field: Array[Dictionary]) -> void:
 	# The medal this run earned (MP-9), beside the time
 	var medal := Medals.earned(race.stage_index, Settings.difficulty, race.player_finish)
 	if medal != Medals.Medal.NONE:
-		var mx := 16 + UiText.width(time_text, 14) + 12
+		var mx := 16 + _width(time_text, 14) + 12
 		Medals.draw(self, Vector2(mx, y + 17), medal, 6.0)
 		_text(Vector2(mx + 10, y + 21), Medals.medal_name(medal), 9, Medals.color(medal))
 	var best := best_line(race.new_best or race.new_best_time, race.best_before)
@@ -256,7 +256,7 @@ func _field_panel(field: Array[Dictionary]) -> void:
 		_text(Vector2(band.position.x + 46, y + 22), String(Cars.find(r["car"])["name"]).to_upper(), 8, Color(1, 1, 1, 0.7))
 		var t: float = r["time"]
 		var tt := Hud.clock_text(t) if t >= 0.0 else ("OUT" if race.cut_short else "RACING")
-		var tw := _font.get_string_size(tt, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		var tw := _width(tt, 10)
 		_text(Vector2(band.end.x - 6 - tw, y + 17), tt, 10, Color.WHITE if t >= 0.0 else Color(1, 1, 1, 0.55))
 
 
@@ -310,7 +310,7 @@ func _online_lines(room: OnlineSession, picking: bool) -> void:
 	_text(Vector2(16, 318), ready_line(room), 12, GOLD)
 	_text(Vector2(16, 330), "Starts when all are in", 8, Color(1, 1, 1, 0.6))
 	var next := "NEXT  " + Stages.stage_name(room.stage).to_upper() + ("  MIRROR" if room.mirror else "")
-	var nw := UiText.width(next, 10)
+	var nw := _width(next, 10)
 	_text(Vector2(Cfg.SCREEN_W - 16 - nw, 318), next, 10, GOLD if picking else Color(1, 1, 1, 0.8))
 	if picking:
 		_arrow_pair(Vector2(Cfg.SCREEN_W - 16 - nw / 2.0, 330))

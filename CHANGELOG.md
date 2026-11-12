@@ -7,6 +7,15 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- UI scale: Options > Accessibility > UI scale, Normal or Large. Large draws the HUD a quarter
+  bigger (the clock, the place, the route bar, nitro, the speedometer, the subtitles and the
+  rest), everything still on screen and clear of everything else, and the menus' text bigger.
+- The attract mode tours the game: left on the title, the demo races run on one after another
+  through every stage, each in the next car with a title card saying which, and the controls
+  card shows once a loop before the title comes back.
+
 ### Changed
 
 - Every stage now changes width somewhere. Redrock Canyon runs six lanes wide across the open

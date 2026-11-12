@@ -8,21 +8,137 @@ func _rect(name: String) -> Rect2:
 	return Hud.layout()[name]
 
 
-## Elements never up at the same time may share space: the stage intro card is gone before GO,
-## and the bonus feed only fills after it.
-const NEVER_TOGETHER := [["feed", "intro"]]
+## Elements never up at the same time may share space: the stage intro card and the rival
+## cards are only up before GO; the bonus feed, the radar and the first drive's prompts only
+## after it.
+const BEFORE_GO := ["intro", "cards", "countdown"]
+const AFTER_GO := ["feed", "radar", "first_drive"]
+const SCALES := [UiScale.Size.NORMAL, UiScale.Size.LARGE]
+## The radar's arrows are just over the car, and the first drive's prompt (MP-15) is drawn over
+## them there, as it was at Normal before the UI scale: the lesson matters more for a moment.
+const OVERLAP_OK := [["radar", "first_drive"]]
 
 
+func _together(a: String, b: String) -> bool:
+	if [a, b] in OVERLAP_OK or [b, a] in OVERLAP_OK:
+		return false
+	return not ((a in BEFORE_GO and b in AFTER_GO) or (a in AFTER_GO and b in BEFORE_GO))
+
+
+## AC-12: at every UI scale, with the touch controls up or not, every element is on screen and
+## clear of every other that can be up with it.
 func test_every_element_on_screen_and_apart() -> void:
-	var lay := Hud.layout()
-	var names: Array = lay.keys()
-	for n in names:
-		check(SCREEN.encloses(lay[n]), "%s on screen: %s" % [n, lay[n]])
-	for i in names.size():
-		for j in range(i + 1, names.size()):
-			if [names[i], names[j]] in NEVER_TOGETHER or [names[j], names[i]] in NEVER_TOGETHER:
-				continue
-			check(not (lay[names[i]] as Rect2).intersects(lay[names[j]]), "%s clear of %s" % [names[i], names[j]])
+	for size in SCALES:
+		for touch in [false, true]:
+			var lay := Hud.layout(touch, UiScale.hud(size))
+			var label := "%s%s: " % [UiScale.NAMES[size], " touch" if touch else ""]
+			var names: Array = lay.keys()
+			for n in names:
+				if n == "device" and touch:
+					continue  # (none under the touch controls)
+				check(SCREEN.encloses(lay[n]), label + "%s on screen: %s" % [n, lay[n]])
+			for i in names.size():
+				for j in range(i + 1, names.size()):
+					if _together(names[i], names[j]):
+						check(not (lay[names[i]] as Rect2).intersects(lay[names[j]]), label + "%s clear of %s" % [names[i], names[j]])
+
+
+## Large is bigger: every element that scales is HUD times its Normal size, the rest as big.
+func test_large_draws_every_element_bigger() -> void:
+	var k := UiScale.hud(UiScale.Size.LARGE)
+	check(k >= 1.2, "a quarter bigger or so")
+	for touch in [false, true]:
+		var normal := Hud.layout(touch, 1.0)
+		var large := Hud.layout(touch, k)
+		for n in normal:
+			var e := Hud.element_scale(n, touch, k)
+			if n != "cards" and n != "subtitle" and n != "notice":  # (two columns of cards; these keep their width)
+				near((large[n] as Rect2).size.x, (normal[n] as Rect2).size.x * e, 0.01, "%s %sx wide" % [n, e])
+			if n != "cards":
+				near((large[n] as Rect2).size.y, (normal[n] as Rect2).size.y * e, 0.01, "%s %sx tall" % [n, e])
+		check(Hud.element_scale("speedo", touch, k) == k and Hud.element_scale("timer", touch, k) == k, "the gauges grow")
+	var cards: Rect2 = Hud.layout(false, k)["cards"]
+	var rects := Hud.card_rects(cards, Rivals.COUNT)
+	for r in rects:
+		check(cards.encloses(r), "every card in the two columns: %s" % r)
+	eq(Hud.element_scale("timer", false, 1.0), 1.0, "Normal: as designed")
+
+
+## The size text `size` high comes out at in an element drawn `e` times bigger.
+func _px(size: int, e: float) -> int:
+	return roundi(Hud.text_size(size) * e)
+
+
+## AC-12: the longest strings each element shows fit it, at every UI scale.
+func test_the_longest_text_fits_at_every_scale() -> void:
+	for size in SCALES:
+		var k := UiScale.hud(size)
+		for touch in [false, true]:
+			var lay := Hud.layout(touch, k)
+			var label := "%s%s: " % [UiScale.NAMES[size], " touch" if touch else ""]
+			var e := func(n: String) -> float: return Hud.element_scale(n, touch, k)
+			# The stage under the route bar
+			for i in Stages.count():
+				var line := Hud.stage_line(i, Stages.stage_name(i))
+				check(UiText.width(line, _px(9, e.call("stage"))) <= lay["stage"].size.x, label + "fits: " + line)
+			# The device and the dev keys
+			if not touch:
+				var dev_w: float = lay["device"].size.x - 4.0 * e.call("device")
+				for kind in 3:
+					var line := Hud.device_line(kind, "Logitech G29 Driving Force Racing Wheel")
+					check(UiText.width(line, _px(8, e.call("device"))) <= dev_w, label + "fits: " + line)
+				check(UiText.width(Hud.keys_hint(false), _px(8, e.call("device"))) <= dev_w, label + "the key line fits")
+			# The now-playing tag: the song left, the station right
+			var tag: Rect2 = lay["now_playing"]
+			var te: float = e.call("now_playing")
+			for st in Radio.count():
+				for song: Array in Radio.STATIONS[st]["songs"]:
+					var words := [String(song[1]), Radio.station_name(st)]
+					var room := tag.size.x - (22.0 + 6.0 + 8.0) * te
+					check(UiText.width(words[0], _px(11, te)) <= room, label + "fits: " + words[0])
+					check(UiText.width(words[1], _px(8, te)) + UiText.width("NOW PLAYING", _px(8, te)) <= room, label + "fits: " + words[1])
+			# The announcer's every line
+			for id in Announcer.LINES:
+				var line: String = Announcer.LINES[id]
+				check(UiText.width(line, _px(11, e.call("subtitle"))) + 8.0 <= lay["subtitle"].size.x, label + "subtitle fits: " + line)
+			# The first drive's prompts and how to do them on each device
+			var fd: Rect2 = lay["first_drive"]
+			var fe: float = e.call("first_drive")
+			for step in FirstDrive.TEXT.size():
+				check(UiText.width(FirstDrive.TEXT[step], _px(16, fe)) <= fd.size.x - 8.0, label + "fits: " + FirstDrive.TEXT[step])
+				for dev in ControlsCard.Device.size():
+					var how := FirstDrive.how(step, dev, ControlsCard.profile_for(dev))
+					check(UiText.width(how, _px(9, fe)) <= fd.size.x - 8.0, label + "fits: " + how)
+			# The stage intro card's name
+			var ie: float = e.call("intro")
+			for i in Stages.count():
+				var stage_name := Stages.stage_name(i).to_upper()
+				check(UiText.width(stage_name, _px(15, ie)) <= lay["intro"].size.x - 16.0 * ie, label + "intro fits: " + stage_name)
+			# An online notice
+			var ne: float = e.call("notice")
+			for slot in OnlineSession.MAX_PLAYERS:
+				var notice := "%s DROPPED OUT" % OnlineSession.player_name(slot)
+				check(UiText.width(notice, _px(11, ne)) + 30.0 * ne <= lay["notice"].size.x, label + "fits: " + notice)
+			# The countdown's numbers
+			for n in ["1", "2", "3"]:
+				check(UiText.width(n, Hud.COUNTDOWN_SIZE) <= lay["countdown"].size.x, label + "the countdown's %s fits" % n)
+			# The clock in Time Attack, and the place
+			var tme: float = e.call("timer")
+			check(lay["timer"].size.x >= UiText.width("0:00.00", _px(20, tme)) + 10 * tme, label + "a Time Attack clock fits")
+			var pe: float = e.call("position")
+			check(lay["position"].size.x >= UiText.width("8", _px(38, pe)) + UiText.width("/8", _px(12, pe)) + 14 * pe, label + "the place fits")
+
+
+## A scaled element grows from its anchor, and the transform it's drawn in agrees.
+func test_scaled_elements_grow_from_their_corner() -> void:
+	eq(UiText.scale(), 1.0, "outside an element: 1x")
+	var r := UiScale.about(Rect2(536, 6, 98, 36), Vector2(640, 0), 1.25)
+	eq(r, Rect2(510, 7.5, 122.5, 45), "a top right element grows left and down from the corner")
+	var xf := UiScale.transform_about(Vector2(640, 0), 1.25)
+	eq(xf * Vector2(536, 6), r.position, "the transform puts its corner there")
+	eq(UiScale.menu_px(9, UiScale.Size.NORMAL), 9, "menus at Normal: as laid out")
+	eq([UiScale.menu_px(8, UiScale.Size.LARGE), UiScale.menu_px(12, UiScale.Size.LARGE), UiScale.menu_px(18, UiScale.Size.LARGE),
+		UiScale.menu_px(36, UiScale.Size.LARGE)], [10, 15, 22, 40], "menus at Large: small text grows most")
 
 
 func test_timer_rect() -> void:
@@ -198,7 +314,7 @@ func test_rival_cards_layout() -> void:
 		var area: Rect2 = lay["cards"]
 		check(SCREEN.encloses(area), "cards on screen (touch %s)" % touch)
 		for n in lay:
-			if n != "cards" and n != "radar":  # (the radar only shows after GO)
+			if n != "cards" and n != "radar" and n != "first_drive":  # (the radar and the first drive only after GO)
 				check(not area.intersects(lay[n]), "cards clear of %s (touch %s)" % [n, touch])
 		var rects := Hud.card_rects(area, Rivals.COUNT)
 		eq(rects.size(), Rivals.COUNT, "one each")
