@@ -18,6 +18,10 @@ the release workflow puts that section at the top of the GitHub Release notes
 - Daily Run (MP-14), on mode select: one stage, car, weather and traffic mix a day, the same
   for everyone, raced alone against the clock. Its card shows today's pick and your best three
   tries today; any car or stage can come up, reached or not.
+- Every car has its own engine note (PR-18): a buzzy, high-revving small engine (Solano Spyder,
+  Dune Skipper, Halo EV, Cyclone), a deep, lumpy V8 (Bruiser 440, Mesa Rumbler, Phantom, Hauler)
+  and a turbo with a whine that spools up and a pop on each upshift (Vega GT, Kestrel R,
+  Tempest LM, Zenith X).
 
 ### Changed
 
