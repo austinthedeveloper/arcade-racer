@@ -15,6 +15,7 @@ const PANEL := Rect2(384, 44, 244, 248)
 const ROW_H := 30.0
 const PODIUM_X := 186.0  # centre of the podium
 const PODIUM_Y := 276.0  # its foot
+const STICKER_ROW_END := 374.0  # the new stickers' row (MP-12) stops short of the field panel
 ## Gold, silver, bronze, then the rest: badge and band colors, after the concept.
 const PLACE_COLORS := [Color("#ffc21a"), Color("#c9d4ff"), Color("#e08a3a")]
 const BANDS := [Color("#d9a400"), Color("#3a6fe0"), Color("#d97a1a"), Color("#9a2ee0"),
@@ -252,6 +253,24 @@ func _summary(field: Array[Dictionary]) -> void:
 	_text(Vector2(bx + 136, ty), str(race.score.total()), 10, GOLD)
 	if not race.new_unlocks.is_empty():
 		_text(Vector2(16, 172), Hud.unlock_line(race.new_unlocks), 10, Color("#5dff8a", 0.6 + 0.4 * sin(time * 6.0)))
+	if not race.new_stickers.is_empty():
+		_new_stickers(race.new_stickers, Vector2(16, 156))  # (over the unlock line, clear of the podium)
+
+
+## The stickers this run earned (MP-12): NEW STICKER, then each one small with its name, as many
+## as fit beside the podium.
+func _new_stickers(ids: Array[String], at: Vector2) -> void:
+	_text(at + Vector2(0, 4), "NEW STICKER" if ids.size() == 1 else "NEW STICKERS", 9, GOLD)
+	var x := at.x + UiText.width("NEW STICKERS", 9) + 18
+	for i in ids.size():
+		var label: String = Stickers.info(ids[i])["name"]
+		var w := 22.0 + UiText.width(label, 8)
+		if x + w > STICKER_ROW_END:
+			_text(Vector2(x, at.y + 4), "+%d" % (ids.size() - i), 9, Color.WHITE)
+			break
+		Stickers.draw(self, Vector2(x, at.y), ids[i], 8.0, true, Stickers.tilt(i))
+		_text(Vector2(x + 12, at.y + 4), label, 8, Color.WHITE)
+		x += w + 8
 
 
 ## Survival's results: how far, against the best, the legs and the time on the left, the car

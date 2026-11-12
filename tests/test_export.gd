@@ -131,9 +131,11 @@ func test_tag_deploys_the_web_build() -> void:
 
 ## The Web build's .pck may not grow past this (bytes): every byte is downloaded before the
 ## game starts. 0.4.0's was 25.0 MB. Raising it is a decision, not a fix for a red build.
+## Raised from 28.0 to 28.5 MB on 2026-11-12 (Austin): the sticker book and completion page
+## put it 29 KB over, with the music and scripts already compressed.
 ## Textures are lossless WebP at full effort (project.godot, rendering/textures/webp_compression):
 ## the default effort put the twelve rendered cars' pitch strips 1.4 MB over.
-const WEB_PCK_BUDGET := 28_000_000
+const WEB_PCK_BUDGET := 28_500_000
 ## The files the export copies as they are (imported files go as their .godot/imported copies).
 const EXPORTED_AS_IS := ["gd", "tscn", "tres", "gdshader", "json", "uid", "import"]
 ## How far the estimate may sit from the real .pck (CI compares them).

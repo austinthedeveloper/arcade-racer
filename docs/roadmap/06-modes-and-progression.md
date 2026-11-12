@@ -31,12 +31,12 @@ Four cars and stage 1 are open from the start; the rest unlock as the tour goes
 | MP-9 ✓ | **Medals.** Bronze, silver and gold times per stage and difficulty, shown on the map, the results screen and stage select. | S | 1 | MP-1 | A medal table per stage with a test that gold beats the autodrive's time; screenshots of the map and results |
 | MP-10 ✓ | **Player profiles.** Up to four local profiles, each a preset name and avatar picked from a list (no typing), each with its own save; the title screen shows who is driving. | M | 2 | MP-1 | Save files per profile with migration; `test_save` covers switching; a screenshot of the picker |
 | MP-11 ✓ | **Stats page.** Races, wins, crashes, near misses, miles, favourite car and stage, kept in the save and shown from the title. | S | 2 | MP-1 | Counters tested across a race; a screenshot |
-| MP-12 | **Sticker book.** Twenty-four stickers (first win, a clean race, every stage, a mirror win, a chain of five...), each awarded once with a chime, on a page in the menus. | M | 3 | MP-11 | Each sticker's condition in a plain function with a test; a screenshot of the page half full |
+| MP-12 ✓ | **Sticker book.** Twenty-four stickers (first win, a clean race, every stage, a mirror win, a chain of five...), each awarded once with a chime, on a page in the menus. | M | 3 | MP-11 | Each sticker's condition in a plain function with a test; a screenshot of the page half full |
 | MP-13 ✓ | **Survival.** An endless road with ramping traffic and a clock that only shrinks at each checkpoint; the score is distance. On mode select, with its own best. | M | 3 | WS-8, MP-1 | The stage loop and ramp in plain functions with tests; an autodrive run that ends |
 | MP-14 ✓ | **Daily run.** A seeded stage, car, weather and traffic mix per calendar day, the same for everyone, with your best tries for the day. | S | 3 | MP-13 | The seed from the date, tested; a screenshot of the card |
 | MP-15 ✓ | **First drive.** A new profile's first race is a guided run on Palm Coast: one prompt at a time when the road allows it (gas, steer, nitro on a straight, draft behind a truck, a power slide), each cleared by doing it. Skippable from the pause menu, never shown again once done or skipped. | M | 4 | MP-10, PR-5 | `test_first_drive` steps every prompt from a scripted run and checks skip; the e2e smoke on a new profile sees the first prompt, an existing profile doesn't; a screenshot of a prompt |
 | MP-16 ✓ | **Grand Tour ending.** Finishing the tour ends on a finale: the podium on the Skyline bridge, the tour standings, then credits over the harbor. First place, a podium place and the rest get their own end card. | M | 5 | PR-9, MP-2 | A test that each standings place picks its end card; the e2e reaches the credits from a scripted last stage; screenshots |
-| MP-17 | **Completion page.** One page with what's left: medals, stickers, unlocks, mirror wins, as a percentage per stage. | S | 6 | MP-9, MP-12 | Test the percentage from a fixture save; a menu screenshot |
+| MP-17 ✓ | **Completion page.** One page with what's left: medals, stickers, unlocks, mirror wins, as a percentage per stage. | S | 6 | MP-9, MP-12 | Test the percentage from a fixture save; a menu screenshot |
 | MP-18 | **Split-screen two player.** Two players on one screen, top and bottom halves, each with its own camera and road, sharing the rivals and the traffic. From mode select as 2 PLAYERS, in Single Race and Free Drive. | L | 7 | EQ-7 | `test_split` races two scripted players to both finishes; a screenshot; golden traces unchanged for one player |
 | MP-19 | **Two-player select.** Both players pick their car side by side on car select, then one picks the stage. | S | 7 | MP-18 | The e2e drives two players through select; a screenshot |
 | MP-20 | **Party modes.** Two party rules for split screen and online: TAG (one car carries the flag, passing it steals it, most time holding wins) and ELIMINATION (last at each checkpoint drops out). | M | 8 | MP-18, ON-3 | Rule tests per mode; screenshots of each HUD |
@@ -51,6 +51,54 @@ Four cars and stage 1 are open from the start; the rest unlock as the tour goes
 | MP-29 | **Custom stages in races.** Saved stages in Single Race, Time Attack and Free Drive, with their own bests and ghosts. | S | 14 | WS-31 | Test a custom stage's best is kept apart |
 | MP-30 | **Championship season.** A season of three tours with points carried across, the rivals' standings, and a trophy at the end. | M | 15 | MP-26, MP-2 | Test the points across tours; a screenshot of the standings |
 | MP-31 | **Career page.** A summary across seasons: titles, wins, favourite car, distance. | S | 15 | MP-30, MP-11 | Test from a fixture save; a screenshot |
+
+## Sticker book (MP-12)
+
+Twenty-four stickers, each awarded once (the save's `[stickers]`, dated) with a chime (the
+checkpoint's, pitched up) and a NEW STICKER card after the line, listed again on the results.
+Each condition is a plain function in `scripts/core/stickers.gd`, of the run's facts and the
+save; `test_stickers` tests every one. Only the player's own runs earn them (no autodrive, demo,
+partway start or online race). The page is the second tab beside STATS, on the title.
+
+| Sticker | Earned by |
+|---|---|
+| FIRST FINISH | Running a race to the line |
+| FIRST WIN | Winning a race against rivals |
+| NO CRASHES | Finishing a race without a crash |
+| UNTOUCHED | Finishing with traffic on the road without touching it |
+| CHAIN OF FIVE | A chain of five near misses |
+| THREAD THE NEEDLE | Ten near misses in one race |
+| BIG AIR | A BIG AIR jump |
+| SLIPSTREAMER | Three slipstreams in one race |
+| PERFECT LAUNCH | A LAUNCH! start (not with auto gas) |
+| SCAVENGER | Five power-ups in one race |
+| LAST GASP | Finishing with 3 seconds or less on the clock |
+| OUT OF TIME | Running out of time |
+| LOOKING GLASS | Winning a stage mirrored |
+| HARD CHARGER | Winning a race on Hard |
+| GOLD RUSH | A gold medal time |
+| GHOST BUSTER | Beating your ghost in Time Attack |
+| SUNDAY DRIVE | 5 miles in one Free Drive |
+| GLOBETROTTER | A finish on every stage |
+| CLEAN SWEEP | A win on every stage (every mirror opened) |
+| ALL GOLD | Gold on every stage, at the difficulty raced |
+| GRAND TOURIST | Finishing the Grand Tour |
+| CHAMPION | Winning the Grand Tour from stage 1 |
+| SHOWROOM | A race in every car |
+| LONG HAUL | 100 miles in all |
+
+The save goes to version 6 (`_v5_to_v6`). A save from before the sticker book has none: the save-based ones (GLOBETROTTER, SHOWROOM and
+the rest) come with its next race. Mirror wins weren't kept before either, so the completion
+page counts them from now on (`mirror_wins` in the save's `[tour]`).
+
+## Completion page (MP-17)
+
+The third tab: a row a stage with its six items ticked off (finish, win, bronze, silver, gold
+at the difficulty picked in Options, a mirrored win) and its percentage, and beside it the whole
+game's percentage over the stages' items, the stickers and the cars unlocked, the Grand Tour and
+the next thing to go for. The sums are `scripts/core/completion.gd`, tested from
+`tests/fixtures/save_progress.cfg` (`test_completion`). The unlock-everything option counts for
+nothing.
 
 ## Open decisions
 

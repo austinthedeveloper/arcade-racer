@@ -721,6 +721,26 @@ func test_save_v4_to_v5_counts_an_older_driver_as_onboarded() -> void:
 	_clean()
 
 
+# --- The sticker book and completion (MP-12, MP-17) ---
+
+func test_save_v5_to_v6_starts_the_sticker_book_empty() -> void:
+	_clean()
+	_load_save("save_v5.cfg")
+	eq(SaveData.loaded_version, 5, "from version 5 (v0.7.0's save)")
+	eq([SaveData.stickers, SaveData.mirror_wins], [{}, [] as Array[String]], "no stickers, no mirror wins")
+	eq(SaveData.stats["races"], 14, "the rest as it was")
+	var cfg := ConfigFile.new()
+	cfg.load(FIXTURES + "save_v5.cfg")
+	SaveData.migrate(cfg)
+	eq([CfgVersion.of(cfg), cfg.get_value("tour", "mirror_wins"), cfg.has_section("stickers")], [SaveData.VERSION, [], false], "migrated on")
+	SaveData.award_stickers(["first_win"] as Array[String], 7)
+	SaveData.record_mirror_win(0)
+	SaveData.load_save()
+	eq([SaveData.loaded_version, SaveData.stickers, SaveData.mirror_wins], [SaveData.VERSION, {"first_win": 7}, ["palm_coast"] as Array[String]],
+		"saved and loaded back")
+	_clean()
+
+
 func test_settings_v14_to_v15_adds_the_wheels_offered() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(FIXTURES + "settings_v14.cfg")

@@ -1,7 +1,8 @@
 class_name TitleScreen
 extends MenuScreen
 ## Attract screen: the logo over the Palm Coast sunset, with START (on to mode select),
-## OPTIONS, CONTROLS (PR-22: the controls card), STATS (MP-11), PROFILE (MP-10: who is
+## OPTIONS, CONTROLS (PR-22: the controls card), STATS (MP-11; the sticker book, MP-12, and the
+## completion page, MP-17, are its other tabs), PROFILE (MP-10: who is
 ## driving), CREDITS (PR-23) and QUIT side by side, narrower when they don't fit at full width
 ## (pill_step). A browser tab can't be quit, so the web build has no QUIT.
 ## The driver's avatar and name show top left.

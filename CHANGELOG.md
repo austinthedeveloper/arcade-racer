@@ -9,6 +9,15 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
+<<<<<<< HEAD
+- Sticker book (MP-12): twenty-four stickers to collect, from a first win and a chain of five
+  near misses to a win mirrored, gold on every stage and the Grand Tour won. Each comes once,
+  with a chime and a NEW STICKER card after the line, and shows on the results. Find the book
+  beside STATS on the title (left and right switch the pages).
+- Completion page (MP-17): what's left, stage by stage: finished, won, the three medals and a
+  mirrored win ticked off with a percentage for each, and the whole game's percentage with the
+  stickers and the cars. The third page beside STATS.
+=======
 - UI scale: Options > Accessibility > UI scale, Normal or Large. Large draws the HUD a quarter
   bigger (the clock, the place, the route bar, nitro, the speedometer, the subtitles and the
   rest), everything still on screen and clear of everything else, and the menus' text bigger.
@@ -28,6 +37,7 @@ the release workflow puts that section at the top of the GitHub Release notes
   Dune Skipper, Halo EV, Cyclone), a deep, lumpy V8 (Bruiser 440, Mesa Rumbler, Phantom, Hauler)
   and a turbo with a whine that spools up and a pop on each upshift (Vega GT, Kestrel R,
   Tempest LM, Zenith X).
+>>>>>>> feature/CLD-attract-ui-scale
 
 ### Changed
 

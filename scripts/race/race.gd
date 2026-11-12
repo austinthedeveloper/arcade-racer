@@ -24,6 +24,9 @@ const FINISH_SLOWMO_EASE := 1.2  # seconds back up to full speed
 const FINISH_BRAKING := Cfg.MAX_SPEED / 3.0  # on top of coasting; stops from top speed in about 2 s
 ## The results come up once the slow-down is over (Enter brings them sooner).
 const RESULTS_AFTER := FINISH_SLOWMO_HOLD + FINISH_SLOWMO_EASE
+const STICKER_SHOW_AT := 0.8  # seconds after the line (or TIME UP) a new sticker's card and chime come (MP-12)
+const STICKER_CUE := "checkpoint"  # the sticker's chime: the checkpoint's, pitched up (no sound of its own)
+const STICKER_PITCH := 1.5
 const TRAFFIC_COUNT := 70  # a stage theme can ask for more ("traffic")
 ## Survival's checkpoint traffic (Survival.checkpoint_cars) comes in this far up the road,
 ## past the draw distance, spread over the span after it.
@@ -154,6 +157,10 @@ var results: ResultsScreen  # after the finish (RC-5)
 var new_best_time := false  # this finish set the best time for the stage and car
 var best_before := {}  # SaveData.best for the stage and car before this finish
 var stats_recorded := false  # this run is in the stats page's counters (record_stats)
+var new_stickers: Array[String] = []  # stickers this run earned (MP-12), for the HUD and the results
+var sticker_age := -1.0  # seconds since they were earned, -1 for none (the chime and the HUD's card)
+var pickups_taken := 0  # power-ups the player took this run (the SCAVENGER sticker)
+var _stickers_checked := false  # this run's stickers awarded (award_stickers), once
 ## This run's playtest log (EQ-25), with the option on; null when off. last_playtest_log is
 ## the file the last one wrote ("" for none), for tests.
 var playtest: PlaytestLog
@@ -189,6 +196,7 @@ var _no_traffic := false
 var _no_rivals := false
 var _start_segment := 0  # --at-segment=N: start the race this far in (screenshots)
 var _results_shot := false  # --screen=results: a staged finish, for a screenshot of the results
+var _sticker_shot: Array[String] = []  # --stickers=ID,ID: shown as earned at the end (screenshots)
 var _staged := false  # this race was staged for a screenshot: nothing it does is saved
 var _drive_x := NAN  # --drive-x=X: start on this line and autodrive holds it (road half-widths; past 1 is off the road)
 var _lightning_at := NAN  # --lightning-at=SECONDS: a full lightning strike then, on a stage with lightning (screenshots)
@@ -352,6 +360,10 @@ func start_race() -> void:
 	player_finish = -1.0
 	touched_traffic = false
 	new_unlocks.clear()
+	new_stickers.clear()
+	sticker_age = -1.0
+	pickups_taken = 0
+	_stickers_checked = false
 	new_best_time = false
 	best_before = SaveData.best(stage_index, car_id)
 	results.close()
@@ -764,6 +776,7 @@ func _physics_process(dt: float) -> void:
 		set_view(Settings.camera_view)
 
 	banner_time = maxf(0.0, banner_time - dt)
+	sticker_tick(dt)
 	_watch_launch(inp)
 	match state:
 		State.COUNTDOWN:
@@ -998,6 +1011,7 @@ func _check_pickups() -> void:
 ## kind, the HUD's slot shows it (Hud.slot_icon) and it takes effect.
 func take_pickup(kind: int) -> void:
 	picked_up = true
+	pickups_taken += 1
 	pickup = kind
 	pickup_gave = power_ups.open(kind, time_left)
 	pickup_age = 0.0
@@ -1088,12 +1102,15 @@ func _check_progress() -> void:
 			SaveData.unlock(Unlocks.SECRET_CAR)
 		if _saves() and Unlocks.earns_mirror(place, not rivals.cars.is_empty()):
 			SaveData.unlock(Unlocks.mirror_id(stage_index))
+			if mirror:
+				SaveData.record_mirror_win(stage_index)  # (the completion page, MP-17)
 		new_unlocks = Unlocks.newly_open(before_furthest, before_unlocks, SaveData.furthest_stage, SaveData.unlocks)
 		if SaveData.is_unlocked(Unlocks.mirror_id(stage_index)) and not before_unlocks.has(Unlocks.mirror_id(stage_index)):
 			new_unlocks.append(Unlocks.mirror_id(stage_index))
 		var placed := "%s of %d   " % [Rivals.ordinal(place), rivals.cars.size() + 1] if not rivals.cars.is_empty() else ""
 		_banner("FINISH!", "%sTime %d:%05.2f   %s" % [placed, mins, secs, prompt], Callouts.HOLD, Callouts.Kind.NONE)
 		callouts.finish(banner, banner_sub, place == 1 and not rivals.cars.is_empty())
+		award_stickers()
 
 
 ## A tour stage finished: points, then on, another go, or the end of the tour. Returns the
@@ -1147,6 +1164,59 @@ func record_stats(counted: bool) -> void:
 	stats_recorded = true
 	var won := counted and state == State.FINISHED and place == 1 and not rivals.cars.is_empty()
 	SaveData.record_run(stage_index, car_id, counted, won, score.crashes, near_misses(score), Settings.miles(driven))
+	if state != State.FINISHED:  # (a finish awards them once its unlocks are in: _check_progress)
+		award_stickers()
+
+
+## This run's facts for the sticker book's conditions (Stickers, MP-12).
+func sticker_run() -> Dictionary:
+	var finished := state == State.FINISHED
+	var champion := false
+	if finished and tour and after == After.TOUR_DONE and tour_state != null:
+		champion = tour_state.full() and tour_state.standing_of(Tour.YOU) == 1
+	return {
+		"finished": finished, "time_up": state == State.TIME_UP,
+		"stage": stage_index, "car": car_id, "mode": playtest_mode(), "difficulty": Settings.difficulty,
+		"mirror": mirror, "rivals": not rivals.cars.is_empty(), "place": place,
+		"traffic": traffic != null and not traffic.cars.is_empty(), "touched_traffic": touched_traffic,
+		"crashes": score.crashes, "time": race_time, "timed": timed(), "time_left": time_left,
+		"near_misses": near_misses(score), "best_chain": Stickers.best_chain(score),
+		"big_airs": Stickers.bonus_count(score, "BIG AIR"), "slipstreams": Stickers.bonus_count(score, "SLIPSTREAM"),
+		"launch": launch == Launch.Grade.LAUNCH, "pickups": pickups_taken,
+		"ghost_beaten": time_attack and finished and new_best and ghost != null,
+		"miles": Settings.miles(maxf(0.0, player.distance - _start_distance)) if player != null else 0.0,
+		"tour_champion": champion,
+	}
+
+
+## Awards the stickers this run earned (MP-12), once a run, and only for the player's own
+## runs (_saves). At the line or TIME UP the chime and the HUD's card follow a moment later
+## (sticker_tick); a run left partway chimes as it goes.
+func award_stickers() -> void:
+	if _stickers_checked:
+		return
+	_stickers_checked = true
+	if not _saves():
+		# (--stickers=ID,ID: a run that saves nothing shows those at its end, for screenshots)
+		if state == State.FINISHED or state == State.TIME_UP:
+			new_stickers = _sticker_shot.duplicate()
+	else:
+		new_stickers = SaveData.award_stickers(Stickers.earned(sticker_run(), SaveData, SaveData.stickers))
+	if new_stickers.is_empty():
+		return
+	sticker_age = 0.0
+	if state != State.FINISHED and state != State.TIME_UP:
+		Audio.play(STICKER_CUE, STICKER_PITCH)
+
+
+## The time since the stickers were earned: the chime as the HUD's card comes up.
+func sticker_tick(dt: float) -> void:
+	if sticker_age < 0.0:
+		return
+	var before := sticker_age
+	sticker_age += dt
+	if before < STICKER_SHOW_AT and sticker_age >= STICKER_SHOW_AT and (state == State.FINISHED or state == State.TIME_UP):
+		Audio.play(STICKER_CUE, STICKER_PITCH)
 
 
 ## The playtest log's mode name for this run (PlaytestLog.mode).
@@ -1593,6 +1663,10 @@ func _parse_dev_args() -> void:
 			_no_traffic = true
 		elif arg == "--screen=results":
 			_results_shot = true
+		elif arg.begins_with("--stickers="):
+			for id in arg.get_slice("=", 1).split(","):
+				if not Stickers.info(id).is_empty():
+					_sticker_shot.append(id)
 		elif arg == "--no-rivals":
 			_no_rivals = true
 		elif arg.begins_with("--screenshots="):
