@@ -489,13 +489,23 @@ func _draw_lobby() -> void:
 		var here: bool = room.players.has(s)
 		var you := s == room.slot
 		draw_rect(Rect2(list.position.x + 8, y, list.size.x - 16, 24), Color("#1d3fa8", 0.8) if you else Color(1, 1, 1, 0.06))
-		_text(Vector2(list.position.x + 16, y + 17), OnlineSession.player_name(s), 12, GOLD if here else Color(1, 1, 1, 0.3))
-		var what := "waiting..." if not here else String(Cars.find(String(room.players[s]))["name"])
-		if here and s == 0:
-			what += "  (host)"
-		if you:
-			what += "  YOU"
-		_text(Vector2(list.position.x + 56, y + 17), what, 11, Color.WHITE if here else Color(1, 1, 1, 0.3))
+		# Their avatar and profile name (ON-8; P2 etc. from a game that didn't say), their car
+		var pic := Rect2(list.position.x + 12, y + 2, 40, 20)
+		if here and room.avatar_of(s) != "":
+			draw_avatar(pic, room.avatar_of(s))
+		else:
+			draw_rect(pic, Color(1, 1, 1, 0.05))
+			_text_centered(Vector2(pic.get_center().x, y + 16), OnlineSession.player_name(s), 9, Color(1, 1, 1, 0.3 if not here else 0.6))
+		var who := room.name_of(s) if here else "waiting..."
+		_text(Vector2(list.position.x + 60, y + 17), who, fit_size(who, 12, 110) if here else 11, GOLD if here else Color(1, 1, 1, 0.3))
+		if here:
+			var what := String(Cars.find(String(room.players[s]))["name"])
+			if s == 0:
+				what += "  (host)"
+			if you:
+				what += "  YOU"
+			var size := fit_size(what, 10, 120)
+			_text(Vector2(list.end.x - 14 - _width(what, size), y + 16), what, size, Color.WHITE)
 	# The race: stage and mirror, the host's to pick
 	var race := Rect2(16, 122, 250, 92)
 	_panel(race, 0.85)
@@ -539,12 +549,14 @@ func stage_shot(which: String) -> void:
 		"lobby", "guest":
 			var h := LoopLink.new(relay)
 			h.host()
-			var host_room := OnlineSession.hosting_on(h, "car_vega" if which == "guest" else Cars.get_car(game.car_index)["id"])
+			var host_room := OnlineSession.hosting_on(h, "car_vega" if which == "guest" else Cars.get_car(game.car_index)["id"],
+				SaveData.profile_name, SaveData.avatar)
 			var rooms: Array = [host_room]
-			for car: String in ["car_mesa", "car_kestrel"]:
+			for i in 2:  # two made-up guests with names and avatars (ON-8)
+				var car: String = ["car_mesa", "car_kestrel"][i]
 				var g := LoopLink.new(relay)
 				g.join(h.room)
-				rooms.append(OnlineSession.joining_on(g, car))
+				rooms.append(OnlineSession.joining_on(g, car, OnlineBot.made_up_name(i, SaveData.profile_name), car))
 			for i in 3:
 				for r: OnlineSession in rooms:
 					r.poll(0.0)

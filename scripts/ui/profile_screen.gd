@@ -27,7 +27,6 @@ const HELP := [
 var card := 0  # the slot under the cursor
 ## An empty slot's name and avatar as picked, before it's made: slot -> {"name", "avatar"}.
 var pending := {}
-var _pictures := {}
 
 
 func _init() -> void:
@@ -154,23 +153,6 @@ func handle(m: MenuInput) -> void:
 static func card_rect(s: int) -> Rect2:
 	var w := SaveData.MAX_PROFILES * CARD.x + (SaveData.MAX_PROFILES - 1) * CARD_GAP
 	return Rect2(Vector2((Cfg.SCREEN_W - w) / 2.0 + s * (CARD.x + CARD_GAP), CARDS_Y), CARD)
-
-
-func _picture(car_id: String) -> Texture2D:
-	if not _pictures.has(car_id):
-		_pictures[car_id] = load(Cars.picture(Cars.find(car_id)))
-	return _pictures[car_id]
-
-
-## An avatar: the car's showroom picture in a frame, fitted to `r`.
-func draw_avatar(r: Rect2, car_id: String, dim := false) -> void:
-	draw_rect(r, Color(0.1, 0.12, 0.3, 0.9))
-	var tex := _picture(car_id)
-	if tex != null:
-		var k := minf(r.size.x / tex.get_width(), r.size.y / tex.get_height())
-		var size := Vector2(tex.get_width(), tex.get_height()) * k
-		draw_texture_rect(tex, Rect2(r.get_center() - size / 2.0, size), false, Color(1, 1, 1, 0.35) if dim else Color.WHITE)
-	draw_rect(r, Color("#c9d4ff", 0.6), false, 1.0)
 
 
 func _draw() -> void:

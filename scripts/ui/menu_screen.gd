@@ -17,6 +17,7 @@ var index := 0  # the selection, into the screen's choices (choice_count)
 
 var _font: Font
 var _bg: Texture2D
+var _avatar_pics := {}  # car id -> its showroom picture, for avatars (draw_avatar)
 
 
 func _ready() -> void:
@@ -109,6 +110,24 @@ func _lock(c: Vector2, scale: float) -> void:
 	draw_line(c + Vector2(4.5, -2) * scale, c + Vector2(4.5, 0) * scale, GOLD, 2.0 * scale)
 	draw_rect(body, GOLD)
 	draw_rect(Rect2(c + Vector2(-1, 3) * scale, Vector2(2, 4) * scale), NIGHT)
+
+
+## A profile's avatar (MP-10; online players too, ON-8): the car's showroom picture in a
+## frame, fitted to `r`.
+func draw_avatar(r: Rect2, car_id: String, dim := false) -> void:
+	draw_rect(r, Color(0.1, 0.12, 0.3, 0.9))
+	var tex := _avatar_picture(car_id)
+	if tex != null:
+		var k := minf(r.size.x / tex.get_width(), r.size.y / tex.get_height())
+		var size := Vector2(tex.get_width(), tex.get_height()) * k
+		draw_texture_rect(tex, Rect2(r.get_center() - size / 2.0, size), false, Color(1, 1, 1, 0.35) if dim else Color.WHITE)
+	draw_rect(r, Color("#c9d4ff", 0.6), false, 1.0)
+
+
+func _avatar_picture(car_id: String) -> Texture2D:
+	if not _avatar_pics.has(car_id):
+		_avatar_pics[car_id] = load(Cars.picture(Cars.find(car_id)))
+	return _avatar_pics[car_id]
 
 
 ## Text laid out `size` high, drawn at the UI scale's size for it (UiScale.menu_px).

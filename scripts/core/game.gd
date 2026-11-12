@@ -361,7 +361,7 @@ func show_online() -> void:
 func open_room(link: NetLink) -> void:
 	leave_room()
 	var car: String = Cars.get_car(car_index)["id"]
-	online = OnlineSession.hosting_on(link, car)
+	online = OnlineSession.hosting_on(link, car, SaveData.profile_name, SaveData.avatar)
 
 
 ## --online=host or --online=join:CODE, for racing two windows hands-off: straight into a
@@ -396,7 +396,8 @@ func online_from_flags(flag: String, players := 2) -> void:
 	if flag == "bot":
 		var cars := ["car_mesa", "car_kestrel", "car_bruiser"]
 		for i in auto_players - 1:
-			var b := OnlineBot.joining(_bot_relay, link.room, cars[i % cars.size()], int(DevArgs.value("--bot-lag", "0")))
+			var b := OnlineBot.joining(_bot_relay, link.room, cars[i % cars.size()], int(DevArgs.value("--bot-lag", "0")),
+				OnlineBot.made_up_name(i, SaveData.profile_name))
 			b.speed = Cfg.MAX_SPEED * float(DevArgs.value("--bot-speed", "0.8"))
 			if i == 0 and DevArgs.value("--bot-drop") != "":
 				b.drop_at = float(DevArgs.value("--bot-drop"))

@@ -20,14 +20,15 @@ var slot := -1
 var fade := 1.0
 
 
-## Another player's car in an online race, in slot `s` of the room.
-static func remote_player(car: Dictionary, s: int) -> RivalCar:
+## Another player's car in an online race, in slot `s` of the room, shown as `player_name`
+## (their profile's, ON-8: OnlineSession.name_of), or P2 etc. when that's "".
+static func remote_player(car: Dictionary, s: int, player_name := "") -> RivalCar:
 	var r := RivalCar.new(car)
 	r.remote = true
 	r.slot = s
 	# "P2": OnlineSession.player_name, not called here, as the test runner compiles this
 	# script before the autoloads exist and OnlineSession needs them.
-	r.profile = RivalProfile.make("P%d" % (s + 1), car["id"], RivalProfile.Style.CLEAN, 1.0, 0.0)
+	r.profile = RivalProfile.make(player_name if player_name != "" else "P%d" % (s + 1), car["id"], RivalProfile.Style.CLEAN, 1.0, 0.0)
 	r.strips = CarSprites.strips(car["strip"])
 	return r
 
