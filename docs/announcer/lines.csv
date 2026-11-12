@@ -1,0 +1,102 @@
+id,file,text,delivery,max_seconds,group,status
+title_1,vo_title_1.wav,Sundown Run!,"Big and bright, a grin in it. Arcade cabinet energy.",1.5,Title and attract,to wire
+title_2,vo_title_2.wav,This is Sundown Run!,"Big and bright, a grin in it. Arcade cabinet energy.",2,Title and attract,to wire
+title_press_start,vo_title_press_start.wav,"Press start, and hit the road.","Warm and easy, like a friend in the passenger seat.",2.5,Title and attract,to wire
+demo_1,vo_demo_1.wav,"The sun's going down, and the road is wide open.","Cool and smooth, late-night radio.",3.5,Title and attract,to wire
+demo_2,vo_demo_2.wav,"Eight stages, one clock, and nobody's stopping.","Cool and smooth, late-night radio.",3.5,Title and attract,to wire
+demo_3,vo_demo_3.wav,Your turn. Grab the wheel.,"Warm and easy, like a friend in the passenger seat.",2,Title and attract,to wire
+ready,vo_ready.wav,Engines ready. Here we go!,"Big and bright, a grin in it. Arcade cabinet energy.",2.5,The start,said
+ready_2,vo_ready_2.wav,Start your engines!,"Big and bright, a grin in it. Arcade cabinet energy.",2,The start,to wire
+ready_3,vo_ready_3.wav,Hands on the wheel. Eyes on the road.,"Cool and smooth, late-night radio.",2.5,The start,to wire
+count_3,vo_count_3.wav,Three!,"Clear and even, like the starter calling it.",0.8,The start,to wire
+count_2,vo_count_2.wav,Two!,"Clear and even, like the starter calling it.",0.8,The start,to wire
+count_1,vo_count_1.wav,One!,"Clear and even, like the starter calling it.",0.8,The start,to wire
+go,vo_go.wav,"Go, go, go!","Big and bright, a grin in it. Arcade cabinet energy.",1.5,The start,said
+go_2,vo_go_2.wav,Go!,"Quick and punchy, one breath, under a second.",0.8,The start,to wire
+go_3,vo_go_3.wav,Floor it!,"Quick and punchy, one breath, under a second.",1,The start,to wire
+launch,vo_launch.wav,What a launch!,"Big and bright, a grin in it. Arcade cabinet energy.",1.5,The start,said
+launch_2,vo_launch_2.wav,Perfect start!,"Big and bright, a grin in it. Arcade cabinet energy.",1.2,The start,to wire
+launch_3,vo_launch_3.wav,Out of the gate like a rocket!,"Big and bright, a grin in it. Arcade cabinet energy.",2,The start,to wire
+stage_palm_coast_1,vo_stage_palm_coast_1.wav,"Welcome to Palm Coast Boulevard! Sun, surf, and six lanes through town.","Big and bright, a grin in it. Arcade cabinet energy.",4.5,Stages,to wire
+stage_palm_coast_2,vo_stage_palm_coast_2.wav,"Palm Coast. Windows down, radio up.","Cool and smooth, late-night radio.",3,Stages,to wire
+stage_redrock_1,vo_stage_redrock_1.wav,"Redrock Canyon! Open desert, big air, and a canyon that bites.","Big and bright, a grin in it. Arcade cabinet energy.",4.5,Stages,to wire
+stage_redrock_2,vo_stage_redrock_2.wav,Out in the desert now. Watch the road pinch in the canyon.,"Warm and easy, like a friend in the passenger seat.",4,Stages,to wire
+stage_neon_1,vo_stage_neon_1.wav,"The Neon Strip! The brightest, busiest road in the game.","Big and bright, a grin in it. Arcade cabinet energy.",4,Stages,to wire
+stage_neon_2,vo_stage_neon_2.wav,Midnight on the Strip. Every light in town is on.,"Cool and smooth, late-night radio.",3.5,Stages,to wire
+stage_timberline_1,vo_stage_timberline_1.wav,"Timberline Pass! Up into the pines, and over the summit.","Big and bright, a grin in it. Arcade cabinet energy.",4,Stages,to wire
+stage_timberline_2,vo_stage_timberline_2.wav,Snow on the summit today. Easy on the grip.,"Warm and easy, like a friend in the passenger seat.",3.5,Stages,to wire
+stage_bayou_1,vo_stage_bayou_1.wav,Bayou Causeway! Long roads over open water.,"Big and bright, a grin in it. Arcade cabinet energy.",3.5,Stages,to wire
+stage_bayou_2,vo_stage_bayou_2.wav,"Dawn on the bayou. Mind the fog, and mind the gators.","Dry and playful; let the joke land, don't push it.",4,Stages,to wire
+stage_harvest_1,vo_stage_harvest_1.wav,Harvest Valley! Rolling hills and golden fields.,"Big and bright, a grin in it. Arcade cabinet energy.",3.5,Stages,to wire
+stage_harvest_2,vo_stage_harvest_2.wav,Out in the farm country. Hold on over those crests.,"Warm and easy, like a friend in the passenger seat.",3.5,Stages,to wire
+stage_thunder_1,vo_stage_thunder_1.wav,Thunderhead Highway! There's a storm on the way.,"Big and bright, a grin in it. Arcade cabinet energy.",3.5,Stages,to wire
+stage_thunder_2,vo_stage_thunder_2.wav,Rain on the road and lightning in the sky. Stay sharp.,"Urgent, leaning in. The clock is the enemy.",3.5,Stages,to wire
+stage_skyline_1,vo_stage_skyline_1.wav,"The Skyline Finale! The last road, and the longest.","Big and bright, a grin in it. Arcade cabinet energy.",4,Stages,to wire
+stage_skyline_2,vo_stage_skyline_2.wav,"Downtown, top of the world. This is it.","Cool and smooth, late-night radio.",3,Stages,to wire
+stage_mirror,vo_stage_mirror.wav,Mirror mode! Everything's the other way round.,"Dry and playful; let the joke land, don't push it.",3,Stages,to wire
+checkpoint,vo_checkpoint.wav,Checkpoint!,"Quick and punchy, one breath, under a second.",1,Checkpoints and the clock,said
+checkpoint_2,vo_checkpoint_2.wav,Checkpoint! Keep it going!,"Big and bright, a grin in it. Arcade cabinet energy.",1.8,Checkpoints and the clock,to wire
+checkpoint_3,vo_checkpoint_3.wav,Made it!,"Quick and punchy, one breath, under a second.",0.8,Checkpoints and the clock,to wire
+time_extended,vo_time_extended.wav,Time extended!,"Big and bright, a grin in it. Arcade cabinet energy.",1.5,Checkpoints and the clock,said
+time_extended_2,vo_time_extended_2.wav,More time on the clock!,"Big and bright, a grin in it. Arcade cabinet energy.",1.8,Checkpoints and the clock,to wire
+last_checkpoint,vo_last_checkpoint.wav,Last checkpoint! The finish is up ahead!,"Big and bright, a grin in it. Arcade cabinet energy.",2.5,Checkpoints and the clock,to wire
+hurry,vo_hurry.wav,Hurry up!,"Urgent, leaning in. The clock is the enemy.",1,Checkpoints and the clock,said
+hurry_2,vo_hurry_2.wav,The clock's running out!,"Urgent, leaning in. The clock is the enemy.",1.8,Checkpoints and the clock,to wire
+hurry_3,vo_hurry_3.wav,"Come on, come on, come on!","Urgent, leaning in. The clock is the enemy.",1.5,Checkpoints and the clock,to wire
+ten_seconds,vo_ten_seconds.wav,Ten seconds!,"Urgent, leaning in. The clock is the enemy.",1,Checkpoints and the clock,to wire
+time_up,vo_time_up.wav,Out of time!,"Sympathetic, kind, a 'next time' feel. Never mocking.",1.5,Checkpoints and the clock,said
+time_up_2,vo_time_up_2.wav,Time's up. So close.,"Sympathetic, kind, a 'next time' feel. Never mocking.",2,Checkpoints and the clock,to wire
+near_miss,vo_near_miss.wav,"Whoa, close one!","Big and bright, a grin in it. Arcade cabinet energy.",1.5,Driving,said
+near_miss_2,vo_near_miss_2.wav,Too close!,"Quick and punchy, one breath, under a second.",1,Driving,to wire
+near_miss_3,vo_near_miss_3.wav,Threaded the needle!,"Big and bright, a grin in it. Arcade cabinet energy.",1.5,Driving,to wire
+near_miss_chain,vo_near_miss_chain.wav,Another one! You're on fire!,"Big and bright, a grin in it. Arcade cabinet energy.",2,Driving,to wire
+big_air,vo_big_air.wav,Big air!,"Quick and punchy, one breath, under a second.",1,Driving,said
+big_air_2,vo_big_air_2.wav,Look at that hang time!,"Big and bright, a grin in it. Arcade cabinet energy.",1.8,Driving,to wire
+big_air_3,vo_big_air_3.wav,Airborne!,"Quick and punchy, one breath, under a second.",1,Driving,to wire
+final_stretch,vo_final_stretch.wav,Final stretch! Bring it home!,"Big and bright, a grin in it. Arcade cabinet energy.",2,Driving,said
+final_stretch_2,vo_final_stretch_2.wav,Home stretch! Everything you've got!,"Big and bright, a grin in it. Arcade cabinet energy.",2.2,Driving,to wire
+slipstream,vo_slipstream.wav,In the slipstream!,"Quick and punchy, one breath, under a second.",1.2,Driving,to wire
+slingshot,vo_slingshot.wav,Slingshot!,"Quick and punchy, one breath, under a second.",1,Driving,to wire
+nitro,vo_nitro.wav,Nitro!,"Quick and punchy, one breath, under a second.",0.8,Driving,to wire
+power_slide,vo_power_slide.wav,Power slide!,"Quick and punchy, one breath, under a second.",1,Driving,to wire
+crash_1,vo_crash_1.wav,Ooh. That one's going to leave a mark.,"Dry and playful; let the joke land, don't push it.",2.2,Driving,to wire
+crash_2,vo_crash_2.wav,Shake it off! Get back out there!,"Warm and easy, like a friend in the passenger seat.",2,Driving,to wire
+crash_3,vo_crash_3.wav,Back on your wheels!,"Warm and easy, like a friend in the passenger seat.",1.2,Driving,to wire
+off_road,vo_off_road.wav,Back on the road!,"Warm and easy, like a friend in the passenger seat.",1.2,Driving,to wire
+first_place,vo_first_place.wav,You have the lead!,"Big and bright, a grin in it. Arcade cabinet energy.",1.5,Position,said
+first_place_2,vo_first_place_2.wav,Out in front!,"Big and bright, a grin in it. Arcade cabinet energy.",1.2,Position,to wire
+first_place_3,vo_first_place_3.wav,"Number one, and pulling away!","Big and bright, a grin in it. Arcade cabinet energy.",2,Position,to wire
+lost_lead,vo_lost_lead.wav,They've taken the lead! Get it back!,"Urgent, leaning in. The clock is the enemy.",2,Position,to wire
+passed_rival,vo_passed_rival.wav,Got 'em!,"Quick and punchy, one breath, under a second.",0.8,Position,to wire
+passed_rival_2,vo_passed_rival_2.wav,One more down!,"Quick and punchy, one breath, under a second.",1.2,Position,to wire
+rival_behind,vo_rival_behind.wav,Somebody's right on your bumper!,"Urgent, leaning in. The clock is the enemy.",1.8,Position,to wire
+pickup_nitro,vo_pickup_nitro.wav,Nitro on board!,"Big and bright, a grin in it. Arcade cabinet energy.",1.2,Power-ups,to wire
+pickup_clock,vo_pickup_clock.wav,Extra time!,"Big and bright, a grin in it. Arcade cabinet energy.",1,Power-ups,to wire
+pickup_ram,vo_pickup_ram.wav,Battering ram! Clear the road!,"Big and bright, a grin in it. Arcade cabinet energy.",2,Power-ups,to wire
+pickup_ghost,vo_pickup_ghost.wav,Ghost mode! Drive right through them!,"Dry and playful; let the joke land, don't push it.",2.2,Power-ups,to wire
+finish_1,vo_finish_1.wav,You win! What a drive!,"Big and bright, a grin in it. Arcade cabinet energy.",2,The finish,said
+finish_1_2,vo_finish_1_2.wav,Checkered flag! You win!,"Big and bright, a grin in it. Arcade cabinet energy.",2,The finish,to wire
+finish_1_3,vo_finish_1_3.wav,First place! Nobody could touch you!,"Big and bright, a grin in it. Arcade cabinet energy.",2.2,The finish,to wire
+finish_2,vo_finish_2.wav,Second place! So close!,"Warm and easy, like a friend in the passenger seat.",1.8,The finish,said
+finish_2_2,vo_finish_2_2.wav,Second! Just a little more next time.,"Warm and easy, like a friend in the passenger seat.",2.2,The finish,to wire
+finish_3,vo_finish_3.wav,Third! You made the podium!,"Warm and easy, like a friend in the passenger seat.",1.8,The finish,said
+finish_3_2,vo_finish_3_2.wav,"Third place, and up on the podium!","Warm and easy, like a friend in the passenger seat.",2,The finish,to wire
+finish,vo_finish.wav,Finished! Go again for the podium.,"Sympathetic, kind, a 'next time' feel. Never mocking.",2.2,The finish,said
+finish_off_podium,vo_finish_off_podium.wav,Off the podium this time. You'll get them next run.,"Sympathetic, kind, a 'next time' feel. Never mocking.",3,The finish,to wire
+photo_finish,vo_photo_finish.wav,Photo finish!,"Big and bright, a grin in it. Arcade cabinet energy.",1.2,The finish,to wire
+new_record,vo_new_record.wav,A new best time!,"Big and bright, a grin in it. Arcade cabinet energy.",1.5,The finish,to wire
+medal_gold,vo_medal_gold.wav,That's gold!,"Big and bright, a grin in it. Arcade cabinet energy.",1,The finish,to wire
+medal_silver,vo_medal_silver.wav,Silver!,"Big and bright, a grin in it. Arcade cabinet energy.",0.8,The finish,to wire
+medal_bronze,vo_medal_bronze.wav,Bronze!,"Warm and easy, like a friend in the passenger seat.",0.8,The finish,to wire
+tour_start,vo_tour_start.wav,"The Grand Tour starts here. Eight stages, one champion.","Big and bright, a grin in it. Arcade cabinet energy.",4,The Grand Tour,to wire
+tour_next,vo_tour_next.wav,On to the next stage!,"Big and bright, a grin in it. Arcade cabinet energy.",1.5,The Grand Tour,to wire
+tour_leading,vo_tour_leading.wav,You're leading the Grand Tour!,"Big and bright, a grin in it. Arcade cabinet energy.",2,The Grand Tour,to wire
+tour_final_stage,vo_tour_final_stage.wav,The last stage. The whole tour comes down to this.,"Urgent, leaning in. The clock is the enemy.",3.5,The Grand Tour,to wire
+tour_champion,vo_tour_champion.wav,Champion of the Grand Tour! What a drive!,"Big and bright, a grin in it. Arcade cabinet energy.",3,The Grand Tour,to wire
+tour_runner_up,vo_tour_runner_up.wav,Second overall. A tour to be proud of.,"Warm and easy, like a friend in the passenger seat.",3,The Grand Tour,to wire
+mode_time_attack,vo_mode_time_attack.wav,Time Attack. Just you and the clock.,"Cool and smooth, late-night radio.",2.5,Modes and menus,to wire
+mode_free_drive,vo_mode_free_drive.wav,"Free Drive. No clock, no rush. Enjoy the view.","Cool and smooth, late-night radio.",3,Modes and menus,to wire
+mode_online,vo_mode_online.wav,Online race! Let's see who's fastest.,"Big and bright, a grin in it. Arcade cabinet energy.",2.5,Modes and menus,to wire
+rematch,vo_rematch.wav,Rematch!,"Big and bright, a grin in it. Arcade cabinet energy.",1,Modes and menus,to wire
+pause,vo_pause.wav,Taking a breather.,"Warm and easy, like a friend in the passenger seat.",1.5,Modes and menus,to wire
+resume,vo_resume.wav,Back to it!,"Warm and easy, like a friend in the passenger seat.",1,Modes and menus,to wire

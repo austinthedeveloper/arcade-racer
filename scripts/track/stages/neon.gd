@@ -3,6 +3,9 @@ extends RefCounted
 ## Stage 3: Neon Strip. A night run down a casino boulevard: towers shoulder to
 ## shoulder, light-up signs on every block, heavy traffic, and a fountain plaza.
 
+const STRIP_WIDTH := 1.5  # the road's half-width down the Strip past the tunnel (Track.set_width)
+
+
 static func theme() -> Dictionary:
 	return {
 		"hour": 22.5,  # the time of day it is drawn at: night (Sundown, WS-16)
@@ -74,7 +77,11 @@ static func build() -> Track:
 	t.set_traffic(plaza_at + 30, final_straight - plaza_at - 30, Track.TRAFFIC_QUIET)
 
 	_decorate(t, strip_start, strip_end, plaza_at)
-	t.add_tunnel(t.free_spot(strip_start + 120, 50), 45, "neon_tunnel", "neon_tunnel_ring", 3, "neon_tunnel_exit")
+	var tunnel_at := t.free_spot(strip_start + 120, 50)
+	t.add_tunnel(tunnel_at, 45, "neon_tunnel", "neon_tunnel_ring", 3, "neon_tunnel_exit")
+	# Out of the tunnel the Strip opens up to six lanes, all the way to the plaza (WS-7)
+	var wide_from := tunnel_at + 45 + Track.WIDTH_EASE + 20
+	t.set_width(wide_from, strip_end - wide_from - Track.WIDTH_EASE, STRIP_WIDTH, 6)
 	t.add_spans_at("neon_gantry", [0.08, 0.4, 0.68, 0.85])
 	t.scatter(["casino_entrance", "slot_machine", "cowboy_boot", "fountain_show", "palm_lights", "searchlight"], 200, 450, 1.7)
 	# Set pieces (WS-21): a searchlit premiere, a fountain court

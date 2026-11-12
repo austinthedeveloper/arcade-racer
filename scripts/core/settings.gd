@@ -15,6 +15,10 @@ const TIMER_MULT := [1.35, 1.0, 0.85]  # on the start time and checkpoint bonuse
 const UNIT_NAMES := ["MPH", "KPH"]
 const KPH_PER_MPH := 1.609344
 const VOLUME_STEPS := 10
+## The mix (playtest, 0.7.0): the music bus sits this far over the authored levels at full
+## volume, and the effects start a few steps down, so the radio carries over the engine.
+const MUSIC_GAIN_DB := 6.0
+const DEFAULT_SFX := 7
 const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, the most)
 ## The settings.cfg format (CfgVersion). 0: no version field. 1: the same keys, versioned.
 ## 2: [accessibility] screen_shake and flash (missing: the designed level).
@@ -32,7 +36,9 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 13: [display] camera_view (missing: CameraView.View.CHASE_NEAR, the only view before).
 ## 14: [game] playtest_log (EQ-25; missing: off, as it always is until the player turns it on).
 ## 15: [first_run] wheels, the wheels the title has offered to calibrate (WH-16; missing: none).
-const VERSION := 15
+## 16: the same keys; [audio] sfx left at the old default (10, with the music at 10) comes down
+## to DEFAULT_SFX.
+const VERSION := 16
 ## Keyboard steering feel (AC-11): how fast a held key turns in and a released one comes back,
 ## snappy to smooth. Each multiplies its rate (shares of full lock per second); STANDARD is
 ## the rate every earlier build had.
@@ -62,8 +68,8 @@ var key_steer_out: int = STEER_FEEL_STANDARD  # and a released key's return to c
 var rumble := 10  # 0..EFFECT_STEPS; a gamepad's rumble (Rumble), 0 off
 var attack_traffic := false  # Time Attack and Free Drive with traffic (picked on stage select)
 var unlock_all := false  # every car and stage open (Unlocks), for testing and accessibility
-var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored
-var sfx_volume := 10
+var music_volume := 10  # 0..VOLUME_STEPS; 10 is the mix as authored (the music MUSIC_GAIN_DB up)
+var sfx_volume := DEFAULT_SFX
 var radio: int = Radio.SHUFFLE  # the station races start on (Radio)
 var screen_shake := 10  # 0..EFFECT_STEPS; scales camera shake and the nitro FOV stretch
 var flash := 10  # 0..EFFECT_STEPS; scales flashes and blinking warnings
@@ -116,7 +122,7 @@ func reset() -> void:
 	unlock_all = false
 	attack_traffic = false
 	music_volume = 10
-	sfx_volume = 10
+	sfx_volume = DEFAULT_SFX
 	radio = Radio.SHUFFLE
 	screen_shake = EFFECT_STEPS
 	flash = EFFECT_STEPS
@@ -183,7 +189,7 @@ func load_settings() -> void:
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11, _v11_to_v12, _v12_to_v13, _v13_to_v14, _v14_to_v15])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11, _v11_to_v12, _v12_to_v13, _v13_to_v14, _v14_to_v15, _v15_to_v16])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -270,6 +276,13 @@ static func _v13_to_v14(cfg: ConfigFile) -> void:
 ## plugged in with no saved profile gets the offer once.
 static func _v14_to_v15(cfg: ConfigFile) -> void:
 	cfg.set_value("first_run", "wheels", [])
+
+
+## Version 16 brought the effects down to DEFAULT_SFX by default (the music was hard to hear):
+## a file still on both old defaults gets the new one; volumes the player set are kept.
+static func _v15_to_v16(cfg: ConfigFile) -> void:
+	if int(cfg.get_value("audio", "sfx", 10)) == 10 and int(cfg.get_value("audio", "music", 10)) == 10:
+		cfg.set_value("audio", "sfx", DEFAULT_SFX)
 
 
 ## Writes the options. Over a file from a newer build, its other keys are kept
@@ -399,10 +412,15 @@ static func volume_db(steps: int) -> float:
 	return -80.0 if steps <= 0 else linear_to_db(float(steps) / VOLUME_STEPS)
 
 
+## A bus's level for a volume step: the music's MUSIC_GAIN_DB over the rest.
+static func bus_db(bus: String, steps: int) -> float:
+	return volume_db(steps) + (MUSIC_GAIN_DB if bus == "Music" and steps > 0 else 0.0)
+
+
 func _set_bus(bus: String, steps: int) -> void:
 	var i := AudioServer.get_bus_index(bus)
 	if i >= 0:
-		AudioServer.set_bus_volume_db(i, volume_db(steps))
+		AudioServer.set_bus_volume_db(i, bus_db(bus, steps))
 		AudioServer.set_bus_mute(i, steps <= 0)
 
 

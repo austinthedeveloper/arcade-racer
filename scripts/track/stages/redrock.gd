@@ -1,7 +1,11 @@
 class_name Redrock
 extends RefCounted
 ## Stage 2: Redrock Canyon. Open desert with long straights and big crests for air
-## time, a run between rock pillars and arches, and a dusty diner stop.
+## time, a run between rock pillars and arches, and a dusty diner stop. The desert road runs
+## six lanes wide; the canyon pinches it to two between the rock walls (WS-7).
+
+const DESERT_WIDTH := 1.45  # the road's half-width out in the open desert (Track.set_width)
+const CANYON_WIDTH := 0.7  # and through the canyon
 
 static func theme() -> Dictionary:
 	return {
@@ -68,6 +72,9 @@ static func build() -> Track:
 	t.straight(Track.LENGTH_LONG)
 
 	t.finish_stage(final_straight)
+	# A wide desert highway, then the heart of the canyon closing it down to two lanes (WS-7)
+	t.set_width(120, canyon_start - 360, DESERT_WIDTH, 6)
+	t.set_width(canyon_start + 120, 700, CANYON_WIDTH, 2)
 	# Nobody out in the open desert; the canyon road and the diner see the traffic (RC-20)
 	t.set_traffic(0, canyon_start, Track.TRAFFIC_EMPTY)
 	t.set_traffic(diner_at - 40, 120, Track.TRAFFIC_BUSY)

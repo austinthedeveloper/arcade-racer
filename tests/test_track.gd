@@ -593,15 +593,22 @@ func test_width_at_and_narrowest_ahead() -> void:
 
 
 func test_stages_narrow_and_widen() -> void:
-	var want := {"Palm Coast Boulevard": 6, "Skyline Finale": 6, "Timberline Pass": 2, "Thunderhead Highway": 2}
+	# Every stage changes width somewhere (playtest: Redrock felt the same all the way).
+	var want := {"Palm Coast Boulevard": [6], "Redrock Canyon": [6, 2], "Neon Strip": [6], "Timberline Pass": [2],
+		"Bayou Causeway": [2], "Harvest Valley": [2], "Thunderhead Highway": [2], "Skyline Finale": [6]}
 	for t in _stages():
 		var lanes := {}
+		var narrowest := 1.0
+		var widest := 1.0
 		for seg in t.segments:
 			lanes[seg.lanes] = true
-		if want.has(t.name):
-			check(lanes.has(want[t.name]), "%s has a %d-lane stretch" % [t.name, want[t.name]])
-		else:
-			eq(lanes.keys(), [Cfg.LANES], t.name + " keeps to four lanes")
+			narrowest = minf(narrowest, seg.width)
+			widest = maxf(widest, seg.width)
+		if not check(want.has(t.name), t.name + " is listed"):
+			continue
+		for n in want[t.name]:
+			check(lanes.has(n), "%s has a %d-lane stretch" % [t.name, n])
+		check(widest - narrowest >= 0.1, "%s: the road changes width (%.2f to %.2f)" % [t.name, narrowest, widest])
 		for i in [Track.START_SEGMENT, t.finish_index]:
 			eq(t.segments[i].lanes, Cfg.LANES, "%s: four lanes at segment %d" % [t.name, i])
 

@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dc3nahvk2amsn"
+
+[deps]
+
+files=["res://docs/announcer/lines.file.translation", "res://docs/announcer/lines.text.translation", "res://docs/announcer/lines.delivery.translation", "res://docs/announcer/lines.max.translation", "res://docs/announcer/lines.group.translation", "res://docs/announcer/lines.status.translation"]
+
+source_file="res://docs/announcer/lines.csv"
+dest_files=["res://docs/announcer/lines.file.translation", "res://docs/announcer/lines.text.translation", "res://docs/announcer/lines.delivery.translation", "res://docs/announcer/lines.max.translation", "res://docs/announcer/lines.group.translation", "res://docs/announcer/lines.status.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

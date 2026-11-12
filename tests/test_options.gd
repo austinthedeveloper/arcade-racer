@@ -26,7 +26,7 @@ func _as_device(kind: DriveInput.Kind) -> DriveInput:
 func test_defaults_and_round_trip() -> void:
 	_clean()
 	eq([Settings.auto_gas, Settings.traffic, Settings.timer, Settings.music_volume, Settings.sfx_volume],
-		[false, Settings.Traffic.NORMAL, Settings.Clock.ARCADE, 10, 10], "defaults")
+		[false, Settings.Traffic.NORMAL, Settings.Clock.ARCADE, 10, 7], "defaults: the effects under the music")
 	check(Settings.path != "user://settings.cfg", "tests use a scratch file")
 	Settings.auto_gas = true
 	Settings.traffic = Settings.Traffic.LIGHT
@@ -148,11 +148,12 @@ func test_volumes_set_the_buses() -> void:
 	var sfx := AudioServer.get_bus_index("SFX")
 	if not check(music >= 0 and sfx >= 0, "buses exist"):
 		return
-	near(AudioServer.get_bus_volume_db(music), 0.0, 0.01, "full volume is the authored mix")
+	near(AudioServer.get_bus_volume_db(music), Settings.MUSIC_GAIN_DB, 0.01, "full music: the mix with the music lifted")
+	near(AudioServer.get_bus_volume_db(sfx), -3.1, 0.05, "the effects start at 7 of 10")
 	Settings.music_volume = 5
 	Settings.sfx_volume = 0
 	Settings.apply_volumes()
-	near(AudioServer.get_bus_volume_db(music), -6.02, 0.05, "half is -6 dB")
+	near(AudioServer.get_bus_volume_db(music), Settings.MUSIC_GAIN_DB - 6.02, 0.05, "half is 6 dB down from there")
 	check(AudioServer.is_bus_mute(sfx), "0 mutes")
 	_clean()
 	check(not AudioServer.is_bus_mute(sfx), "unmuted again")

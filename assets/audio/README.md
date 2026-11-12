@@ -83,8 +83,14 @@ reads them from there to make each `vo_<id>` cue: not words, but synthesized pat
 line's rhythm (formant-filtered syllables through a stadium PA), the way a cartoon character
 talks. The subtitle carries the words (Options > Accessibility > Subtitles, on by default).
 Lines play one at a time: the finish and time up jump the queue, a near miss or big air whose
-moment has passed (2 s) is dropped. The music ducks 9 dB under each line. A recorded
-`sfx/vo_<id>.ogg` replaces a line; edit its words in `LINES` to match.
+moment has passed (2 s) is dropped. The music ducks 9 dB under each line.
+
+The real voice: `docs/announcer/` has the script for the voiceover (SCRIPT.md and lines.csv,
+written by `tools/announcer_script.py`: today's lines under their ids, and the variants and
+new lines still to wire) and VOICE.md (who the announcer is, the instructions for the
+voiceover tool, an audition). `python3 tools/prep_announcer.py <folder>` trims and levels the
+recordings and writes the said ones over `sfx/vo_<id>.wav`. Change a line's words in `LINES`
+and in the script together (`test_announcer` checks they match).
 
 ## The radio
 
@@ -98,5 +104,8 @@ in Remap. Each station is one 16-bar loop (an A and a B section) rendered at 32 
 The engine loops are about 56 Hz (`engine_low`) and 112 Hz (`engine_high`) at a pitch of 1.0.
 
 Music and effects play on their own `Music` and `SFX` buses; the Master bus has a hard limiter.
+The Music bus sits `Settings.MUSIC_GAIN_DB` (6 dB) over the authored levels at full volume,
+and the effects start at 7 of 10, so the radio carries over the engine (playtest, 0.7.0).
+Under the instant replay and the results the car's loops fade out (`RaceAudio.car_quiet`).
 Whooshes play on `SFX Left` or `SFX Right`, panned buses that feed `SFX`, so the effects volume
 covers them. A power slide (RC-8) squeals on the `skid` loop, from 60% at low speed to full at top speed.

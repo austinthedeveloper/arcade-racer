@@ -7,6 +7,21 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Changed
+
+- Every stage now changes width somewhere. Redrock Canyon runs six lanes wide across the open
+  desert, then pinches to two lanes in the heart of the canyon. Neon Strip opens into a
+  six-lane boulevard after the tunnel. Bayou Causeway's first causeway is an old two-lane road
+  over the water, and Harvest Valley has a two-lane farm road through the wheat. Medal times
+  on those four stages moved to match.
+- The music is louder and the effects quieter by default (music 10 with more headroom,
+  effects 7). Volumes you set yourself are kept.
+
+### Fixed
+
+- The engine, tire squeal and wind no longer hang on after the finish: they fade out under
+  the instant replay and the results, and once the clock runs out and the car stops.
+
 ## [0.7.0] - 2026-11-11
 
 ### Added

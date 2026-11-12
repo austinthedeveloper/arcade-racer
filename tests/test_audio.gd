@@ -544,3 +544,63 @@ func test_a_power_slide_squeals() -> void:
 	check(RaceAudio.skid_level(faster) > RaceAudio.skid_level(p), "louder faster")
 	p.airborne = true
 	eq(RaceAudio.skid_level(p), 0.0, "not in the air")
+
+
+## A race just over its finish line, autodriven with rivals, its sound stepped along.
+func _finished(traffic := false) -> Node:
+	var r := race(true, traffic, 0, true)
+	audio_node().history.clear()
+	step(r, 200)
+	r.player.distance = r.finish_distance - 60000.0
+	r.player.position = fposmod(r.player.distance, r.track.length)
+	for i in 3000:
+		if r.state != r.State.RACING:
+			break
+		step(r, 1)
+	r.set("_autodrive", false)
+	return r
+
+
+func _car_loops(r: Node) -> float:
+	var most := 0.0
+	for cue in ["engine_low", "engine_high", "skid", "offroad", "wind", "draft", "rival", "horn"]:
+		most = maxf(most, r.audio.levels[cue])
+	return most
+
+
+func test_the_car_goes_quiet_for_the_replay_and_the_results() -> void:
+	var r := _finished()
+	eq(r.state, r.State.FINISHED, "over the line")
+	check(_car_loops(r) > 0.1, "the car still heard as it slows")
+	for i in 900:
+		if r.replaying:
+			break
+		step(r, 1)
+	check(r.replaying, "the instant replay")
+	step(r, 90)
+	near(_car_loops(r), 0.0, 0.01, "the engine, tires and wind fade out under the replay, not held where it froze")
+	for i in 2000:
+		if not r.replaying:
+			break
+		step(r, 1)
+	check(r.results.visible, "the results")
+	step(r, 60)
+	near(_car_loops(r), 0.0, 0.01, "and no engine idling under the results")
+	r.start_race()
+	step(r, 200, input(1.0))
+	check(r.audio.levels["engine_low"] > 0.1 or r.audio.levels["engine_high"] > 0.1, "the next race heard again")
+
+
+func test_the_engine_stops_idling_once_time_is_up_and_the_car_stops() -> void:
+	var r := fresh_race()
+	step(r, 300, input(1.0))
+	r.time_left = 0.05
+	step(r, 10, input(1.0))
+	eq(r.state, r.State.TIME_UP, "out of time")
+	check(r.audio.levels["engine_low"] + r.audio.levels["engine_high"] > 0.1, "heard while it coasts")
+	for i in 3000:
+		if r.player.speed <= 0.0:
+			break
+		step(r, 1, input(1.0))
+	step(r, 60, input(1.0))
+	near(_car_loops(r), 0.0, 0.01, "then quiet, not idling on under TIME UP")

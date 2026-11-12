@@ -50,6 +50,8 @@ python3 tools/make_drawn_props.py .                 # redraw Palm Coast's six ha
 python3 tools/manifest.py .                         # rewrite assets/sprites/manifest.json after editing a world height or collide fraction
 python3 tools/make_lod_sprites.py .                 # redo the roadside sprites' reduced copies (lod/, CP-9) and the manifest
 python3 tools/make_audio.py                         # rebuild the placeholder sounds (assets/audio/README.md)
+python3 tools/announcer_script.py [--check]         # the announcer's voiceover script, docs/announcer/ (SCRIPT.md, lines.csv; VOICE.md by hand)
+python3 tools/prep_announcer.py <recordings> [--dry-run]   # recorded vo_<id>.wav: trimmed, leveled, the said lines into assets/audio/sfx/
 python3 tools/check_sprites.py                      # rebuild every sprite and fail on a pixel that differs from the repo (CI; pinned libraries)
 tools/export.sh 0.1.0                               # Windows/macOS/Web zips in build/release (needs export templates)
 tools/deploy_web.sh build/release/SundownRun-0.4.0-web.zip   # the Web build to Azure (az login; a tag's release does it)
