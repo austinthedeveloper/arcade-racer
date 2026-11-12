@@ -60,7 +60,7 @@ Pick **OPTIONS** on the title screen or in the pause menu. Options are saved to 
 |---|---|---|
 | Game | Auto gas | The car keeps the gas down, so a young player only has to steer. The brake still works (and lifts the gas while held). |
 | Game | Traffic | Light, normal or heavy traffic. |
-| Game | Difficulty | Easy, normal or hard: the rivals' pace and rubber band. Sets the timer to match. |
+| Game | Difficulty | Easy, normal or hard: the rivals' pace and rubber band, the timer (Hard: ARCADE) and the checkpoint bonuses (x1.1 on Easy, x0.9 on Hard). |
 | Game | Timer | Relaxed (more time per checkpoint), Arcade (as tuned) or Tight. |
 | Game | Carry time | Grand Tour: time left at a finish carries into the next stage. |
 | Game | Power-ups | On or off: the nitro cans, clocks, ram plates, ghosts and mystery hubcaps on the road. |
@@ -139,8 +139,6 @@ BACK, and the online letter grid can be tapped directly. A key or a pad button h
 What's known and not fixed yet (the full list, with reasons, is
 [docs/09-known-bugs-and-cleanup.md](docs/09-known-bugs-and-cleanup.md)):
 
-- Every stage has the same five power-ups on the road, and never a nitro can or a mystery
-  hubcap (G7; fixing it moves the pickups, so it waits for a gameplay change).
 - The builds aren't code-signed: Windows SmartScreen and macOS Gatekeeper warn the first time
   (see Releases).
 - Wheels have no force feedback yet; turn on your wheel software's centering spring.
@@ -182,7 +180,14 @@ tools/test.sh                  # every suite, then the end-to-end input smoke
 tools/test.sh test_race        # only tests whose name contains "test_race"
 ```
 
-`test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, remapping, menu input and the menu flow, options and saves, the driving model, rivals, traffic, scoring, the modes, the updater and renderer regressions. The end-to-end smoke boots the game on the title screen, changes some options, and goes through the menus into races and the results screen. `tests/golden/` holds frame-by-frame traces of autodriven races (Palm Coast with traffic and rivals and on a clear road, every other stage with traffic and rivals, power-ups on). `tools/shots.sh` compares menu and race screenshots with `tests/shots/`. If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`. CI runs the same script on every push.
+`test.sh` runs `godot` from your PATH; set `GODOT=/path/to/Godot` to use another binary. The tests cover wheel and pedal normalization, calibration, remapping, menu input and the menu flow, options and saves, the driving model, rivals, traffic, scoring, the modes, the updater and renderer regressions. The end-to-end smoke boots the game on the title screen, changes some options, and goes through the menus into races and the results screen. `tests/golden/` holds frame-by-frame traces of autodriven races (Palm Coast with traffic and rivals and on a clear road, every other stage with traffic and rivals, power-ups on). `tools/shots.sh` compares menu and race screenshots with `tests/shots/`. If you change gameplay on purpose, regenerate them with `godot --headless --path . -s res://tests/golden.gd`, then `python3 tools/medals_from_golden.py`: the medal times follow the autodrive's new finish times (gold, silver and bronze at 0.91, 1.02 and 1.12 of it), and the commit gives both tables. CI runs the same script on every push.
+
+A screenshot reference must come from the machine that checks it. One frame can render
+slightly differently on another GPU (race_palm on macOS sits just past the tolerance). When that
+frame changes, take its new reference from CI's run instead: download the `screenshots` artifact
+of the PR's CI run, put only that frame's PNG in a folder, run
+`python3 tools/shots.py update <that folder> tests/shots`, and check that `git status` shows only that
+file changed.
 
 ### Looking at the cars
 

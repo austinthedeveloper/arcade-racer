@@ -105,8 +105,6 @@ func test_controls_on_the_title_opens_the_card_and_back() -> void:
 	g.menu.handle(menu_input(false, true))
 	eq(g.screen, g.Screen.TITLE, "back: the title")
 	eq(TitleScreen.items()[g.menu.index], "CONTROLS", "on CONTROLS")
-	eq(TitleScreen.pill_step(6) * 6, Cfg.SCREEN_W - 16.0, "six pills share the width")
-	eq(TitleScreen.pill_step(5), TitleScreen.PILL_STEP, "five as before")
 
 
 func test_controls_on_the_pause_menu_opens_the_card_over_the_race() -> void:

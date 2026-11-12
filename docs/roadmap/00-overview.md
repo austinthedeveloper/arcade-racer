@@ -180,6 +180,37 @@ stack lands. When a group doc changes a
 feature, update its issue to match. A new feature takes the next ID in its group doc and gets an
 issue in the same shape.
 
+**Landing a stack of PRs.** A month's work often goes up as branches stacked on each other
+(each PR's base is the branch below it). The repository deletes a head branch once its PR merges,
+and GitHub closes, not retargets, a PR whose base branch is deleted. So merge from the bottom,
+and point the next PR's base at `main` before merging the one under it:
+
+1. `gh pr edit <child> --base main`, then `gh pr merge <parent> --merge`, for each pair, bottom up.
+2. Merge the top one, then check that `main` matches the top branch (`git diff origin/main <top>`).
+3. Issues close when their `Closes #N` reaches `main`. Run `roadmap_sync.py --fix-board --write-docs`,
+   commit the ticks on their own branch, and close a milestone with no open issues left.
+
+A fix found in CI for a branch low in the stack goes on that branch, and is then merged up
+through the branches above it, so every PR stays green on its own.
+
+**Adding a batch of stories** (the second year, 2026-11-10):
+
+1. Write the rows in the group docs first (next IDs, Size, Month, Needs, Done when), and add the
+   months to `MONTHS` in `tools/roadmap_sync.py`.
+2. Create the new milestones (`gh api repos/austinthedeveloper/arcade-racer/milestones -f title="M7 May 2027: ..." -f due_on=...`),
+   titled `M<n> <Mon YYYY>: <theme>`, as `roadmap_sync` finds a month's milestone by its `M<n>`.
+3. Add the new months to the project's Month field, and any new group to its Group field. Use the
+   GraphQL `updateProjectV2Field` with every existing option passed back with its `id`. An
+   option sent without its id is a new option, so every item that had the old one loses its
+   value. The `gh` CLI can't add an option, so send the mutation with `gh api graphql`.
+4. `python3 tools/roadmap_sync.py --create-issues` opens an issue per row with no issue, with
+   labels, milestone and project fields. Ninety issues in one go trips GitHub's secondary rate
+   limit on the project calls; wait a few minutes and run it again, as it skips rows that
+   already have an issue.
+5. Give each new item its Start date and Target date: the first and last day of its Month.
+6. `python3 tools/roadmap_sync.py` reports 0 problems, and the overview's tables cover the new
+   months.
+
 ## Reading the group docs
 
 Each group doc has the same shape: what is built today, a feature table, open decisions and test

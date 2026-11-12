@@ -21,7 +21,6 @@ FORMAT = 1
 STAGE_ORDER = ["palm_coast", "redrock", "neon", "timberline", "bayou", "harvest", "thunder", "skyline"]
 LOST = "#e0a030"  # time lost bars
 CRASH = "#d83a3a"  # crash marks
-CHECKPOINT = "#5a8fd8"
 
 
 def load(folder):

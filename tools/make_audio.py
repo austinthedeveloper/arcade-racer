@@ -11,7 +11,7 @@ next to it, see assets/audio/README.md.
 Usage:
     python3 tools/make_audio.py [project_dir] [--only=crash --only=music] [--out=DIR]
 
---out writes into DIR (sfx/, music/) instead of the project's assets/audio. The radio's
+--out writes into DIR (sfx/, music/, radio/) instead of the project's assets/audio. The radio's
 songs and stings (SONGS) each have their own random stream, so --only=sting_rock renders
 just that one; the rest share one stream, so --only=crash still renders everything before it.
 """

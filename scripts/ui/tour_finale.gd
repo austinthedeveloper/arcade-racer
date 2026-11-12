@@ -26,7 +26,6 @@ const CAR_W := 84.0  # the cars' body width on the steps, seen from behind as in
 const STEP_COLORS := [Color("#ffd23a"), Color("#c9d4ff"), Color("#e09a5a")]
 
 var page: int = Page.PODIUM
-var page_time := 0.0  # seconds on this page
 ## The tour's final standings ({"name", "points"}, Tour.standings) and the player's car.
 var standings: Array[Dictionary] = []
 var car_id := "car_vega"
@@ -151,16 +150,10 @@ func handle(m: MenuInput) -> void:
 		next_page()
 
 
-func _process(dt: float) -> void:
-	super._process(dt)
-	page_time += dt
-
-
 func next_page_due() -> bool:
 	if page == Page.CARD:
 		return true
 	page += 1
-	page_time = 0.0
 	return false
 
 

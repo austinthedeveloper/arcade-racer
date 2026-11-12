@@ -723,13 +723,14 @@ func test_save_v4_to_v5_counts_an_older_driver_as_onboarded() -> void:
 
 func test_settings_v14_to_v15_adds_the_wheels_offered() -> void:
 	var cfg := ConfigFile.new()
-	cfg.load(FIXTURES + "settings_v13.cfg")
-	eq(Settings.migrate(cfg), 13, "from version 13")
+	cfg.load(FIXTURES + "settings_v14.cfg")
+	eq(Settings.migrate(cfg), 14, "from version 14")
 	eq([CfgVersion.of(cfg), cfg.get_value("first_run", "wheels")], [Settings.VERSION, []], "migrated on: none offered yet")
+	eq(cfg.get_value("game", "playtest_log"), true, "v14's playtest log kept")
 	_clean()
-	_load_settings("settings_v13.cfg")
-	eq([Settings.loaded_version, Settings.camera_view, Settings.wheels_prompted], [13, CameraView.View.BUMPER, [] as Array[String]],
-		"v13 loads: its keys as saved, no wheels offered")
+	_load_settings("settings_v14.cfg")
+	eq([Settings.loaded_version, Settings.camera_view, Settings.playtest_log, Settings.wheels_prompted],
+		[14, CameraView.View.BUMPER, true, [] as Array[String]], "v14 loads: its keys as saved, no wheels offered")
 	Settings.wheels_prompted.append("030000006d04000018c2000000000000")
 	Settings.save()
 	Settings.load_settings()

@@ -11,9 +11,6 @@ const GRID_FRONT := 2200.0  # world units the front of the grid is ahead of the 
 ## well clear of CONTACT_LENGTH, so the launch isn't a pile of bumps.
 const GRID_STEP := 250.0
 const GRID_X := 0.5
-## Rubber band: rivals ahead of the player ease off and rivals behind get a little more, in
-## full at ai/band_range away (Tuning), by as much as the difficulty says (difficulty/*_ease,
-## difficulty/*_boost). ai/band_max caps either way, whatever a difficulty asks for.
 ## The most a rival's base pace comes to, of its car's top speed, whatever the difficulty and
 ## the stage ask for (the rubber band can still add a little).
 const MAX_PACE := 1.0
@@ -22,6 +19,9 @@ const STANDSTILL := 100.0  # world units per second under which a car in the way
 const SQUEEZE := 0.01  # road half-widths a tick a car stuck behind a stopped one edges round it
 
 var cars: Array[RivalCar] = []
+## Rubber band: rivals ahead of the player ease off and rivals behind get a little more, in
+## full at ai/band_range away (Tuning), by as much as the difficulty says (difficulty/*_ease,
+## difficulty/*_boost). ai/band_max caps either way, whatever a difficulty asks for.
 var band_ease := 0.05  # (spawn sets both from the difficulty)
 var band_boost := 0.04
 var clock := 0.0  # seconds since GO; runs on after the player finishes, unlike the race clock

@@ -27,6 +27,7 @@ godot --headless --path . -s res://tools/online_probe.gd -- --relay=ws://127.0.0
 godot --path . -- --online=host --stage=1 --autodrive --room-file=/tmp/room   # then in another: --online=join:$(cat /tmp/room) --autodrive; two windows race, print the finishes, quit (--races=2 on both: a rematch first, ON-9)
 godot --path . -- --online=bot --stage=1 --autodrive --at-segment=4650 --screenshots=900 --shot-dir=/tmp/shots   # an online race on an in-memory relay with a made-up guest (--players=N, --bot-speed=0.6, --bot-lag=MS, --bot-drop=S)
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
+python3 tools/medals_from_golden.py [--dry-run]      # medal times from the regenerated traces' finish times (after golden.gd)
 tools/soak.sh --quick                               # soak test (EQ-22): random inputs on every stage and difficulty (no --quick: every car too, nightly; --stages=2 --cars=car_mesa --seed=N)
 tools/soak.sh --report --detail [--draws=3]         # the autodrive's field per stage and difficulty against its band (RC-21; --tuning-file=F to try tuning)
 godot --path . -- --tuning-file=res://tests/fixtures/tuning_override.cfg --screen=debug:camera --menu-shot=/tmp/d.png   # the F3 tuning panel on a page (Tuning.AREAS, actions, presets); race flags put it over a race
@@ -85,7 +86,8 @@ and also checks every stage's autodriven race finishes in time and every rival f
 ## Before finishing a change
 
 1. `tools/test.sh` passes. Golden traces stay unchanged unless the change is meant to alter
-   play; regenerate them and give the reason in the commit.
+   play; regenerate them, re-derive the medal times (`tools/medals_from_golden.py`), and give
+   the reason and both tables in the commit.
 2. Look at a screenshot of anything visual. `tools/shots.sh` passes; after a deliberate visual
    change, `tools/shots.sh --update`, look at the new `tests/shots/` images and say why in the commit.
 

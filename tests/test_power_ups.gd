@@ -14,7 +14,7 @@ func test_every_stage_gets_its_pickups_in_lanes() -> void:
 	for i in Stages.count():
 		var t := Stages.build(i)
 		var pu := PowerUps.new()
-		pu.place(t)
+		pu.place(t, PowerUps.seed_for(i))
 		eq(pu.pickups.size(), PowerUps.SPOTS.size(), t.name + " pickups")
 		for p in pu.pickups:
 			check(t.segments[p.segment].lane_offsets().has(p.offset), "%s pickup in a lane" % t.name)

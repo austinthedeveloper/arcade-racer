@@ -80,7 +80,6 @@ const LINES := [
 
 var harbor := false  # after the tour: over Skyline's harbor
 var scroll := 0.0  # pixels the roll has moved up
-var fast := false  # a key or button held this tick
 var _layers := {}
 
 
@@ -138,7 +137,7 @@ func handle(m: MenuInput) -> void:
 		Audio.play("beep")
 		game.close_credits()
 		return
-	fast = Input.is_anything_pressed() or m.confirm_pressed
+	var fast := Input.is_anything_pressed() or m.confirm_pressed  # a key or button held this tick
 	if advance(1.0 / Engine.physics_ticks_per_second, fast):
 		game.close_credits()
 

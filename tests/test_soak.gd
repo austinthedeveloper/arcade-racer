@@ -57,7 +57,6 @@ func test_the_field_and_its_band() -> void:
 	eq(Soak.out_of_band(f, Difficulty.Level.NORMAL, 0), "", "in Normal's band")
 	f["spread"] = Soak.BANDS[Difficulty.Level.NORMAL]["spread"] + 1.0
 	check(Soak.out_of_band(f, Difficulty.Level.NORMAL, 0).contains("spread"), "too spread out")
-	f["spread"] = Soak.BANDS[Difficulty.Level.NORMAL]["spread"] + 1.0
 	eq(Soak.out_of_band(f, Difficulty.Level.NORMAL, 7), "", "Skyline's field may spread further (its downtown jam)")
 	f["spread"] = 8.0
 	f["place"] = 7

@@ -334,7 +334,7 @@ func start_race() -> void:
 	next_checkpoint = 0
 	banner = ""
 	callouts.clear()
-	if first_drive_on and first_drive == null and stage_index == FirstDrive.STAGE and SaveData.first_drive_pending():
+	if first_drive_on and first_drive == null and FirstDrive.wanted(stage_index, SaveData):
 		first_drive = FirstDrive.new()  # (a restart keeps the prompts already cleared)
 	elif first_drive != null and stage_index != FirstDrive.STAGE:
 		first_drive = null  # (on to the next stage of a tour)
