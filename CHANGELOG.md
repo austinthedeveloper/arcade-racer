@@ -7,6 +7,13 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Every car has its own engine note (PR-18): a buzzy, high-revving small engine (Solano Spyder,
+  Dune Skipper, Halo EV, Cyclone), a deep, lumpy V8 (Bruiser 440, Mesa Rumbler, Phantom, Hauler)
+  and a turbo with a whine that spools up and a pop on each upshift (Vega GT, Kestrel R,
+  Tempest LM, Zenith X).
+
 ### Changed
 
 - Every stage now changes width somewhere. Redrock Canyon runs six lanes wide across the open

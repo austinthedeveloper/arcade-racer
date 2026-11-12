@@ -40,6 +40,10 @@ seamless; the engine loops are pitch-shifted, so a steady single-note recording 
 |---|---|---|---|
 | `engine_low` | sfx | yes | Always; low-revs engine, pitch follows the gears. Fades out at high revs |
 | `engine_high` | sfx | yes | Fades in at high revs, pitch follows the gears |
+| `engine_small` | sfx | yes | The small engine's low layer, in place of `engine_low` (engine notes, below) |
+| `engine_v8` | sfx | yes | The V8's low layer; its high layer is `engine_low` |
+| `turbo_whine` | sfx | yes | The turbo cars' whine, spooling with the revs on the throttle |
+| `turbo_pop` | sfx | no | A turbo car's upshift |
 | `skid` | sfx | yes | Hard braking at speed, full lock at speed, a power slide, sliding after a crash |
 | `rival` | sfx | yes | The nearest rival's engine, louder the closer it is (either side), pitch from its revs |
 | `offroad` | sfx | yes | Driving on the dirt/grass, louder with speed |
@@ -102,6 +106,28 @@ out, and its name comes up over the road. On a pad the radio button is unbound u
 in Remap. Each station is one 16-bar loop (an A and a B section) rendered at 32 kHz.
 
 The engine loops are about 56 Hz (`engine_low`) and 112 Hz (`engine_high`) at a pitch of 1.0.
+
+### Engine notes (PR-18)
+
+Each car has one of three engine notes, set by `"engine"` in `Cars.LIST` and defined in
+`scripts/audio/engine_models.gd` (`EngineModels.MODELS`: each model's two loops, their pitch
+curves against the revs, and where the high layer fades in). The player's engine plays its
+car's model; the rivals all keep the shared `rival` loop.
+
+| Model | Loops | Sound | Cars |
+|---|---|---|---|
+| `small` | `engine_small` into `engine_high` | A high-revving twin, 120 firings a second: buzzy and nasal, the pitch climbs the most and the bright layer comes in early | Solano Spyder, Dune Skipper, Halo EV, Cyclone |
+| `v8` | `engine_v8` into `engine_low` | A cross-plane V8, 48 firings a second with each bank's pulses uneven (the burble): deep and lumpy, only part-way smoother at the top | Bruiser 440, Mesa Rumbler, Phantom, Hauler |
+| `turbo` | `engine_low` into `engine_high`, plus `turbo_whine` and `turbo_pop` | The original mid-pitched engine, with a whine that spools up on the throttle with the revs and a pop on each upshift | Vega GT, Kestrel R, Tempest LM, Zenith X |
+
+`engine_small`, `engine_v8`, `turbo_whine` and `turbo_pop` are short (0.1 to 0.33 s, whole firing
+cycles so the loops join up) at 22.05 kHz to stay small in the Web build, and render last in
+`make_audio.py` (`ENGINE_SOUNDS`), each on its own random stream, so every older file is unchanged.
+To hear the three side by side through a full-throttle sweep of the gears, mixed as the race mixes them:
+
+```sh
+godot --headless --path . -s res://tools/engine_sweep.gd -- --out=/tmp/engines   # engine_small.wav, engine_v8.wav, engine_turbo.wav
+```
 
 Music and effects play on their own `Music` and `SFX` buses; the Master bus has a hard limiter.
 The Music bus sits `Settings.MUSIC_GAIN_DB` (6 dB) over the authored levels at full volume,

@@ -1,7 +1,8 @@
 class_name RaceAudio
 extends Node
 ## Race sounds. Watches the race each tick (after it updates) and turns what changed
-## into cues: engine, tire, wind and slipstream loops follow the player's car, the nearest
+## into cues: engine, tire, wind and slipstream loops follow the player's car (its engine
+## through the car's engine note, EngineModels), the nearest
 ## rival's engine follows its gap, the horn follows its button, one-shots mark events.
 ## Reads the race and never writes to it, so play is the same with or without sound.
 
@@ -30,10 +31,14 @@ const PICKUP_CUES := {
 }
 
 var race: Node
-var levels := {"engine_low": 0.0, "engine_high": 0.0, "skid": 0.0, "offroad": 0.0, "wind": 0.0, "draft": 0.0,
-	"rival": 0.0, "horn": 0.0}
-var pitches := {"engine_low": 1.0, "engine_high": 1.0, "skid": 1.0, "offroad": 1.0, "wind": 1.0, "draft": 1.0,
-	"rival": 1.0, "horn": 1.0}
+## Each loop's level and pitch. engine_low and engine_high are the engine's two layers, playing
+## the car's model's cues (loop_cues); turbo_whine is the turbo's.
+var levels := {"engine_low": 0.0, "engine_high": 0.0, "turbo_whine": 0.0, "skid": 0.0, "offroad": 0.0, "wind": 0.0,
+	"draft": 0.0, "rival": 0.0, "horn": 0.0}
+var pitches := {"engine_low": 1.0, "engine_high": 1.0, "turbo_whine": 1.0, "skid": 1.0, "offroad": 1.0, "wind": 1.0,
+	"draft": 1.0, "rival": 1.0, "horn": 1.0}
+var engine_model := EngineModels.DEFAULT  # the player's car's engine note (Cars.engine_model)
+var loop_cues := {}  # loop -> the cue it plays (the engine layers follow the model)
 
 var _loops := {}
 var _player: PlayerCar
@@ -58,6 +63,8 @@ var _callout := {}  # the callout up last tick, to notice a new one
 var _hurried := false
 var _rng := RandomNumberGenerator.new()  # SHUFFLE's own: play never sees it
 var _gaps := {}  # traffic car or rival -> its gap ahead of the player last tick (whooshes)
+var _gear := 1  # the gear last tick, to hear an upshift (the turbo's pop)
+var _speed := 0.0  # the speed last tick: the whine spools while it climbs
 
 
 func _init(r: Node = null) -> void:
@@ -69,7 +76,7 @@ func _ready() -> void:
 	if not _loops.is_empty():
 		return
 	for cue in levels:
-		var p := Audio.loop_player(cue)
+		var p := Audio.loop_player(loop_cue(cue))
 		add_child(p)
 		_loops[cue] = p
 
@@ -107,6 +114,9 @@ func _new_race() -> void:
 	_tick = 0
 	_draft_time = 0.0
 	_gaps.clear()
+	set_engine_model(Cars.engine_model(Cars.find(String(race.get("car_id")))))
+	_gear = 1
+	_speed = 0.0
 	station = Radio.start_station(Settings.radio, _rng.randi(), Radio.for_theme(race.track.theme))
 	song = posmod(_rng.randi(), Radio.song_count(station))
 	radio_on = true
@@ -116,6 +126,26 @@ func _new_race() -> void:
 	announcer.say("ready")
 	_callout = {}
 	_hurried = false
+
+
+## Plays the engine through this model's loops (EngineModels.MODELS).
+func set_engine_model(model: String) -> void:
+	engine_model = model if EngineModels.MODELS.has(model) else EngineModels.DEFAULT
+	for layer in ["low", "high"]:
+		var slot: String = "engine_" + layer
+		var cue := EngineModels.cue(engine_model, layer)
+		loop_cues[slot] = cue
+		var p: AudioStreamPlayer = _loops.get(slot)
+		if p != null and p.stream != SoundBank.stream(cue):
+			var was := p.playing
+			p.stream = SoundBank.stream(cue)
+			if was and p.is_inside_tree():
+				p.play()
+
+
+## The cue a loop plays: its own, or for an engine layer the model's.
+func loop_cue(slot: String) -> String:
+	return loop_cues.get(slot, slot)
 
 
 ## The radio button: the next station, its song (or sting) carrying on at the same point,
@@ -237,16 +267,23 @@ func _events() -> void:
 
 func _set_loops(dt: float) -> void:
 	var pct := _player.speed_percent()
+	var gear := _player.gear if _player.manual else PlayerCar.auto_gear(pct)
 	var rpm := engine_rpm(pct, _player.gear if _player.manual else 0)
-	var high := smoothstep(0.35, 0.85, rpm)
+	var spooling := _player.speed > _speed + 0.01
 	var target := {
-		"engine_low": 1.0 - 0.7 * high,
-		"engine_high": high,
+		"engine_low": EngineModels.low_mix(engine_model, rpm),
+		"engine_high": EngineModels.high_mix(engine_model, rpm),
+		"turbo_whine": EngineModels.whine_level(engine_model, rpm, spooling),
 		"skid": skid_level(_player),
 		"offroad": offroad_level(_player),
 	}
-	pitches["engine_low"] = 0.8 + rpm
-	pitches["engine_high"] = 0.6 + 0.9 * rpm
+	pitches["engine_low"] = EngineModels.pitch(engine_model, "low", rpm)
+	pitches["engine_high"] = EngineModels.pitch(engine_model, "high", rpm)
+	pitches["turbo_whine"] = EngineModels.whine_pitch(rpm)
+	if gear > _gear and EngineModels.pops(engine_model) and race.state == race.State.RACING and not car_quiet(race):
+		Audio.play("turbo_pop")
+	_gear = gear
+	_speed = _player.speed
 	pitches["skid"] = 0.9 + 0.2 * pct
 	pitches["offroad"] = 0.7 + 0.6 * pct
 	target["wind"] = wind_level(_player)
@@ -265,7 +302,7 @@ func _set_loops(dt: float) -> void:
 		var p: AudioStreamPlayer = _loops.get(cue)
 		if p == null:
 			continue
-		p.volume_db = SoundBank.volume_db(cue) + linear_to_db(maxf(levels[cue], 0.0001))
+		p.volume_db = SoundBank.volume_db(loop_cue(cue)) + linear_to_db(maxf(levels[cue], 0.0001))
 		p.pitch_scale = pitches[cue]
 		var on: bool = levels[cue] > 0.01
 		if on != p.playing and p.is_inside_tree():
