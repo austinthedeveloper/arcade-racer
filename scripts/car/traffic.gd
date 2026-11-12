@@ -66,6 +66,9 @@ const SPECIAL_SPEED := [0.3, 0.5]
 const CAR_SPEED := [0.3, 0.6]
 
 var cars: Array[TrafficCar] = []
+## The share of big vehicles in the cars spawned from here on (BIG_SHARE; the daily run's
+## TRUCKS mix has more, Daily).
+var big_share := BIG_SHARE
 var _rng := RandomNumberGenerator.new()  # spawn's, carried on into lane changes
 
 
@@ -222,10 +225,10 @@ func _add_car(track: Track, z: float, specials: Array, start := -1, totals := Pa
 	var roll := rng.randf()
 	var kinds: Array = CARS
 	var speeds: Array = CAR_SPEED
-	if roll < BIG_SHARE:
+	if roll < big_share:
 		kinds = BIG
 		speeds = BIG_SPEED
-	elif roll < BIG_SHARE + SPECIAL_SHARE:
+	elif roll < big_share + SPECIAL_SHARE:
 		kinds = specials
 		speeds = SPECIAL_SPEED
 	var pool := loaded(with_fronts(kinds) if car.oncoming else kinds)

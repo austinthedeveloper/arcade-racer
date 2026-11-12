@@ -5,7 +5,7 @@ extends Node
 ## --online=host or --online=join:CODE straight into a room (online_from_flags).
 ## Left idle on the title, it plays an attract-mode demo race (Attract) until any input.
 
-enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES, FINALE, CREDITS, CONTROLS }
+enum Screen { TITLE, MODES, OPTIONS, STAGES, CARS, RACE, REMAP, UPDATE, WHEEL, ONLINE, STATS, PROFILES, FINALE, CREDITS, CONTROLS, DAILY }
 
 const RACE_SCENE := preload("res://scenes/race.tscn")
 const RACE_FLAGS := ["--autodrive", "--race", "--stage="]
@@ -22,6 +22,9 @@ var car_index := 0  # into Cars
 ## The MIRROR toggle on stage select (WS-6): races a stage mirrored where that's open
 ## (mirror_for). Not saved; --mirror turns it on.
 var mirror := false
+## The daily run's day (MP-14, Daily.day_key): 0 for today on this machine's calendar;
+## --day=YYYYMMDD stages another (screenshots).
+var day := 0
 var menu: MenuScreen
 var race: Node  # race.gd, while racing
 ## The online room (ON-2), from HOST or JOIN until it's left; polled every tick, menus or race.
@@ -96,6 +99,7 @@ func _ready() -> void:
 	if car != "":
 		car_index = maxi(0, Cars.LIST.find(Cars.find(car)))
 	mirror = DevArgs.has("--mirror")
+	day = int(DevArgs.value("--day", "0"))
 	news_allowed = DevArgs.value("--menu-shot") == ""
 	onboarding = news_allowed
 	var mode := DevArgs.value("--mode")
@@ -310,21 +314,37 @@ func close_options() -> void:
 
 
 ## A playable mode picked on mode select. ONLINE picks the car first; the host picks the
-## stage in the lobby.
+## stage in the lobby. SURVIVAL's road is set (it starts on Palm Coast): just the car. The
+## DAILY RUN picks everything: its card.
 func choose_mode(item: int) -> void:
 	mode_index = item
-	if item == ModeSelect.Item.ONLINE:
+	if item == ModeSelect.Item.ONLINE or item == ModeSelect.Item.SURVIVAL:
 		show_car_select()
+	elif item == ModeSelect.Item.DAILY_RUN:
+		show_daily()
 	else:
 		show_stage_select()
 
 
-## Back from car select: stage select, or mode select for ONLINE (which has none).
+## Back from car select: stage select, or mode select for ONLINE and SURVIVAL (which have none).
 func car_select_back() -> void:
-	if mode_index == ModeSelect.Item.ONLINE:
+	if mode_index == ModeSelect.Item.ONLINE or mode_index == ModeSelect.Item.SURVIVAL:
 		show_mode_select()
 	else:
 		show_stage_select()
+
+
+## The daily run's day: `day`, or today (Daily.today).
+func daily_day() -> int:
+	return day if day > 0 else Daily.today()
+
+
+## The daily run's card (MP-14): the day's stage, car, weather and traffic, and your tries.
+func show_daily() -> void:
+	var d := DailyCard.new()
+	d.day = daily_day()
+	d.pick = Daily.pick(d.day)
+	_set_menu(d, Screen.DAILY)
 
 
 ## ONLINE after car select: host or join, then the room's lobby (when in one).
@@ -505,6 +525,10 @@ func start_race() -> void:
 	if mode_index == ModeSelect.Item.ONLINE:
 		show_online()
 		return
+	if mode_index == ModeSelect.Item.DAILY_RUN:
+		var p := Daily.pick(daily_day())
+		_spawn_race(int(p["stage"]), maxi(0, Cars.LIST.find(Cars.find(p["car"]))), false)
+		return
 	_spawn_race(stage_index, car_index, false)
 
 
@@ -538,6 +562,9 @@ func _spawn_race(stage: int, car: int, demo: bool) -> void:
 	race.tour = not demo and mode_index == ModeSelect.Item.GRAND_TOUR
 	race.time_attack = not demo and mode_index == ModeSelect.Item.TIME_ATTACK
 	race.free_drive = not demo and mode_index == ModeSelect.Item.FREE_DRIVE
+	race.survival = not demo and mode_index == ModeSelect.Item.SURVIVAL
+	if not demo and mode_index == ModeSelect.Item.DAILY_RUN:
+		race.daily = Daily.pick(daily_day())
 	race.mirror = not demo and mirror_for(stage)
 	race.first_drive_on = first_drive_for(stage, demo)
 	race.debug_overlay = debug_overlay
@@ -556,9 +583,10 @@ func mirror_for(stage: int) -> bool:
 
 
 ## Mirror mode is for a single stage: a Single Race, Time Attack or Free Drive. The Grand
-## Tour runs on through stages whose mirrors may not be open, so it races them as built.
+## Tour and Survival run on through stages whose mirrors may not be open, so they race them
+## as built; the daily run is the same road for everyone.
 func mirror_offered() -> bool:
-	return mode_index != ModeSelect.Item.GRAND_TOUR
+	return not mode_index in [ModeSelect.Item.GRAND_TOUR, ModeSelect.Item.SURVIVAL, ModeSelect.Item.DAILY_RUN]
 
 
 func _on_race_quit() -> void:
@@ -586,7 +614,12 @@ func _on_race_over() -> void:
 		online.to_lobby()
 		show_online()
 		return
-	show_stage_select()
+	if mode_index == ModeSelect.Item.SURVIVAL:
+		show_car_select()  # (the run again, in this car or another)
+	elif mode_index == ModeSelect.Item.DAILY_RUN:
+		show_daily()  # (the card, with this try on it)
+	else:
+		show_stage_select()
 
 
 ## OPTIONS on the pause menu: the options over the paused race, then back to its menu.
@@ -601,7 +634,7 @@ func _close_race_options() -> void:
 
 
 func _drop_race() -> void:
-	if not race.demo:
+	if not race.demo and not race.survival and race.daily.is_empty():
 		stage_index = race.stage_index  # stage select opens on the stage the tour reached
 	race.queue_free()
 	race = null
@@ -629,6 +662,9 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # --screen=debug opens the F3 tuning panel (debug:camera, debug:actions etc. for a page:
 # Tuning.AREAS, actions, presets), over the title, or over a race given race flags.
 # --screen=stats opens the stats page (MP-11); --screen=profiles the driver picker (MP-10).
+# --screen=daily the daily run's card (MP-14); --day=YYYYMMDD for another day's run (the card,
+# mode select's DAILY RUN and --mode=daily_run races). --mode=survival with race flags races
+# Survival (MP-13).
 # --screen=credits rolls the credits (PR-23; credits:harbor as after the tour, credits:600 rolled on 600 px). --screen=finale
 # stages the Grand Tour's ending (MP-16): finale:standings and finale:card for its later pages,
 # finale:card:2 (or any place) for where the player finished; --car=ID for the player's car.
@@ -657,6 +693,9 @@ func _open(which: String) -> void:
 			show_mode_select()
 		"stats":
 			show_stats()
+		"daily":
+			mode_index = ModeSelect.Item.DAILY_RUN
+			show_daily()
 		"profiles":
 			show_profiles()
 		_ when which.begins_with("credits"):

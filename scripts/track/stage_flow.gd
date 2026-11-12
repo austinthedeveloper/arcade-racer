@@ -46,9 +46,12 @@ const DRESSING := [
 
 ## Dresses stage `index`'s end like the next stage's start: its palette (Track.next_theme,
 ## the mixed steps in Track.flow and each segment's share, Segment.handover) and its
-## landmark and verge past the finish crowd. The last stage is left as it is.
-static func dress(t: Track, index: int) -> void:
-	var next := Stages.next(index)
+## landmark and verge past the finish crowd. The last stage is left as it is. `next` dresses
+## it for another stage instead (Survival's road goes round, Skyline into Palm Coast); -1
+## leaves it as it is.
+static func dress(t: Track, index: int, next := -2) -> void:
+	if next == -2:
+		next = Stages.next(index)
 	if next < 0:
 		return
 	t.next_theme = Stages.theme(next)
@@ -58,6 +61,8 @@ static func dress(t: Track, index: int) -> void:
 	for seg in t.segments:
 		seg.handover = blend(seg.index, t.finish_index)
 	var look: Dictionary = DRESSING[next]
+	if look.is_empty():
+		return  # (Palm Coast's start has no dressing of its own: the palette alone)
 	var verge: Array = look["verge"]
 	var k := 0
 	for i in range(t.finish_index - BLEND_FROM, t.segments.size(), VERGE_EVERY):

@@ -6,7 +6,11 @@ section 5 and the unlocks and save data in section 11.
 ## Built today
 
 A mode select after the title: Grand Tour (stage by stage with standings and points), Single
-Race, Time Attack (the best run's ghost per stage and car, `user://ghosts/`) and Free Drive.
+Race, Time Attack (the best run's ghost per stage and car, `user://ghosts/`), Free Drive,
+Survival (the open stages chained into one endless road, the checkpoint bonuses shrinking until
+the clock runs out, the distance kept as a best: `scripts/race/survival.gd`) and the Daily Run
+(a stage, car, weather and traffic mix seeded from the date, the same for everyone, with the
+day's best tries: `scripts/race/daily.gd`).
 Difficulty scales the rivals. Progress, best times and unlocks are saved (`user://save.cfg`).
 Four cars and stage 1 are open from the start; the rest unlock as the tour goes
 (`scripts/core/unlocks.gd`), or all at once with UNLOCK EVERYTHING in Options. Options persist in
@@ -28,8 +32,8 @@ Four cars and stage 1 are open from the start; the rest unlock as the tour goes
 | MP-10 ✓ | **Player profiles.** Up to four local profiles, each a preset name and avatar picked from a list (no typing), each with its own save; the title screen shows who is driving. | M | 2 | MP-1 | Save files per profile with migration; `test_save` covers switching; a screenshot of the picker |
 | MP-11 ✓ | **Stats page.** Races, wins, crashes, near misses, miles, favourite car and stage, kept in the save and shown from the title. | S | 2 | MP-1 | Counters tested across a race; a screenshot |
 | MP-12 | **Sticker book.** Twenty-four stickers (first win, a clean race, every stage, a mirror win, a chain of five...), each awarded once with a chime, on a page in the menus. | M | 3 | MP-11 | Each sticker's condition in a plain function with a test; a screenshot of the page half full |
-| MP-13 | **Survival.** An endless road with ramping traffic and a clock that only shrinks at each checkpoint; the score is distance. On mode select, with its own best. | M | 3 | WS-8, MP-1 | The stage loop and ramp in plain functions with tests; an autodrive run that ends |
-| MP-14 | **Daily run.** A seeded stage, car, weather and traffic mix per calendar day, the same for everyone, with your best tries for the day. | S | 3 | MP-13 | The seed from the date, tested; a screenshot of the card |
+| MP-13 ✓ | **Survival.** An endless road with ramping traffic and a clock that only shrinks at each checkpoint; the score is distance. On mode select, with its own best. | M | 3 | WS-8, MP-1 | The stage loop and ramp in plain functions with tests; an autodrive run that ends |
+| MP-14 ✓ | **Daily run.** A seeded stage, car, weather and traffic mix per calendar day, the same for everyone, with your best tries for the day. | S | 3 | MP-13 | The seed from the date, tested; a screenshot of the card |
 | MP-15 ✓ | **First drive.** A new profile's first race is a guided run on Palm Coast: one prompt at a time when the road allows it (gas, steer, nitro on a straight, draft behind a truck, a power slide), each cleared by doing it. Skippable from the pause menu, never shown again once done or skipped. | M | 4 | MP-10, PR-5 | `test_first_drive` steps every prompt from a scripted run and checks skip; the e2e smoke on a new profile sees the first prompt, an existing profile doesn't; a screenshot of a prompt |
 | MP-16 ✓ | **Grand Tour ending.** Finishing the tour ends on a finale: the podium on the Skyline bridge, the tour standings, then credits over the harbor. First place, a podium place and the rest get their own end card. | M | 5 | PR-9, MP-2 | A test that each standings place picks its end card; the e2e reaches the credits from a scripted last stage; screenshots |
 | MP-17 | **Completion page.** One page with what's left: medals, stickers, unlocks, mirror wins, as a percentage per stage. | S | 6 | MP-9, MP-12 | Test the percentage from a fixture save; a menu screenshot |

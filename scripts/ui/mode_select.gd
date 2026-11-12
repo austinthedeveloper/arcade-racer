@@ -3,21 +3,24 @@ extends MenuScreen
 ## Mode select, after the title: a row of cards to pick along. A mode that isn't
 ## built yet (none, now) stays on the row, marked COMING SOON; picking it shows a short notice.
 
-enum Item { GRAND_TOUR, SINGLE_RACE, TIME_ATTACK, FREE_DRIVE, ONLINE, OPTIONS }
+enum Item { GRAND_TOUR, SINGLE_RACE, TIME_ATTACK, FREE_DRIVE, SURVIVAL, DAILY_RUN, ONLINE, OPTIONS }
 
-const LABELS := ["GRAND TOUR", "SINGLE RACE", "TIME ATTACK", "FREE DRIVE", "ONLINE", "OPTIONS"]
+const LABELS := ["GRAND TOUR", "SINGLE RACE", "TIME ATTACK", "FREE DRIVE", "SURVIVAL", "DAILY RUN", "ONLINE", "OPTIONS"]
 const HELP := [
 	"Race stage to stage, on from the one you pick.",
 	"One stage, one car, one race.",
 	"Solo against the clock and your best run.",
 	"No timer, no rivals: just the road.",
+	"One endless road. Less time at every checkpoint: how far can you go?",
+	"Today's stage, car, weather and traffic: the same for everyone.",
 	"Race up to three friends by room code: PC, Mac, web or phone.",
 	"Driving aids, traffic, sound and wheel setup.",
 ]
-## Card art: a stage postcard per mode ("" draws the options gear).
-const ART := ["palm_coast", "neon", "redrock", "timberline", "skyline", ""]
-const CARD := Vector2(90, 120)
-const GAP := 10.0
+## Card art: a stage postcard per mode ("" draws the options gear; DAILY RUN shows today's
+## stage, art_for).
+const ART := ["palm_coast", "neon", "redrock", "timberline", "thunder", "", "skyline", ""]
+const CARD := Vector2(68, 120)
+const GAP := 6.0
 const CARD_Y := 64.0
 const NOTICE_TIME := 2.0
 
@@ -28,8 +31,26 @@ var _art: Array[Texture2D] = []
 
 func _ready() -> void:
 	super._ready()
-	for a: String in ART:
+	for i in ART.size():
+		var a := art_for(i, game.daily_day() if game != null else Daily.today())
 		_art.append(load("res://assets/sprites/ui/postcard_%s.png" % a) if a != "" else null)
+
+
+## The postcard a mode's card shows (ART): DAILY RUN's is the stage of the day `day`.
+static func art_for(item: int, day: int) -> String:
+	if item == Item.DAILY_RUN:
+		return Stages.POSTCARDS[int(Daily.pick(day)["stage"])]
+	return ART[item]
+
+
+## The help line under the cards: SURVIVAL adds the profile's best, DAILY RUN today's pick.
+static func help_line(item: int, day: int) -> String:
+	if item == Item.SURVIVAL and float(SaveData.survival["best"]) > 0.0:
+		return "%s   BEST %s" % [HELP[item], Settings.distance_text(float(SaveData.survival["best"]), Settings.units)]
+	if item == Item.DAILY_RUN:
+		var p := Daily.pick(day)
+		return "Today: %s in the %s." % [Stages.stage_name(int(p["stage"])), Cars.find(p["car"])["name"]]
+	return HELP[item]
 
 
 ## Whether a mode can be played yet.
@@ -104,7 +125,7 @@ func _draw() -> void:
 		var col := Color.WHITE if on else Color(1, 1, 1, 0.6)
 		if not open:
 			col = Color(1, 1, 1, 0.75 if on else 0.4)
-		_text_centered(Vector2(bar.get_center().x, bar.end.y - 7), LABELS[i], 10, col)
+		_text_centered(Vector2(bar.get_center().x, bar.end.y - 7), LABELS[i], 9, col)
 	var pulse := 2.0 * sin(time * 5.0)
 	_arrow(Vector2(x0 - 12 - pulse, CARD_Y + CARD.y / 2.0), -1, GOLD)
 	_arrow(Vector2(w - x0 + 12 + pulse, CARD_Y + CARD.y / 2.0), 1, GOLD)
@@ -113,7 +134,7 @@ func _draw() -> void:
 	draw_rect(panel, Color(0, 0, 0, 0.55))
 	draw_rect(Rect2(panel.position.x, panel.position.y, panel.size.x, 2), GOLD)
 	_text_centered(Vector2(w / 2.0, panel.position.y + 19), LABELS[index], 13, GOLD)
-	_text_centered(Vector2(w / 2.0, panel.position.y + 36), HELP[index], 10, Color(1, 1, 1, 0.85))
+	_text_centered(Vector2(w / 2.0, panel.position.y + 36), help_line(index, game.daily_day() if game != null else Daily.today()), 10, Color(1, 1, 1, 0.85))
 	if notice_time > 0.0:
 		var a := minf(1.0, notice_time * 3.0)
 		var n := Rect2(w / 2.0 - 150, 284, 300, 26)

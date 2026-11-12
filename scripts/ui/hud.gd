@@ -109,9 +109,11 @@ func _draw() -> void:
 	_draw_timer(lay["timer"])
 	if not race.rivals.cars.is_empty():
 		_draw_position(lay["position"], race.place, race.rivals.cars.size() + 1)
+	elif race.survival:
+		_draw_distance(lay["position"])
 	_draw_progress(lay["progress"], p)
 	var stage: Rect2 = lay["stage"]
-	_text(stage.position + Vector2(0, 9), ("STAGE %d  " % (race.stage_index + 1)) + race.track.name.to_upper(), 9, Color(1, 1, 1, 0.85))
+	_text(stage.position + Vector2(0, 9), stage_line(race), 9, Color(1, 1, 1, 0.85))
 	_draw_nitro(lay["nitro"], p)
 	var pu: PowerUps = race.power_ups
 	if not pu.pickups.is_empty():
@@ -270,10 +272,44 @@ static func notice_alpha(left: float) -> float:
 	return clampf(left / 0.5, 0.0, 1.0)
 
 
-## The stage intro card's text (PR-16) for this race.
+## The stage intro card's text (PR-16) for this race. Survival's says SURVIVAL and the best
+## distance; the daily run's says DAILY RUN and the day's best try.
 func intro_text() -> Dictionary:
-	return StageIntro.lines(race.stage_index, race.mirror, race.track.theme, race.finish_distance, Settings.units,
-		SaveData.stage_best(race.stage_index), Settings.difficulty, not race.free_drive)
+	var solo_best: bool = not race.free_drive and not race.survival and race.daily.is_empty()
+	var out := StageIntro.lines(race.stage_index, race.mirror, race.track.theme, race.finish_distance, Settings.units,
+		SaveData.stage_best(race.stage_index), Settings.difficulty, solo_best)
+	if race.survival:
+		out["stage"] = "SURVIVAL   ENDLESS ROAD"
+		var best := float(SaveData.survival["best"])
+		out["best"] = "BEST  " + Settings.distance_text(best, Settings.units) if best > 0.0 else "NO BEST RUN YET"
+	elif not race.daily.is_empty():
+		out["stage"] = "DAILY RUN   " + Daily.date_text(int(race.daily["day"]))
+		var kept := SaveData.daily_on(int(race.daily["day"]))
+		var times: Array = kept["times"]
+		out["best"] = "TODAY  " + clock_text(float(times[0])) if not times.is_empty() else "NO TIME YET TODAY"
+	return out
+
+
+## The line under the route bar: the stage, or Survival's leg on it, or DAILY RUN.
+static func stage_line(r: Node) -> String:
+	var stage_name: String = r.track.name.to_upper()
+	if r.survival and r.run != null:
+		return "LEG %d  %s" % [r.run.leg + 1, stage_name]
+	if not r.daily.is_empty():
+		return "DAILY RUN  " + stage_name
+	return ("STAGE %d  " % (r.stage_index + 1)) + stage_name
+
+
+## Survival (MP-13), under the time: the distance so far and the best to beat.
+func _draw_distance(r: Rect2) -> void:
+	_panel(r)
+	_text(r.position + Vector2(6, 13), "DISTANCE", 10, GOLD)
+	var said := Settings.distance_text(race.survival_distance(), Settings.units)
+	_text(r.position + Vector2(6, 31), said, 16, Color.WHITE)
+	var best := float(SaveData.survival["best"])
+	var beaten: bool = best > 0.0 and race.survival_distance() > best
+	var line := "NEW BEST" if beaten else ("BEST " + Settings.distance_text(best, Settings.units) if best > 0.0 else "FIRST RUN")
+	_text(r.position + Vector2(6, 42), line, 8, PALETTE["ahead"] if beaten else Color(1, 1, 1, 0.75))
 
 
 ## Where each HUD element goes on the 640x360 screen (the window scales the whole picture):
