@@ -51,6 +51,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Fixed
 
+- A pedal set or wheel the game reads as a gamepad no longer holds the gas or the brake with a
+  pedal at rest: its pedals count only once it's calibrated (F2), and never at rest.
 - The engine, tire squeal and wind no longer hang on after the finish: they fade out under
   the instant replay and the results, and once the clock runs out and the car stops.
 

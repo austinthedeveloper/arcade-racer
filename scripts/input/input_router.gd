@@ -41,6 +41,10 @@ var keyboard := DeviceProfile.keyboard()
 ## The GUID of the joypad that was driving while it's unplugged, or "".
 var unplugged_driver := ""
 
+## Device id -> the axes (AXIS_COUNT of them) a test's fake joypad reports in raw_axes: Godot
+## can't make a joypad, and parse_input_event doesn't move one that isn't plugged in.
+var fake_axes: Dictionary = {}
+
 var _saved: Dictionary = {}  # guid -> DeviceProfile
 var _transient: Dictionary = {}  # device id -> DeviceProfile, for devices without a saved profile
 ## Device id -> [guid, name] of every joypad seen, kept after it's unplugged: by then Godot
@@ -172,9 +176,10 @@ func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
 	_pad_steer[device] = s
 
 	var a_btn := Input.is_joy_button_pressed(device, JOY_BUTTON_A)
-	var throttle := maxf(Input.get_joy_axis(device, JOY_AXIS_TRIGGER_RIGHT), 1.0 if a_btn else 0.0)
+	var pedals := pad_pedals(raw_axes(device), Input.is_joy_known(device), prof)
+	var throttle := maxf(pedals.x, 1.0 if a_btn else 0.0)
 	var brake_btn := Input.is_joy_button_pressed(device, JOY_BUTTON_B) or Input.is_joy_button_pressed(device, JOY_BUTTON_X)
-	var brake := maxf(Input.get_joy_axis(device, JOY_AXIS_TRIGGER_LEFT), 1.0 if brake_btn else 0.0)
+	var brake := maxf(pedals.y, 1.0 if brake_btn else 0.0)
 	var nitro := prof.pressed("nitro", device)
 	var menu_x := ax
 	if Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_LEFT):
@@ -214,6 +219,27 @@ func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
 ## which held the Options list scrolling down with nothing to stop it.
 static func stick_menu_y(axis: float, known: bool) -> float:
 	return axis if known else 0.0
+
+
+## The gas (x) and brake (y) a pad's axes give (WH-11). A pad with a standard gamepad mapping
+## has its triggers on axes 5 and 4, resting at 0. On an unmapped one (a pedal set, or a wheel
+## not recognized by name) axes 4 and 5 are whatever the device puts there, often a pedal
+## resting at -1 or at full travel, which held the gas in a race and kept the pad active: only
+## a calibrated profile's pedal axes are read there, from their rest (never a press) to full.
+static func pad_pedals(axes: PackedFloat32Array, known: bool, prof: DeviceProfile) -> Vector2:
+	var at := func(a: int) -> float: return axes[a] if a >= 0 and a < axes.size() else 0.0
+	if known:
+		var t: float = at.call(JOY_AXIS_TRIGGER_RIGHT)
+		var b: float = at.call(JOY_AXIS_TRIGGER_LEFT)
+		return Vector2(t if t > 0.05 else 0.0, b if b > 0.05 else 0.0)
+	if prof == null or not prof.calibrated:
+		return Vector2.ZERO
+	var out := Vector2.ZERO
+	if prof.throttle_axis >= 0:
+		out.x = DeviceProfile.pedal(at.call(prof.throttle_axis), prof.throttle_rest, prof.throttle_full)
+	if prof.brake_axis >= 0:
+		out.y = DeviceProfile.pedal(at.call(prof.brake_axis), prof.brake_rest, prof.brake_full)
+	return out
 
 
 func _read_wheel(device: int, prof: DeviceProfile) -> Dictionary:
@@ -355,6 +381,8 @@ func device_for(guid: String) -> int:
 
 
 func raw_axes(device: int) -> PackedFloat32Array:
+	if fake_axes.has(device):
+		return fake_axes[device]
 	var out := PackedFloat32Array()
 	for a in AXIS_COUNT:
 		out.append(Input.get_joy_axis(device, a))
