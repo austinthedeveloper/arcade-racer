@@ -38,6 +38,10 @@ the release workflow puts that section at the top of the GitHub Release notes
   and a turbo with a whine that spools up and a pop on each upshift (Vega GT, Kestrel R,
   Tempest LM, Zenith X).
 >>>>>>> feature/CLD-attract-ui-scale
+- Button pictures: on a pad or a wheel, the hints along the bottom, the remap screen, the pause
+  menu and the controls card show its buttons, Xbox's coloured A, B, X and Y, PlayStation's
+  cross, circle, square and triangle, a generic pad's by where they sit, and a wheel's as
+  numbered tabs, picked from the controller's name. The keyboard keeps its words.
 
 ### Changed
 

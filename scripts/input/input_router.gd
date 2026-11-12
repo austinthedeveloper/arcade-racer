@@ -40,6 +40,9 @@ var last_active_device := -1  # -1 is the keyboard
 var keyboard := DeviceProfile.keyboard()
 ## The GUID of the joypad that was driving while it's unplugged, or "".
 var unplugged_driver := ""
+## Dev flag --pad-family=NAME (PadGlyphs.forced): with no joypad driving, the input reads as
+## a made-up one of that family (PadGlyphs.SAMPLE_NAMES), so a screenshot shows its glyphs.
+var staged_family := 0
 
 ## Device id -> the axes (AXIS_COUNT of them) a test's fake joypad reports in raw_axes: Godot
 ## can't make a joypad, and parse_input_event doesn't move one that isn't plugged in.
@@ -63,6 +66,9 @@ func _ready() -> void:
 	process_physics_priority = -100
 	# Dev flag: --profiles-file=PATH reads (and saves) another profile file, for screenshots.
 	profile_path = DevArgs.value("--profiles-file", profile_path)
+	staged_family = PadGlyphs.forced()
+	if staged_family != PadGlyphs.Family.NONE:
+		_set_driver()  # (from the first frame: a menu shot can come before a tick)
 	_register_actions()
 	load_profiles()
 	TouchControls.add_to(get_tree().root)
@@ -142,11 +148,21 @@ func _physics_process(dt: float) -> void:
 	menu.back_pressed = menu_down["back"] and not _prev_menu["back"]
 	menu.radio_pressed = state.radio_pressed
 	_prev_menu = menu_down
+	_set_driver()
+
+
+## The kind and name of the device driving (state.kind, device_name, mapped).
+func _set_driver() -> void:
 	if last_active_device >= 0 and Input.get_connected_joypads().has(last_active_device):
 		var p := get_profile(last_active_device)
 		state.kind = DriveInput.Kind.WHEEL if p.kind == DeviceProfile.Kind.WHEEL else DriveInput.Kind.GAMEPAD
 		state.device_name = Input.get_joy_name(last_active_device)
 		state.mapped = p.kind == DeviceProfile.Kind.WHEEL or Input.is_joy_known(last_active_device)
+	elif staged_family != PadGlyphs.Family.NONE:
+		var wheel := staged_family == PadGlyphs.Family.WHEEL
+		state.kind = DriveInput.Kind.WHEEL if wheel else DriveInput.Kind.GAMEPAD
+		state.device_name = PadGlyphs.SAMPLE_NAMES[staged_family]
+		state.mapped = true
 	else:
 		state.kind = DriveInput.Kind.KEYBOARD
 		state.device_name = "Keyboard"
