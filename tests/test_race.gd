@@ -606,17 +606,17 @@ func test_the_autodrive_power_slides_into_hard_bends() -> void:
 	var p := PlayerCar.new()
 	p.speed = Cfg.MAX_SPEED * 0.8
 	var race: GDScript = load("res://scripts/race/race.gd")
-	check(race.autodrive_slides(Track.CURVE_HARD, 1.0, p), "a hard bend at speed")
-	check(not race.autodrive_slides(Track.CURVE_MEDIUM, 1.0, p), "not a medium one")
-	check(not race.autodrive_slides(-Track.CURVE_HARD, 0.2, p), "not without the lock on")
+	check(Autodrive.slides(Track.CURVE_HARD, 1.0, p), "a hard bend at speed")
+	check(not Autodrive.slides(Track.CURVE_MEDIUM, 1.0, p), "not a medium one")
+	check(not Autodrive.slides(-Track.CURVE_HARD, 0.2, p), "not without the lock on")
 	p.slide = 1.0
-	check(not race.autodrive_slides(Track.CURVE_HARD, 1.0, p), "not when sliding already")
+	check(not Autodrive.slides(Track.CURVE_HARD, 1.0, p), "not when sliding already")
 	p.slide = 0.0
 	p.speed = Cfg.MAX_SPEED * Tuning.v("slide/speed") * 0.9
-	check(not race.autodrive_slides(Track.CURVE_HARD, 1.0, p), "not too slow")
+	check(not Autodrive.slides(Track.CURVE_HARD, 1.0, p), "not too slow")
 	p.speed = Cfg.MAX_SPEED
 	p.offroad = true
-	check(not race.autodrive_slides(Track.CURVE_HARD, 1.0, p), "not off the road")
+	check(not Autodrive.slides(Track.CURVE_HARD, 1.0, p), "not off the road")
 
 
 func test_an_autodriven_race_power_slides() -> void:

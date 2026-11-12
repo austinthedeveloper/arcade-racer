@@ -69,7 +69,7 @@ static func draw(ci: CanvasItem, elapsed: float, home: Rect2, text: Dictionary) 
 		return
 	ci.draw_rect(r.grow(2), Color("#1b2a6b"))
 	ci.draw_rect(r.grow(1), Color("#c9d4ff"))
-	ci.draw_rect(r, Color(0.04, 0.03, 0.1, 0.88))
+	ci.draw_rect(r, UiText.ink(0.88))
 	ci.draw_rect(Rect2(r.position, Vector2(4, r.size.y)), Hud.GOLD)
 	var x := r.position.x + 12
 	UiText.draw(ci, Vector2(x, r.position.y + 13), text["stage"], 9, Hud.GOLD)

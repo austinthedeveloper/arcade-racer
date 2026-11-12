@@ -127,7 +127,7 @@ func _draw() -> void:
 		var open := available(i)
 		var r := Rect2(Vector2(x0 + i * (CARD.x + GAP), CARD_Y - (6.0 if on else 0.0)), CARD)
 		_frame(r, Color(GOLD, 0.4 + 0.15 * sin(time * 4.0)) if on else Color.TRANSPARENT)
-		draw_rect(r, Color(0.04, 0.03, 0.1, 1.0))
+		draw_rect(r, UiText.ink(1.0))
 		var tint := Color.WHITE if on else Color(0.55, 0.55, 0.65)
 		if not open:
 			tint = Color(0.4, 0.4, 0.48) if on else Color(0.28, 0.28, 0.34)
@@ -188,4 +188,4 @@ func _gear(c: Vector2, radius: float, col: Color) -> void:
 	for i in 20:
 		var a := TAU * i / 20.0
 		hole.append(c + Vector2(cos(a), sin(a)) * radius * 0.36)
-	draw_colored_polygon(hole, Color(0.04, 0.03, 0.1))
+	draw_colored_polygon(hole, UiText.INK)

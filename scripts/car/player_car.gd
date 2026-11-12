@@ -63,6 +63,9 @@ var bumped := false  # true for the tick the car nudges slower traffic without c
 var rubbing := false  # side by side against another racer this tick (Rivals.resolve_contacts)
 var hit_traffic := false  # true for the tick the car touches a traffic car (any way)
 var crash_time := 0.0
+## How much the difficulty spares this car a crash (Difficulty.crash_ease, the player's
+## alone): a crash lasts 1 - crash_ease of its length and leaves it crash_ease of its speed.
+var crash_ease := 0.0
 var crash_length := Tuning.v("crashes/crash_time")  # seconds the crash under way lasts in all
 var crash_floor := 0.0  # the speed the crash under way slows to
 var hit_speed := 0.0  # how fast the car was going when the last crash hit (RC-22)
@@ -374,7 +377,7 @@ func collide(track: Track) -> void:
 
 ## Collides with one segment's spans, sprites and traffic. True once something was hit.
 func _collide_segment(seg: Segment, track: Track) -> bool:
-	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
+	var half_car := Cfg.HALF_CAR
 	# A span is kept as built; on a mirrored stage the car meets it at its mirror image
 	if offroad and hits_span(seg, x * track.side(), half_car):
 		crash()
@@ -433,7 +436,7 @@ func _collide_segment(seg: Segment, track: Track) -> bool:
 func _collide_oncoming(track: Track) -> bool:
 	if ghost_time > 0.0:
 		return false
-	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
+	var half_car := Cfg.HALF_CAR
 	var nose := position + Cfg.PLAYER_Z
 	for car: Traffic.TrafficCar in Traffic.around(track, nose, Cfg.ONCOMING_REACH):
 		if not car.oncoming or not car.solid():
@@ -442,7 +445,7 @@ func _collide_oncoming(track: Track) -> bool:
 		if absf(x - car.offset) >= reach:
 			continue
 		var gap := gap_when_tick_began(car, track)
-		var now := wrapf(car.z - nose, -track.length * 0.5, track.length * 0.5)
+		var now := track.gap(nose, car.z)
 		if gap > 0.0 and now <= 0.0:
 			hit_traffic = true
 			Traffic.fling(car, x)
@@ -465,14 +468,14 @@ func _collide_oncoming(track: Track) -> bool:
 ## or less means past it.
 func gap_when_tick_began(car: Traffic.TrafficCar, track: Track) -> float:
 	var car_was: float = car.z if is_nan(car.last_z) else car.last_z
-	return wrapf(car_was - (last_position + Cfg.PLAYER_Z), -track.length * 0.5, track.length * 0.5)
+	return track.gap(last_position + Cfg.PLAYER_Z, car_was)
 
 
 ## Puts the car at track position `z` (wrapped), moving `distance` by the same amount so
 ## checkpoints and the finish stay where they are drawn.
 func move_to(z: float, track: Track) -> void:
 	var to := fposmod(z, track.length)
-	distance += wrapf(to - position, -track.length * 0.5, track.length * 0.5)
+	distance += track.gap(position, to)
 	position = to
 
 
@@ -525,6 +528,8 @@ func ghosted() -> bool:
 ## speed unless given, the closing speed into traffic) while the car slows to `slow_to` (a stop, unless it's a spin off traffic).
 func crash(duration := Tuning.v("crashes/crash_time"), slow_to := 0.0, hit := -1.0) -> void:
 	hit_speed = speed if hit < 0.0 else hit
+	duration *= 1.0 - crash_ease
+	slow_to = maxf(slow_to, speed * crash_ease)
 	crash_time = tumble_length(duration, hit_speed)
 	crash_length = crash_time
 	crash_floor = slow_to

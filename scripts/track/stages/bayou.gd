@@ -21,7 +21,7 @@ static func theme() -> Dictionary:
 		"rumble": [Color("#e9e4d4"), Color("#8a6a42")],
 		"road": [Color("#6a6a68"), Color("#646462")],
 		"lane": Color("#efe9d6"),
-		"clock": [28, 29, 34, 26],  # seconds on ARCADE: start, then each checkpoint (WS-11)
+		"clock": [31, 29, 34, 26],  # seconds on ARCADE: start, then each checkpoint (WS-11)
 		"station": "station_funk",  # the radio station SHUFFLE starts on here (Radio, PR-19)
 		"background": "res://assets/sprites/backgrounds/bayou_far.png",
 		"specials": ["airboat_trailer", "boat_trailer", "pickup_red"],

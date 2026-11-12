@@ -36,7 +36,7 @@ godot --path . -- --online=bot --stage=1 --autodrive --at-segment=4650 --screens
 godot --headless --path . -s res://tests/golden.gd  # regenerate golden traces (play changes only)
 python3 tools/medals_from_golden.py [--dry-run]      # medal times from the regenerated traces' finish times (after golden.gd)
 tools/soak.sh --quick                               # soak test (EQ-22): random inputs on every stage and difficulty (no --quick: every car too, nightly; --stages=2 --cars=car_mesa --seed=N)
-tools/soak.sh --report --detail [--draws=3]         # the autodrive's field per stage and difficulty against its band (RC-21; --tuning-file=F to try tuning)
+tools/soak.sh --report --detail [--draws=3]         # the autodrive's field per stage and difficulty against its band (RC-21; --tuning-file=F to try tuning; --driver=casual drives as a casual player, CasualDriver, which Easy is judged by; --casual on a race)
 godot --path . -- --tuning-file=res://tests/fixtures/tuning_override.cfg --screen=debug:camera --menu-shot=/tmp/d.png   # the F3 tuning panel on a page (Tuning.AREAS, actions, presets); race flags put it over a race
 python3 tools/tuning_adopt.py [FILE] [--only=KEYS] [--dry-run]   # tuned values into Tuning.TABLE as the defaults, golden traces regenerated (README: Tuning)
 godot --headless --path . -s res://tools/track_preview.gd -- --out=/tmp/plots   # plot every stage top-down and side-on to PNG (--stage=N for one)

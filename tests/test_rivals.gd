@@ -33,7 +33,7 @@ func test_grid_lines_up_ahead_of_the_player() -> void:
 		ids[r.car_id] = true
 		check(r.distance > Cfg.CAR_LENGTH * 0.5, "%s starts ahead of the player" % r.car_id)
 		near(r.distance, r.position, 0.001, "distance counts from the player's start")
-		check(absf(r.x) == Rivals.GRID_X, "on a grid slot")
+		check(absf(r.x) == absf(t.find_segment(r.position + Cfg.PLAYER_Z).lane_offsets()[-1]), "in an outer lane")
 		check(not r.strips.is_empty(), "has its car's sprites")
 		check(r.top_speed < Cars.find(r.car_id)["top_speed"] * 1e9, "tuned")
 	eq(ids.size(), Rivals.COUNT, "seven different cars")
@@ -43,10 +43,95 @@ func test_the_grid_is_spaced_out() -> void:
 	var t := flat_track()
 	var f := _field(t)
 	for i in range(1, f.cars.size()):
-		near(f.cars[i - 1].distance - f.cars[i].distance, Rivals.GRID_STEP, 0.001, "a slot apart")
+		near(f.cars[i - 1].distance - f.cars[i].distance, Tuning.v("grid/step"), 0.001, "a slot apart")
 	for i in range(2, f.cars.size()):
 		check(f.cars[i - 2].distance - f.cars[i].distance > Rivals.CONTACT_LENGTH * 1.5, "clear of the car ahead in its lane")
 	check(f.cars[-1].distance > Cfg.CAR_LENGTH, "the back of the grid clear of the player")
+
+
+func test_the_grid_is_strung_out_up_the_road() -> void:
+	var t := flat_track()
+	var f := _field(t)
+	near(f.cars[-1].distance, Tuning.v("grid/back"), 0.001, "the back slot grid/back ahead")
+	near(f.cars[0].distance, Rivals.grid_length(), 0.001, "the front a full grid's length ahead")
+	check(Rivals.grid_length() >= 10000.0, "strung out over more than 10000 units, a chase")
+	check(Tuning.v("grid/back") > Rivals.CONTACT_LENGTH * 5.0, "the back of the grid well clear of the player's launch")
+
+
+func test_the_grid_leaves_the_middle_to_the_player() -> void:
+	var t := flat_track()
+	var f := _field(t)
+	var reach := Cfg.CAR_WIDTH / Cfg.ROAD_WIDTH * Tuning.v("crashes/hit_overlap")
+	var sides := {}
+	for r in f.cars:
+		check(absf(r.x - _player().x) > reach * 1.5, "%s clear of the player's car in the middle" % r.car_id)
+		sides[signf(r.x)] = true
+	eq(sides.size(), 2, "both sides of the road")
+
+
+func test_a_mirrored_grid_swaps_sides() -> void:
+	var t := flat_track()
+	var m := flat_track()
+	m.mirrored = true
+	for slot in 4:
+		near(Rivals.grid_x(m, 0.0, slot), -Rivals.grid_x(t, 0.0, slot), 0.0001, "slot %d the other side" % slot)
+
+
+func test_rivals_hold_their_grid_lane_after_go() -> void:
+	var t := _curved_track(0.0)
+	var p := _player()
+	var f := Rivals.new()
+	f.spawn(t, p, "car_vega")
+	var held := Tuning.v("grid/hold")
+	var x0: Array[float] = []
+	for r in f.cars:
+		x0.append(r.x)
+	for i in int((held - 0.5) / DT):
+		f.update(DT, t, p, true, 1e9)
+	for k in f.cars.size():
+		near(f.cars[k].x, x0[k], 0.05, "%s still in its grid lane" % f.cars[k].car_id)
+
+
+func test_the_mirrors_keep_a_rival_out_of_a_car_alongside() -> void:
+	var t := flat_track()
+	var me := RivalCar.new()
+	me.reset(2000.0)
+	me.x = 0.75
+	var other := PlayerCar.new()
+	other.reset(2100.0)
+	other.x = 0.0
+	var clear := Cfg.CAR_WIDTH / Cfg.ROAD_WIDTH + AIDriver.LANE_CLEARANCE
+	near(AIDriver.mirror_check(me, -0.5, [me, other], t), other.x + clear, 0.0001, "stops a car's width short")
+	eq(AIDriver.mirror_check(me, 0.9, [me, other], t), 0.9, "away from it: free")
+	other.reset(2000.0 + Tuning.v("ai/mirror_reach") + 100.0)
+	eq(AIDriver.mirror_check(me, -0.5, [me, other], t), -0.5, "a car further up the road doesn't count")
+	other.reset(2100.0)
+	other.ghost_time = 1.0
+	eq(AIDriver.mirror_check(me, -0.5, [me, other], t), -0.5, "nor a ghosted one")
+
+
+func test_easy_spares_the_players_crashes() -> void:
+	var p := PlayerCar.new()
+	p.reset()
+	p.speed = 10000.0
+	p.crash()
+	var full := p.crash_time
+	var q := PlayerCar.new()
+	q.reset()
+	q.speed = 10000.0
+	q.crash_ease = Difficulty.of(Difficulty.Level.EASY).crash_ease
+	check(q.crash_ease > 0.0, "Easy spares a crash")
+	q.crash()
+	near(q.crash_time, full * (1.0 - q.crash_ease), 0.0001, "shorter")
+	near(q.crash_floor, 10000.0 * q.crash_ease, 0.0001, "and leaves some speed")
+	eq(Difficulty.of(Difficulty.Level.NORMAL).crash_ease, 0.0, "Normal doesn't")
+	eq(Difficulty.of(Difficulty.Level.HARD).crash_ease, 0.0, "nor Hard")
+
+
+func test_only_the_player_is_spared() -> void:
+	var r := race(false, false, 0, true)
+	for c in r.rivals.cars:
+		eq(c.crash_ease, 0.0, "%s's crashes as ever" % c.car_id)
 
 
 func test_the_same_seed_gives_the_same_field() -> void:
@@ -519,7 +604,7 @@ func test_difficulty_levels() -> void:
 		check(d.band_ease <= Tuning.v("ai/band_max") and d.band_boost <= Tuning.v("ai/band_max"), "within the band's cap")
 		for gap in [-1e6, 1e6]:
 			var b := Rivals.band(gap, d.band_ease, d.band_boost)
-			check(absf(b - 1.0) <= Tuning.v("ai/band_max"), "band capped (%.3f)" % b)
+			check(absf(b - 1.0) <= Tuning.v("ai/band_max") + 1e-6, "band capped (%.3f)" % b)
 		# Base pace only: the rubber band (capped above) can add a little on top of this.
 		check(d.rival_pace * top_pace <= 1.0, "even a hard rival's base pace tops out at its car's speed")
 

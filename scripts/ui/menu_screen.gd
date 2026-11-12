@@ -5,7 +5,7 @@ extends Control
 ## The UI scale (AC-12, UiScale): text drawn with _text and _text_centered comes out bigger at
 ## LARGE; a screen that lines text up by its width measures it with _width (the drawn size).
 
-const GOLD := Color("#ffd23a")
+const GOLD := UiText.GOLD
 const SKY := Color("#3ad0ff")
 const NIGHT := Color("#140c2a")
 const TITLE_BG := "res://assets/sprites/ui/title_bg.png"
@@ -126,7 +126,7 @@ func _frame(r: Rect2, glow: Color = Color.TRANSPARENT) -> void:
 ## A framed dark panel over `r`, `alpha` opaque.
 func _panel(r: Rect2, alpha: float) -> void:
 	_frame(r)
-	draw_rect(r, Color(0.04, 0.03, 0.1, alpha))
+	draw_rect(r, UiText.ink(alpha))
 
 
 ## A left or right arrowhead centred on `c`, pointing by `dir`.

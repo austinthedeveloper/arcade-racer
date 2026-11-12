@@ -56,6 +56,14 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Changed
 
+- The starting grid is strung out up the road, its cars in the outer lanes and holding them
+  for a few seconds after GO, so a good launch no longer runs into the back of it and the race
+  is a chase to the front. Rivals also look before moving over, and no longer steer into a car
+  alongside.
+- Easy is easier for a casual driver: a crash costs you less (shorter, and you keep some
+  speed), the rivals are a little slower and each checkpoint gives more time. Hard's rivals no
+  longer wait for you and come back harder from behind. Medal times are re-derived, a few
+  seconds quicker on most stages.
 - Every stage now changes width somewhere. Redrock Canyon runs six lanes wide across the open
   desert, then pinches to two lanes in the heart of the canyon. Neon Strip opens into a
   six-lane boulevard after the tunnel. Bayou Causeway's first causeway is an old two-lane road

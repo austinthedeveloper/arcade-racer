@@ -443,7 +443,7 @@ func _standings_panel(tour: Tour, title: String) -> void:
 
 func _panel_frame() -> void:
 	_frame(PANEL)
-	draw_rect(PANEL, Color(0.04, 0.03, 0.1, 0.9))
+	draw_rect(PANEL, UiText.ink(0.9))
 	# A chequered strip along the top, after the concept
 	for k in int(PANEL.size.x / 6.0):
 		for row in 2:
@@ -498,7 +498,7 @@ func _choices() -> void:
 		var r := Rect2(x0 + i * (bw + gap), 308, bw, 24)
 		var on := i == index
 		_frame(r, Color(GOLD, 0.3 + 0.15 * sin(time * 5.0)) if on else Color.TRANSPARENT)
-		draw_rect(r, Color("#1d3fa8") if on else Color(0.04, 0.03, 0.1, 0.9))
+		draw_rect(r, Color("#1d3fa8") if on else UiText.ink(0.9))
 		_text_centered(Vector2(r.get_center().x, r.end.y - 8), labels[i], 11, GOLD if on else Color(1, 1, 1, 0.8))
 
 

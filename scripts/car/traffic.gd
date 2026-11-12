@@ -129,7 +129,8 @@ func spawn(track: Track, count: int, seed_value: int = 7, start_z := 0.0) -> voi
 ## Fair traffic (RC-14): the segments no car spawns in, by index. The stretch just past a blind
 ## crest (Track.blind_crests), through a tunnel mouth (Track.tunnel_mouths) and ahead of
 ## `start_index`, where the player starts: traffic/spawn_clear segments each (Tuning), the whole
-## road across, so a mirrored stage clears the same. And traffic/behind_clear segments behind
+## road across, so a mirrored stage clears the same, and ahead of the start that much past the
+## front of the starting grid (Rivals.grid_length). And traffic/behind_clear segments behind
 ## the start, so nothing drives up to the grid during the countdown.
 static func keep_clear(track: Track, start_index: int) -> Array[bool]:
 	var n := track.segments.size()
@@ -143,6 +144,10 @@ static func keep_clear(track: Track, start_index: int) -> Array[bool]:
 	for from in froms:
 		for k in reach:
 			out[(from + k) % n] = true
+	# The starting grid, however long, and traffic/spawn_clear on past its front
+	var grid := ceili((Rivals.grid_length() + Cfg.PLAYER_Z) / Cfg.SEGMENT_LENGTH) + reach
+	for k in mini(grid, n):
+		out[(start_index + k) % n] = true
 	for k in Tuning.i("traffic/behind_clear"):
 		out[posmod(start_index - 1 - k, n)] = true
 	return out
@@ -423,13 +428,17 @@ static func around(track: Track, z: float, reach: int) -> Array:
 ## A traffic car's `offset` held on a road `width` half-widths wide: its middle no nearer the
 ## edge than a car's half-width, so it stays on the road through a narrowing.
 static func keep_on_road(offset: float, width: float) -> float:
-	var edge := maxf(0.0, width - Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH)
+	var edge := maxf(0.0, width - Cfg.HALF_CAR)
 	return clampf(offset, -edge, edge)
 
 
-## Knocks a car flying off the road, away from `from_x`. It lands, then drives back to its lane.
+## Knocks a car flying off the road, away from `from_x` (hit square on, off its side's edge).
+## It lands, then drives back to its lane.
 static func fling(car: TrafficCar, from_x: float) -> void:
 	if car.flung <= 0.0 and not car.returning:
 		car.lane = car.offset
 	car.flung = Tuning.v("traffic/fling_time")
-	car.fling_dir = 1.0 if car.offset >= from_x else -1.0
+	# Hit square on (a rival holding its grid lane meets one in that lane's middle): off the
+	# road's own edge on its side, so a mirrored stage flings it the mirrored way
+	var away := car.offset - from_x if car.offset != from_x else car.offset
+	car.fling_dir = 1.0 if away >= 0.0 else -1.0

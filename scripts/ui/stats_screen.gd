@@ -119,13 +119,13 @@ func _draw() -> void:
 	var fav := favourites(SaveData.favourite_car(), SaveData.favourite_stage())
 	_text(Vector2(CAR_PIC.position.x, CAR_PIC.position.y - 8), "FAVOURITE CAR", 10, GOLD)
 	_frame(CAR_PIC)
-	draw_rect(CAR_PIC, Color(0.04, 0.03, 0.1, 0.85))
+	draw_rect(CAR_PIC, UiText.ink(0.85))
 	if _car_pic != null:
 		draw_texture_rect(_car_pic, CAR_PIC, false)
 	_text(Vector2(CAR_PIC.position.x, CAR_PIC.end.y + 14), fav[0], 12, Color.WHITE)
 	_text(Vector2(POSTCARD.position.x, POSTCARD.position.y - 8), "FAVOURITE STAGE", 10, GOLD)
 	_frame(POSTCARD)
-	draw_rect(POSTCARD, Color(0.04, 0.03, 0.1, 0.85))
+	draw_rect(POSTCARD, UiText.ink(0.85))
 	if _postcard != null:
 		draw_texture_rect(_postcard, POSTCARD, false)
 	_text(Vector2(POSTCARD.end.x + 10, POSTCARD.position.y + 36), fav[1], 10, Color.WHITE)
