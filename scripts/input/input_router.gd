@@ -40,6 +40,13 @@ var last_active_device := -1  # -1 is the keyboard
 var keyboard := DeviceProfile.keyboard()
 ## The GUID of the joypad that was driving while it's unplugged, or "".
 var unplugged_driver := ""
+## Dev flag --pad-family=NAME (PadGlyphs.forced): with no joypad driving, the input reads as
+## a made-up one of that family (PadGlyphs.SAMPLE_NAMES), so a screenshot shows its glyphs.
+var staged_family := 0
+
+## Device id -> the axes (AXIS_COUNT of them) a test's fake joypad reports in raw_axes: Godot
+## can't make a joypad, and parse_input_event doesn't move one that isn't plugged in.
+var fake_axes: Dictionary = {}
 
 var _saved: Dictionary = {}  # guid -> DeviceProfile
 var _transient: Dictionary = {}  # device id -> DeviceProfile, for devices without a saved profile
@@ -59,6 +66,9 @@ func _ready() -> void:
 	process_physics_priority = -100
 	# Dev flag: --profiles-file=PATH reads (and saves) another profile file, for screenshots.
 	profile_path = DevArgs.value("--profiles-file", profile_path)
+	staged_family = PadGlyphs.forced()
+	if staged_family != PadGlyphs.Family.NONE:
+		_set_driver()  # (from the first frame: a menu shot can come before a tick)
 	_register_actions()
 	load_profiles()
 	TouchControls.add_to(get_tree().root)
@@ -138,11 +148,21 @@ func _physics_process(dt: float) -> void:
 	menu.back_pressed = menu_down["back"] and not _prev_menu["back"]
 	menu.radio_pressed = state.radio_pressed
 	_prev_menu = menu_down
+	_set_driver()
+
+
+## The kind and name of the device driving (state.kind, device_name, mapped).
+func _set_driver() -> void:
 	if last_active_device >= 0 and Input.get_connected_joypads().has(last_active_device):
 		var p := get_profile(last_active_device)
 		state.kind = DriveInput.Kind.WHEEL if p.kind == DeviceProfile.Kind.WHEEL else DriveInput.Kind.GAMEPAD
 		state.device_name = Input.get_joy_name(last_active_device)
 		state.mapped = p.kind == DeviceProfile.Kind.WHEEL or Input.is_joy_known(last_active_device)
+	elif staged_family != PadGlyphs.Family.NONE:
+		var wheel := staged_family == PadGlyphs.Family.WHEEL
+		state.kind = DriveInput.Kind.WHEEL if wheel else DriveInput.Kind.GAMEPAD
+		state.device_name = PadGlyphs.SAMPLE_NAMES[staged_family]
+		state.mapped = true
 	else:
 		state.kind = DriveInput.Kind.KEYBOARD
 		state.device_name = "Keyboard"
@@ -172,9 +192,10 @@ func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
 	_pad_steer[device] = s
 
 	var a_btn := Input.is_joy_button_pressed(device, JOY_BUTTON_A)
-	var throttle := maxf(Input.get_joy_axis(device, JOY_AXIS_TRIGGER_RIGHT), 1.0 if a_btn else 0.0)
+	var pedals := pad_pedals(raw_axes(device), Input.is_joy_known(device), prof)
+	var throttle := maxf(pedals.x, 1.0 if a_btn else 0.0)
 	var brake_btn := Input.is_joy_button_pressed(device, JOY_BUTTON_B) or Input.is_joy_button_pressed(device, JOY_BUTTON_X)
-	var brake := maxf(Input.get_joy_axis(device, JOY_AXIS_TRIGGER_LEFT), 1.0 if brake_btn else 0.0)
+	var brake := maxf(pedals.y, 1.0 if brake_btn else 0.0)
 	var nitro := prof.pressed("nitro", device)
 	var menu_x := ax
 	if Input.is_joy_button_pressed(device, JOY_BUTTON_DPAD_LEFT):
@@ -214,6 +235,27 @@ func _read_pad(device: int, prof: DeviceProfile, dt: float) -> Dictionary:
 ## which held the Options list scrolling down with nothing to stop it.
 static func stick_menu_y(axis: float, known: bool) -> float:
 	return axis if known else 0.0
+
+
+## The gas (x) and brake (y) a pad's axes give (WH-11). A pad with a standard gamepad mapping
+## has its triggers on axes 5 and 4, resting at 0. On an unmapped one (a pedal set, or a wheel
+## not recognized by name) axes 4 and 5 are whatever the device puts there, often a pedal
+## resting at -1 or at full travel, which held the gas in a race and kept the pad active: only
+## a calibrated profile's pedal axes are read there, from their rest (never a press) to full.
+static func pad_pedals(axes: PackedFloat32Array, known: bool, prof: DeviceProfile) -> Vector2:
+	var at := func(a: int) -> float: return axes[a] if a >= 0 and a < axes.size() else 0.0
+	if known:
+		var t: float = at.call(JOY_AXIS_TRIGGER_RIGHT)
+		var b: float = at.call(JOY_AXIS_TRIGGER_LEFT)
+		return Vector2(t if t > 0.05 else 0.0, b if b > 0.05 else 0.0)
+	if prof == null or not prof.calibrated:
+		return Vector2.ZERO
+	var out := Vector2.ZERO
+	if prof.throttle_axis >= 0:
+		out.x = DeviceProfile.pedal(at.call(prof.throttle_axis), prof.throttle_rest, prof.throttle_full)
+	if prof.brake_axis >= 0:
+		out.y = DeviceProfile.pedal(at.call(prof.brake_axis), prof.brake_rest, prof.brake_full)
+	return out
 
 
 func _read_wheel(device: int, prof: DeviceProfile) -> Dictionary:
@@ -355,6 +397,8 @@ func device_for(guid: String) -> int:
 
 
 func raw_axes(device: int) -> PackedFloat32Array:
+	if fake_axes.has(device):
+		return fake_axes[device]
 	var out := PackedFloat32Array()
 	for a in AXIS_COUNT:
 		out.append(Input.get_joy_axis(device, a))

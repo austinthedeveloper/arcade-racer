@@ -9,6 +9,10 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
+- Button pictures: on a pad or a wheel, the hints along the bottom, the remap screen, the pause
+  menu and the controls card show its buttons, Xbox's coloured A, B, X and Y, PlayStation's
+  cross, circle, square and triangle, a generic pad's by where they sit, and a wheel's as
+  numbered tabs, picked from the controller's name. The keyboard keeps its words.
 - Online players go by their profile's name and avatar (ON-8): the lobby shows each one's
   picture and name, and the race's standings, notices and results their names, instead of P1
   to P4. A player on an older build still shows as P2.
@@ -51,6 +55,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Fixed
 
+- A pedal set or wheel the game reads as a gamepad no longer holds the gas or the brake with a
+  pedal at rest: its pedals count only once it's calibrated (F2), and never at rest.
 - The engine, tire squeal and wind no longer hang on after the finish: they fade out under
   the instant replay and the results, and once the clock runs out and the car stops.
 

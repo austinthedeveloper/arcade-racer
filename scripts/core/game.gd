@@ -720,6 +720,9 @@ func _set_menu(next: MenuScreen, to: Screen) -> void:
 # finale:card:2 (or any place) for where the player finished; --car=ID for the player's car.
 # --screen=controls the controls card (PR-22; controls:gamepad, controls:wheel, controls:touch
 # for another device), --screen=pause:controls the card over a paused race.
+# --pad-family=xbox|playstation|generic|wheel reads the input as that family's made-up device
+# (PadGlyphs.forced) while no joypad drives: its button glyphs (WH-14) in the hints and the
+# card, and --screen=remap opens on setting it up.
 # --screen=whos_driving asks who's driving over the title (AC-16); --screen=wheel_offer offers
 # a staged wheel calibration (WH-16). Neither is saved. --first-drive makes a race the flags
 # start the first drive (MP-15) when the save is a new profile's.
@@ -738,6 +741,8 @@ func _open(which: String) -> void:
 			show_options()
 		"remap":
 			show_remap()
+			if PadGlyphs.forced() != PadGlyphs.Family.NONE and Input.get_connected_joypads().is_empty():
+				(menu as RemapScreen).stage(PadGlyphs.forced())  # (a made-up pad to set up)
 		"wheel":
 			show_wheel()
 		"modes":

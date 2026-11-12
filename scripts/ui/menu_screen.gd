@@ -76,9 +76,42 @@ func _header(s: String) -> void:
 	_text(Vector2(16, 30), s, 18, GOLD)
 
 
+## The hints along the bottom; a pad's or a wheel's buttons in them as glyphs (WH-14).
 func _footer(s: String) -> void:
 	draw_rect(Rect2(0, Cfg.SCREEN_H - 20, Cfg.SCREEN_W, 20), Color(0, 0, 0, 0.6))
-	_text_centered(Vector2(Cfg.SCREEN_W / 2.0, Cfg.SCREEN_H - 6), s, fit_size(s, 9, Cfg.SCREEN_W - 12.0), Color(1, 1, 1, 0.8))
+	_hint_centered(Vector2(Cfg.SCREEN_W / 2.0, Cfg.SCREEN_H - 6), s, 9, Cfg.SCREEN_W - 12.0, Color(1, 1, 1, 0.8))
+
+
+## Hints `s` centred on `pos`, as big as fits `room` up to `size`: with the device in use's
+## button glyphs (PadGlyphs.family_now) when it's a pad or a wheel, text otherwise.
+func _hint_centered(pos: Vector2, s: String, size: int, room: float, col: Color) -> void:
+	var family := PadGlyphs.family_now()
+	var list := PadGlyphs.pieces(s, family)
+	if not PadGlyphs.has_glyph(list):
+		_text_centered(pos, s, fit_size(s, size, room), col)
+		return
+	var at := size
+	while at > UiText.MIN_SIZE and PadGlyphs.pieces_width(list, px(at), family) > room:
+		at -= 1
+	var w := PadGlyphs.pieces_width(list, px(at), family)
+	PadGlyphs.draw_pieces(self, Vector2(roundf(pos.x - w / 2.0), pos.y), list, px(at), col, family)
+
+
+## Keys or buttons `s` ("RT / A", a binding's text) from `pos` (its baseline) in `family`'s
+## glyphs, or as text when they haven't all got one; `centered`: `pos.x` is its middle.
+## Returns how wide it came out.
+func _keys(pos: Vector2, s: String, size: int, col: Color, family: int, centered := false) -> float:
+	var list := PadGlyphs.pieces(s, family, true)
+	if not PadGlyphs.has_glyph(list):
+		if centered:
+			_text_centered(pos, s, size, col)
+		else:
+			_text(pos, s, size, col)
+		return _width(s, size)
+	var w := PadGlyphs.pieces_width(list, px(size), family)
+	var x := pos.x - w / 2.0 if centered else pos.x
+	PadGlyphs.draw_pieces(self, Vector2(roundf(x), pos.y), list, px(size), col, family)
+	return w
 
 
 ## A chrome-bevelled frame around `r`.

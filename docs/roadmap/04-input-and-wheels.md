@@ -12,7 +12,9 @@ wheel-drivable, and an unmapped pad no longer scrolls them (WH-10). Remapping of
 every device (WH-2). Steering and braking assists (WH-6). Auto gas. Each wheel's range, steering
 lock, deadzone and linearity on Controls > WHEEL SETTINGS, with the curve they make (WH-1).
 Unplugging the wheel or pad that's driving pauses the race and says so; plugging it back in
-carries on with the same profile (WH-7).
+carries on with the same profile (WH-7). Xbox, PlayStation, generic pad and wheel button glyphs,
+drawn in code (`PadGlyphs`), in the hints, the remap screen, the pause menu and the controls card,
+picked from the device's name (WH-14).
 
 ## Features
 
@@ -28,10 +30,10 @@ carries on with the same profile (WH-7).
 | WH-8 | **Web gamepad check.** Verify browser axis mapping for common pads; calibration profile in browser storage survives a reload. | S | 6 | EQ-10 | Manual check noted in the README |
 | WH-9 ✓ | **Answer open question 3.** Which wheel and pedals Austin owns becomes the first known profile and the FFB test rig. | S | 1 | | `docs/04-open-questions.md` updated |
 | WH-10 ✓ | **Options scroll forever with a wheel.** Played with a wheel: Options scrolled down forever, every visit. A device read as a pad (no name match) took its up/down from axis 1, which on a wheel or pedal set without a gamepad mapping is often a pedal resting at full travel. Unmapped pads no longer move the menus up and down, and steer through Options like a wheel. | S | 1 | | A resting pedal on axis 1 doesn't move the list; an unmapped pad steers through Options |
-| WH-11 | **Pedals on axes 4 and 5.** An unmapped pad reads axes 4 and 5 as brake and throttle, so a resting pedal can hold the gas in a race or keep the pad active. Only a profile that says so reads them, and a resting value is never a press. | S | 1 | WH-10 | `test_input_router` with a fake pad whose axis 5 rests at -1; checked on the TMX (WH-15) |
+| WH-11 | **Pedals on axes 4 and 5.** An unmapped pad reads axes 4 and 5 as brake and throttle, so a resting pedal can hold the gas in a race or keep the pad active. Only a profile that says so reads them, and a resting value is never a press. (Code done: `InputRouter.pad_pedals` reads an unmapped pad's pedals only from a calibrated profile, from their rest; `test_input_router` covers it with a fake pad. Waiting on the TMX check, WH-15.) | S | 1 | WH-10 | `test_input_router` with a fake pad whose axis 5 rests at -1 ✓; checked on the TMX (WH-15) |
 | WH-12 ✓ | **Replug countdown.** Plugging the wheel back in counts 3, 2, 1 before the race resumes, and says when the device that came back is a different one. | S | 1 | WH-7 | `test_hot_plug` covers the countdown and a different GUID; a screenshot of the count |
 | WH-13 ✓ | **Gamepad rumble.** Crashes, bumps, landings, nitro and off-road through `Input.start_joy_vibration`, with a rumble slider in Options > Controls. | S | 1 | | A plain function maps events to strength and length, tested; the slider at 0 sends nothing |
-| WH-14 | **Button glyphs.** Xbox, PlayStation, generic pad and wheel glyphs in the hints, the remap screen and the pause menu, picked from the active device's name; text labels stay the fallback. | M | 2 | WH-2 | A glyph lookup test per device family; screenshots of the remap screen on two families |
+| WH-14 ✓ | **Button glyphs.** Xbox, PlayStation, generic pad and wheel glyphs in the hints, the remap screen and the pause menu, picked from the active device's name; text labels stay the fallback. | M | 2 | WH-2 | A glyph lookup test per device family; screenshots of the remap screen on two families |
 | WH-15 | **TMX play session.** Austin drives a race and the menus on the Thrustmaster TMX: calibration, rotation and lock (WH-1), the F1 overlay, unplug and replug (WH-7), paddles; its profile becomes the first entry in WH-4 and the notes list what to fix. | S | 1 | WH-9 | Notes filed as issues; the TMX entry in `DeviceProfile`'s known table with a test |
 | WH-16 ✓ | **Wheel first run.** A wheel with no saved profile, plugged in at the title, gets a prompt to calibrate now (or use its known profile, WH-4) instead of being left to find the calibration in Options. | S | 4 | WH-4 | Test the prompt shows once per unknown device and not for a pad; a screenshot |
 | WH-17 | **Wheel report.** F4 on the calibration screen copies the device's name, GUID, axes and buttons as the game sees them, for a bug report or a new known profile (WH-4); the README gets a table of wheels known to work. | S | 6 | WH-4 | Test the report's lines from a fake device; the README table |

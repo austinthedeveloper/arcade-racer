@@ -90,3 +90,65 @@ func test_shift_keys_reach_the_drive_input_as_presses() -> void:
 	Input.action_release("shift_down")
 	r._physics_process(DT)
 	eq(r.state.shift_down_pressed, false, "released")
+
+
+## A fake joypad's axes at rest, then `axis` at `value`.
+func _fake_axis(r: Node, device: int, axis: int, value: float) -> void:
+	var axes: PackedFloat32Array = r.fake_axes.get(device, PackedFloat32Array())
+	axes.resize(r.AXIS_COUNT)
+	axes[axis] = value
+	r.fake_axes[device] = axes
+
+
+func test_an_unmapped_pads_resting_pedal_on_axis_5_is_never_gas() -> void:
+	# WH-11: a pedal set read as a pad (no gamepad mapping, no name match) with a pedal resting
+	# at -1 on axis 5 and one at full travel on axis 4: no gas, no brake, not the active device.
+	var r := _router()
+	TestSuite.use_scratch_profiles(r)
+	const FAKE := 7
+	check(not Input.is_joy_known(FAKE), "the fake pad has no gamepad mapping")
+	var prof := DeviceProfile.new()
+	prof.guid = "fake-pedals"
+	prof.kind = DeviceProfile.Kind.GAMEPAD
+	_fake_axis(r, FAKE, JOY_AXIS_TRIGGER_RIGHT, -1.0)
+	_fake_axis(r, FAKE, JOY_AXIS_TRIGGER_LEFT, 1.0)
+	eq(r.raw_axes(FAKE)[5], -1.0, "axis 5 rests at -1")
+	var got: Dictionary = r._read_pad(FAKE, prof, DT)
+	eq([got["throttle"], got["brake"], got["active"]], [0.0, 0.0, false], "a resting pedal: nothing, and not active")
+	_fake_axis(r, FAKE, JOY_AXIS_TRIGGER_RIGHT, 1.0)
+	got = r._read_pad(FAKE, prof, DT)
+	eq([got["throttle"], got["active"]], [0.0, false], "pressed, without a profile that says so: still nothing")
+	# A calibrated profile says axis 5 is the gas, resting at -1: resting is still no press.
+	prof.calibrated = true
+	prof.throttle_axis = JOY_AXIS_TRIGGER_RIGHT
+	prof.throttle_rest = -1.0
+	prof.throttle_full = 1.0
+	_fake_axis(r, FAKE, JOY_AXIS_TRIGGER_RIGHT, -1.0)
+	got = r._read_pad(FAKE, prof, DT)
+	eq([got["throttle"], got["active"]], [0.0, false], "the profile's gas at rest")
+	eq(got["brake"], 0.0, "axis 4 isn't the profile's brake: not read")
+	_fake_axis(r, FAKE, JOY_AXIS_TRIGGER_RIGHT, 0.0)
+	got = r._read_pad(FAKE, prof, DT)
+	check(absf(got["throttle"] - 0.5) < 0.001 and got["active"], "half way down: half gas, active")
+	r.fake_axes.erase(FAKE)
+
+
+func test_pad_pedals_read_a_mapped_pads_triggers_and_only_a_profiles_axes_otherwise() -> void:
+	var axes := PackedFloat32Array([0, 0, 0, 0, 0.6, -1.0, 0, 0, 0, 0])
+	var plain := DeviceProfile.new()
+	eq(InputRouter.pad_pedals(axes, false, plain), Vector2.ZERO, "unmapped, no profile: axes 4 and 5 ignored")
+	axes[5] = 1.0
+	eq(InputRouter.pad_pedals(axes, false, plain), Vector2.ZERO, "even pegged at full travel")
+	axes[5] = 0.8
+	check(InputRouter.pad_pedals(axes, true, plain).is_equal_approx(Vector2(0.8, 0.6)), "a mapped pad's triggers: RT gas, LT brake")
+	axes[4] = 0.02
+	eq(InputRouter.pad_pedals(axes, true, plain).y, 0.0, "a trigger barely off its rest is no press")
+	var inverted := DeviceProfile.new()
+	inverted.calibrated = true
+	inverted.brake_axis = 2
+	inverted.brake_rest = 1.0
+	inverted.brake_full = -1.0
+	axes[2] = 1.0
+	eq(InputRouter.pad_pedals(axes, false, inverted), Vector2.ZERO, "an inverted brake at rest, its gas unset")
+	axes[2] = -1.0
+	eq(InputRouter.pad_pedals(axes, false, inverted), Vector2(0.0, 1.0), "pressed fully")
