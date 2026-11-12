@@ -7,6 +7,18 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ## [Unreleased]
 
+### Added
+
+- Survival (MP-13), on mode select: one endless road. Cross a stage's finish line and you drive
+  straight on into the next stage you've reached, round and back to Palm Coast, with more
+  traffic on every leg and more cars up the road at every checkpoint. Each checkpoint still
+  adds time, but a little less than the last, until it adds none: the run ends when the clock
+  does, and the score is how far you got. The HUD shows the distance against your best, and
+  the results the road you took. Your best is kept per profile.
+- Daily Run (MP-14), on mode select: one stage, car, weather and traffic mix a day, the same
+  for everyone, raced alone against the clock. Its card shows today's pick and your best three
+  tries today; any car or stage can come up, reached or not.
+
 ### Changed
 
 - Every stage now changes width somewhere. Redrock Canyon runs six lanes wide across the open
