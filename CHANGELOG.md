@@ -9,6 +9,11 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
+- Road hazards (RC-19): debris shed in a lane, cone rows closing one, black ice over Timberline's
+  summit and deep puddles along Thunderhead. Debris bumps the car up and costs speed, cones fly
+  off and slow you, a puddle drags at the tires, and the ice takes the steering and slides you
+  aside for a moment; each has its callout (DEBRIS!, CONES!, BLACK ICE!, SPLASH!). The rivals
+  pick a lane clear of them when there is one.
 - Button pictures: on a pad or a wheel, the hints along the bottom, the remap screen, the pause
   menu and the controls card show its buttons, Xbox's coloured A, B, X and Y, PlayStation's
   cross, circle, square and triangle, a generic pad's by where they sit, and a wheel's as

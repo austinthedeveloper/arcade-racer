@@ -151,7 +151,7 @@ static func oncoming_gap(k: int, speed: float, car_speed: float) -> int:
 
 
 ## Where to drive across the road: `want` if it's clear for LOOKAHEAD segments, otherwise the
-## lane (nearest `want` first) with the most room before a slower car. The lanes are those of
+## lane (nearest `want` first) with the most room before a slower car or a road hazard. The lanes are those of
 ## the narrowest road just ahead (Track.narrowest_ahead). Returns {"x", "gap"}, gap in
 ## segments (LOOKAHEAD when clear).
 static func open_lane(track: Track, z: float, want: float, me: PlayerCar, racers: Array,
@@ -161,11 +161,17 @@ static func open_lane(track: Track, z: float, want: float, me: PlayerCar, racers
 	by_distance.sort_custom(func(a: float, b: float) -> bool: return absf(a - want) < absf(b - want))
 	lanes.append_array(by_distance)
 	var best := {"x": want, "gap": -1}
+	var best_room := -1
+	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
 	for x: float in lanes:
 		var gap := clear_for(track, z, x, me, racers, lookahead)
-		if gap >= lookahead:
+		# A road hazard (RC-19) ahead in a lane rules it out like a slower car, but only for
+		# choosing: the gap returned (what the driver lifts for) is the traffic's
+		var room := mini(gap, RoadHazards.room(track, z, x, half_car, LANE_CLEARANCE, lookahead))
+		if room >= lookahead:
 			return {"x": x, "gap": gap}
-		if gap > best["gap"]:
+		if room > best_room:
+			best_room = room
 			best = {"x": x, "gap": gap}
 	return best
 

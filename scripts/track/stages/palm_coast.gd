@@ -81,6 +81,8 @@ static func build() -> Track:
 		["lifeguard_tower", 8, -2.8], ["gull_post", 10, -1.5], ["bikes", 12, -1.7], ["palm_short_a", 4, -4.2]])
 	t.add_set_piece("pier_head", int(t.segments.size() * 0.86), [["pier", 0, -2.6], ["gull_post", 2, -1.5],
 		["gull_post", 7, -1.6], ["palm_cluster", 4, 2.6], ["ice_cream_stand", 10, 1.8], ["bikes", 12, 1.6, true]])
+	# Road hazards (RC-19): a load of junk shed in the right-hand lane on the way out of town
+	t.add_hazard(RoadHazards.Kind.DEBRIS, int(t.segments.size() * 0.4), 0.85, 2)
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()

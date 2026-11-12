@@ -104,6 +104,9 @@ static func build() -> Track:
 		["cabin", 6, 2.3], ["pine_a", 8, 3.0], ["woodpile", 9, -1.7, true]])
 	t.add_set_piece("ski_base", snow_start + 60, [["chairlift", 0, 2.6], ["snowman", 2, 1.6], ["snowbank", 3, -1.3],
 		["snowman", 6, -1.7, true], ["snowbank", 8, 1.3], ["pine_e", 5, -2.6]])
+	# Road hazards (RC-19): black ice over the snowy summit in the passing lane (in your own the field ran out of time on Hard), a lost load down in the valley
+	t.add_hazard(RoadHazards.Kind.ICE, snow_start + 6, 0.25, 22)
+	t.add_hazard(RoadHazards.Kind.DEBRIS, int(t.segments.size() * 0.2), 0.8, 2)
 	t.add_road_signs(false)  # the bends have their own chevron boards (_decorate)
 	t.add_race_furniture()
 	t.add_finish_crowd()

@@ -92,6 +92,7 @@ func update(dt: float, track: Track, player: PlayerCar, racing: bool, finish_dis
 		if r.remote:
 			continue
 		r.collide(track)
+		RoadHazards.drive_over(r, track)  # (RC-19)
 		if not r.finished and r.distance >= finish_distance:
 			r.finished = true
 			r.finish_time = clock

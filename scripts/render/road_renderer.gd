@@ -187,7 +187,7 @@ static func thin_run(far: Segment, near: Segment) -> bool:
 ## Whether anything is drawn on a segment after its road (sprites, pickups, cars, spans, a
 ## gate, tunnel walls, the player), so its road can't wait to be drawn with a nearer one.
 func _stands_on(seg: Segment, player_here: bool) -> bool:
-	return player_here or seg.covered or not seg.sprites.is_empty() or not seg.pickups.is_empty() \
+	return player_here or seg.covered or not seg.sprites.is_empty() or not seg.pickups.is_empty() or not seg.hazards.is_empty() \
 		or not seg.cars.is_empty() or not seg.spans.is_empty() or gate_for(seg.flags) != "" \
 		or _rivals_in.has(seg.index) or seg.index == _ghost_seg
 
@@ -304,6 +304,26 @@ func _draw_segment(seg: Segment, theme: Dictionary, far: Segment, depth: float) 
 	# only so far off, where the fog hasn't swallowed them, as each one is another draw (WS-13)
 	if wet and ahead < Tuning.v("world/reflect_reach"):
 		_reflections(road_pts, Weather.reflect_strength(Tuning.v("world/reflect_alpha"), _wet, depth, fog))
+	for h: RoadHazards.Hazard in seg.hazards:
+		if RoadHazards.FLAT.has(h.kind):
+			_flat_hazard(seg, h)
+
+
+## The slice of a flat road hazard (ice, a puddle: RC-19) lying on `seg`: its picture laid on
+## the road, the far end of the hazard at the top of it.
+func _flat_hazard(seg: Segment, h: RoadHazards.Hazard) -> void:
+	var pts := road_patch(seg, h.offset - h.half, h.offset + h.half, 0.0, 1.0)
+	var k := posmod(seg.index - h.segment, track.segments.size())
+	draw_colored_polygon(pts, _light.lerp(_fog_color, seg.fog), hazard_uvs(k, h.length), RoadHazards.texture(RoadHazards.sprite(h.kind)))
+
+
+## The texture coordinates of slice `k` of a flat hazard `length` segments long, in road_patch's
+## order (near left, near right, far right, far left): the picture's bottom at the hazard's
+## near end, its top at the far end.
+static func hazard_uvs(k: int, length: int) -> PackedVector2Array:
+	var near := 1.0 - float(k) / length
+	var far := 1.0 - float(k + 1) / length
+	return PackedVector2Array([Vector2(0, near), Vector2(1, near), Vector2(1, far), Vector2(0, far)])
 
 
 ## Draws the triangles gathered so far and starts afresh.
@@ -435,6 +455,10 @@ func _draw_objects(seg: Segment, cars := true) -> void:
 			continue
 		draw_texture_rect(tex, Rect2(cx - w / 2.0, seg.s1.y - h + bob - h * 0.15, w, h), false, tint)
 
+	for h: RoadHazards.Hazard in seg.hazards:
+		if not RoadHazards.FLAT.has(h.kind):
+			_upright_hazard(seg, h, tint)
+
 	if cars:
 		_draw_cars(seg)
 
@@ -445,6 +469,36 @@ func _draw_objects(seg: Segment, cars := true) -> void:
 	var gate := gate_for(seg.flags)
 	if gate != "":
 		_draw_span(seg, gate, gate_label(seg.flags), tint)
+
+
+## Debris on its first segment, or a cone of a cone row on each of its segments (knocked
+## flying once a car hits them, RoadHazards.cone_flight): standing on the road like a pickup.
+func _upright_hazard(seg: Segment, h: RoadHazards.Hazard, tint: Color) -> void:
+	var k := posmod(seg.index - h.segment, track.segments.size())
+	if h.kind == RoadHazards.Kind.DEBRIS and k != 0:
+		return
+	var offset := h.offset
+	var lift := 0.0
+	var alpha := 1.0
+	if h.kind == RoadHazards.Kind.CONES:
+		offset = RoadHazards.cone_offset(h, k, h.length)
+		if not h.live():
+			var f := RoadHazards.cone_flight(h.knocked)
+			if f.z <= 0.0:
+				return
+			lift = f.x
+			offset += f.y * h.half * (1.0 if k % 2 == 0 else -1.0)
+			alpha = f.z
+	var s := seg.scale1
+	var tex := RoadHazards.texture(RoadHazards.sprite(h.kind))
+	var hgt: float = RoadHazards.WORLD_H[h.kind] * s * Cfg.PROJ
+	var w := hgt * tex.get_width() / float(tex.get_height())
+	var cx: float = seg.s1.x + s * offset * Cfg.ROAD_WIDTH * Cfg.PROJ
+	if hgt < 1.0 or seg.s1.y - hgt >= seg.clip or cx + w < 0.0 or cx - w > Cfg.SCREEN_W:
+		return
+	var c := tint
+	c.a *= alpha
+	draw_texture_rect(tex, Rect2(roundf(cx - w / 2.0), roundf(seg.s1.y - hgt - lift * hgt), roundf(w), roundf(hgt)), false, c)
 
 
 ## A segment's traffic and rivals.
