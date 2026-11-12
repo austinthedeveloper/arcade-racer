@@ -1093,6 +1093,98 @@ def own_rng(seed, make):
     return run
 
 
+# --- Engine notes (PR-18): a small engine and a V8, and the turbo's whine and shift pop ---
+#
+# The turbo model drives on engine_low and engine_high above; these give the other two their
+# own loop and the turbo its extras. Short loops at ENGINE_RATE (whole firing cycles, so they
+# repeat cleanly), each on its own random stream (ENGINE_SOUNDS), so the older files stay
+# byte for byte the same. RaceAudio picks them by the car's model (EngineModels).
+
+ENGINE_RATE = 22050
+
+
+def at_rate(rate, make):
+    """Renders `make` with RATE set to `rate` (the helpers all read RATE)."""
+    def run():
+        global RATE
+        saved, RATE = RATE, rate
+        try:
+            return make(), rate
+        finally:
+            RATE = saved
+    return run
+
+
+def firing_loop(base, pattern, seconds, res, decay_s, thump, bright_cut, rasp=0.0, jitter=0.0):
+    """`seconds` of engine at `base` firings a second: each firing a damped exhaust resonance
+    at `res` Hz over a low thump, at its level in `pattern` (one entry per firing, round the
+    cycle), nudged up to `jitter` of a firing early or late. Wrapped, so the loop joins up."""
+    n = int(round(seconds * RATE))
+    out = [0.0] * n
+    count = int(round(base * seconds))
+    plen = int(decay_s * 6.0 * RATE)
+    for j in range(count):
+        level = pattern[j % len(pattern)]
+        start = int((j + rng.uniform(-jitter, jitter)) * RATE / base)
+        k = math.exp(-1.0 / (decay_s * RATE))
+        kt = math.exp(-1.0 / (decay_s * 2.5 * RATE))
+        pulse = []
+        g = gt = level
+        for i in range(plen):
+            t = i / RATE
+            pulse.append(g * math.sin(TAU * res * t) + thump * gt * math.sin(TAU * base * 0.5 * t))
+            g *= k
+            gt *= kt
+        add_at(out, pulse, start % n, 1.0, wrap=True)
+    hiss = biquad(loop_noise(2 * n)[n:], "bandpass", res * 1.6, 0.7)
+    out = [x + 0.08 * h * (0.5 + abs(x)) for x, h in zip(out, hiss)]
+    if rasp:
+        out = [math.tanh(x * (1.0 + 4.0 * rasp)) for x in out]
+    # Filter two periods and keep the second, so the filter has settled where the loop joins.
+    out = biquad(out + out, "lowpass", bright_cut, 0.8)[n:]
+    mean = sum(out) / n  # no DC: a whole loop's average comes off without a seam
+    return finish([x - mean for x in out], 0.8)
+
+
+def engine_small():
+    """A small, high-revving twin: 120 firings a second, even and buzzy, a nasal rasp."""
+    return firing_loop(120.0, (1.0, 0.86), 0.25, 1500.0, 0.0035, 0.5, 5200.0, rasp=0.6, jitter=0.02)
+
+
+def engine_v8():
+    """A cross-plane V8: 48 firings a second, each bank's pulses uneven in strength and time
+    (the burble), deep and round. Two whole cycles of eight firings."""
+    return firing_loop(48.0, (1.0, 0.55, 0.85, 0.5, 0.95, 0.62, 0.78, 0.45), 1.0 / 3.0, 260.0, 0.012, 1.1,
+                       1500.0, rasp=0.15, jitter=0.06)
+
+
+def turbo_whine():
+    """The turbo spooling up: a thin tone (1.8 kHz with a little second harmonic) over air."""
+    def render(n):
+        tonal = [math.sin(TAU * 1800 * i / RATE) + 0.25 * math.sin(TAU * 3600 * i / RATE + 0.7)
+                 + 0.12 * math.sin(TAU * 900 * i / RATE) for i in range(n)]
+        air = biquad(loop_noise(n), "bandpass", 2600.0, 1.2)
+        return [0.7 * t + 0.5 * a for t, a in zip(tonal, air)]
+    return finish(seamless(render, 0.1), 0.8)
+
+
+def turbo_pop():
+    """A shift on the turbo: the blow-off valve's short hiss and an exhaust pop under it."""
+    n = int(0.16 * RATE)
+    crack = decay(biquad(noise(n), "bandpass", 900.0, 0.9), 0.012)
+    thump = decay([math.sin(TAU * 70.0 * i / RATE) for i in range(n)], 0.03)
+    psst = env(biquad(noise(n), "highpass", 3000.0), attack=0.01, decay=0.05, sustain=0.4, release=0.08)
+    return shot(finish(mix((crack, 1.0), (thump, 0.7), (psst, 0.25))), fade_out=0.02)
+
+
+ENGINE_SOUNDS = [
+    ("sfx/engine_small.wav", 1801, engine_small),
+    ("sfx/engine_v8.wav", 1802, engine_v8),
+    ("sfx/turbo_whine.wav", 1803, turbo_whine),
+    ("sfx/turbo_pop.wav", 1804, turbo_pop),
+]
+
+
 MINOR_PENT = (0, 3, 5, 7, 10)
 MINOR = (0, 2, 3, 5, 7, 8, 10)
 MIXO = (0, 2, 4, 5, 7, 9, 10)
@@ -1371,6 +1463,9 @@ def main():
     own = set()
     for name, seed, make in SONGS:  # after everything on the shared stream, each on its own (PR-24)
         files[name] = at_music_rate(own_rng(seed, make))
+        own.add(name)
+    for name, seed, make in ENGINE_SOUNDS:  # last, each on its own stream too (PR-18)
+        files[name] = at_rate(ENGINE_RATE, own_rng(seed, make))
         own.add(name)
     shared_wanted = not only or any(n not in own and any(o in n for o in only) for n in files)
     for name, make in files.items():
