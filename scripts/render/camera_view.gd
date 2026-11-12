@@ -10,6 +10,10 @@ extends RefCounted
 enum View { CHASE_NEAR, CHASE_FAR, BUMPER }
 
 const NAMES := ["CHASE NEAR", "CHASE FAR", "BUMPER"]
+## The split-screen camera (MP-18): further back and a little lower than the near chase, so
+## the car and a strip of sky both fit a 640x180 half (SplitScreen.crop_top). Not one of the
+## views the VIEW button steps through or Options remembers (View), only a split race's.
+const SPLIT := 3
 
 
 ## The next view along, round to the first after the last.
@@ -18,7 +22,7 @@ static func next(view: int) -> int:
 
 
 static func name_of(view: int) -> String:
-	return NAMES[clampi(view, 0, NAMES.size() - 1)]
+	return "SPLIT" if view == SPLIT else NAMES[clampi(view, 0, NAMES.size() - 1)]
 
 
 ## World units the camera rides above the road under the car.
@@ -28,6 +32,8 @@ static func height(view: int) -> float:
 			return Tuning.v("camera/far_height")
 		View.BUMPER:
 			return Tuning.v("camera/bumper_height")
+		SPLIT:
+			return Tuning.v("camera/split_height")
 	return Tuning.v("camera/height")
 
 
@@ -39,6 +45,8 @@ static func distance(view: int) -> float:
 			return Tuning.v("camera/far_distance")
 		View.BUMPER:
 			return Tuning.v("camera/bumper_distance")
+		SPLIT:
+			return Tuning.v("camera/split_distance")
 	return Cfg.PLAYER_Z
 
 

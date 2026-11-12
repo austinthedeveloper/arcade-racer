@@ -13,7 +13,8 @@
 ##   godot --path . --resolution 1920x1080 -s res://tests/perf_probe.gd -- --perf-frames=1200
 ## Options: --perf-stage=N (1-based, default 3), --perf-frames=N timed frames (default 480,
 ## after PERF_WARMUP), --perf-quiet (rivals and traffic off, for comparison),
-## --perf-draw-distance=N (the stage's draw distance overridden, to weigh that lever).
+## --perf-draw-distance=N (the stage's draw distance overridden, to weigh that lever),
+## --perf-split (a split-screen race, MP-18: two halves drawn, player 2 autodriven too).
 extends SceneTree
 
 const PERF_WARMUP := 200  # frames before timing starts: the countdown and the launch
@@ -32,6 +33,7 @@ var frames := 480
 var quiet := false
 var stage := 2
 var reach := 0  # --perf-draw-distance: the stage's draw distance overridden, 0 for its own
+var split := false  # --perf-split: two players, split screen
 var _before := Stamp.new()
 var _after := Stamp.new()
 var _frame := 0
@@ -62,11 +64,15 @@ func _initialize() -> void:
 			quiet = true
 		elif arg.begins_with("--perf-draw-distance="):
 			reach = int(arg.get_slice("=", 1))
+		elif arg == "--perf-split":
+			split = true
 	race = load("res://scenes/race.tscn").instantiate()
 	race.set("stage_index", stage)
 	race.set("_autodrive", true)
 	race.set("_no_traffic", quiet)
 	race.set("_no_rivals", quiet)
+	if split:
+		race.set("players", 2)
 	root.add_child(_before)
 	root.add_child(race)
 	root.add_child(_after)
@@ -102,7 +108,7 @@ func _process(_delta: float) -> bool:
 
 func _report() -> void:
 	var out := {
-		"stage": Stages.stage_name(stage), "frames": update.size(), "quiet": quiet,
+		"stage": Stages.stage_name(stage), "frames": update.size(), "quiet": quiet, "split": split,
 		"traffic": race.traffic.cars.size(), "rivals": race.rivals.cars.size(),
 		"draw_distance": RoadRenderer.draw_distance(race.track.theme), "fx_peak": _fx_peak,
 		"window": "%dx%d" % [root.get_window().size.x, root.get_window().size.y],

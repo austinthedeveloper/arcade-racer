@@ -16,10 +16,14 @@ const HELP_DEVICE := "Pick the keyboard or a controller to set up."
 const HELP_ACTION := "Select, then press the new key or button."
 const HELP_RESET := "This device's buttons back to their defaults."
 const HELP_BACK := "Back to the options."
+const STAGED := -2  # device(): the staged device
 
 var device_index := 0  # into InputRouter.binding_devices()
 var listening := ""  # the action waiting for a key or button, or ""
 var listen_left := 0.0
+## A made-up pad or wheel to set up (--pad-family, PadGlyphs.forced, for screenshots): after
+## the keyboard in the device list, never saved.
+var staged: DeviceProfile = null
 var _settle := 0.0
 
 
@@ -46,19 +50,44 @@ func row_action() -> String:
 	return rows()[index][1]
 
 
-## The joypad being set up (-1: the keyboard).
-func device() -> int:
+## The devices the top row runs over: InputRouter.binding_devices, and STAGED after the
+## keyboard when there's a staged one.
+func devices() -> Array[int]:
 	var list := InputRouter.binding_devices()
+	if staged != null:
+		list.insert(1, STAGED)
+	return list
+
+
+## The joypad being set up (-1: the keyboard, STAGED: the staged one).
+func device() -> int:
+	var list := devices()
 	return list[clampi(device_index, 0, list.size() - 1)]
 
 
 func profile() -> DeviceProfile:
-	return InputRouter.binding_profile(device())
+	return staged if device() == STAGED else InputRouter.binding_profile(device())
 
 
 func device_name() -> String:
 	var d := device()
+	if d == STAGED:
+		return staged.name.to_upper()
 	return "KEYBOARD" if d < 0 else Input.get_joy_name(d).to_upper()
+
+
+## Sets up a made-up device of `family` (PadGlyphs.Family) and opens on it.
+func stage(family: int) -> void:
+	staged = DeviceProfile.new()
+	staged.guid = "staged-pad"
+	staged.name = PadGlyphs.SAMPLE_NAMES[family]
+	staged.kind = DeviceProfile.Kind.WHEEL if family == PadGlyphs.Family.WHEEL else DeviceProfile.Kind.GAMEPAD
+	if staged.kind == DeviceProfile.Kind.WHEEL:
+		staged.nitro_button = 5
+		staged.bind("shift_up", 4)
+		staged.bind("shift_down", 6)
+		staged.bind("pause", 9)
+	device_index = 1
 
 
 ## Puts the cursor on `action`'s row.
@@ -71,7 +100,7 @@ func choice_count() -> int:
 
 
 func flip_device(dir: int) -> void:
-	device_index = posmod(device_index + dir, InputRouter.binding_devices().size())
+	device_index = posmod(device_index + dir, devices().size())
 
 
 ## Starts waiting for `action`'s new key or button.
@@ -84,7 +113,8 @@ func listen(action: String) -> void:
 func bind(code: int) -> void:
 	var p := profile()
 	p.bind(listening, code)
-	InputRouter.save_bindings(p)
+	if p != staged:
+		InputRouter.save_bindings(p)
 	listening = ""
 	_settle = SETTLE
 
@@ -92,7 +122,8 @@ func bind(code: int) -> void:
 func reset_device() -> void:
 	var p := profile()
 	p.reset_bindings()
-	InputRouter.save_bindings(p)
+	if p != staged:
+		InputRouter.save_bindings(p)
 
 
 ## Takes a key or joypad button press while listening; returns true when it used it.
@@ -176,6 +207,7 @@ func _draw() -> void:
 	var panel := Rect2(90, TOP - 6, 460, ROW_H * list.size() + 12)
 	_panel(panel, 0.85)
 	var p := profile()
+	var family := PadGlyphs.family_of(p)
 	var mid := ROW_H / 2.0 - 2.0
 	var right := panel.end.x - 20
 	var clash_help := ""
@@ -201,15 +233,20 @@ func _draw() -> void:
 				var clashes := p.conflicts(action)
 				var t := p.binding_text(action)
 				var tcol := col
+				var at := Vector2(right - 110, y + mid + 5)
 				if listening == action:
 					t = "PRESS A KEY" if device() < 0 else "PRESS A BUTTON"
 					tcol = Color(GOLD, 0.5 + 0.5 * sin(time * 10.0))
-				elif not clashes.is_empty():
+					_text_centered(at, t, 12, tcol)
+					continue
+				if not clashes.is_empty():
 					tcol = Color("#ff5d5d")
-					t = "! " + t
 					if on:
 						clash_help = "%s is also %s." % [p.binding_text(action), " and ".join(clashes)]
-				_text_centered(Vector2(right - 110, y + mid + 5), t, 12, tcol)
+				# The button glyphs (WH-14); the text when there are none (the keyboard).
+				var w := _keys(at, t, 12, tcol, family, true)
+				if not clashes.is_empty():
+					_text(Vector2(at.x - w / 2.0 - 4 - _width("!", 12), at.y), "!", 12, tcol)
 			Row.RESET:
 				_text(Vector2(panel.position.x + 16, y + mid + 5), "RESET TO DEFAULTS", 12, col)
 			Row.BACK:

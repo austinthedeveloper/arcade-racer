@@ -4,7 +4,8 @@ extends MenuScreen
 ## control is on the device in use (the keyboard, a pad, a wheel or the touch controls), from
 ## the bindings as they are now (RemapScreen's rebinds included). Left and right look at the
 ## other devices; select or back closes it. `rows` is the card's content, for tests.
-## Text labels for now: input_label is the one place the button glyphs (WH-14) plug in.
+## A pad's or a wheel's buttons show as glyphs (WH-14, PadGlyphs, card_family); the keyboard's
+## keys, and anything without a glyph, as text.
 
 enum Device { KEYBOARD, GAMEPAD, WHEEL, TOUCH }
 
@@ -66,8 +67,8 @@ static func profile_for(dev: int) -> DeviceProfile:
 	return fresh
 
 
-## A key or button as the card shows it. Text for now (DeviceProfile.input_name); the button
-## glyphs (WH-14) go here when they exist, as a picture in place of the text.
+## A key or button as the card's text says it (DeviceProfile.input_name); drawn, a pad's or
+## a wheel's is a glyph in place of the text (PadGlyphs.pieces reads it back).
 static func input_label(profile: DeviceProfile, code: int) -> String:
 	return profile.input_name(code)
 
@@ -111,6 +112,18 @@ static func rows(dev: int, profile: DeviceProfile) -> Array:
 		Device.WHEEL:
 			out.append(["MENUS", "D-PAD, A SELECT, B BACK"])
 	return out
+
+
+## The glyphs `dev`'s rows are drawn with (PadGlyphs.Family): the pad in use's family on the
+## GAMEPAD tab (a generic pad when none is), wheel tabs on WHEEL, none on the keyboard or touch.
+static func card_family(dev: int) -> int:
+	match dev:
+		Device.GAMEPAD:
+			var now := PadGlyphs.family_now()
+			return now if now != PadGlyphs.Family.NONE and now != PadGlyphs.Family.WHEEL else PadGlyphs.Family.GENERIC
+		Device.WHEEL:
+			return PadGlyphs.Family.WHEEL
+	return PadGlyphs.Family.NONE
 
 
 ## The rows for the device shown now.
@@ -164,13 +177,14 @@ func _draw() -> void:
 		var label: String = DEVICE_NAMES[i] + ("  (IN USE)" if i == device_now() else "")
 		_text_centered(Vector2(r.get_center().x, r.position.y + 12), label, 9, GOLD if on else Color(1, 1, 1, 0.6))
 	var list := current_rows()
+	var family := card_family(device)
 	for i in list.size():
 		var y := TOP + 14 + i * ROW_H
 		if i % 2 == 0:
 			draw_rect(Rect2(panel.position.x + 12, y - 12, panel.size.x - 24, ROW_H), Color(1, 1, 1, 0.04))
 		var label: String = list[i][0]
 		_text(Vector2(panel.position.x + LABEL_X - _width(label, 11), y), label, 11, SKY)
-		_text(Vector2(panel.position.x + VALUE_X, y), list[i][1], 11, Color.WHITE)
+		_keys(Vector2(panel.position.x + VALUE_X, y), list[i][1], 11, Color.WHITE, family)
 	if attract:
 		draw_rect(Rect2(0, Cfg.SCREEN_H - 20, Cfg.SCREEN_W, 20), Color(0, 0, 0, 0.6))
 		if fmod(time, 1.0) < 0.65:

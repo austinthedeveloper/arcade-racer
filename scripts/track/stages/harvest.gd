@@ -90,6 +90,9 @@ static func build() -> Track:
 		["hay_round", 4, -1.6], ["scarecrow", 5, 2.3], ["produce_cart", 7, 1.7]])
 	t.add_set_piece("hay_yard", fields_start + 940, [["hay_round", 0, -1.5], ["hay_round", 2, -1.9], ["hay_bale", 4, -1.5],
 		["farm_truck", 6, -2.3, true], ["grain_elevator", 8, -3.6], ["hay_bale", 5, 1.6]])
+	# Road hazards (RC-19): what falls off farm trucks
+	t.add_hazard(RoadHazards.Kind.DEBRIS, int(t.segments.size() * 0.22), 0.8, 2)
+	t.add_hazard(RoadHazards.Kind.DEBRIS, int(t.segments.size() * 0.55), 0.6, 2)
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()

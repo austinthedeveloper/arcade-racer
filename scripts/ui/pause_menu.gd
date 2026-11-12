@@ -200,7 +200,7 @@ func _draw() -> void:
 			draw_rect(Rect2(row.position.x, row.position.y, 3, row.size.y), GOLD)
 		var col := GOLD if on else Color(1, 1, 1, 0.3 if off else 0.85)
 		_text_centered(Vector2(w / 2.0, y + 17), LABELS[items[i]], 14, col)
-	_text_centered(Vector2(w / 2.0, panel.end.y - 10), pause_hints(), 9, Color(1, 1, 1, 0.7))
+	_hint_centered(Vector2(w / 2.0, panel.end.y - 10), pause_hints(), 9, panel.size.x - 16, Color(1, 1, 1, 0.7))
 	_draw_notice(w)
 
 

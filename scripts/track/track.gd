@@ -67,6 +67,8 @@ var checkpoints: Array[int] = []
 var finish_index := 0
 ## First segment of every jump and bumpy stretch, for the bump signs (add_road_signs).
 var hazards: Array[int] = []
+## Road hazards (RC-19, add_hazard): debris, cone rows, ice and puddles lying on the road.
+var road_hazards: Array = []
 ## Set pieces (WS-21, add_set_piece): each one's name and the segment it starts at.
 var set_pieces: Array[Dictionary] = []
 ## Stage flow (StageFlow.dress): the next stage's theme, and this stage's palette mixed toward
@@ -99,6 +101,8 @@ func mirror() -> void:
 			sp["offset"] = -float(sp["offset"])
 			if not MIRROR_KEEPS_ART.has(sp["id"]):
 				sp["flip"] = not sp["flip"]
+	for h: RoadHazards.Hazard in road_hazards:
+		h.offset = -h.offset
 
 
 ## 1 for a stage as built, -1 mirrored: what an x across the road is multiplied by to place
@@ -388,6 +392,50 @@ func add_spans_at(id: String, fractions: Array) -> void:
 		var i := free_spot(int(segments.size() * f))
 		if i >= 0:
 			add_span(i, id)
+
+
+## A road hazard (RoadHazards.Kind) in the lane `across` of the way over the road there (0 its
+## left edge, 1 its right: Segment.lane_at, so it finds a lane on a road of any width) from
+## segment `index` for `length` segments, at the first spot at or after it clear of race gates,
+## spans and jumps (free_spot; Track.hazards) and of the pickups' spots (PowerUps.SPOTS).
+## Call once the road's widths are set (set_width): it takes the lane's middle and width
+## there. Lanes count from the left of the stage as built; mirror() moves it across. Returns
+## the hazard, or null when there's no room.
+func add_hazard(kind: int, index: int, across: float, length := 1) -> RoadHazards.Hazard:
+	var i := index
+	while i >= 0 and i < segments.size() - length and not hazard_spot_clear(i, length):
+		i += 1
+	if i < 0 or i >= segments.size() - length:
+		return null
+	var seg := segments[i]
+	var h := RoadHazards.Hazard.new()
+	h.kind = kind
+	h.segment = i
+	h.length = length
+	h.offset = seg.lane_at(across)
+	h.half = RoadHazards.half_for(kind, seg.width * 2.0 / seg.lanes)
+	road_hazards.append(h)
+	for k in length:
+		segments[i + k].hazards.append(h)
+	return h
+
+
+## Whether segments `index` to `index + length` can take a hazard: no race gate or span within
+## HAZARD_MARGIN of it, no jump or bumps starting within HAZARD_REACH before it, no pickup spot
+## within HAZARD_MARGIN, no other hazard on it.
+const HAZARD_MARGIN := 12
+func hazard_spot_clear(index: int, length: int) -> bool:
+	var n := segments.size()
+	for j in range(maxi(0, index - HAZARD_MARGIN), mini(n, index + length + HAZARD_MARGIN)):
+		if segments[j].flags != 0 or not segments[j].spans.is_empty() or not segments[j].hazards.is_empty():
+			return false
+	for start in hazards:
+		if index + length >= start and index <= start + HAZARD_REACH:
+			return false
+	for f: float in PowerUps.SPOTS:
+		if absi(int(n * f) - index) < HAZARD_MARGIN + length:
+			return false
+	return true
 
 
 ## One-off landmarks: each id in turn, every `every` segments from `first`, at a free spot

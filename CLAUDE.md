@@ -16,6 +16,8 @@ godot --path . -- --autodrive --stage=3 --at-segment=850 --car=car_mesa --screen
 godot --path . -- --autodrive --callout=near_miss --screenshots=300 --shot-dir=/tmp/shots   # hold a starburst callout up after GO (Callouts.IDS; near_miss:3 for a chain); --time-left=9 for the low clock
 godot --path . -- --autodrive --stage=7 --at-segment=300 --lightning-at=5 --screenshots=303 --shot-dir=/tmp/shots   # force a full lightning strike on Thunderhead at 5 s
 godot --path . -- --autodrive --stage=2 --mirror --screenshots=300 --shot-dir=/tmp/shots   # race the stage mirrored (WS-6), locked or not
+godot --path . -- --autodrive --split --stage=1 --car2=car_mesa --screenshots=300 --shot-dir=/tmp/shots   # split-screen two player (MP-18): both autodriven; --mode=free_drive for Free Drive; P2 on pad 2 or WASD + Tab
+godot --path . -- --autodrive --stage=4 --at-hazard=ice --no-rivals --screenshots=300 --shot-dir=/tmp/shots   # start short of a road hazard (RoadHazards.IDS; cones:2 the second), driving into it (RC-19); the log says the hit's frame
 godot --path . -- --save-file=/tmp/save.cfg --mode=single_race --mirror --screen=stages --menu-shot=/tmp/s.png   # stage select on another save, in a mode (ModeSelect.Item), MIRROR on
 godot --path . -- --mode=survival --autodrive --at-segment=4900 --screenshots=420 --shot-dir=/tmp/shots   # Survival (MP-13) over a leg's line into the next stage; --tuning-file with [survival] clock_scale=0.15 for a quick TIME UP
 godot --path . -- --day=20261111 --screen=daily --menu-shot=/tmp/d.png   # the daily run's card (MP-14) for that day (no --day: today); --mode=daily_run with race flags races it
@@ -23,6 +25,7 @@ godot --path . -- --save-file=/tmp/progress.cfg --screen=stickers:4 --menu-shot=
 godot --path . -- --autodrive --screen=results --stickers=first_win,chain_5 --menu-shot=/tmp/r.png   # the results (or a race's end) with those stickers new (MP-12; Stickers.ALL ids)
 python3 tools/colorblind.py /tmp/shots/frame_00300.png --all   # the shot as seen with protanopia, deuteranopia, tritanopia (+ a sheet)
 godot --path . -- --screen=stages --menu-shot=/tmp/stages.png   # screenshot a menu (title, modes, options, stages, cars, stats, stickers (stickers:5 the cursor on one), completion, daily, credits, finale (finale:standings, finale:card:2 etc.), pause, unplugged, results, demo (demo:N the attract tour's Nth step, demo:1 its controls card), update (update:failed etc.); options:audio etc. for an options page; --car=car_mesa opens car select on it; controls (controls:wheel etc.), pause:controls, whos_driving, wheel_offer)
+godot --path . -- --pad-family=playstation --screen=remap --menu-shot=/tmp/r.png   # a made-up pad's button glyphs (WH-14: xbox, playstation, generic, wheel) in the hints, remap (set up on it), pause and controls card
 godot --path . -- --save-file=/tmp/new.cfg --first-drive --autodrive --stage=1 --screenshots=215 --shot-dir=/tmp/shots   # the first drive's prompts (MP-15) on a new profile's save, in a race the flags start
 godot --path . --resolution 1600x900 -- --settings-file=/tmp/opts.cfg --profiles-file=/tmp/prof.cfg --screen=options:display --shot-as-window --menu-shot=/tmp/d.png   # other options and binding files; the shot laid out as the window shows it (also --screen=remap, --screen=wheel, and race --screenshots)
 godot --path . -- --log-dir=/tmp/logs --screen=title --menu-shot=/tmp/t.png   # the crash log (EQ-20) in another folder: a crash_report.txt there puts F4 COPY REPORT on the title
@@ -52,6 +55,7 @@ python3 tools/make_span_sprites.py assets/concept . # rebuild tunnels, bridges, 
 python3 tools/make_powerup_sprites.py assets/concept .   # rebuild the power-up pickups, icons and effects
 python3 tools/make_fx_sprites.py assets/concept .      # rebuild the FX layer's smoke, kick-up, sparks, nitro, speed lines, fireworks
 python3 tools/make_drawn_props.py .                 # redraw Palm Coast's six hand-drawn props
+python3 tools/make_hazard_sprites.py .              # redraw the road hazards (RC-19): debris, cone, ice, puddle
 python3 tools/manifest.py .                         # rewrite assets/sprites/manifest.json after editing a world height or collide fraction
 python3 tools/make_lod_sprites.py .                 # redo the roadside sprites' reduced copies (lod/, CP-9) and the manifest
 python3 tools/make_audio.py                         # rebuild the placeholder sounds (assets/audio/README.md)

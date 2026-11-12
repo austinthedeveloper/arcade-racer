@@ -79,6 +79,24 @@ const NOTICE_TIME := 3.0
 const FADE_TIME := 1.2  # seconds a player who dropped out takes to fade off the road
 const CUT_SHORT_RESULTS := 1.5  # seconds from the room going to the results
 var _own_strips: Dictionary = {}  # the player car's strips, for the camera back from watching
+## Split-screen two player (MP-18, SplitScreen): 2 puts a second player on the bottom half of
+## the screen, sharing the road, the rivals and the traffic. Then `player` is player 1's car as
+## a RivalCar (SplitScreen.human) and `p2` player 2's, also in rivals.cars; null with one player.
+## A Single Race or Free Drive only (the game says which), and nothing it does is saved (_saves).
+var players := 1
+var car2_id := ""  # player 2's car ("": SplitScreen.second_car, until MP-19's select)
+var p2: RivalCar
+var p2_out := false  # the clock ran out on player 2 before its line
+var p2_done_age := 0.0  # seconds since player 2 finished or went out (the results wait on it)
+## The two halves (SplitScreen.half_rect), each clipping its own sky, road and FX; empty with
+## one player. Player 1's are the race's own background, road and fx, moved into the first.
+var views: Array[Control] = []
+var background2: Background
+var road2: RoadRenderer
+var fx2: FxLayer
+var split_hud: SplitHud  # the compact HUD over both halves (the full HUD is hidden)
+var _shake2 := 0.0
+var _was_airborne2 := false
 var ghost: Ghost  # Time Attack: the best run so far, replayed (null before the first)
 var recording: Ghost  # Time Attack: this run, tick by tick
 var ghost_now := Vector3.ZERO  # the ghost this tick: distance, x, steer (Ghost.at)
@@ -210,6 +228,8 @@ var _led_at := -INF  # race time of the last 1ST PLACE callout
 var _callout_shot := Callouts.Kind.NONE  # --callout=ID: that starburst held up after GO (screenshots)
 var _callout_shot_count := 0  # --callout=ID:COUNT: with that count (NEAR MISS x3)
 var _pickup_shot := -1  # --pickup=ID (PowerUps.IDS): the player takes that pickup at GO (screenshots)
+var _hazard_shot := -1  # --at-hazard=ID (RoadHazards.IDS): start just short of the stage's first one, driving at it
+var _hazard_shot_n := 0  # --at-hazard=ID:N: the Nth (from 1) instead
 var _time_left_shot := NAN  # --time-left=S: start with this much on the clock (low-time screenshots)
 ## The dev flags are for the race the game starts with; later races come from the menus.
 static var _dev_args_read := false
@@ -274,14 +294,19 @@ func start_race() -> void:
 		survival_score = -1.0
 		survival_best_before = float(SaveData.survival["best"])
 	track = Stages.build(stage_index, mirror, run.next_stage() if survival else -2)
+	if _hazard_shot >= 0:
+		_aim_at_hazard()
 	# The sun drops stage by stage in a Grand Tour; a single race keeps the stage's own hour
 	hour = Sundown.apply(track, stage_index, Stages.count(), tour)
 	if not daily.is_empty():
 		track.theme["weather"] = Daily.weather(daily, Weather.of(track.theme))
 	daily_tries = {}
 	CarSprites.shadow_length = Sundown.shadow_length(Sundown.lit_hour(track.theme))
-	player = PlayerCar.new()
 	var car := Cars.find(car_id)
+	InputRouter.split = players > 1
+	if players > 1:
+		_setup_split()
+	player = PlayerCar.new() if players < 2 else SplitScreen.human(car, 0)
 	player.setup(car)
 	player.manual = Settings.manual_gears and not demo  # the attract demo shows the automatic
 	CarSprites.load_all()
@@ -294,6 +319,8 @@ func start_race() -> void:
 		player.x = _drive_x  # already on that line, past any roadside railing
 	elif online != null:
 		player.x = OnlineSession.grid_x(online.slot) * track.side()  # four abreast, by slot
+	elif players > 1:
+		player.x = SplitScreen.grid_x(0, track.side())
 	player.road_y = track.height_at(player.position + Cfg.PLAYER_Z)
 	power_ups = PowerUps.new()
 	if Settings.power_ups:
@@ -334,6 +361,11 @@ func start_race() -> void:
 				rivals.cars.append(r)
 				_shown[s] = Vector3(r.distance, r.x, 0.0)
 		online.loaded()
+	p2 = null
+	p2_out = false
+	p2_done_age = 0.0
+	if players > 1:
+		_spawn_p2()
 	if tour and tour_state.drivers.is_empty():
 		tour_state.drivers = rivals.driver_names()
 	state = State.RACING if demo else State.COUNTDOWN
@@ -417,6 +449,8 @@ func start_race() -> void:
 	fx.player = player
 	fx.exhaust_anchor = FxLayer.exhaust_for(car["strip"])
 	set_view(Settings.camera_view)
+	if p2 != null:
+		_split_views()
 
 
 ## Pad steering's speed sensitivity is the race's to set; the menus get it back at rest.
@@ -424,6 +458,7 @@ func _exit_tree() -> void:
 	record_stats(false)  # quit partway (or after the results, already counted)
 	end_playtest("quit")
 	InputRouter.speed_factor = 0.0
+	InputRouter.split = false
 	if debug_panel != null and debug_panel.race == self:
 		debug_panel.race = null
 
@@ -704,6 +739,7 @@ func _physics_process(dt: float) -> void:
 		inp = Assists.apply(inp, player, track, Settings.steer_assist and not Settings.co_pilot,
 			Settings.brake_assist or Settings.co_pilot)
 	horn = inp.horn
+	var inp2: DriveInput = split_input() if p2 != null else null
 	if calibration.visible or debug_panel.visible:  # (the tuning panel holds the race still)
 		_redraw()
 		return
@@ -747,7 +783,7 @@ func _physics_process(dt: float) -> void:
 				return
 	var over := state == State.TIME_UP or state == State.FINISHED
 	var ended := state == State.FINISHED or (state == State.TIME_UP and survival)  # (Survival's results come at TIME UP)
-	if ended and not _results_shown and (inp.confirm_pressed or (finish_age >= RESULTS_AFTER and watching == null) or _staged):
+	if ended and not _results_shown and not p2_racing() and (inp.confirm_pressed or (finish_age >= RESULTS_AFTER and watching == null and split_settled()) or _staged):
 		if not inp.confirm_pressed and not _staged and replay_offered() and not _replay_done and not replay_trace.frames.is_empty():
 			start_replay()  # after the finish spectacle, the replay first (RC-17)
 			_redraw()
@@ -755,20 +791,20 @@ func _physics_process(dt: float) -> void:
 		_show_results()  # after the finish spectacle, or Enter for them now
 		if inp.confirm_pressed:
 			return
-	if over and not results.visible and inp.confirm_pressed:
+	if over and not results.visible and inp.confirm_pressed and not p2_racing():
 		after_race()
 		return
 	if inp.restart_pressed and online == null:
 		restart()
 		return
-	if inp.pause_pressed and not paused:
+	if (inp.pause_pressed or (inp2 != null and inp2.pause_pressed)) and not paused:
 		pause()
 		_redraw()
 		return
 	if inp.radio_pressed and not over:
 		audio.next_station()
 		callouts.push_message(Radio.station_name(audio.station), Radio.genre(audio.station), RADIO_SHOW)
-	if inp.view_pressed and not demo:
+	if inp.view_pressed and not demo and players < 2:  # (a split race keeps its own camera)
 		Settings.camera_view = CameraView.next(Settings.camera_view)
 		Settings.save()  # remembered in Options (WS-15)
 		callouts.push_message(CameraView.name_of(Settings.camera_view), "VIEW", RADIO_SHOW)
@@ -802,6 +838,8 @@ func _physics_process(dt: float) -> void:
 			if time_left <= 0.0 and timed():
 				time_left = 0.0
 				state = State.TIME_UP
+				if p2_racing():
+					p2_out = true
 				record_stats(true)
 				end_playtest("time_up")
 				if survival:
@@ -810,6 +848,12 @@ func _physics_process(dt: float) -> void:
 					if not daily.is_empty() and _saves():
 						daily_tries = SaveData.record_daily(int(daily["day"]), INF)
 					_banner("TIME UP", _setback_prompt() if tour else "Press R or Enter to try again", Callouts.HOLD)
+		State.FINISHED:
+			if p2_racing():  # split screen: player 1 over the line, the clock runs on for player 2
+				race_time += dt
+				if timed():
+					time_left = maxf(0.0, time_left - dt)
+					p2_out = time_left <= 0.0
 
 	# Past the line the world drops into slow motion for a moment (sim, the world's tick), and
 	# the car brakes itself to a stop
@@ -818,11 +862,13 @@ func _physics_process(dt: float) -> void:
 		finish_age += dt
 	if state == State.FINISHED:
 		finish_age += dt
-		sim = dt * finish_time_scale(finish_age)
+		if not p2_racing():  # (not while player 2 still races)
+			sim = dt * finish_time_scale(finish_age)
 
 	InputRouter.speed_factor = player.speed_percent()
 	var cam: PlayerCar = player if watching == null else watching  # (last tick's)
 	var seg_before := track.find_segment(cam.position + Cfg.PLAYER_Z)
+	var seg_before2: Segment = track.find_segment(p2.position + Cfg.PLAYER_Z) if p2 != null else null
 	var solid := solid_cars()
 	Draft.update(player, sim, state == State.RACING and Draft.in_wake(player, track, solid))
 	player.update(sim, inp, track, state == State.RACING)
@@ -830,11 +876,15 @@ func _physics_process(dt: float) -> void:
 		traffic.honk(track, player.position + Cfg.PLAYER_Z, player.x, player.speed)  # (RC-13)
 	traffic.update(sim, track)
 	rivals.update(sim, track, player, state != State.COUNTDOWN, finish_distance)
+	if p2 != null:
+		p2_tick(dt, sim, inp2, solid)
 	if online != null:
 		_online_tick(sim)
 	player.collide(track)
+	RoadHazards.drive_over(player, track)
+	RoadHazards.age(track, sim)
 	if state == State.RACING:
-		hit_slowmo = maxf(hit_slowmo, hit_slowmo_for(player, Settings.reduce_motion, online != null))
+		hit_slowmo = maxf(hit_slowmo, hit_slowmo_for(player, Settings.reduce_motion, online != null or players > 1))
 	if state == State.FINISHED:
 		player.speed = move_toward(player.speed, 0.0, FINISH_BRAKING * sim)
 		player.braking = player.speed > 0.0
@@ -851,6 +901,10 @@ func _physics_process(dt: float) -> void:
 	if state == State.RACING:
 		score.watch(dt, player, track)
 		_check_pickups()
+		if player.hazard_hit >= 0:
+			callouts.push(RoadHazards.callout(player.hazard_hit))
+			if _log_banners:
+				print("[autodrive] %.1fs  hazard %s  frame %d" % [race_time, RoadHazards.IDS[player.hazard_hit], _frame])
 		if recording != null:
 			recording.record(player, track.side())
 		if replay_offered():
@@ -890,10 +944,12 @@ func _physics_process(dt: float) -> void:
 	fx.position = road.position
 	cam = follow(watch_target(rivals.cars) if online != null and state == State.FINISHED and player_finish >= 0.0
 		and online.phase != OnlineSession.Phase.CLOSED else null)
-	road.camera_z = CameraView.camera_z(view, cam.position, track.length)
+	road.camera_z = CameraView.camera_z(road.view, cam.position, track.length)
 	var rise := track.height_at(cam.position + Background.HILL_AHEAD) - cam.road_y
 	background.hill = Background.shown_hill(rise, road.camera_depth)
 	_flow(dt)
+	if p2 != null:
+		_p2_view_tick(dt, sim, seg_before2)
 	if _results_shot and state == State.RACING and race_time > 1.0:
 		_stage_results_shot()
 	_redraw()
@@ -946,8 +1002,9 @@ func finish_photo(img: Image) -> String:
 ## The camera view (WS-15, CameraView) the road and the FX layer draw from. Display only.
 func set_view(v: int) -> void:
 	view = clampi(v, 0, CameraView.View.size() - 1)
-	road.view = view
-	fx.view = view
+	var shown := view if players < 2 else CameraView.SPLIT  # (a split race's halves: SplitScreen)
+	road.view = shown
+	fx.view = shown
 
 
 ## The slow motion (real seconds) a tick's crash of `p` starts (RC-22): crashes/slowmo_time
@@ -1049,7 +1106,7 @@ func _give(kind: int) -> void:
 func _check_progress() -> void:
 	if free_drive:
 		return
-	if next_checkpoint < checkpoint_distances.size() and player.distance >= checkpoint_distances[next_checkpoint]:
+	if next_checkpoint < checkpoint_distances.size() and lead_distance() >= checkpoint_distances[next_checkpoint]:
 		next_checkpoint += 1
 		score.checkpoint()
 		if playtest != null:
@@ -1406,6 +1463,177 @@ func follow(target: RivalCar) -> PlayerCar:
 	return target
 
 
+## --- Split-screen two player (MP-18, SplitScreen) ------------------------------------------
+
+## The two halves, once: player 1's background, road and fx moved into the top one's clip,
+## player 2's own made for the bottom one, and the compact HUD in place of the full one.
+func _setup_split() -> void:
+	if not views.is_empty():
+		return
+	for slot in SplitScreen.PLAYERS:
+		var half := Control.new()
+		half.name = "Half%d" % (slot + 1)
+		half.clip_contents = true
+		half.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var r := SplitScreen.half_rect(slot)
+		half.position = r.position
+		half.size = r.size
+		var frame := Node2D.new()  # the full frame, moved up so its horizon is the half's
+		frame.position = Vector2(0.0, -SplitScreen.crop_top())
+		half.add_child(frame)
+		add_child(half)
+		move_child(half, slot)
+		views.append(half)
+	var top := views[0].get_child(0)
+	for n: Node in [background, road, fx]:
+		remove_child(n)
+		top.add_child(n)
+	background2 = Background.new()
+	road2 = RoadRenderer.new()
+	road2.background = background2
+	fx2 = FxLayer.new()
+	var bottom := views[1].get_child(0)
+	for n: Node in [background2, road2, fx2]:
+		bottom.add_child(n)
+	split_hud = SplitHud.new()
+	split_hud.race = self
+	ui_layer.add_child(split_hud)
+	ui_layer.move_child(split_hud, hud.get_index() + 1)
+	hud.visible = false
+
+
+## Player 2's car (SplitScreen.human) beside player 1's at the back of the grid, in the field
+## (rivals.cars) like an online player's.
+func _spawn_p2() -> void:
+	var id := car2_id if car2_id != "" else SplitScreen.second_car(car_id, func(c: String) -> bool: return Unlocks.car_unlocked(c))
+	var car2 := Cars.find(id)
+	p2 = SplitScreen.human(car2, 1)
+	p2.reset(player.position)
+	p2.distance = player.distance
+	p2.x = SplitScreen.grid_x(1, track.side())
+	p2.road_y = player.road_y
+	rivals.cars.append(p2)
+	_shake2 = 0.0
+	_was_airborne2 = false
+
+
+## Player 2's half drawn for this race: its road from its own car, player 1's car and the field
+## as the others, its own sky and FX.
+func _split_views() -> void:
+	background2.set_theme(track.theme, track.next_theme)
+	background2.mirrored = track.mirrored
+	background2.offset = 0.0
+	road2.track = track
+	road2.player = p2
+	road2.player_strips = p2.strips
+	road2.view = CameraView.SPLIT
+	road2.flow = road.flow
+	road2.ghost_strips = {}
+	var others: Array[RivalCar] = [player as RivalCar]
+	for r: RivalCar in rivals.cars:
+		if r != p2:
+			others.append(r)
+	road2.rivals = others
+	fx2.clear()
+	fx2.set_weather(track.theme, _lightning_at)
+	fx2.player = p2
+	fx2.view = CameraView.SPLIT
+	fx2.exhaust_anchor = FxLayer.exhaust_for(Cars.find(p2.car_id)["strip"])
+
+
+## Player 2's controls this tick: its own device (InputRouter.state2: the second joypad, or
+## the second keyboard set), or the autodrive. The assists are player 1's alone for now (AC-19).
+func split_input() -> DriveInput:
+	if _autodrive or demo:
+		return _autodrive_input(p2)
+	return Settings.drive_input(InputRouter.state2)
+
+
+## Whether player 2 is still racing: a split race, not over its line and the clock not out (in
+## Free Drive, always).
+func p2_racing() -> bool:
+	return p2 != null and not p2.finished and not p2_out
+
+
+## Whether the results may come: one player, or player 2 done a moment (RESULTS_AFTER) ago.
+func split_settled() -> bool:
+	return p2 == null or (not p2_racing() and p2_done_age >= RESULTS_AFTER)
+
+
+## How far the leading player has come: a checkpoint extends the shared clock when the first
+## of them reaches it.
+func lead_distance() -> float:
+	return player.distance if p2 == null else maxf(player.distance, p2.distance)
+
+
+## Player 2's place in the field (Rivals.standings), 1 for the lead.
+func p2_place() -> int:
+	return rivals.standings(player, player_finish).find(p2) + 1
+
+
+## One tick of player 2's car on `inp2`: drafting, driving, the traffic, its pickups and its
+## finish line; over the line or out of time, it brakes to a stop as player 1's does.
+func p2_tick(dt: float, sim: float, inp2: DriveInput, solid: Array) -> void:
+	var controls := p2_racing() and (state == State.RACING or state == State.FINISHED)
+	Draft.update(p2, sim, controls and Draft.in_wake(p2, track, solid))
+	p2.update(sim, inp2 if controls else DriveInput.new(), track, controls)
+	if controls and inp2.horn:
+		traffic.honk(track, p2.position + Cfg.PLAYER_Z, p2.x, p2.speed)
+	p2.collide(track)
+	if not p2_racing():
+		p2_done_age += dt
+		p2.nitro_time = 0.0
+		p2.speed = move_toward(p2.speed, 0.0, FINISH_BRAKING * sim)
+		p2.braking = p2.speed > 0.0
+		return
+	if not controls:
+		return
+	var p := power_ups.take(p2.passed_segments(track), p2.x)
+	if p != null:
+		_give_p2(power_ups.open(p.kind, time_left))
+	if p2.distance >= finish_distance and not free_drive:
+		p2.finished = true
+		p2.finish_time = race_time
+		fx2.celebrate(FxLayer.fireworks_for(track.theme))
+
+
+## A pickup player 2 took: the same kinds as player 1's (_give), on its car; a clock is the
+## shared clock's.
+func _give_p2(kind: int) -> void:
+	match kind:
+		PowerUps.Kind.NITRO:
+			p2.nitro_charges = mini(p2.nitro_max, p2.nitro_charges + 1)
+		PowerUps.Kind.CLOCK:
+			time_left += Tuning.v("power_ups/clock_bonus")
+		PowerUps.Kind.RAM:
+			p2.ram_time = Tuning.v("power_ups/ram_time")
+		PowerUps.Kind.GHOST:
+			p2.ghost_time = Tuning.v("power_ups/ghost_time")
+
+
+## Player 2's half after the tick, display only: its sky scrolled by its own bends, its shake,
+## its camera on its car, its FX and the stage flow where it is.
+func _p2_view_tick(dt: float, sim: float, seg_before2: Segment) -> void:
+	background2.offset += seg_before2.curve * (p2.speed * sim / Cfg.SEGMENT_LENGTH) * BACKGROUND_SCROLL
+	_shake2 = shake_after(_shake2, p2, p2.airborne and not _was_airborne2, dt)
+	_was_airborne2 = p2.airborne
+	var shown := Settings.shake_amount(_shake2)
+	road2.position = Vector2(roundf(randf_range(-1, 1) * shown), roundf(randf_range(-1, 1) * shown))
+	road2.camera_depth = camera_depth(0.0)
+	road2.flash = road.flash
+	road2.time = road.time
+	fx2.flash_share = road2.flash
+	fx2.update(sim, p2, track)
+	fx2.position = road2.position
+	road2.camera_z = CameraView.camera_z(CameraView.SPLIT, p2.position, track.length)
+	var rise := track.height_at(p2.position + Background.HILL_AHEAD) - p2.road_y
+	background2.hill = Background.shown_hill(rise, road2.camera_depth)
+	var here := track.find_segment(p2.position + Cfg.PLAYER_Z)
+	var k := StageFlow.share(here.handover, -1.0) if road2.flow else 0.0
+	road2.flow_share = k
+	background2.share = k
+
+
 ## The results online (ON-9): the host picks the next stage with up and down.
 func online_results_input(m: MenuInput) -> void:
 	if not online.hosting() or online.phase != OnlineSession.Phase.RACING or m.step_y() == 0:
@@ -1507,12 +1735,13 @@ func end_cut_short() -> void:
 ## Whether this race is the player's own, to save from: not autodriven, not started partway
 ## or with a made-up clock, not staged for a screenshot.
 func _saves() -> bool:
-	return not _autodrive and not demo and _start_segment == 0 and not _staged and is_nan(_time_left_shot) and online == null
+	return not _autodrive and not demo and _start_segment == 0 and not _staged and is_nan(_time_left_shot) and online == null \
+		and players < 2
 
 
 ## Whether this race shows the instant replay at its finish (RC-17).
 func replay_offered() -> bool:
-	return instant_replay and not demo and online == null and not free_drive and not survival
+	return instant_replay and not demo and online == null and not free_drive and not survival and players < 2
 
 
 ## The instant replay starts (RC-17): stand-in cars for the field, put where the trace's frames
@@ -1637,6 +1866,11 @@ func _redraw() -> void:
 	fx.queue_redraw()
 	background.queue_redraw()
 	hud.queue_redraw()
+	if p2 != null:
+		road2.queue_redraw()
+		fx2.queue_redraw()
+		background2.queue_redraw()
+		split_hud.queue_redraw()
 
 
 # --- Dev helpers: `godot -- --autodrive --screenshots=60,300 --shot-dir=/tmp/shots` -------
@@ -1653,6 +1887,8 @@ func _parse_dev_args() -> void:
 			mirror = true
 		elif arg.begins_with("--car="):
 			car_id = Cars.find(arg.get_slice("=", 1))["id"]
+		elif arg.begins_with("--car2="):
+			car2_id = Cars.find(arg.get_slice("=", 1))["id"]
 		elif arg.begins_with("--at-segment="):
 			_start_segment = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--drive-x="):
@@ -1676,6 +1912,10 @@ func _parse_dev_args() -> void:
 			var spec := arg.get_slice("=", 1)
 			_callout_shot = Callouts.IDS.get(spec.get_slice(":", 0), Callouts.Kind.NONE)
 			_callout_shot_count = int(spec.get_slice(":", 1)) if spec.contains(":") else 0
+		elif arg.begins_with("--at-hazard="):  # ID, or ID:N for the Nth of that kind on the stage
+			var spec := arg.get_slice("=", 1)
+			_hazard_shot = RoadHazards.IDS.find(spec.get_slice(":", 0))
+			_hazard_shot_n = maxi(0, int(spec.get_slice(":", 1)) - 1) if spec.contains(":") else 0
 		elif arg.begins_with("--pickup="):
 			_pickup_shot = PowerUps.IDS.find(arg.get_slice("=", 1))
 		elif arg.begins_with("--time-left="):
@@ -1688,18 +1928,19 @@ func _parse_dev_args() -> void:
 			Photo.dir = _screenshot_dir
 
 
-func _autodrive_input() -> DriveInput:
+## The autodrive's controls for `car` (the player's, or in a split race player 2's).
+func _autodrive_input(car: PlayerCar = player) -> DriveInput:
 	var inp := DriveInput.new()
-	var seg := track.find_segment(player.position + Cfg.PLAYER_Z + 3000.0)
+	var seg := track.find_segment(car.position + Cfg.PLAYER_Z + 3000.0)
 	inp.throttle = 0.0 if state == State.COUNTDOWN and countdown > 0.1 else 1.0
-	var lane := _drive_x if not is_nan(_drive_x) else _autodrive_lane()
-	inp.steer = clampf((seg.curve * 0.25) + (lane - player.x) * 1.5, -1.0, 1.0)
+	var lane := _drive_x if not is_nan(_drive_x) else _autodrive_lane(car)
+	inp.steer = clampf((seg.curve * 0.25) + (lane - car.x) * 1.5, -1.0, 1.0)
 	# A dab of brake with the lock on throws it into a power slide through a hard bend (RC-8)
-	if autodrive_slides(seg.curve, inp.steer, player):
+	if autodrive_slides(seg.curve, inp.steer, car):
 		inp.brake = 1.0
 	inp.nitro_pressed = _frame % 600 == 300
-	inp.shift_up_pressed = player.on_limiter()
-	inp.shift_down_pressed = player.manual and player.gear > 1 and player.speed < PlayerCar.gear_limit(player.gear - 1) * 0.8
+	inp.shift_up_pressed = car.on_limiter()
+	inp.shift_down_pressed = car.manual and car.gear > 1 and car.speed < PlayerCar.gear_limit(car.gear - 1) * 0.8
 	return inp
 
 
@@ -1713,18 +1954,22 @@ static func autodrive_slides(curve_ahead: float, steer: float, car: PlayerCar) -
 
 ## The lane with the most open road ahead, keeping the current one on a tie. Anything slower
 ## than cruising speed blocks a lane, so a slowed car doesn't sit behind a tractor.
-func _autodrive_lane() -> float:
+func _autodrive_lane(me: PlayerCar = player) -> float:
 	const LOOKAHEAD := 40  # segments
-	var want := maxf(player.speed, Cfg.MAX_SPEED * 0.8)
-	var here := track.find_segment(player.position + Cfg.PLAYER_Z).index
-	var lanes: Array = Traffic.lanes(track, track.narrowest_ahead(player.position + Cfg.PLAYER_Z))
+	var want := maxf(me.speed, Cfg.MAX_SPEED * 0.8)
+	var here := track.find_segment(me.position + Cfg.PLAYER_Z).index
+	var lanes: Array = Traffic.lanes(track, track.narrowest_ahead(me.position + Cfg.PLAYER_Z))
 	var best: float = lanes[0]
 	var best_gap := -1
-	lanes.sort_custom(func(a: float, b: float) -> bool: return absf(a - player.x) < absf(b - player.x))
+	lanes.sort_custom(func(a: float, b: float) -> bool: return absf(a - me.x) < absf(b - me.x))
+	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
 	for lane: float in lanes:
-		var gap := LOOKAHEAD
+		# A hazard (RC-19) blocks a lane like a slow car
+		var gap := RoadHazards.room(track, me.position + Cfg.PLAYER_Z, lane, half_car, AIDriver.LANE_CLEARANCE, LOOKAHEAD)
 		for r in rivals.cars:
-			var ahead := wrapf(r.position - player.position, -track.length * 0.5, track.length * 0.5)
+			if r == me:
+				continue  # (player 2 itself, in a split race)
+			var ahead := wrapf(r.position - me.position, -track.length * 0.5, track.length * 0.5)
 			if ahead > 0.0 and absf(r.x - lane) < 0.3 and r.speed < want:
 				gap = mini(gap, int(ahead / Cfg.SEGMENT_LENGTH))
 		for n in gap:
@@ -1740,6 +1985,19 @@ func _autodrive_lane() -> float:
 			best_gap = gap
 			best = lane
 	return best
+
+
+## --at-hazard=ID: the race starts HAZARD_LEAD segments short of the stage's chosen hazard of
+## that kind, the autodrive holding its line (--drive-x) so the car drives into it.
+const HAZARD_LEAD := 80
+func _aim_at_hazard() -> void:
+	var found := track.road_hazards.filter(func(h: RoadHazards.Hazard) -> bool: return h.kind == _hazard_shot)
+	if found.is_empty():
+		push_warning("--at-hazard: no %s on this stage" % RoadHazards.IDS[_hazard_shot])
+		return
+	var h: RoadHazards.Hazard = found[mini(_hazard_shot_n, found.size() - 1)]
+	_start_segment = maxi(0, h.segment - HAZARD_LEAD)
+	_drive_x = h.offset
 
 
 ## --screen=results: a rival over the line ahead, the player second, the rest still out.
@@ -1758,6 +2016,11 @@ func _stage_results_shot() -> void:
 			r.distance = finish_distance - 2500.0 * i
 	player.distance = finish_distance + 1.0
 	_check_progress()
+	if p2 != null:  # (a split race: player 2 over the line too, just behind)
+		p2.distance = finish_distance + 1.0
+		p2.finished = true
+		p2.finish_time = 63.07
+		p2_done_age = RESULTS_AFTER
 
 
 func _save_screenshot(frame: int) -> void:

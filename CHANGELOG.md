@@ -9,9 +9,24 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
+- Road hazards (RC-19): debris shed in a lane, cone rows closing one, black ice over Timberline's
+  summit and deep puddles along Thunderhead. Debris bumps the car up and costs speed, cones fly
+  off and slow you, a puddle drags at the tires, and the ice takes the steering and slides you
+  aside for a moment; each has its callout (DEBRIS!, CONES!, BLACK ICE!, SPLASH!). The rivals
+  pick a lane clear of them when there is one.
+- Button pictures: on a pad or a wheel, the hints along the bottom, the remap screen, the pause
+  menu and the controls card show its buttons, Xbox's coloured A, B, X and Y, PlayStation's
+  cross, circle, square and triangle, a generic pad's by where they sit, and a wheel's as
+  numbered tabs, picked from the controller's name. The keyboard keeps its words.
 - Online players go by their profile's name and avatar (ON-8): the lobby shows each one's
   picture and name, and the race's standings, notices and results their names, instead of P1
   to P4. A player on an older build still shows as P2.
+- Split-screen two player (MP-18): 2 PLAYERS on mode select puts two players on one screen,
+  player 1 on top and player 2 below, each with their own camera, among the same rivals and
+  traffic, in a Single Race or Free Drive (up and down on the card picks which). Player 1
+  drives as ever; player 2 takes the second gamepad, or with only one plugged in the keyboard's
+  W A S D with Tab for nitro (player 1 keeps the arrows). Each half shows the time, the place
+  and the speed, and the results show both players. Nothing a split race does is saved.
 - Sticker book (MP-12): twenty-four stickers to collect, from a first win and a chain of five
   near misses to a win mirrored, gold on every stage and the Grand Tour won. Each comes once,
   with a chime and a NEW STICKER card after the line, and shows on the results. Find the book
@@ -51,6 +66,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Fixed
 
+- A pedal set or wheel the game reads as a gamepad no longer holds the gas or the brake with a
+  pedal at rest: its pedals count only once it's calibrated (F2), and never at rest.
 - The engine, tire squeal and wind no longer hang on after the finish: they fade out under
   the instant replay and the results, and once the clock runs out and the car stops.
 

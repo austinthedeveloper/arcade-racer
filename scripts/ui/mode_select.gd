@@ -3,9 +3,9 @@ extends MenuScreen
 ## Mode select, after the title: a row of cards to pick along. A mode that isn't
 ## built yet (none, now) stays on the row, marked COMING SOON; picking it shows a short notice.
 
-enum Item { GRAND_TOUR, SINGLE_RACE, TIME_ATTACK, FREE_DRIVE, SURVIVAL, DAILY_RUN, ONLINE, OPTIONS }
+enum Item { GRAND_TOUR, SINGLE_RACE, TIME_ATTACK, FREE_DRIVE, SURVIVAL, DAILY_RUN, TWO_PLAYERS, ONLINE, OPTIONS }
 
-const LABELS := ["GRAND TOUR", "SINGLE RACE", "TIME ATTACK", "FREE DRIVE", "SURVIVAL", "DAILY RUN", "ONLINE", "OPTIONS"]
+const LABELS := ["GRAND TOUR", "SINGLE RACE", "TIME ATTACK", "FREE DRIVE", "SURVIVAL", "DAILY RUN", "2 PLAYERS", "ONLINE", "OPTIONS"]
 const HELP := [
 	"Race stage to stage, on from the one you pick.",
 	"One stage, one car, one race.",
@@ -13,17 +13,21 @@ const HELP := [
 	"No timer, no rivals: just the road.",
 	"One endless road. Less time at every checkpoint: how far can you go?",
 	"Today's stage, car, weather and traffic: the same for everyone.",
+	"Two players, one screen: top and bottom.",
 	"Race up to three friends by room code: PC, Mac, web or phone.",
 	"Driving aids, traffic, sound and wheel setup.",
 ]
 ## Card art: a stage postcard per mode ("" draws the options gear; DAILY RUN shows today's
 ## stage, art_for).
-const ART := ["palm_coast", "neon", "redrock", "timberline", "thunder", "", "skyline", ""]
-const CARD := Vector2(68, 120)
-const GAP := 6.0
+const ART := ["palm_coast", "neon", "redrock", "timberline", "thunder", "", "bayou", "skyline", ""]
+const CARD := Vector2(62, 120)
+const GAP := 5.0
+## The modes 2 PLAYERS races in (MP-18), stepped with up and down on its card.
+const TWO_PLAYER_MODES := [Item.SINGLE_RACE, Item.FREE_DRIVE]
 const CARD_Y := 64.0
 const NOTICE_TIME := 2.0
 
+var two_player_mode: int = Item.SINGLE_RACE  # what 2 PLAYERS races in (TWO_PLAYER_MODES)
 var notice := ""  # the coming-soon line, while notice_time runs
 var notice_time := 0.0
 var _art: Array[Texture2D] = []
@@ -51,6 +55,18 @@ static func help_line(item: int, day: int) -> String:
 		var p := Daily.pick(day)
 		return "Today: %s in the %s." % [Stages.stage_name(int(p["stage"])), Cars.find(p["car"])["name"]]
 	return HELP[item]
+
+
+## The 2 PLAYERS card's line for its mode (`mode`, one of TWO_PLAYER_MODES), and the other on
+## up and down.
+static func two_player_line(mode: int) -> String:
+	var other: int = TWO_PLAYER_MODES[(TWO_PLAYER_MODES.find(mode) + 1) % TWO_PLAYER_MODES.size()]
+	return "%s, split screen.   Up / Down: %s" % [String(LABELS[mode]).capitalize(), LABELS[other]]
+
+
+## 2 PLAYERS's mode `dir` steps (up or down) on from `mode`, round TWO_PLAYER_MODES.
+static func step_two_player(mode: int, dir: int) -> int:
+	return TWO_PLAYER_MODES[posmod(TWO_PLAYER_MODES.find(mode) + dir, TWO_PLAYER_MODES.size())]
 
 
 ## Whether a mode can be played yet.
@@ -81,6 +97,9 @@ func handle(m: MenuInput) -> void:
 		move(m.step())
 		notice_time = 0.0
 		Audio.play("tick")
+	elif m.step_y() != 0 and index == Item.TWO_PLAYERS:
+		two_player_mode = step_two_player(two_player_mode, m.step_y())
+		Audio.play("tick")
 	elif m.confirm_pressed:
 		var item := pick()
 		if item < 0:
@@ -90,6 +109,8 @@ func handle(m: MenuInput) -> void:
 		match item:
 			Item.OPTIONS:
 				game.show_options_from_modes()
+			Item.TWO_PLAYERS:
+				game.choose_two_players(two_player_mode)
 			_:
 				game.choose_mode(item)
 	elif m.back_pressed:
@@ -116,6 +137,13 @@ func _draw() -> void:
 			draw_texture_rect_region(tex, r, Rect2((tex.get_width() - src_w) / 2.0, 0, src_w, tex.get_height()), tint)
 		else:
 			_gear(r.get_center() + Vector2(0, -8), 26.0, Color(SKY, 0.9) if on else Color(SKY, 0.5))
+		if i == Item.TWO_PLAYERS:  # the card split as the screen is: P1 over P2
+			var mid := r.position.y + (r.size.y - 22) / 2.0
+			draw_rect(Rect2(r.position.x, mid - 1, r.size.x, 2), Color(0, 0, 0, 0.9))
+			for slot in SplitScreen.PLAYERS:
+				var at := Vector2(r.get_center().x, mid + (-12.0 if slot == 0 else 22.0))
+				_text_centered(at + Vector2(1, 1), SplitScreen.NAMES[slot], 12, Color(0, 0, 0, 0.8))
+				_text_centered(at, SplitScreen.NAMES[slot], 12, Color(SplitScreen.COLORS[slot], 1.0 if on else 0.6))
 		if not open:
 			var band := Rect2(r.position.x, r.get_center().y - 10, r.size.x, 18)
 			draw_rect(band, Color(0, 0, 0, 0.7))
@@ -134,7 +162,10 @@ func _draw() -> void:
 	draw_rect(panel, Color(0, 0, 0, 0.55))
 	draw_rect(Rect2(panel.position.x, panel.position.y, panel.size.x, 2), GOLD)
 	_text_centered(Vector2(w / 2.0, panel.position.y + 19), LABELS[index], 13, GOLD)
-	_text_centered(Vector2(w / 2.0, panel.position.y + 36), help_line(index, game.daily_day() if game != null else Daily.today()), 10, Color(1, 1, 1, 0.85))
+	var help := help_line(index, game.daily_day() if game != null else Daily.today())
+	if index == Item.TWO_PLAYERS:
+		help = two_player_line(two_player_mode)
+	_text_centered(Vector2(w / 2.0, panel.position.y + 36), help, 10, Color(1, 1, 1, 0.85))
 	if notice_time > 0.0:
 		var a := minf(1.0, notice_time * 3.0)
 		var n := Rect2(w / 2.0 - 150, 284, 300, 26)

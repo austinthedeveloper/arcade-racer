@@ -29,6 +29,7 @@ var spans: Array[String] = []  # road-spanning sprite ids (SpriteLibrary.spans) 
 var covered := false  # inside a tunnel or covered bridge: darker, no sky
 var depth := 0.0  # how far into the tunnel, 0 at a mouth to 1 well inside: darker still
 var pickups: Array = []  # PowerUps.Pickup lying in this segment
+var hazards: Array = []  # RoadHazards.Hazard lying over this segment (RC-19, Track.add_hazard)
 var handover := 0.0  # its share of the next stage's palette (StageFlow.blend), 0 to 1
 
 # Projection results, rewritten every frame by the renderer

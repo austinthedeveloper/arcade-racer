@@ -91,6 +91,9 @@ static func build() -> Track:
 	t.add_set_piece("rock_garden", canyon_end + 320, [["boulders_a", 0, -1.7], ["boulders_b", 2, -2.1, true],
 		["rock_arch", 5, -2.6], ["saguaro_a", 3, 1.7], ["saguaro_b", 7, 2.2, true], ["prickly_pear_a", 6, -1.5],
 		["tumbleweed_a", 9, 1.3]])
+	# Road hazards (RC-19): junk off a pickup's bed, once out in the desert and once in the canyon
+	t.add_hazard(RoadHazards.Kind.DEBRIS, int(t.segments.size() * 0.2), 0.6, 2)
+	t.add_hazard(RoadHazards.Kind.DEBRIS, int(t.segments.size() * 0.56), 0.8, 2)
 	t.add_road_signs()
 	t.add_race_furniture()
 	t.add_finish_crowd()
