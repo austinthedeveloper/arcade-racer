@@ -38,6 +38,11 @@ func test_race_buttons_clear_the_hud() -> void:
 	for b: Dictionary in TouchControls.RACE_BUTTONS:
 		for el in ["timer", "position", "progress", "nitro", "speedo", "slipstream"]:
 			check(not (b["rect"] as Rect2).intersects(lay[el]), "%s clear of the HUD's %s" % [b["id"], el])
+	# AC-12: at the Large UI scale, everything the HUD draws keeps clear of the thumbs
+	var large := Hud.layout(true, UiScale.hud(UiScale.Size.LARGE))
+	for b: Dictionary in TouchControls.RACE_BUTTONS:
+		for el: String in large:
+			check(not (b["rect"] as Rect2).intersects(large[el]), "Large: %s clear of the HUD's %s" % [b["id"], el])
 
 
 func test_hit_finds_the_button_under_a_finger() -> void:

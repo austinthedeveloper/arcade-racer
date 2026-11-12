@@ -188,9 +188,9 @@ func _band() -> void:
 	var c := BAND.get_center().x
 	var title := "STAGE %d   " % (index + 1)
 	var name := Stages.stage_name(index).to_upper()
-	var x := UiText.centered_x(c, title + name, 12)
+	var x := _centered_x(c, title + name, 12)
 	_text(Vector2(x, BAND.position.y + 17), title, 12, GOLD)
-	_text(Vector2(x + UiText.width(title, 12), BAND.position.y + 17), name, 12, Color.WHITE)
+	_text(Vector2(x + _width(title, 12), BAND.position.y + 17), name, 12, Color.WHITE)
 	var line := _tour_line() if open else Unlocks.stage_condition(index)
 	_text_centered(Vector2(c, BAND.position.y + 34), line, 9, Color(1, 1, 1, 0.8))
 	var pulse := 3.0 * sin(time * 5.0)
@@ -223,7 +223,7 @@ func _mirror_badge(right: float, baseline: float) -> void:
 	var open := Unlocks.mirror_unlocked(index)
 	var on: bool = open and game.mirror
 	var label := ("MIRROR " + ("ON" if on else "OFF")) if open else "MIRROR"
-	var w := UiText.width(label, 10) + (0.0 if open else 14.0)
+	var w := _width(label, 10) + (0.0 if open else 14.0)
 	var box := Rect2(right - w - 10, baseline - 11, w + 8, 14)
 	draw_rect(box, Color(GOLD, 0.9) if on else Color(0, 0, 0, 0.6))
 	var col := NIGHT if on else (Color.WHITE if open else Color(1, 1, 1, 0.5))

@@ -30,6 +30,16 @@ const MYSTERY_REVEAL_TIME := 0.5
 const REVEAL_FRAMES := 4
 const SLOT_SHOW_TIME := 1.5
 const REDLINE := 0.9  # engine revs (RaceAudio.engine_rpm) where the tach turns red
+## Where each element grows from at a bigger UI scale (layout), as a share of the screen:
+## (0, 0) the top left corner, (0.5, 0) the top middle, (1, 1) the bottom right and so on.
+const ANCHORS := {
+	"timer": Vector2(0, 0), "position": Vector2(0, 0), "progress": Vector2(0.5, 0), "stage": Vector2(0.5, 0),
+	"nitro": Vector2(1, 0), "power_up": Vector2(1, 0), "feed": Vector2(1, 0), "slipstream": Vector2(1, 1),
+	"speedo": Vector2(1, 1), "device": Vector2(0, 1), "subtitle": Vector2(0.5, 0), "tuned": Vector2(0.5, 0),
+	"cards": Vector2(0, 0), "radar": Vector2(0.5, 0.56), "intro": Vector2(1, 0), "now_playing": Vector2(0, 1),
+	"notice": Vector2(0.5, 0), "first_drive": Vector2(0.5, 0.5), "countdown": Vector2(0.5, 0),
+}
+const COUNTDOWN_SIZE := 64  # the 3, 2, 1 (big already: it stays this size at every UI scale)
 ## The HUD colors that carry meaning. Each state also differs in shape (the low clock beats
 ## and shows a warning sign, the leader's panel has a crown, spent flames are hollow, the
 ## ghost's dot is a ring, the slipstream boost says BOOST); MUST_DIFFER pairs also differ
@@ -80,6 +90,10 @@ const BURSTS := {
 var race: Node  # race.gd
 var time := 0.0  # seconds since the HUD appeared, for blinking
 
+var _k := 1.0  # this frame's UI scale (UiScale.hud)
+var _touch := false  # the touch controls are up this frame
+var _lay := {}  # this frame's layout
+
 var _logo: Texture2D
 
 
@@ -96,6 +110,7 @@ func _process(dt: float) -> void:
 func _draw() -> void:
 	if race == null or race.player == null or race.results.visible:
 		return  # (the results screen covers it)
+	_k = UiScale.hud(Settings.ui_scale)
 	if race.demo:
 		_draw_demo()
 		return
@@ -105,78 +120,150 @@ func _draw() -> void:
 	var p: PlayerCar = race.player
 	var w := float(Cfg.SCREEN_W)
 
-	var lay := layout(TouchControls.showing() and race.touch_driving())
-	_draw_timer(lay["timer"])
+	_touch = TouchControls.showing() and race.touch_driving()
+	_lay = layout(_touch, _k)
+	_draw_timer(_element("timer"))
+	_done()
 	if not race.rivals.cars.is_empty():
-		_draw_position(lay["position"], race.place, race.rivals.cars.size() + 1)
+		_draw_position(_element("position"), race.place, race.rivals.cars.size() + 1)
+		_done()
 	elif race.survival:
-		_draw_distance(lay["position"])
-	_draw_progress(lay["progress"], p)
-	var stage: Rect2 = lay["stage"]
+		_draw_distance(_element("position"))
+		_done()
+	_draw_progress(_element("progress"), p)
+	_done()
+	var stage := _element("stage")
 	_text(stage.position + Vector2(0, 9), stage_line(race), 9, Color(1, 1, 1, 0.85))
-	_draw_nitro(lay["nitro"], p)
+	_done()
+	_draw_nitro(_element("nitro"), p)
+	_done()
 	var pu: PowerUps = race.power_ups
 	if not pu.pickups.is_empty():
-		_power_up_slot(lay["power_up"])
+		_power_up_slot(_element("power_up"))
+		_done()
 	_power_up_fx()
-	_draw_speedo(lay["speedo"], p)
-	_draw_slipstream(lay["slipstream"], p)
+	_draw_speedo(_element("speedo"), p)
+	_done()
+	_draw_slipstream(_element("slipstream"), p)
+	_done()
 	if race.counting_down() and not race.rivals.cars.is_empty():
-		_draw_cards(lay["cards"])
+		_draw_cards(_element("cards"))
+		_done()
 	elif race.state == race.State.RACING:
-		_draw_radar(lay["radar"], p)
+		_draw_radar(_element("radar"), p)
+		_done()
 	if Tuning.any_tuned():
-		_draw_tuned(lay["tuned"])
+		_draw_tuned(_element("tuned"))
+		_done()
 
 	# Device, bottom left
-	var device: Rect2 = lay["device"]
 	var inp: DriveInput = InputRouter.state
-	var dev: String = ["KEYBOARD", "GAMEPAD", "WHEEL"][inp.kind]
-	if device.has_area():  # (not under the touch controls)
-		_text(device.position + Vector2(4, 10), dev + "  " + inp.device_name.left(28), 8, Color(1, 1, 1, 0.7))
+	if (_lay["device"] as Rect2).has_area():  # (not under the touch controls)
+		var device := _element("device")
+		_text(device.position + Vector2(4, 10), device_line(inp.kind, inp.device_name), 8, Color(1, 1, 1, 0.7))
 		_text(device.position + Vector2(4, 22), keys_hint(race.online != null), 8, Color(1, 1, 1, 0.6))
+		_done()
 	var hint := InputRouter.wheel_hint()
 	if hint != "":
+		_about(Vector2(w / 2.0, 70))
 		_text_centered(Vector2(w / 2.0, 70), hint, 10, Color("#ffd23a"))
+		_done()
 
 	# Bonuses as they're earned, right of center; the tally under the finish banner
+	var feed := _element("feed")
 	for i in race.score.feed.size():
 		var b: Dictionary = race.score.feed[i]
 		var a := clampf((Scoring.FEED_TIME - b["age"]) / 0.4, 0.0, 1.0)
-		var feed: Rect2 = lay["feed"]
 		_text_centered(Vector2(feed.get_center().x, feed.position.y + 12 + i * 16), "%s +%d" % [b["name"], b["points"]], 12, Color("#5dff8a", a))
+	_done()
 	var ended: bool = race.state == race.State.FINISHED or race.state == race.State.TIME_UP
 	if race.results.visible:
 		pass  # the results screen has the place, time, tally and standings
 	elif ended and race.tour and (race.after == race.After.TOUR_DONE or race.after == race.After.TOUR_OVER):
+		_about(Vector2(w / 2.0, 182))
 		_tour_standings(Vector2(w / 2.0, 182), "FINAL STANDINGS" if race.after == race.After.TOUR_DONE else "TOUR OVER")
+		_done()
 	elif watching_shown():
+		_about(Vector2(w / 2.0, 150))
 		_draw_watch(Vector2(w / 2.0, 150))
+		_done()
 	elif race.state == race.State.FINISHED:
+		_about(Vector2(w / 2.0, 182))
 		var end_y := _score_tally(Vector2(w / 2.0, 182))
 		if race.tour and race.tour_state.points.has(Tour.YOU):
 			var tr: Tour = race.tour_state
 			_text_centered(Vector2(w / 2.0, end_y + 14), "TOUR   %s   %d PTS" % [Rivals.ordinal(tr.standing_of(Tour.YOU)),
 				tr.points[Tour.YOU]], 11, Color("#ffd23a"))
+		_done()
 
 	if ended and not race.new_unlocks.is_empty() and not race.results.visible:
+		_about(Vector2(w / 2.0, 92))
 		_text_centered(Vector2(w / 2.0, 92), unlock_line(race.new_unlocks), 12, Color("#5dff8a", 0.6 + 0.4 * sin(race.road.time * 6.0)))
+		_done()
 
 	# Banners
 	if race.counting_down():
-		_text_centered(Vector2(w / 2.0, 130), str(ceili(race.countdown)), 64, Color("#ffd23a"))
-		StageIntro.draw(self, race.countdown_elapsed(), lay["intro"], intro_text())
+		var count: Rect2 = _lay["countdown"]
+		_text_centered(Vector2(count.get_center().x, count.end.y - 2), str(ceili(race.countdown)), COUNTDOWN_SIZE, Color("#ffd23a"))
+		StageIntro.draw(self, race.countdown_elapsed(), _element("intro"), intro_text())
+		_done()
 	if not race.callouts.current.is_empty() and not race.results.visible and not watching_shown():
 		_draw_callout(race.callouts.current, Vector2(w / 2.0, CALLOUT_Y))
 	var fd: FirstDrive = race.first_drive
 	if fd != null and fd.current >= 0 and not race.paused:
-		_draw_first_drive(fd)
+		_draw_first_drive(fd, _element("first_drive"))
+		_done()
 	if Settings.subtitles:
-		_draw_subtitle(lay["subtitle"], race.audio.announcer.subtitle())
+		_draw_subtitle(_element("subtitle"), race.audio.announcer.subtitle())
+		_done()
 	if race.notice_time > 0.0:
-		_draw_notice(Vector2(w / 2.0, 72), race.notice, notice_alpha(race.notice_time))
+		_draw_notice(_element("notice").get_center(), race.notice, notice_alpha(race.notice_time))
+		_done()
 	if race.audio != null and race.audio.tag_age >= 0.0:
-		_draw_now_playing(lay["now_playing"], Radio.now_playing(race.audio.station, race.audio.song), race.audio.tag_age)
+		_draw_now_playing(_element("now_playing"), Radio.now_playing(race.audio.station, race.audio.song), race.audio.tag_age)
+		_done()
+
+
+## Starts drawing layout element `key` at its scale (element_scale): returns its rect in the
+## 1x space it is drawn in. _done ends it.
+func _element(key: String) -> Rect2:
+	var r: Rect2 = _lay[key]
+	var e := element_scale(key, _touch, _k)
+	if is_equal_approx(e, 1.0):
+		return r
+	UiText.begin_scaled(self, UiScale.transform_about(Vector2.ZERO, e))
+	return Rect2(r.position / e, r.size / e)
+
+
+## Starts drawing something laid out about `anchor` (the middle of its top) at the UI scale.
+func _about(anchor: Vector2) -> void:
+	if not is_equal_approx(_k, 1.0):
+		UiText.begin_scaled(self, UiScale.transform_about(anchor, _k))
+
+
+func _done() -> void:
+	if UiText.scale() != 1.0:
+		UiText.end_scaled(self)
+
+
+## How much bigger element `key` is drawn at the HUD scale `k`: `k`, but the rival cards, the
+## countdown's number (64 px already) and TUNED keep their size (two columns of cards fit beside the stage intro card; TUNED is for
+## the developers), and with the touch controls up the stage intro card too (it sits by the
+## thumbs). Their rects in layout are those sizes.
+static func element_scale(key: String, touch: bool, k: float) -> float:
+	if key == "cards" or key == "tuned" or key == "countdown" or (touch and key == "intro"):
+		return 1.0
+	return k
+
+
+## A stage's line under the route bar (stage_line picks it, or Survival's or the Daily Run's).
+static func stage_text(stage: int, stage_name: String) -> String:
+	return ("STAGE %d  " % (stage + 1)) + stage_name.to_upper()
+
+
+## The device line at the bottom left: the kind of input, and the device's name (cut short).
+static func device_line(kind: int, device_name: String) -> String:
+	return ["KEYBOARD", "GAMEPAD", "WHEEL"][kind] + "  " + device_name.left(28)
 
 
 ## The now-playing tag (PR-24): the song's title and its station, sliding in from the left
@@ -211,11 +298,11 @@ static func tag_slide(age: float, shown: float) -> float:
 
 ## The first drive's prompt (MP-15): FIRST DRIVE and which of how many, what to do, big,
 ## and how on the device in use. It grows in as it comes up.
-func _draw_first_drive(fd: FirstDrive) -> void:
-	var w := float(Cfg.SCREEN_W)
+func _draw_first_drive(fd: FirstDrive, home: Rect2) -> void:
+	var w := home.get_center().x * 2.0
 	var k := clampf(fd.shown_for / 0.2, 0.0, 1.0)
-	var size := FIRST_DRIVE_SIZE * Vector2(lerpf(0.85, 1.0, k), 1.0)
-	var r := Rect2(Vector2(w / 2.0 - size.x / 2.0, FIRST_DRIVE_Y), size)
+	var size := home.size * Vector2(lerpf(0.85, 1.0, k), 1.0)
+	var r := Rect2(Vector2(w / 2.0 - size.x / 2.0, home.position.y), size)
 	draw_rect(r.grow(2), Color(GOLD, 0.8 * k))
 	draw_rect(r, Color(PALETTE["panel"], 0.85 * k))
 	draw_rect(Rect2(r.position, Vector2(4, r.size.y)), GOLD)
@@ -297,7 +384,7 @@ static func stage_line(r: Node) -> String:
 		return "LEG %d  %s" % [r.run.leg + 1, stage_name]
 	if not r.daily.is_empty():
 		return "DAILY RUN  " + stage_name
-	return ("STAGE %d  " % (r.stage_index + 1)) + stage_name
+	return stage_text(r.stage_index, r.track.name)
 
 
 ## Survival (MP-13), under the time: the distance so far and the best to beat.
@@ -315,13 +402,72 @@ func _draw_distance(r: Rect2) -> void:
 ## Where each HUD element goes on the 640x360 screen (the window scales the whole picture):
 ## the clock, the place, the route bar (with its markers) and the stage under it, the nitro
 ## flames, the power-up slot, the bonus feed, the slipstream bar, the speedometer, the
-## input device, the announcer's subtitle, the rival cards, the radar, the stage intro card and the now-playing tag. With the touch controls up (`touch`,
-## TouchControls), the speedometer sits between the thumbs and the device line goes.
-static func layout(touch := false) -> Dictionary:
+## input device, the announcer's subtitle, the rival cards, the radar, the stage intro card,
+## the now-playing tag, the online notice and the first drive's prompt. With the touch
+## controls up (`touch`, TouchControls), the speedometer sits between the thumbs and the
+## device line goes.
+## At a UI scale over 1 (`scale`, UiScale.hud) each element is `scale` times the size, grown
+## away from the edge it sits on (ANCHORS), then moved where it would crowd another
+## (_large_fixes). Each is drawn at 1x inside a transform (_element), so its insides scale too.
+static func layout(touch := false, scale := 1.0) -> Dictionary:
+	var lay := _layout_1x(touch)
+	if is_equal_approx(scale, 1.0):
+		return lay
+	var screen := Vector2(Cfg.SCREEN_W, Cfg.SCREEN_H)
+	for key: String in lay:
+		var anchor: Vector2 = ANCHORS[key]
+		if touch and (key == "speedo" or key == "slipstream"):
+			anchor = Vector2(0.5, 1)  # (between the thumbs)
+		lay[key] = UiScale.about(lay[key], anchor * screen, scale)
+	_large_fixes(lay, touch, scale)
+	return lay
+
+
+## What moves at a bigger scale so nothing crowds anything else (test_hud checks).
+static func _large_fixes(lay: Dictionary, touch: bool, _scale: float) -> void:
+	var one := _layout_1x(touch)
+	var w := float(Cfg.SCREEN_W)
+	var gap := 4.0
+	if touch:  # the left column clear of the pause button (TouchControls)
+		for key in ["timer", "position"]:
+			lay[key].position.x = 2.0
+	# The subtitle keeps its width, between the clock and the power-up slot (its text grows)
+	var sub: Rect2 = lay["subtitle"]
+	lay["subtitle"] = Rect2(w / 2.0 - one["subtitle"].size.x / 2.0, sub.position.y, one["subtitle"].size.x, sub.size.y)
+	# TUNED, at its own size, between the route bar and the nitro
+	lay["tuned"] = Rect2(Vector2(lay["progress"].end.x + gap, one["tuned"].position.y), one["tuned"].size)
+	# The bonus feed under the power-up slot, the first drive's prompt under that
+	lay["feed"].position.y = lay["power_up"].end.y + 8.0
+	lay["first_drive"].position.y = lay["feed"].end.y + gap
+	# The countdown's number as it was; the stage intro card right of it
+	lay["countdown"] = one["countdown"]
+	lay["intro"].position.x = w - 6.0 - lay["intro"].size.x
+	# The online notice left of the countdown, under the subtitle
+	var notice_at := Vector2(lay["timer"].end.x + gap, lay["subtitle"].end.y + gap)
+	lay["notice"] = Rect2(notice_at, Vector2(minf(lay["notice"].size.x, lay["countdown"].position.x - gap - notice_at.x), lay["notice"].size.y))
+	# The rival cards at their own size, in two columns of four (the stage intro card is
+	# right of them)
+	var cards_size := Vector2(CARD_SIZE.x * 2.0 + 6.0, 4.0 * (CARD_SIZE.y + CARD_GAP) - CARD_GAP)
+	lay["cards"] = Rect2(Vector2(lay["position"].position.x, lay["position"].end.y + gap), cards_size)
+	if touch:
+		# By the thumbs there's less room: the now-playing tag under the subtitle, the notice
+		# under that, the cards top right and the stage intro card (its own size) left, both
+		# clear of the buttons
+		lay["now_playing"].position = Vector2(lay["timer"].end.x + gap, lay["subtitle"].end.y + gap)
+		lay["notice"].position = Vector2(lay["now_playing"].position.x, lay["now_playing"].end.y + gap)
+		lay["cards"].position = Vector2(w - 8.0 - cards_size.x, lay["now_playing"].end.y + gap)
+		lay["intro"] = Rect2(Vector2(lay["position"].position.x + 4.0, lay["notice"].end.y + gap), StageIntro.CARD)
+		# and the countdown's number in the gap between the two
+		var count: Rect2 = lay["countdown"]
+		count.position = Vector2(roundf((lay["intro"].end.x + lay["cards"].position.x - count.size.x) / 2.0), lay["cards"].position.y + 30.0)
+		lay["countdown"] = count
+
+
+static func _layout_1x(touch: bool) -> Dictionary:
 	var w := float(Cfg.SCREEN_W)
 	var h := float(Cfg.SCREEN_H)
 	if touch:
-		var lay := layout()
+		var lay := _layout_1x(false)
 		lay["speedo"] = Rect2(w / 2.0 - 53, h - 98, 106, 92)
 		lay["slipstream"] = Rect2(w / 2.0 - 53, h - 112, 106, 10)
 		lay["device"] = Rect2()
@@ -345,6 +491,9 @@ static func layout(touch := false) -> Dictionary:
 		"radar": Rect2(w / 2.0 - 90, 192, 180, 16),
 		"intro": Rect2(Vector2(w - 14 - StageIntro.CARD.x, 76), StageIntro.CARD),
 		"now_playing": Rect2(6, 296, 190, 28),
+		"notice": Rect2(w / 2.0 - 72, 66, 144, 20),
+		"first_drive": Rect2(Vector2(w / 2.0 - FIRST_DRIVE_SIZE.x / 2.0, FIRST_DRIVE_Y), FIRST_DRIVE_SIZE),
+		"countdown": Rect2(w / 2.0 - 24, 86, 48, 46),  # 3, 2, 1 (its baseline 2 px up from the bottom)
 	}
 
 
@@ -853,7 +1002,8 @@ static func ram_flash_alpha(ram_flash: float) -> float:
 	return Settings.flash_amount(clampf(ram_flash / 0.3, 0.0, 1.0))
 
 
-## The demo's overlay: the logo up top, the stage under it, PRESS START blinking below.
+## The demo's overlay: the logo up top, the stage under it, PRESS START blinking below, and
+## as it starts the attract tour's title card (PR-20): the stage and the car.
 func _draw_demo() -> void:
 	var w := float(Cfg.SCREEN_W)
 	var y := 8.0
@@ -863,9 +1013,30 @@ func _draw_demo() -> void:
 		y += size.y
 	draw_rect(Rect2(w / 2.0 - 90, y + 1, 180, 13), Color(0, 0, 0, 0.45))
 	_text_centered(Vector2(w / 2.0, y + 11), race.track.name.to_upper(), 9, Color(1, 1, 1, 0.9))
+	var card := Attract.card_rect(race.race_time)
+	if card.has_area():
+		_about(Vector2(0, Attract.CARD.end.y))  # (it grows up and right from its corner)
+		_draw_title_card(card, Attract.card_text(race.stage_index, race.car_id))
+		_done()
+	_about(Vector2(w / 2.0, Cfg.SCREEN_H - 14))
 	draw_rect(Rect2(0, Cfg.SCREEN_H - 34, w, 20), Color(0, 0, 0, 0.45))
 	if fmod(time, 1.0) < 0.65:
 		_text_centered(Vector2(w / 2.0, Cfg.SCREEN_H - 19), "PRESS START", 12, Color("#ffd23a"))
+	_done()
+
+
+## The attract tour's title card on `r`: STAGE 3 OF 8, the stage's name big, then the car
+## and what it is.
+func _draw_title_card(r: Rect2, words: Dictionary) -> void:
+	draw_rect(r.grow(2), Color("#1b2a6b"))
+	draw_rect(r.grow(1), Color("#c9d4ff"))
+	draw_rect(r, Color(0.04, 0.03, 0.1, 0.88))
+	draw_rect(Rect2(r.position, Vector2(4, r.size.y)), GOLD)
+	var x := r.position.x + 12
+	_text(Vector2(x, r.position.y + 13), words["tag"], 9, GOLD)
+	_text(Vector2(x, r.position.y + 32), words["stage"], 16, Color.WHITE)
+	_text(Vector2(x, r.position.y + 49), words["car"], 11, Color("#3ad0ff"))
+	_text(Vector2(x, r.position.y + 61), words["kind"], 8, Color(1, 1, 1, 0.7))
 
 
 ## The size HUD text is drawn at: never under UiText.MIN_SIZE (PR-14).

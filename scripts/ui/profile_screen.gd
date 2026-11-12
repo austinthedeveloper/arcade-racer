@@ -191,7 +191,7 @@ func _draw() -> void:
 		_text(r.position + Vector2(7, 11), "P%d" % (s + 1), 8, Color(1, 1, 1, 0.6))
 		if s == SaveData.slot:
 			var tag := "DRIVING"
-			_text(Vector2(r.end.x - 7 - UiText.width(tag, 8), r.position.y + 11), tag, 8, Color("#5dff8a"))
+			_text(Vector2(r.end.x - 7 - _width(tag, 8), r.position.y + 11), tag, 8, Color("#5dff8a"))
 		_text_centered(Vector2(r.get_center().x, pic.end.y + 22), id["name"], 16, (GOLD if picked else Color.WHITE) if made else Color(1, 1, 1, 0.5))
 		if made:
 			var sum := summary(s)
@@ -215,7 +215,7 @@ func _draw() -> void:
 		if shown.has(r):
 			var t: String = shown[r]
 			var right := panel.end.x - 20
-			_text(Vector2(right - 90 - UiText.width(t, 12) / 2.0, y + 13), t, 12, col)
+			_text(Vector2(right - 90 - _width(t, 12) / 2.0, y + 13), t, 12, col)
 			if on:
 				_small_arrow(Vector2(right - 180, y + 8), -1)
 				_small_arrow(Vector2(right, y + 8), 1)

@@ -38,7 +38,8 @@ const EFFECT_STEPS := 10  # screen shake and flash: 0 (off)..10 (as designed, th
 ## 15: [first_run] wheels, the wheels the title has offered to calibrate (WH-16; missing: none).
 ## 16: the same keys; [audio] sfx left at the old default (10, with the music at 10) comes down
 ## to DEFAULT_SFX.
-const VERSION := 16
+## 17: [accessibility] ui_scale (AC-12; missing: UiScale.Size.NORMAL, the only size before).
+const VERSION := 17
 ## Keyboard steering feel (AC-11): how fast a held key turns in and a released one comes back,
 ## snappy to smooth. Each multiplies its rate (shares of full lock per second); STANDARD is
 ## the rate every earlier build had.
@@ -77,6 +78,7 @@ var subtitles := true  # the announcer's words on screen (Announcer)
 ## Reduce motion (AC-13): no camera shake, nitro view stretch, hill shift of the scenery or
 ## rain streaks, whatever the screen shake option says (shake_amount, motion_reduced).
 var reduce_motion := false
+var ui_scale: int = UiScale.Size.NORMAL  # the HUD's and the menus' size (UiScale, AC-12)
 var units: int = Units.MPH  # the speedometer's
 var camera_view: int = CameraView.View.CHASE_NEAR  # the race's camera (WS-15): the VIEW button steps it
 var fullscreen := false  # windowed by default
@@ -128,6 +130,7 @@ func reset() -> void:
 	flash = EFFECT_STEPS
 	subtitles = true
 	reduce_motion = false
+	ui_scale = UiScale.Size.NORMAL
 	units = Units.MPH
 	camera_view = CameraView.View.CHASE_NEAR
 	fullscreen = false
@@ -170,6 +173,7 @@ func load_settings() -> void:
 		flash = clampi(int(cfg.get_value("accessibility", "flash", flash)), 0, EFFECT_STEPS)
 		subtitles = bool(cfg.get_value("accessibility", "subtitles", subtitles))
 		reduce_motion = bool(cfg.get_value("accessibility", "reduce_motion", reduce_motion))
+		ui_scale = clampi(int(cfg.get_value("accessibility", "ui_scale", ui_scale)), 0, UiScale.Size.size() - 1)
 		units = clampi(int(cfg.get_value("display", "units", units)), 0, Units.size() - 1)
 		camera_view = clampi(int(cfg.get_value("display", "camera_view", camera_view)), 0, CameraView.View.size() - 1)
 		fullscreen = bool(cfg.get_value("display", "fullscreen", fullscreen))
@@ -189,7 +193,7 @@ func load_settings() -> void:
 
 ## Brings a loaded settings.cfg up to VERSION; returns the version it had.
 static func migrate(cfg: ConfigFile) -> int:
-	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11, _v11_to_v12, _v12_to_v13, _v13_to_v14, _v14_to_v15, _v15_to_v16])
+	return CfgVersion.migrate(cfg, VERSION, [_v0_to_v1, _v1_to_v2, _v2_to_v3, _v3_to_v4, _v4_to_v5, _v5_to_v6, _v6_to_v7, _v7_to_v8, _v8_to_v9, _v9_to_v10, _v10_to_v11, _v11_to_v12, _v12_to_v13, _v13_to_v14, _v14_to_v15, _v15_to_v16, _v16_to_v17])
 
 
 ## Version 1 only added the version field: the keys are as they were.
@@ -285,6 +289,11 @@ static func _v15_to_v16(cfg: ConfigFile) -> void:
 		cfg.set_value("audio", "sfx", DEFAULT_SFX)
 
 
+## Version 17 added the UI scale (AC-12): NORMAL, the one size every earlier build drew.
+static func _v16_to_v17(cfg: ConfigFile) -> void:
+	cfg.set_value("accessibility", "ui_scale", UiScale.Size.NORMAL)
+
+
 ## Writes the options. Over a file from a newer build, its other keys are kept
 ## (CfgVersion.to_write); `fresh` (resetting the options) writes only this build's keys.
 func save(fresh := false) -> void:
@@ -311,6 +320,7 @@ func save(fresh := false) -> void:
 	cfg.set_value("accessibility", "flash", flash)
 	cfg.set_value("accessibility", "subtitles", subtitles)
 	cfg.set_value("accessibility", "reduce_motion", reduce_motion)
+	cfg.set_value("accessibility", "ui_scale", ui_scale)
 	cfg.set_value("display", "units", units)
 	cfg.set_value("display", "camera_view", camera_view)
 	cfg.set_value("display", "fullscreen", fullscreen)

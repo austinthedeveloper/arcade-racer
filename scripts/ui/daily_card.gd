@@ -59,7 +59,7 @@ func _draw() -> void:
 	_backdrop(0.78)
 	_header("DAILY RUN")
 	var t := lines(pick, day, SaveData.daily)
-	var dw := UiText.width(t["date"], 12)
+	var dw := _width(t["date"], 12)
 	_text(Vector2(Cfg.SCREEN_W - 16 - dw, 30), t["date"], 12, GOLD)
 
 	# The stage, on its postcard
