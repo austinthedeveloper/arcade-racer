@@ -69,7 +69,7 @@ Pick **OPTIONS** on the title screen or in the pause menu. Options are saved to 
 | Display | Fullscreen, integer scaling, V-Sync, scanlines | |
 | Display | Speed units | MPH or KPH. |
 | Display | Playtest log | Off by default. On, each race writes a note of itself into the log folder (below). |
-| Audio | Music / sound FX volume | 0 to 10. |
+| Audio | Music / sound FX volume | 0 to 10: music at 10 and effects at 7 by default (the music a little over the engine). |
 | Audio | Radio station | The station races start on, or shuffle. M changes it mid-race. |
 | Controls | Calibrate wheel | Opens the wheel calibration (same as F2). |
 | Controls | Wheel settings | Each wheel's range, steering lock, deadzone and linearity. |

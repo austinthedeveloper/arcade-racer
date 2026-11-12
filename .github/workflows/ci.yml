@@ -68,6 +68,9 @@ jobs:
       - name: Pinned sprite tool libraries
         run: pip install -r tools/requirements.txt
 
+      - name: The announcer's script is up to date (tools/announcer_script.py)
+        run: python tools/announcer_script.py --check
+
       - name: Rebuild every sprite and compare (tools/check_sprites.py)
         run: python tools/check_sprites.py --out="${{ runner.temp }}/rebuilt"
 

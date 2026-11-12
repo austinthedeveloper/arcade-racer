@@ -4,6 +4,9 @@ extends RefCounted
 ## and sunflower fields, a farm stop with barn, silos and water tower, and windmills
 ## turning on the ridges.
 
+const FARM_ROAD_WIDTH := 0.85  # the road's half-width through the wheat (Track.set_width)
+
+
 static func theme() -> Dictionary:
 	return {
 		"hour": 18.0,  # the time of day it is drawn at: the golden hour (Sundown, WS-16)
@@ -69,6 +72,8 @@ static func build() -> Track:
 	t.set_traffic(farm_at - 60, 120, Track.TRAFFIC_BUSY)
 	t.set_traffic(fields_start, fields_end - fields_start, Track.TRAFFIC_QUIET)
 
+	# A two-lane farm road through the first of the wheat (WS-7)
+	t.set_width(fields_start + Track.WIDTH_EASE, 620, FARM_ROAD_WIDTH, 2)
 	_decorate(t, fields_start, fields_end)
 	t.add_spans_at("harvest_trestle", [0.35, 0.7])
 	# The farm stop: barn and silos on the right, water tower across the road

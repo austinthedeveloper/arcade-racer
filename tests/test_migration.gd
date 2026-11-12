@@ -740,3 +740,21 @@ func test_settings_v14_to_v15_adds_the_wheels_offered() -> void:
 	Settings.load_settings()
 	eq(Settings.wheels_prompted.size(), 1, "a fresh write of the options keeps them")
 	_clean()
+
+
+func test_settings_v15_to_v16_brings_the_old_default_effects_down() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load("res://tests/fixtures/saves/v0.7.0/settings.cfg")
+	eq(CfgVersion.of(cfg), 15, "0.7.0 wrote version 15")
+	eq([cfg.get_value("audio", "music"), cfg.get_value("audio", "sfx")], [3, 7], "its volumes as the player set them")
+	Settings.migrate(cfg)
+	eq([CfgVersion.of(cfg), cfg.get_value("audio", "music"), cfg.get_value("audio", "sfx")], [Settings.VERSION, 3, 7],
+		"volumes the player set are kept")
+	for set_music in [10, 6]:
+		cfg.load("res://tests/fixtures/saves/v0.7.0/settings.cfg")
+		cfg.set_value("audio", "music", set_music)
+		cfg.set_value("audio", "sfx", 10)
+		Settings.migrate(cfg)
+		var want := Settings.DEFAULT_SFX if set_music == 10 else 10
+		eq(cfg.get_value("audio", "sfx"), want, "music %d, effects 10: effects now %d" % [set_music, want])
+	_clean()

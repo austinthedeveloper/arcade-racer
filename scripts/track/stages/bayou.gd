@@ -4,6 +4,9 @@ extends RefCounted
 ## between cypress islands, mist on the water, and a bait shop at the landing. Thick
 ## fog keeps the draw distance short.
 
+const CAUSEWAY_WIDTH := 0.72  # the road's half-width over the first causeway (Track.set_width)
+
+
 static func theme() -> Dictionary:
 	return {
 		"hour": 6.5,  # the time of day it is drawn at: dawn (Sundown, WS-16)
@@ -84,6 +87,8 @@ static func build() -> Track:
 	for c in causeways:
 		t.set_traffic(c.x, c.y - c.x, Track.TRAFFIC_QUIET)
 
+	# The first causeway is an old two-lane road over the open water (WS-7)
+	t.set_width(causeways[0].x + Track.WIDTH_EASE, causeways[0].y - causeways[0].x - 2 * Track.WIDTH_EASE, CAUSEWAY_WIDTH, 2)
 	_decorate(t, causeways)
 	_rails(t, island, channel)
 	# An old steel truss bridge partway along the first causeway

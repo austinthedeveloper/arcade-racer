@@ -257,6 +257,9 @@ func _set_loops(dt: float) -> void:
 	if rival != null:
 		pitches["rival"] = 0.8 + engine_rpm(rival.speed_percent())
 	target["horn"] = 1.0 if race.horn and race.state != race.State.FINISHED else 0.0
+	if car_quiet(race):
+		for cue in target:
+			target[cue] = 0.0
 	for cue in levels:
 		levels[cue] = move_toward(levels[cue], target[cue], dt * (HORN_FADE if cue == "horn" else FADE))
 		var p: AudioStreamPlayer = _loops.get(cue)
@@ -270,6 +273,15 @@ func _set_loops(dt: float) -> void:
 				p.play()
 			else:
 				p.stop()
+
+
+## Whether the car's loops (engine, tires, wind, the rival, the horn) fade out: under the
+## instant replay, which holds the car still where the finish left it, and under the results
+## or once the clock ran out, where the car has stopped and would only idle on.
+static func car_quiet(r: Node) -> bool:
+	if r.replaying or r.results.visible:
+		return true
+	return r.state == r.State.TIME_UP and r.player.speed <= 0.0
 
 
 ## Engine revs, 0..1 in each gear (a shift drops them back), up to 1.2 on nitro. `gear` 0

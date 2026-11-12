@@ -119,3 +119,29 @@ func test_finish_lines_by_place() -> void:
 	eq(Announcer.finish_line(5, true), "finish", "off the podium")
 	eq(Announcer.finish_line(1, false), "finish", "no rivals: just finished")
 	eq(Announcer.syllables("Big air!"), 2, "syllables by vowel groups")
+
+
+## The voiceover script (docs/announcer/lines.csv, tools/announcer_script.py) has every line the
+## race says, under the same id and with the same words, so its recordings drop in as they are.
+func test_the_voiceover_script_has_every_line_the_race_says() -> void:
+	var f := FileAccess.open("res://docs/announcer/lines.csv", FileAccess.READ)
+	if not check(f != null, "docs/announcer/lines.csv is there"):
+		return
+	var header := f.get_csv_line()
+	eq(Array(header), ["id", "file", "text", "delivery", "max_seconds", "group", "status"], "its columns")
+	var rows := {}
+	while not f.eof_reached():
+		var row := f.get_csv_line()
+		if row.size() == header.size():
+			rows[row[0]] = row
+	check(rows.size() > Announcer.LINES.size(), "more lines than the race says today (variants, stage intros)")
+	for id in Announcer.LINES:
+		if not check(rows.has(id), id + " is in the script"):
+			continue
+		var row: PackedStringArray = rows[id]
+		eq([row[1], row[2], row[6]], [Announcer.cue(id) + ".wav", Announcer.LINES[id], "said"],
+			id + ": its file, its words as the subtitle shows them, marked said")
+		check(Announcer.duration(id) <= float(row[4]) + 0.75, "%s: today's placeholder fits the script's %s s" % [id, row[4]])
+	for id in rows:
+		if rows[id][6] == "said":
+			check(Announcer.LINES.has(id), id + ": marked said, and the race says it")
