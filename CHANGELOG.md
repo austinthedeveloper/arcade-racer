@@ -9,6 +9,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
+- Online players go by their profile's name and avatar (ON-8): the lobby shows each one's
+  picture and name, and the race's standings, notices and results their names, instead of P1
+  to P4. A player on an older build still shows as P2.
 <<<<<<< HEAD
 - Sticker book (MP-12): twenty-four stickers to collect, from a first win and a chain of five
   near misses to a win mirrored, gold on every stage and the Grand Tour won. Each comes once,

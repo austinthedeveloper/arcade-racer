@@ -13,14 +13,25 @@ var finished := false
 var time := 0.0  # its race's seconds since the GO (the host's race clock stops at the host's finish)
 
 
-## A bot in `relay`'s room `room`, in car `car_id`, its messages `lag_ms` late (--bot-lag).
-static func joining(relay: LoopLink.Relay, room: String, car_id: String, lag_ms := 0) -> OnlineBot:
+## Names for the bots (ON-8), so a screenshot shows several: profile names (SaveData.NAMES).
+const NAMES: Array[String] = ["NOVA", "VIPER", "TURBO", "COMET"]
+
+
+## A bot in `relay`'s room `room`, in car `car_id`, its messages `lag_ms` late (--bot-lag),
+## named `player` with its car as its avatar.
+static func joining(relay: LoopLink.Relay, room: String, car_id: String, lag_ms := 0, player := "") -> OnlineBot:
 	var b := OnlineBot.new()
 	var l := LoopLink.new(relay)
 	l.lag_ms = lag_ms
 	l.join(room)
-	b.session = OnlineSession.joining_on(l, car_id)
+	b.session = OnlineSession.joining_on(l, car_id, player, car_id)
 	return b
+
+
+## The `i`th bot's name: from NAMES, skipping the host's own (`host_name`).
+static func made_up_name(i: int, host_name: String) -> String:
+	var names := NAMES.filter(func(n: String) -> bool: return n != host_name)
+	return names[i % names.size()]
 
 
 ## A tick: its room polled; on the grid with `race` (race.gd, or null in the lobby), then off

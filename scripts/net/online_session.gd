@@ -7,12 +7,15 @@ extends RefCounted
 ## the menus and in the race; the online screen and the race read what came in.
 ##
 ## Messages (Arrays, the op first):
-##   guest to host: [HELLO, car], [CAR, state...], [READY], [FIN, time], [AGAIN, on]
-##   host to guests: [LOBBY, stage, mirror, players], [START, stage, mirror, players], [GO],
+##   guest to host: [HELLO, car, name, avatar], [CAR, state...], [READY], [FIN, time], [AGAIN, on]
+##   host to guests: [LOBBY, stage, mirror, players, who], [START, stage, mirror, players, who], [GO],
 ##     [CAR, slot, state...], [FIN, slot, time], [GONE, slot], [NOPE, reason], [AGAIN, slots]
 ##   both ways: [PING, sent], answered [PONG, sent] (the round trip through the relay, ON-12)
 ## Slots: the host is 0, guest n is n + 1. A car's state is CarState. A game ignores an op it
-## doesn't know, so a newer one's messages don't trouble an older one.
+## doesn't know, so a newer one's messages don't trouble an older one, and reads only the
+## fields it knows: names and avatars (ON-8) ride at the ends of HELLO, LOBBY and START, so an
+## older game's HELLO without them shows as P2 and an older guest skips `who`. `who` is
+## slot -> [name, avatar]; both are cleaned on the way in (clean_name, clean_avatar).
 ##
 ## The room's phases: DIALING, then LOBBY until the host starts, LOADING until every game has
 ## the stage (or READY_WAIT), RACING from the GO. After a race the room stays open (ON-9): from
@@ -53,11 +56,18 @@ const FAIR_MS := 300
 enum Quality { UNKNOWN, GOOD, FAIR, POOR }
 ## Where each slot starts, across the road (times Track.side): four abreast, clear of contact.
 const GRID_X: Array[float] = [-0.25, 0.25, -0.75, 0.75]
+## A name from the wire (ON-8) is cut to this many characters, from NAME_CHARS.
+const NAME_MAX := 10
+const NAME_CHARS := "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -."
 
 var link: NetLink
 var phase := Phase.DIALING
 var slot := -1  # this game's: 0 hosting, a guest's once in
 var car_id := "car_vega"  # this game's car
+var profile_name := ""  # this game's player's profile name (MP-10), "" for none: shown as P1 etc.
+var avatar := ""  # and avatar, a car id
+## Slot -> [name, avatar] (ON-8), cleaned: everyone in the room who said theirs.
+var who := {}
 var players := {}  # slot -> car id: everyone in the room, this game too
 var stage := 0  # into Stages, the host's pick
 var mirror := false
@@ -87,17 +97,19 @@ var _heard := {}  # and the clock when that came back
 var _hello := false  # a guest's HELLO is sent (once: the relay cuts off a game sending 200 a second)
 
 
-## A room opened on `l`, with this game's car.
-static func hosting_on(l: NetLink, car: String) -> OnlineSession:
+## A room opened on `l`, with this game's car and its player's profile name and avatar (ON-8).
+static func hosting_on(l: NetLink, car: String, player := "", pic := "") -> OnlineSession:
 	var s := OnlineSession.new()
 	s.link = l
 	s.car_id = car
+	s.profile_name = clean_name(player)
+	s.avatar = clean_avatar(pic)
 	return s
 
 
-## A room joined on `l`, with this game's car.
-static func joining_on(l: NetLink, car: String) -> OnlineSession:
-	return hosting_on(l, car)
+## A room joined on `l`, with this game's car and its player's name and avatar.
+static func joining_on(l: NetLink, car: String, player := "", pic := "") -> OnlineSession:
+	return hosting_on(l, car, player, pic)
 
 
 func hosting() -> bool:
@@ -114,6 +126,57 @@ func slots() -> Array:
 ## "P1" to "P4".
 static func player_name(s: int) -> String:
 	return "P%d" % (s + 1)
+
+
+## A name off the wire (ON-8), which anyone could have sent: capitals, digits, spaces and
+## - . only, spaces run together, at most NAME_MAX long; "" for anything else.
+static func clean_name(v: Variant) -> String:
+	if not v is String and not v is StringName:
+		return ""
+	var out := ""
+	for c in String(v).to_upper():
+		if NAME_CHARS.contains(c) and not (c == " " and (out == "" or out.ends_with(" "))):
+			out += c
+	return out.left(NAME_MAX).strip_edges()
+
+
+## An avatar off the wire: a car id in Cars.LIST, else "".
+static func clean_avatar(v: Variant) -> String:
+	if not v is String and not v is StringName:
+		return ""
+	for car: Dictionary in Cars.LIST:
+		if car["id"] == String(v):
+			return car["id"]
+	return ""
+
+
+## What slot `s` shows as: its profile's name (ON-8), or P1 to P4 for a game that didn't say
+## one. A name an earlier slot has too gets its slot's number ("ACE 2").
+func name_of(s: int) -> String:
+	var n := String(who.get(s, ["", ""])[0])
+	if n == "":
+		return player_name(s)
+	for other: int in who:
+		if other < s and String(who[other][0]) == n:
+			return "%s %d" % [n, s + 1]
+	return n
+
+
+## Slot `s`'s avatar (a car id), "" for none.
+func avatar_of(s: int) -> String:
+	return String(who.get(s, ["", ""])[1])
+
+
+## A `who` off the wire, cleaned: only int slots in range with a [name, avatar].
+static func clean_who(v: Variant) -> Dictionary:
+	var out := {}
+	if not v is Dictionary:
+		return out
+	for k: Variant in v:
+		if not (k is int) or k < 0 or k >= MAX_PLAYERS or not v[k] is Array or v[k].size() < 2:
+			continue
+		out[k] = [clean_name(v[k][0]), clean_avatar(v[k][1])]
+	return out
 
 
 ## Where a slot starts across the road.
@@ -174,6 +237,7 @@ func _in_room() -> void:
 	elif hosting():
 		slot = 0
 		players = {0: car_id}
+		who = {0: [profile_name, avatar]}
 		phase = Phase.LOBBY
 	elif version_refusal(Updater.version(), link.host_version, link.oldest_version) != "":
 		error = version_refusal(Updater.version(), link.host_version, link.oldest_version)
@@ -181,7 +245,7 @@ func _in_room() -> void:
 	else:
 		slot = link.you + 1
 		_hello = true
-		link.send_to(NetLink.HOST, [HELLO, car_id])
+		link.send_to(NetLink.HOST, [HELLO, car_id, profile_name, avatar])
 
 
 # --- The host ------------------------------------------------------------------------
@@ -202,7 +266,7 @@ func start() -> void:
 	phase = Phase.LOADING
 	_wait = 0.0
 	_loaded.clear()
-	link.send_to(NetLink.ALL, [START, stage, mirror, players])
+	link.send_to(NetLink.ALL, [START, stage, mirror, players, who])
 
 
 func _go() -> void:
@@ -213,7 +277,7 @@ func _go() -> void:
 
 func _send_lobby() -> void:
 	if hosting() and phase != Phase.DIALING:
-		link.send_to(NetLink.ALL, [LOBBY, stage, mirror, players])
+		link.send_to(NetLink.ALL, [LOBBY, stage, mirror, players, who])
 
 
 func _host_got(guest: int, msg: Array) -> void:
@@ -228,6 +292,7 @@ func _host_got(guest: int, msg: Array) -> void:
 		NetLink.LEFT:
 			_rtt.erase(s)
 			_heard.erase(s)
+			who.erase(s)
 			if players.erase(s):
 				_dropped(s)
 				for other: int in slots():
@@ -240,6 +305,7 @@ func _host_got(guest: int, msg: Array) -> void:
 		HELLO:
 			if phase == Phase.LOBBY and s < MAX_PLAYERS:
 				players[s] = String(msg[1])
+				who[s] = [clean_name(msg[2] if msg.size() > 2 else ""), clean_avatar(msg[3] if msg.size() > 3 else "")]
 				_send_lobby()
 		READY:
 			_loaded[s] = true
@@ -295,12 +361,14 @@ func _guest_got(msg: Array) -> void:
 			stage = int(msg[1])
 			mirror = bool(msg[2])
 			players = msg[3]
+			who = clean_who(msg[4] if msg.size() > 4 else null)
 			if phase == Phase.DIALING:
 				phase = Phase.LOBBY
 		START:
 			stage = int(msg[1])
 			mirror = bool(msg[2])
 			players = msg[3]
+			who = clean_who(msg[4] if msg.size() > 4 else null)
 			_new_race()
 			phase = Phase.LOADING
 		GO:
@@ -314,6 +382,7 @@ func _guest_got(msg: Array) -> void:
 				finishes[int(msg[1])] = float(msg[2])
 		GONE:
 			players.erase(int(msg[1]))
+			who.erase(int(msg[1]))
 			_dropped(int(msg[1]))
 		NOPE:
 			error = String(msg[1])

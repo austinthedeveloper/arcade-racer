@@ -117,9 +117,13 @@ func test_the_longest_text_fits_at_every_scale() -> void:
 				check(UiText.width(stage_name, _px(15, ie)) <= lay["intro"].size.x - 16.0 * ie, label + "intro fits: " + stage_name)
 			# An online notice
 			var ne: float = e.call("notice")
-			for slot in OnlineSession.MAX_PLAYERS:
-				var notice := "%s DROPPED OUT" % OnlineSession.player_name(slot)
-				check(UiText.width(notice, _px(11, ne)) + 30.0 * ne <= lay["notice"].size.x, label + "fits: " + notice)
+			var longest := ""  # a profile's name (ON-8), with a slot's number when two share it
+			for n: String in SaveData.NAMES:
+				longest = n if UiText.width(n, 11) > UiText.width(longest, 11) else longest
+			for who: String in [OnlineSession.player_name(3), longest + " 4"]:
+				var notice := "%s DROPPED OUT" % who
+				var ns := Hud.notice_size(notice, lay["notice"].size.x / ne)  # (drawn smaller when long)
+				check(UiText.width(notice, _px(ns, ne)) + 30.0 * ne <= lay["notice"].size.x, label + "fits: " + notice)
 			# The countdown's numbers
 			for n in ["1", "2", "3"]:
 				check(UiText.width(n, Hud.COUNTDOWN_SIZE) <= lay["countdown"].size.x, label + "the countdown's %s fits" % n)

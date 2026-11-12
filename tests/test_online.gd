@@ -75,6 +75,80 @@ func test_a_guest_says_hello_once_while_the_lobby_is_on_its_way() -> void:
 	eq(host.players, {0: "car_vega", 1: "car_mesa"}, "with its car")
 
 
+## Names and avatars (ON-8): each game's profile name and avatar ride in its HELLO, and the
+## host's LOBBY and START carry everyone's to every guest.
+func test_the_hello_carries_the_profiles_name_and_avatar() -> void:
+	var relay := LoopLink.Relay.new()
+	var h := LoopLink.new(relay)
+	h.host()
+	var host := OnlineSession.hosting_on(h, "car_vega", "ACE", "car_vega")
+	host.poll(0.0)
+	var games: Array = [host]
+	for pair: Array in [["car_mesa", "NOVA", "car_bruiser"], ["car_kestrel", "NOVA", "car_kestrel"]]:
+		var g := LoopLink.new(relay)
+		g.join(h.room)
+		games.append(OnlineSession.joining_on(g, pair[0], pair[1], pair[2]))
+	games[1].poll(0.0)
+	var hello: Array = h._inbox.filter(func(m: Array) -> bool: return m[1][0] == OnlineSession.HELLO)[0][1]
+	eq(hello, [OnlineSession.HELLO, "car_mesa", "NOVA", "car_bruiser"], "the hello: car, name, avatar")
+	settle(games)
+	for s: OnlineSession in games:
+		eq([s.name_of(0), s.name_of(1), s.name_of(2)], ["ACE", "NOVA", "NOVA 3"],
+			"everyone's names on every game (the second NOVA with its slot)")
+		eq([s.avatar_of(0), s.avatar_of(1), s.avatar_of(2)], ["car_vega", "car_bruiser", "car_kestrel"], "and avatars")
+	host.start()
+	settle(games)
+	eq(games[2].name_of(1), "NOVA", "the start carries them too")
+	var r := RivalCar.remote_player(Cars.find("car_mesa"), 1, games[2].name_of(1))
+	eq(r.profile.driver, "NOVA", "a remote car is shown by its name (the HUD's board, the results)")
+	eq(RivalCar.remote_player(Cars.find("car_mesa"), 1).profile.driver, "P2", "or P2 without one")
+
+
+func test_an_older_game_without_a_name_shows_as_p2() -> void:
+	var r := room(1)
+	var h: OnlineSession = r[0]
+	eq(h.name_of(0), "P1", "no profile name: P1")
+	eq(h.name_of(1), "P2", "a guest that said none: P2")
+	eq(h.avatar_of(1), "", "and no avatar")
+	# An older guest's HELLO (just the car)
+	h._host_got(2, [OnlineSession.HELLO, "car_bruiser"])
+	eq(h.name_of(3), "P4", "an old HELLO: P4")
+	eq(h.players[3], "car_bruiser", "still in, with its car")
+	# An older host's LOBBY (no names at the end)
+	var g: OnlineSession = r[1]
+	g._guest_got([OnlineSession.LOBBY, 1, false, {0: "car_vega", 1: "car_mesa"}])
+	eq([g.name_of(0), g.name_of(1)], ["P1", "P2"], "an old lobby: P1, P2")
+
+
+func test_names_off_the_wire_are_cleaned() -> void:
+	eq(OnlineSession.clean_name("nova"), "NOVA", "capitals")
+	eq(OnlineSession.clean_name("[b]X<script>\n\t"), "BXSCRIPT", "only letters, digits, spaces, - and .")
+	eq(OnlineSession.clean_name("  A   B  "), "A B", "spaces run together and trimmed")
+	eq(OnlineSession.clean_name("ABCDEFGHIJKLMNOP").length(), OnlineSession.NAME_MAX, "cut to the cap")
+	eq(OnlineSession.clean_name(42), "", "not a string: none")
+	eq(OnlineSession.clean_name(["ACE"]), "", "nor an array")
+	eq(OnlineSession.clean_avatar("car_mesa"), "car_mesa", "a car id")
+	eq(OnlineSession.clean_avatar("res://evil.tscn"), "", "anything else: none")
+	eq(OnlineSession.clean_avatar(7), "", "or a number")
+	var who := OnlineSession.clean_who({0: ["ace", "car_vega"], 1: "NOVA", 9: ["X", "car_vega"], "2": ["Y", "car_vega"], 3: ["Z"]})
+	eq(who, {0: ["ACE", "car_vega"]}, "only slots in range with a name and avatar")
+	eq(OnlineSession.clean_who("junk"), {}, "and none from junk")
+	# A host given a messy HELLO keeps it clean
+	var r := room(1)
+	r[0]._host_got(1, [OnlineSession.HELLO, "car_bruiser", "a very long name indeed!", {"x": 1}])
+	eq(r[0].name_of(2), "A VERY LON", "cleaned and capped")
+	eq(r[0].avatar_of(2), "", "a bad avatar: none")
+
+
+func test_the_bots_have_made_up_names() -> void:
+	var names: Array = []
+	for i in 3:
+		names.append(OnlineBot.made_up_name(i, "NOVA"))
+	eq(names, ["VIPER", "TURBO", "COMET"], "three names, none the host's")
+	for n: String in OnlineBot.NAMES:
+		check(SaveData.NAMES.has(n), "a profile's name: " + n)
+
+
 func test_a_wrong_room_and_an_old_version_are_refused() -> void:
 	var relay := LoopLink.Relay.new()
 	var g := LoopLink.new(relay)

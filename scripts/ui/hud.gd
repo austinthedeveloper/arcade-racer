@@ -222,7 +222,8 @@ func _draw() -> void:
 		_draw_subtitle(_element("subtitle"), race.audio.announcer.subtitle())
 		_done()
 	if race.notice_time > 0.0:
-		_draw_notice(_element("notice").get_center(), race.notice, notice_alpha(race.notice_time))
+		var nr := _element("notice")
+		_draw_notice(nr.get_center(), race.notice, notice_alpha(race.notice_time), notice_size(race.notice, nr.size.x))
 		_done()
 	if race.audio != null and race.audio.tag_age >= 0.0:
 		_draw_now_playing(_element("now_playing"), Radio.now_playing(race.audio.station, race.audio.song), race.audio.tag_age)
@@ -350,13 +351,22 @@ static func net_color(q: int) -> Color:
 
 ## An online notice (ON-11), "P2 DROPPED OUT": a dark pill with a red dot, under the route bar
 ## and the subtitle, fading out over its last half second.
-func _draw_notice(center: Vector2, text: String, a: float) -> void:
-	var tw := UiText.width(text, 11)
+func _draw_notice(center: Vector2, text: String, a: float, size := 11) -> void:
+	var tw := UiText.width(text, text_size(size))
 	var r := Rect2(center.x - tw / 2.0 - 18, center.y - 10, tw + 30, 20)
 	draw_rect(r, Color(0.04, 0.03, 0.1, 0.8 * a))
 	draw_rect(Rect2(r.position.x, r.position.y, 2, r.size.y), Color(PALETTE["behind"], a))
 	draw_circle(Vector2(r.position.x + 10, center.y), 3.5, Color(PALETTE["behind"], a))
-	_text(Vector2(r.position.x + 20, center.y + 4), text, 11, Color(1, 1, 1, a))
+	_text(Vector2(r.position.x + 20, center.y + 4), text, size, Color(1, 1, 1, a))
+
+
+## The size a notice's text is drawn at in a `room` wide space: 11, or smaller (down to
+## UiText.MIN_SIZE) for a long one, as a player's profile name can make it (ON-8).
+static func notice_size(text: String, room: float) -> int:
+	var size := 11
+	while size > UiText.MIN_SIZE and UiText.width(text, text_size(size)) + 30.0 > room:
+		size -= 1
+	return size
 
 
 ## The new-sticker card (MP-12) `age` seconds after it came up, with `ids` earned: {"id",

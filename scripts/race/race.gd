@@ -326,7 +326,7 @@ func start_race() -> void:
 	if online != null:
 		for s: int in online.racers:
 			if s != online.slot and online.players.has(s):
-				var r := RivalCar.remote_player(Cars.find(String(online.players[s])), s)
+				var r := RivalCar.remote_player(Cars.find(String(online.players[s])), s, online.name_of(s))
 				r.reset(player.position)
 				r.distance = player.distance
 				r.x = OnlineSession.grid_x(s) * track.side()
@@ -1471,7 +1471,7 @@ func drive_itself() -> void:
 ## fades, and goes (one already over the line stays in the standings, unseen).
 func _fade_out(r: RivalCar, dt: float) -> void:
 	if r.fade >= 1.0:
-		show_notice("%s DROPPED OUT" % OnlineSession.player_name(r.slot))
+		show_notice("%s DROPPED OUT" % r.profile.driver)  # (its name: the room has let it go)
 	r.fade = maxf(0.0, r.fade - dt / FADE_TIME)
 	r.distance += r.speed * dt
 	r.position = fposmod(r.distance, track.length)
