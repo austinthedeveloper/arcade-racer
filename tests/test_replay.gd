@@ -8,7 +8,7 @@ extends TestSuite
 func _finished_race() -> Node:
 	var r := race(true, true, 0, true)
 	drive(r, 200)
-	r.player.distance = r.finish_distance - 60000.0
+	r.player.distance = r.finish_distance - 90000.0  # (more than six seconds of road at top speed)
 	r.player.position = fposmod(r.player.distance, r.track.length)
 	run_until(r, func() -> bool: return r.state != r.State.RACING, 3000)
 	r.set("_autodrive", false)  # (the player's input from here, for the presses)

@@ -107,6 +107,49 @@ What the pass changed, deliberately little since the game is balanced by feel:
   rubber band (`difficulty/*`) and a pace per stage on top (`balance/*`, all 1), with a rival's
   base pace capped at its car's top speed (`Rivals.MAX_PACE`).
 
+## The grid, and Easy for a casual player (2026-11-12)
+
+Playtesting found the player running into the grid off the line nearly every race. A probe
+(full gas, a perfect launch, straight up the middle) touched a rival within 0.6 s on every
+stage: the grid was packed into 1500 units just ahead, its cars a car's width either side of
+the player's, and the launch is three times a rival's acceleration. Now:
+
+- **The grid is strung out**: the back slot 3000 units ahead of the player's nose, a slot
+  every 1800 on up the road (`grid/back`, `grid/step`), the front nearly 14000 ahead,
+  so the race is a chase: the autodrive reaches the front after 8 to 15 s, not 1 to 3.
+- **In the outermost lanes**, staggered left and right (`Rivals.grid_x`), leaving the middle
+  to the player, and **held there** for `grid/hold` (4 s) after GO.
+- **Rivals check their mirrors** (`AIDriver.mirror_check`): none moves over into a racer
+  alongside (within `ai/mirror_reach`). Leaving the grid lane, or heading for the inside of a
+  bend, they used to steer into the player's door.
+
+The autodrive's bumps in its first 8 s, all eight stages: 235 frames before, 11 after.
+Traffic keeps clear of the whole grid (`Traffic.keep_clear`). Thunderhead's and Bayou's first
+checkpoints got 2 and 3 more seconds: the autodrive now starts behind the whole field.
+
+**Easy, judged by a casual player.** The autodrive is far better than a kid steering with auto
+gas, so `tools/soak.sh --report --driver=casual` drives as one (`CasualDriver`: the autodrive's
+steering 0.35 s late, on the keys, no launch, no brake, no nitro). Over six draws of the field
+per stage on Easy:
+
+| Easy | Mean place | On the podium | Timed out | Least clock left |
+|---|---|---|---|---|
+| Before | 5.7 | 10 of 48 | 0 | 0.5 s |
+| After | 2.1 | 41 of 48 | 0 | 6.9 s |
+
+What did it: a crash costs the player less on Easy (`difficulty/easy_crash_ease` 0.4: a crash
+lasts 40% less and leaves 40% of the speed; nobody else's crashes change), slower rivals
+(`easy_pace` 0.94 to 0.9) and bigger checkpoint bonuses (`easy_clock` 1.1 to 1.35). A stronger
+rubber band and less traffic were tried and made it worse: rivals crawling round the player,
+or not held up by traffic, crashed into each other and the player more. The casual player
+finishes last on Normal and runs out of time on three of its stages: Normal is for a player
+who brakes.
+
+Hard: the rivals never wait (`hard_ease` 0.02 to 0) and catch up harder from behind
+(`hard_boost` 0.06 to 0.14, `ai/band_max` 0.08 to 0.14, which caps it), so the autodrive wins
+two stages of eight on Hard (Timberline, Skyline), not most. Easy's band spread is 50 s: the
+autodrive leaves its slower rivals far behind.
+
 ## Clock per difficulty (RC-23)
 
 Each checkpoint's time bonus is the stage's (WS-11) after the timer option, times the

@@ -111,6 +111,12 @@ func side() -> float:
 	return -1.0 if mirrored else 1.0
 
 
+## How far `to` is up the road from `from` (both world z): the short way round the loop,
+## negative when `to` is behind.
+func gap(from: float, to: float) -> float:
+	return wrapf(to - from, -length * 0.5, length * 0.5)
+
+
 func find_segment(z: float) -> Segment:
 	return segments[posmod(floori(z / Cfg.SEGMENT_LENGTH), segments.size())]
 

@@ -10,9 +10,9 @@ signal options_requested
 
 enum State { COUNTDOWN, RACING, FINISHED, TIME_UP }
 
+const RADIO_SHOW := 1.5  # seconds the new station's name stays up
 ## The clock on the ARCADE timer, for a stage whose theme has no "clock" of its own (each
 ## stage sets one, WS-11); Settings scales it for the others.
-const RADIO_SHOW := 1.5  # seconds the new station's name stays up
 const START_TIME := 45.0
 const COUNTDOWN_TIME := 3.0  # seconds from the grid to GO
 const CHECKPOINT_BONUS := 25.0
@@ -209,6 +209,10 @@ var _shake := 0.0  # camera shake as designed, in pixels; the screen shake optio
 var _fov_stretch := 0.0  # 0..camera/nitro_fov_stretch (Tuning), eased while nitro burns
 var _was_airborne := false
 var _autodrive := false
+## Autodriven as a casual player would drive (CasualDriver): late, on the keys, no launch,
+## no nitro. For the balance report (tests/soak.gd --driver=casual) and --casual.
+var casual := false
+var _casual_driver := CasualDriver.new()
 var _log_banners := false
 var _no_traffic := false
 var _no_rivals := false
@@ -347,6 +351,7 @@ func start_race() -> void:
 		tour_state.start_stage = stage_index
 	rivals = Rivals.new()
 	difficulty = Difficulty.of(Settings.difficulty)
+	player.crash_ease = difficulty.crash_ease
 	rivals.spawn(track, player, car_id, 0 if _no_rivals or solo() else Rivals.COUNT,
 		Rivals.SEED + stage_index, difficulty, tour_state.drivers if tour else [], Rivals.stage_pace_of(stage_index))
 	_shown.clear()
@@ -733,6 +738,8 @@ func _physics_process(dt: float) -> void:
 	var inp: DriveInput = Settings.drive_input(InputRouter.state)
 	if _autodrive or demo:
 		inp = _autodrive_input()
+		if casual and not demo:
+			inp = _casual_driver.next(inp, dt, state != State.COUNTDOWN)
 	else:
 		if Settings.co_pilot:  # (AC-14: in place of the steering assist, and braking for the bends)
 			inp = Assists.co_pilot(inp, player, track)
@@ -1509,6 +1516,7 @@ func _spawn_p2() -> void:
 	var car2 := Cars.find(id)
 	p2 = SplitScreen.human(car2, 1)
 	p2.reset(player.position)
+	p2.crash_ease = difficulty.crash_ease
 	p2.distance = player.distance
 	p2.x = SplitScreen.grid_x(1, track.side())
 	p2.road_y = player.road_y
@@ -1878,7 +1886,9 @@ func _redraw() -> void:
 func _parse_dev_args() -> void:
 	Tuning.boot(DevArgs.value("--tuning-file", Tuning.PATH))  # (the game has, unless this is race.tscn on its own)
 	for arg in OS.get_cmdline_user_args():
-		if arg == "--autodrive":
+		if arg == "--casual":
+			casual = true
+		elif arg == "--autodrive":
 			_autodrive = true
 			_log_banners = true
 		elif arg.begins_with("--stage="):
@@ -1928,63 +1938,9 @@ func _parse_dev_args() -> void:
 			Photo.dir = _screenshot_dir
 
 
-## The autodrive's controls for `car` (the player's, or in a split race player 2's).
+## The autodrive's controls for `car` (the player's, or in a split race player 2's): Autodrive.
 func _autodrive_input(car: PlayerCar = player) -> DriveInput:
-	var inp := DriveInput.new()
-	var seg := track.find_segment(car.position + Cfg.PLAYER_Z + 3000.0)
-	inp.throttle = 0.0 if state == State.COUNTDOWN and countdown > 0.1 else 1.0
-	var lane := _drive_x if not is_nan(_drive_x) else _autodrive_lane(car)
-	inp.steer = clampf((seg.curve * 0.25) + (lane - car.x) * 1.5, -1.0, 1.0)
-	# A dab of brake with the lock on throws it into a power slide through a hard bend (RC-8)
-	if autodrive_slides(seg.curve, inp.steer, car):
-		inp.brake = 1.0
-	inp.nitro_pressed = _frame % 600 == 300
-	inp.shift_up_pressed = car.on_limiter()
-	inp.shift_down_pressed = car.manual and car.gear > 1 and car.speed < PlayerCar.gear_limit(car.gear - 1) * 0.8
-	return inp
-
-
-## Whether the autodrive brakes into a power slide: a hard bend ahead (Track.CURVE_HARD), the
-## lock on for it and the speed for a slide, on the road and not sliding already (the brake
-## would only brake).
-static func autodrive_slides(curve_ahead: float, steer: float, car: PlayerCar) -> bool:
-	return car.slide == 0.0 and not car.airborne and not car.offroad and absf(curve_ahead) >= Track.CURVE_HARD \
-		and absf(steer) >= Tuning.v("slide/steer") and car.speed >= Cfg.MAX_SPEED * Tuning.v("slide/speed")
-
-
-## The lane with the most open road ahead, keeping the current one on a tie. Anything slower
-## than cruising speed blocks a lane, so a slowed car doesn't sit behind a tractor.
-func _autodrive_lane(me: PlayerCar = player) -> float:
-	const LOOKAHEAD := 40  # segments
-	var want := maxf(me.speed, Cfg.MAX_SPEED * 0.8)
-	var here := track.find_segment(me.position + Cfg.PLAYER_Z).index
-	var lanes: Array = Traffic.lanes(track, track.narrowest_ahead(me.position + Cfg.PLAYER_Z))
-	var best: float = lanes[0]
-	var best_gap := -1
-	lanes.sort_custom(func(a: float, b: float) -> bool: return absf(a - me.x) < absf(b - me.x))
-	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
-	for lane: float in lanes:
-		# A hazard (RC-19) blocks a lane like a slow car
-		var gap := RoadHazards.room(track, me.position + Cfg.PLAYER_Z, lane, half_car, AIDriver.LANE_CLEARANCE, LOOKAHEAD)
-		for r in rivals.cars:
-			if r == me:
-				continue  # (player 2 itself, in a split race)
-			var ahead := wrapf(r.position - me.position, -track.length * 0.5, track.length * 0.5)
-			if ahead > 0.0 and absf(r.x - lane) < 0.3 and r.speed < want:
-				gap = mini(gap, int(ahead / Cfg.SEGMENT_LENGTH))
-		for n in gap:
-			var ahead := track.segments[(here + n) % track.segments.size()]
-			var blocked := false
-			for car in ahead.cars:
-				if absf(car.offset - lane) < 0.3 and car.speed < want:
-					blocked = true
-			if blocked:
-				gap = n
-				break
-		if gap > best_gap:
-			best_gap = gap
-			best = lane
-	return best
+	return Autodrive.input(car, track, rivals.cars, state == State.COUNTDOWN and countdown > 0.1, _frame, _drive_x)
 
 
 ## --at-hazard=ID: the race starts HAZARD_LEAD segments short of the stage's chosen hazard of

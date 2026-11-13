@@ -17,14 +17,14 @@ const COLORS := [Color(0.5, 0.5, 0.58), Color("#e08a3a"), Color("#c9d4ff"), Colo
 
 ## Seconds for gold, silver and bronze on Normal, by stage id (Stages.POSTCARDS).
 const TIMES := {
-	"palm_coast": [94.0, 106.0, 117.0],
-	"redrock": [84.0, 95.0, 104.0],
+	"palm_coast": [89.0, 101.0, 111.0],
+	"redrock": [81.0, 92.0, 101.0],
 	"neon": [73.0, 83.0, 91.0],
-	"timberline": [85.0, 96.0, 106.0],
-	"bayou": [79.0, 90.0, 98.0],
-	"harvest": [79.0, 89.0, 98.0],
-	"thunder": [69.0, 78.0, 86.0],
-	"skyline": [97.0, 110.0, 121.0],
+	"timberline": [77.0, 87.0, 95.0],
+	"bayou": [82.0, 92.0, 102.0],
+	"harvest": [84.0, 95.0, 104.0],
+	"thunder": [66.0, 75.0, 83.0],
+	"skyline": [92.0, 105.0, 115.0],
 }
 ## Each difficulty's times are Normal's times this much (Difficulty.Level order): Easy gives
 ## a little more time, Hard a little less.

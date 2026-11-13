@@ -14,7 +14,7 @@ static func in_wake(me: PlayerCar, track: Track, racers: Array) -> bool:
 	for other: PlayerCar in racers:
 		if other == me or me.speed < Cfg.MAX_SPEED * Tuning.v("draft/min_speed"):
 			continue
-		var ahead := wrapf(other.position - me.position, -track.length * 0.5, track.length * 0.5)
+		var ahead := track.gap(me.position, other.position)
 		if ahead > 0.0 and ahead < Tuning.v("draft/length") and absf(other.x - me.x) < Tuning.v("draft/width"):
 			return true
 	var here := track.find_segment(nose).index
@@ -22,7 +22,7 @@ static func in_wake(me: PlayerCar, track: Track, racers: Array) -> bool:
 		for car: Traffic.TrafficCar in track.segments[(here + k) % track.segments.size()].cars:
 			if not Traffic.BIG.has(car.sprite) or not car.solid() or car.oncoming or me.speed < car.speed * Tuning.v("draft/keep_up"):
 				continue
-			var ahead := wrapf(car.z - nose, -track.length * 0.5, track.length * 0.5)
+			var ahead := track.gap(nose, car.z)
 			if ahead > 0.0 and ahead < Tuning.v("draft/length") and absf(car.offset - me.x) < Tuning.v("draft/width"):
 				return true
 	return false

@@ -22,6 +22,7 @@ const PLAYER_Z := 1500.0  # distance from the camera to the player's car
 
 # Cars
 const CAR_WIDTH := 1000.0  # world units; a lane is 1000 wide
+const HALF_CAR := CAR_WIDTH * 0.5 / ROAD_WIDTH  # half a car's width, in road half-widths (the x racers drive at)
 const MAX_SPEED := 12000.0  # world units per second
 const DISPLAY_TOP_SPEED := 198.0  # mph shown at MAX_SPEED
 const MAX_X := 3.0  # furthest off the road center the car can go, in road half-widths

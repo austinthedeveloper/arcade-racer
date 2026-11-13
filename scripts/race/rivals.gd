@@ -6,11 +6,10 @@ extends RefCounted
 
 const COUNT := 7
 const SEED := 4021
-const GRID_FRONT := 2200.0  # world units the front of the grid is ahead of the player's nose
-## Between one grid slot and the next, staggered left and right: two cars in a lane start
-## well clear of CONTACT_LENGTH, so the launch isn't a pile of bumps.
-const GRID_STEP := 250.0
-const GRID_X := 0.5
+## The grid: the back slot grid/back world units ahead of the player's nose, then a slot
+## every grid/step on up the road, staggered between the outermost lanes either side
+## (grid_x), the player starting in the middle (Tuning). Strung out and clear of the middle,
+## so the player's launch doesn't plough into the back of it and the race is a chase.
 ## The most a rival's base pace comes to, of its car's top speed, whatever the difficulty and
 ## the stage ask for (the rubber band can still add a little).
 const MAX_PACE := 1.0
@@ -46,7 +45,8 @@ func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = 
 		for prof: RivalProfile in pool:
 			if prof.driver == want:
 				named.append(prof)
-	for i in mini(count, pool.size()):
+	var n := mini(count, pool.size())
+	for i in n:
 		var pick := rng.randi() % pool.size()
 		var prof: RivalProfile = named[i] if i < named.size() else pool.pop_at(pick)
 		var car := Cars.find(prof.car_id)
@@ -54,13 +54,33 @@ func spawn(track: Track, player: PlayerCar, player_car_id: String, count: int = 
 		r.profile = prof
 		r.top_speed *= minf(prof.pace * difficulty.rival_pace * stage_pace, MAX_PACE)
 		r.base_top = r.top_speed
-		var ahead := GRID_FRONT - i * GRID_STEP
+		var ahead := grid_ahead(i, n)
 		r.reset(player.position + ahead)
 		r.distance = player.distance + ahead
-		r.x = (-GRID_X if i % 2 == 0 else GRID_X) * track.side()
+		r.x = grid_x(track, r.position + Cfg.PLAYER_Z, i)
+		r.driver.grid_hold = Tuning.v("grid/hold")
+		r.driver.hold_x = r.x
 		r.road_y = track.height_at(r.position + Cfg.PLAYER_Z)
 		r.strips = CarSprites.strips(car["strip"])
 		cars.append(r)
+
+
+## How far ahead of the player's nose grid slot `slot` of `count` starts: slot 0 at the front.
+static func grid_ahead(slot: int, count: int) -> float:
+	return Tuning.v("grid/back") + (count - 1 - slot) * Tuning.v("grid/step")
+
+
+## Across the road, grid slot `slot` at `z`: the outermost lane, left for even slots and
+## right for odd ones (swapped on a mirrored stage), clear of the player's car in the middle.
+static func grid_x(track: Track, z: float, slot: int) -> float:
+	var outer: float = absf(track.find_segment(z).lane_offsets()[-1])
+	return (-outer if slot % 2 == 0 else outer) * track.side()
+
+
+## How far ahead of the player's nose the front of a full grid starts: traffic keeps clear of
+## that much road ahead of the start (Traffic.keep_clear).
+static func grid_length() -> float:
+	return grid_ahead(0, COUNT)
 
 
 ## The rivals' pace on stage `stage` (into Stages), on top of the difficulty's: the stage's
@@ -167,7 +187,7 @@ func finished_count() -> int:
 ## quarter of top speed beside a rival). Nobody crashes. A ghosted car (the GHOST power-up, or
 ## one just back from a crash) drives right through the others.
 static func resolve_contacts(racers: Array, track: Track) -> void:
-	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
+	var half_car := Cfg.HALF_CAR
 	var reach := half_car * 2.0 * Tuning.v("crashes/hit_overlap")
 	var was_rubbing := {}
 	for r: PlayerCar in racers:
@@ -179,10 +199,10 @@ static func resolve_contacts(racers: Array, track: Track) -> void:
 			var b: PlayerCar = racers[j]
 			if a.airborne or b.airborne or a.ghosted() or b.ghosted() or absf(a.x - b.x) >= reach:
 				continue
-			var dz := wrapf(b.position - a.position, -track.length * 0.5, track.length * 0.5)
+			var dz := track.gap(a.position, b.position)
 			if absf(dz) >= CONTACT_LENGTH:
 				continue
-			var was := wrapf(b.last_position - a.last_position, -track.length * 0.5, track.length * 0.5)
+			var was := track.gap(a.last_position, b.last_position)
 			if absf(was) >= CONTACT_LENGTH:
 				# Ran into the back of it
 				var front := b if dz > 0.0 else a

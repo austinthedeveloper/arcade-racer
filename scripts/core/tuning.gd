@@ -12,9 +12,9 @@ const PATH := "user://tuning.cfg"
 const PRESET_DIR := "user://tuning_presets"
 const LOG_PATH := "user://tuning_log.txt"
 ## The areas, in the debug panel's page order. A key is "area/name".
-const AREAS := ["driving", "slide", "crashes", "ai", "difficulty", "balance", "traffic", "draft", "launch", "power_ups", "hazards", "scoring", "camera",
+const AREAS := ["driving", "slide", "crashes", "ai", "grid", "difficulty", "balance", "traffic", "draft", "launch", "power_ups", "hazards", "scoring", "camera",
 	"world", "assists", "first_drive", "survival"]
-const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "DIFFICULTY", "STAGE BALANCE", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "HAZARDS", "SCORING",
+const AREA_NAMES := ["DRIVING", "POWER SLIDE", "CRASHES", "AI RIVALS", "THE GRID", "DIFFICULTY", "STAGE BALANCE", "TRAFFIC", "DRAFTING", "LAUNCH", "POWER-UPS", "HAZARDS", "SCORING",
 	"CAMERA", "WORLD", "ASSISTS", "FIRST DRIVE", "SURVIVAL"]
 ## key: [default, min, max, step, what it is]. tools/tuning_adopt.py rewrites the defaults in
 ## place, so keep one value to a line, the default first.
@@ -73,21 +73,28 @@ const TABLE := {
 	"ai/block_rest": [5.0, 0.0, 15.0, 0.5, "seconds it lets a car by after"],
 	"ai/swerve_rate": [0.25, 0.0, 2.0, 0.05, "chance per second an erratic rival picks a new line"],
 	"ai/band_range": [4000.0, 500.0, 15000.0, 250.0, "world units from the player where the rubber band is full"],
-	"ai/band_max": [0.08, 0.0, 0.3, 0.01, "most the rubber band changes a rival's speed, either way"],
+	"ai/band_max": [0.14, 0.0, 0.3, 0.01, "most the rubber band changes a rival's speed, either way"],
+	"grid/back": [3000.0, 0.0, 5000.0, 100.0, "world units the back of the starting grid is ahead of the player's nose"],
+	"grid/step": [1800.0, 100.0, 3000.0, 50.0, "world units from one grid slot to the next, up the road"],
+	"grid/hold": [4.0, 0.0, 6.0, 0.25, "seconds after GO a rival keeps to its grid slot's lane before steering for its line"],
+	"ai/mirror_reach": [600.0, 0.0, 2000.0, 50.0, "world units along the road, either way, a rival won't move over into a racer within"],
 	"ai/contact_slowdown": [0.97, 0.8, 1.0, 0.01, "share of the front car's speed the car behind drops to on contact"],
 	"ai/side_push_loss": [0.02, 0.0, 0.2, 0.01, "share of speed a side contact between racers scrubs off"],
-	"difficulty/easy_pace": [0.94, 0.8, 1.1, 0.01, "easy: every rival's pace times this"],
+	"difficulty/easy_pace": [0.9, 0.8, 1.1, 0.01, "easy: every rival's pace times this"],
 	"difficulty/easy_ease": [0.08, 0.0, 0.3, 0.01, "easy: most a rival ahead of you gives up (the rubber band)"],
 	"difficulty/easy_boost": [0.02, 0.0, 0.3, 0.01, "easy: most a rival behind you gains"],
 	"difficulty/normal_pace": [1.0, 0.8, 1.1, 0.01, "normal: every rival's pace times this"],
 	"difficulty/normal_ease": [0.05, 0.0, 0.3, 0.01, "normal: most a rival ahead of you gives up"],
 	"difficulty/normal_boost": [0.04, 0.0, 0.3, 0.01, "normal: most a rival behind you gains"],
 	"difficulty/hard_pace": [1.03, 0.8, 1.1, 0.01, "hard: every rival's pace times this"],
-	"difficulty/hard_ease": [0.02, 0.0, 0.3, 0.01, "hard: most a rival ahead of you gives up"],
-	"difficulty/hard_boost": [0.06, 0.0, 0.3, 0.01, "hard: most a rival behind you gains"],
-	"difficulty/easy_clock": [1.1, 0.5, 2.0, 0.05, "easy: each checkpoint's time bonus times this, on top of the timer option (RC-23)"],
+	"difficulty/hard_ease": [0.0, 0.0, 0.3, 0.01, "hard: most a rival ahead of you gives up"],
+	"difficulty/hard_boost": [0.14, 0.0, 0.3, 0.01, "hard: most a rival behind you gains"],
+	"difficulty/easy_clock": [1.35, 0.5, 2.0, 0.05, "easy: each checkpoint's time bonus times this, on top of the timer option (RC-23)"],
 	"difficulty/normal_clock": [1.0, 0.5, 2.0, 0.05, "normal: each checkpoint's time bonus times this"],
 	"difficulty/hard_clock": [0.9, 0.5, 2.0, 0.05, "hard: each checkpoint's time bonus times this (the autodrive still makes it, test_golden)"],
+	"difficulty/easy_crash_ease": [0.4, 0.0, 0.8, 0.05, "easy: a crash of yours lasts this much less and leaves you this share of your speed"],
+	"difficulty/normal_crash_ease": [0.0, 0.0, 0.8, 0.05, "normal: the same"],
+	"difficulty/hard_crash_ease": [0.0, 0.0, 0.8, 0.05, "hard: the same"],
 	"balance/palm_coast": [1.0, 0.9, 1.1, 0.01, "Palm Coast: every rival's pace times this, on top of the difficulty's"],
 	"balance/redrock": [1.0, 0.9, 1.1, 0.01, "Redrock Canyon: every rival's pace times this, on top of the difficulty's"],
 	"balance/neon": [1.0, 0.9, 1.1, 0.01, "Neon Strip: every rival's pace times this, on top of the difficulty's"],

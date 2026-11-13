@@ -251,7 +251,7 @@ func _draw_card() -> void:
 	var col: Color = card["color"]
 	var panel := Rect2(w / 2.0 - 200, 92, 400, 150)
 	_frame(panel, Color(col, 0.35 + 0.15 * sin(time * 3.0)))
-	draw_rect(panel, Color(0.04, 0.03, 0.1, 0.92))
+	draw_rect(panel, UiText.ink(0.92))
 	draw_rect(Rect2(panel.position + Vector2(0, 0), Vector2(panel.size.x, 4)), col)
 	_text_centered(Vector2(w / 2.0, panel.position.y + 30), card["sub"].to_upper(), 11, Color(1, 1, 1, 0.75))
 	_text_centered(Vector2(w / 2.0, panel.position.y + 72), card["title"], 32, col)

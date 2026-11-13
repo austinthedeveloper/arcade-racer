@@ -70,7 +70,3 @@ static func grid_x(slot: int, side: float) -> float:
 	return (-0.35 if slot == 0 else 0.35) * side
 
 
-## Whether the results can come up: both players over the line, or out of the race (the
-## clock ran out on them).
-static func both_done(p1_done: bool, p2_done: bool) -> bool:
-	return p1_done and p2_done

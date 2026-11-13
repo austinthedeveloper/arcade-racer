@@ -5,8 +5,8 @@ extends Control
 ## hidden in a split race; PR-27 is its polish (the nitro, the power-up slot, the callouts).
 ## What it shows is `lines`, so a test can read it; _draw only lays it out.
 
-const GOLD := Color("#ffd23a")
-const PANEL := Color(0.04, 0.03, 0.1, 0.6)
+const GOLD := UiText.GOLD
+const PANEL := Color(UiText.INK, 0.6)
 const PAD := 6.0  # pixels in from a half's edges
 const DIVIDER := 2.0  # the line between the halves
 

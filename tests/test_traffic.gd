@@ -597,3 +597,15 @@ func test_a_missing_sprite_is_left_out() -> void:
 	var tex := PowerUps.texture("no_such_power_up")
 	check(tex != null and tex.get_width() > 0, "a missing power-up sprite draws blank")
 	PowerUps._textures.erase("no_such_power_up")
+
+
+func test_a_car_hit_square_on_flies_off_its_own_side() -> void:
+	var t := flat_track()
+	var a := Traffic.TrafficCar.new()
+	a.offset = -0.75
+	Traffic.fling(a, -0.75)
+	eq(a.fling_dir, -1.0, "left of the middle: off the left")
+	var b := Traffic.TrafficCar.new()
+	b.offset = 0.75
+	Traffic.fling(b, 0.75)
+	eq(b.fling_dir, 1.0, "mirrored: off the right")

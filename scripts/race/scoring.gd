@@ -26,7 +26,7 @@ static func place_points(place: int) -> int:
 static func near_miss(x: float, speed: float, car_offset: float, car_width_mult: float) -> bool:
 	if speed < Cfg.MAX_SPEED * Tuning.v("scoring/near_miss_speed"):
 		return false
-	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
+	var half_car := Cfg.HALF_CAR
 	var both := half_car * (1.0 + car_width_mult)
 	var between := absf(x - car_offset) - both
 	return between >= -both * (1.0 - Tuning.v("crashes/hit_overlap")) and between < Tuning.v("scoring/near_miss_room")
@@ -134,7 +134,7 @@ func watch(dt: float, p: PlayerCar, track: Track) -> void:
 	for car: Traffic.TrafficCar in cars:
 		if not car.solid():
 			continue
-		var now := wrapf(car.z - nose, -track.length * 0.5, track.length * 0.5)
+		var now := track.gap(nose, car.z)
 		if now <= 0.0 and p.gap_when_tick_began(car, track) > 0.0 \
 				and near_miss(p.x, p.speed, car.offset, car.width_mult):
 			near_miss_scored()

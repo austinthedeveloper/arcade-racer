@@ -6,14 +6,15 @@
 ##   godot --headless --path . -s res://tests/soak.gd -- [--stages=1,3] [--cars=car_vega,car_mesa]
 ##       [--difficulties=easy,hard] [--seed=N] [--quick]
 ##   godot --headless --path . -s res://tests/soak.gd -- --report [--detail] [--draws=N] [--stages=...]
-##       [--difficulties=...] [--tuning-file=PATH]
+##       [--difficulties=...] [--tuning-file=PATH] [--driver=casual]
 ##
 ## --quick: one car per stage and difficulty (the cars taken in turn), for a local run. --report
 ## drives each stage and difficulty with the autodrive instead (traffic and rivals, the
 ## Vega, the difficulty's own timer) and prints the field's finishing gaps (RC-21); --detail
 ## adds each racer's crashes and finish; --draws=N races N fields per stage (the game's own, then
 ## N-1 other draws of the drivers) and adds their means. --tuning-file runs on that file's
-## tuning, not the defaults.
+## tuning, not the defaults. --driver=casual drives as a casual player (CasualDriver) instead
+## of the autodrive, and checks no band: Easy is judged by it.
 class_name Soak
 extends SceneTree
 
@@ -29,7 +30,7 @@ const RIVALS_HOME_BY := 200.0
 ## feel (RC-22) then moved: a play change reshuffles a close field by a place or two and a
 ## straggler by a few seconds, so the bands hold what several draws of the field showed.
 const BANDS := [
-	{"spread": 38.0, "places": [1, 4]},  # easy: rivals that wait, the autodrive near the front
+	{"spread": 50.0, "places": [1, 4]},  # easy: slower rivals the autodrive runs away from
 	{"spread": 38.0, "places": [1, 6]},  # normal
 	{"spread": 38.0, "places": [1, 7]},  # hard: quicker rivals that hardly wait; not last
 ]
@@ -89,11 +90,12 @@ static func field(r: Node) -> Dictionary:
 ## left on the clock arriving at a checkpoint or the line (seconds; below zero, the clock ran
 ## out first), and "crashes": each racer's crashes, the player's first. The clock is kept
 ## from running out, so the field is measured whatever it says. Leaves Settings as it found them.
-static func autodrive_field(settings: Node, stage: int, level: int, draw := 0) -> Dictionary:
+static func autodrive_field(settings: Node, stage: int, level: int, draw := 0, casual := false) -> Dictionary:
 	var keep_level: int = settings.difficulty
 	var keep_timer: int = settings.timer
 	settings.set_difficulty(level)
 	var r := new_race(stage, "car_vega", true)
+	r.casual = casual
 	if draw != 0:  # another field than the game's own (Rivals.SEED + stage)
 		r.rivals.spawn(r.track, r.player, "car_vega", Rivals.COUNT, Rivals.SEED + stage + 1000 * draw, r.difficulty,
 			[], Rivals.stage_pace_of(stage))
@@ -335,6 +337,9 @@ func _initialize() -> void:
 func report(stages: Array[int], levels: Array[int]) -> void:
 	var detail := OS.get_cmdline_user_args().has("--detail")
 	var draws := maxi(1, int(arg_value("--draws", "1")))
+	var casual := arg_value("--driver") == "casual"
+	if casual:
+		print("driver: casual (CasualDriver), no band check")
 	print("| Stage | Difficulty | Autodrive | Place | Winner | Last | Spread | Clock | Band |")
 	print("|---|---|---|---|---|---|---|---|---|")
 	for s in stages:
@@ -342,9 +347,9 @@ func report(stages: Array[int], levels: Array[int]) -> void:
 			var spreads := 0.0
 			var places := 0.0
 			for d in draws:
-				var f := autodrive_field(root.get_node("Settings"), s, l, d)
+				var f := autodrive_field(root.get_node("Settings"), s, l, d, casual)
 				var times: Array = f["times"]
-				var why := out_of_band(f, l, s)
+				var why := "" if casual else out_of_band(f, l, s)
 				if why != "" and d == 0:
 					failures += 1  # (only the game's own field: the other draws are for the means)
 				spreads += f["spread"]

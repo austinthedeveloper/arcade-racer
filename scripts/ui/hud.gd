@@ -21,7 +21,7 @@ const PORTRAIT := Vector2(18, 18)  # the card's portrait slot (initials until CP
 const RADAR_TIME := 1.0  # seconds behind or ahead a rival gets a radar arrow
 const RADAR_REACH := 2.0  # road half-widths either side the radar strip spans
 const RADAR_ARROW := Vector2(9, 7)  # an arrow's width and height
-const GOLD := Color("#ffd23a")
+const GOLD := UiText.GOLD
 const TAG_SLIDE := 0.3  # seconds the now-playing tag takes to slide in, and out (PR-24)
 const DIAL_START := PI * 0.75  # the speedometer's zero, bottom left...
 const DIAL_SWEEP := PI * 1.5  # ...round to top speed at the bottom right
@@ -282,7 +282,7 @@ static func device_line(kind: int, device_name: String) -> String:
 func _draw_now_playing(r: Rect2, words: Array[String], age: float) -> void:
 	var at := r
 	at.position.x -= (r.end.x + 4.0) * (1.0 - tag_slide(age, RaceAudio.TAG_TIME))
-	_panel(at, Color(0.04, 0.03, 0.1, 0.75))
+	_panel(at, UiText.ink(0.75))
 	draw_rect(Rect2(at.position, Vector2(3, at.size.y)), GOLD)
 	_draw_note(at.position + Vector2(12, 17))
 	_text(at.position + Vector2(22, 10), "NOW PLAYING", 8, Color("#3ad0ff"))
@@ -359,7 +359,7 @@ static func net_color(q: int) -> Color:
 func _draw_notice(center: Vector2, text: String, a: float, size := 11) -> void:
 	var tw := UiText.width(text, text_size(size))
 	var r := Rect2(center.x - tw / 2.0 - 18, center.y - 10, tw + 30, 20)
-	draw_rect(r, Color(0.04, 0.03, 0.1, 0.8 * a))
+	draw_rect(r, UiText.ink(0.8 * a))
 	draw_rect(Rect2(r.position.x, r.position.y, 2, r.size.y), Color(PALETTE["behind"], a))
 	draw_circle(Vector2(r.position.x + 10, center.y), 3.5, Color(PALETTE["behind"], a))
 	_text(Vector2(r.position.x + 20, center.y + 4), text, size, Color(1, 1, 1, a))
@@ -387,7 +387,7 @@ static func sticker_card(ids: Array[String], age: float) -> Dictionary:
 ## NEW STICKER: the sticker and its name on a card, top left, sliding in.
 func _draw_sticker_card(card: Dictionary) -> void:
 	var r := Rect2(STICKER_CARD.position + Vector2((1.0 - float(card["slide"])) * -(STICKER_CARD.size.x + 16), 0), STICKER_CARD.size)
-	draw_rect(r, Color(0.04, 0.03, 0.1, 0.85))
+	draw_rect(r, UiText.ink(0.85))
 	draw_rect(Rect2(r.position.x, r.end.y, r.size.x, 2), GOLD)
 	var id: String = card["id"]
 	Stickers.draw(self, r.position + Vector2(24, r.size.y / 2.0), id, 15.0, true, -0.1)
@@ -603,7 +603,7 @@ func _draw_cards(area: Rect2) -> void:
 		var card: Rect2 = rects[i]
 		var parts := card_parts(card)
 		var words := card_text(r.profile, r.remote)
-		draw_rect(card, Color(0.04, 0.03, 0.1, 0.72))
+		draw_rect(card, UiText.ink(0.72))
 		draw_rect(Rect2(card.position, Vector2(2, card.size.y)), PALETTE["rival"])
 		var slot: Rect2 = parts["portrait"]
 		draw_rect(slot, Color(0, 0, 0, 0.6))
@@ -678,7 +678,7 @@ static func flame(base: Vector2, w: float, h: float) -> PackedVector2Array:
 
 
 ## A dark see-through panel with a gold edge on top, behind a HUD element.
-func _panel(r: Rect2, tint := Color(0.04, 0.03, 0.1, 0.5)) -> void:
+func _panel(r: Rect2, tint := UiText.ink(0.5)) -> void:
 	draw_rect(r, tint)
 	draw_rect(Rect2(r.position, Vector2(r.size.x, 2)), Color(GOLD, 0.8))
 
@@ -688,7 +688,7 @@ func _panel(r: Rect2, tint := Color(0.04, 0.03, 0.1, 0.5)) -> void:
 func _draw_timer(r: Rect2) -> void:
 	var t: float = race.time_left
 	var beat := (timer_pulse(t) - 1.0) * 4.0 if race.timed() else 0.0
-	_panel(r, Color(0.04, 0.03, 0.1, 0.5).lerp(Color(0.6, 0.0, 0.0, 0.6), beat * Settings.flash_amount(1.0)))
+	_panel(r, UiText.ink(0.5).lerp(Color(0.6, 0.0, 0.0, 0.6), beat * Settings.flash_amount(1.0)))
 	_text(r.position + Vector2(6, 13), "TIME", 10, GOLD)
 	if race.free_drive or race.online != null:
 		_text(r.position + Vector2(6, 36), clock_text(race.race_time), 20, Color.WHITE)
@@ -809,7 +809,7 @@ func _draw_speedo(r: Rect2, p: PlayerCar) -> void:
 	var c := Vector2(r.get_center().x, r.position.y + 46)
 	var rad := 42.0
 	var pct := clampf(p.speed / (Cfg.MAX_SPEED * Tuning.v("driving/nitro_speed")), 0.0, 1.0)
-	draw_circle(c, rad + 2, Color(0.04, 0.03, 0.1, 0.7))
+	draw_circle(c, rad + 2, UiText.ink(0.7))
 	draw_arc(c, rad + 1, 0, TAU, 48, Color(GOLD, 0.8), 2)
 	# The tach: revs on the inner ring, red past the redline
 	var rpm := RaceAudio.engine_rpm(p.speed_percent(), p.gear if p.manual else 0)
@@ -1072,7 +1072,7 @@ func _draw_demo() -> void:
 func _draw_title_card(r: Rect2, words: Dictionary) -> void:
 	draw_rect(r.grow(2), Color("#1b2a6b"))
 	draw_rect(r.grow(1), Color("#c9d4ff"))
-	draw_rect(r, Color(0.04, 0.03, 0.1, 0.88))
+	draw_rect(r, UiText.ink(0.88))
 	draw_rect(Rect2(r.position, Vector2(4, r.size.y)), GOLD)
 	var x := r.position.x + 12
 	_text(Vector2(x, r.position.y + 13), words["tag"], 9, GOLD)

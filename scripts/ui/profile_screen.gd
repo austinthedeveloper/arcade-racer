@@ -164,7 +164,7 @@ func _draw() -> void:
 		var picked := s == card
 		var made := SaveData.has_profile(s)
 		_frame(r, Color(GOLD, 0.35 + 0.15 * sin(time * 5.0)) if picked and on_cards else Color.TRANSPARENT)
-		draw_rect(r, Color(0.04, 0.03, 0.1, 0.9) if made else Color(0.04, 0.03, 0.1, 0.6))
+		draw_rect(r, UiText.ink(0.9) if made else UiText.ink(0.6))
 		if picked:
 			draw_rect(Rect2(r.position, Vector2(r.size.x, 3)), GOLD)
 		var id := identity(s)

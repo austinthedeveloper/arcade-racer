@@ -350,14 +350,14 @@ func _draw_choose() -> void:
 		var on := i == index and not on_region
 		var r := choice_rect(i)
 		_frame(r, Color(GOLD, 0.4 + 0.15 * sin(time * 4.0)) if on else Color.TRANSPARENT)
-		draw_rect(r, Color("#1d3fa8") if on else Color(0.04, 0.03, 0.1, 0.9))
+		draw_rect(r, Color("#1d3fa8") if on else UiText.ink(0.9))
 		_text_centered(Vector2(r.get_center().x, r.get_center().y + 8), CHOICES[i], 22, GOLD if on else Color(1, 1, 1, 0.6))
 	_text_centered(Vector2(w / 2.0, 236), help[index], 11, Color(1, 1, 1, 0.85))
 	_text_centered(Vector2(w / 2.0, 262), "Racing in the %s" % Cars.get_car(game.car_index)["name"], 10, Color(SKY, 0.9))
 	if shows_regions():
 		var r := region_rect()
 		_frame(r, Color(GOLD, 0.4 + 0.15 * sin(time * 4.0)) if on_region else Color.TRANSPARENT)
-		draw_rect(r, Color("#1d3fa8") if on_region else Color(0.04, 0.03, 0.1, 0.9))
+		draw_rect(r, Color("#1d3fa8") if on_region else UiText.ink(0.9))
 		_text(r.position + Vector2(10, 14), "SERVER", 10, Color(1, 1, 1, 0.7))
 		_text_centered(Vector2(r.get_center().x + 24, r.position.y + 14), String(regions[region]["name"]), 11, GOLD if on_region else Color.WHITE)
 		if on_region:
@@ -441,7 +441,7 @@ func _draw_code() -> void:
 		var r := grid_rect(i)
 		var on := i == cell
 		_frame(r, Color(GOLD, 0.5) if on else Color.TRANSPARENT)
-		draw_rect(r, Color("#1d3fa8") if on else Color(0.04, 0.03, 0.1, 0.9))
+		draw_rect(r, Color("#1d3fa8") if on else UiText.ink(0.9))
 		var label := letter(i) if i < DEL else ("DEL" if i == DEL else "JOIN")
 		_text_centered(Vector2(r.get_center().x, r.end.y - 8), label, 14 if i < DEL else 12,
 			GOLD if on else Color(1, 1, 1, 0.8))

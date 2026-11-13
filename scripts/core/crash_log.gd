@@ -46,12 +46,6 @@ static func install(log_dir := DIR) -> CrashLog:
 	return installed
 
 
-static func uninstall() -> void:
-	if installed != null:
-		OS.remove_logger(installed)
-		installed = null
-
-
 ## Where the report goes in `log_dir`.
 static func report_path(log_dir := DIR) -> String:
 	return log_dir.path_join(REPORT)

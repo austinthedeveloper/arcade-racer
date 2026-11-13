@@ -6,6 +6,8 @@ extends RefCounted
 ## undone, at the size it scales to: sharp glyphs, not stretched ones.
 
 const OUTLINE := Color(0, 0, 0, 0.85)
+const GOLD := Color("#ffd23a")  # the HUD's and the menus' highlight
+const INK := Color(0.04, 0.03, 0.1)  # the dark blue the panels behind text are filled with
 const MIN_SIZE := 8  # the smallest text the HUD draws, in 640x360 pixels (PR-14)
 
 static var _xf := Transform2D.IDENTITY  # what begin_scaled set
@@ -23,6 +25,11 @@ static func end_scaled(ci: CanvasItem) -> void:
 	_xf = Transform2D.IDENTITY
 	_k = 1.0
 	ci.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+## INK at `alpha`: a panel's fill.
+static func ink(alpha := 1.0) -> Color:
+	return Color(INK, alpha)
 
 
 ## The scale begin_scaled has text drawn at (1 outside it).

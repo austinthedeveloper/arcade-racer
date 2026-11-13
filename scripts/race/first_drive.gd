@@ -97,7 +97,7 @@ static func big_ahead(track: Track, me: PlayerCar) -> bool:
 		for car: Traffic.TrafficCar in track.segments[(here + k) % track.segments.size()].cars:
 			if not Traffic.BIG.has(car.sprite) or car.oncoming or not car.solid():
 				continue
-			var ahead := wrapf(car.z - nose, -track.length * 0.5, track.length * 0.5)
+			var ahead := track.gap(nose, car.z)
 			if ahead > 0.0 and ahead < reach:
 				return true
 	return false

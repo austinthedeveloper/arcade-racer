@@ -35,7 +35,7 @@ func test_the_percentage_per_stage_from_a_fixture_save() -> void:
 	eq(Completion.next_item(1, sd, NORMAL), "SILVER", "Redrock's next")
 	eq(Completion.next_item(0, sd, NORMAL), "", "nothing left on Palm Coast")
 	eq(CompletionScreen.next_up(sd, NORMAL), ["SILVER", "REDROCK CANYON"], "the page's next up")
-	# The medals go by the difficulty asked about: on Hard Palm Coast's 91.5 is silver
+	# The medals go by the difficulty asked about: on Hard Palm Coast's 88.5 is silver
 	eq(Completion.stage_percent(0, sd, Difficulty.Level.HARD), 83, "Palm Coast on Hard: 5 of 6")
 	TestSuite.use_scratch_save(_sd())
 

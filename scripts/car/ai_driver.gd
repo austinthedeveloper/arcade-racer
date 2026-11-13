@@ -28,6 +28,11 @@ var lane_bias := 0.0  # this driver's own spot across the road, added to the rac
 var side := 1.0  # -1 on a mirrored stage (Track.side): its spot and swerves go the other way
 var style: RivalProfile.Style = RivalProfile.Style.CLEAN
 var target := 0.0  # where across the road it is heading, after avoiding traffic
+## Seconds after GO it keeps to `hold_x`, its grid slot's lane, rather than steering for its
+## line (grid/hold, set by Rivals.spawn), so the field gets away without closing the door
+## on the player's launch up the middle.
+var grid_hold := 0.0
+var hold_x := 0.0
 var _gap := LOOKAHEAD  # room in segments ahead in `target`'s lane, as last looked
 var _react := 0.0  # erratic: seconds before it looks at the lanes again
 var _blocking := 0.0  # aggressive: seconds spent blocking the car behind...
@@ -62,12 +67,17 @@ func drive(me: PlayerCar, track: Track, racers: Array, dt: float) -> DriveInput:
 				_resting = Tuning.v("ai/block_rest")
 	want = keep_to_own_side(track, z, want)
 	_react -= dt
-	if style != RivalProfile.Style.ERRATIC or _react <= 0.0:
+	if grid_hold > 0.0:
+		grid_hold -= dt
+		target = clampf(hold_x, -edge, edge)
+		_gap = clear_for(track, z, target, me, racers)
+	elif style != RivalProfile.Style.ERRATIC or _react <= 0.0:
 		var looking := ERRATIC_LOOKAHEAD if style == RivalProfile.Style.ERRATIC else LOOKAHEAD
 		var lane := open_lane(track, z, want, me, racers, looking)
 		target = lane["x"]
 		_gap = lane["gap"] if lane["gap"] < looking else LOOKAHEAD
 		_react = ERRATIC_REACT
+	target = mirror_check(me, target, racers, track)
 	var lane := {"x": target, "gap": _gap}
 	var seg := track.find_segment(z + STEER_AHEAD)
 	inp.steer = clampf(seg.curve * STEER_CURVE + (target - me.x) * Tuning.v("ai/steer_gain"), -1.0, 1.0)
@@ -85,6 +95,25 @@ func drive(me: PlayerCar, track: Track, racers: Array, dt: float) -> DriveInput:
 	return inp
 
 
+## Where `me` heads across the road instead of `target`, after a look in the mirrors: it
+## doesn't move over into a racer alongside it (within ai/mirror_reach world units along the
+## road, either way), stopping a car's width and a little short of it. Before this a rival
+## leaving its grid lane, or heading for the inside of a bend, steered into the player's door.
+static func mirror_check(me: PlayerCar, target: float, racers: Array, track: Track) -> float:
+	var clear := Cfg.CAR_WIDTH / Cfg.ROAD_WIDTH + LANE_CLEARANCE
+	var along := Tuning.v("ai/mirror_reach")
+	for other: PlayerCar in racers:
+		if other == me or other.ghosted() or other.airborne:
+			continue
+		if absf(track.gap(me.position, other.position)) >= along:
+			continue
+		if other.x > me.x and target > other.x - clear:
+			target = minf(target, maxf(me.x, other.x - clear))
+		elif other.x < me.x and target < other.x + clear:
+			target = maxf(target, minf(me.x, other.x + clear))
+	return target
+
+
 ## The nearest faster racer coming up close behind `me`, for an aggressive driver to block.
 static func blocking_target(me: PlayerCar, track: Track, racers: Array) -> PlayerCar:
 	var best: PlayerCar = null
@@ -92,7 +121,7 @@ static func blocking_target(me: PlayerCar, track: Track, racers: Array) -> Playe
 	for other: PlayerCar in racers:
 		if other == me or other.speed <= me.speed:
 			continue
-		var behind := wrapf(me.position - other.position, -track.length * 0.5, track.length * 0.5)
+		var behind := track.gap(other.position, me.position)
 		if behind > 0.0 and behind < nearest:
 			nearest = behind
 			best = other
@@ -162,7 +191,7 @@ static func open_lane(track: Track, z: float, want: float, me: PlayerCar, racers
 	lanes.append_array(by_distance)
 	var best := {"x": want, "gap": -1}
 	var best_room := -1
-	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
+	var half_car := Cfg.HALF_CAR
 	for x: float in lanes:
 		var gap := clear_for(track, z, x, me, racers, lookahead)
 		# A road hazard (RC-19) ahead in a lane rules it out like a slower car, but only for
@@ -179,14 +208,14 @@ static func open_lane(track: Track, z: float, want: float, me: PlayerCar, racers
 ## Segments ahead of `z` before a car slower than `me` blocks a car at `x`, or LOOKAHEAD.
 static func clear_for(track: Track, z: float, x: float, me: PlayerCar, racers: Array,
 		lookahead: int = LOOKAHEAD) -> int:
-	var half_car := Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH
+	var half_car := Cfg.HALF_CAR
 	var here := track.find_segment(z).index
 	var n := track.segments.size()
 	var first := lookahead
 	for other: PlayerCar in racers:
 		if other == me or other.speed >= me.speed:
 			continue
-		var ahead := wrapf(other.position - me.position, -track.length * 0.5, track.length * 0.5)
+		var ahead := track.gap(me.position, other.position)
 		if ahead > 0.0 and absf(other.x - x) < half_car * 2.0 + LANE_CLEARANCE:
 			first = mini(first, int(ahead / Cfg.SEGMENT_LENGTH))
 	# Close ahead, a car between here and `x` blocks the way across too, not just `x` itself

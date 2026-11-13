@@ -51,7 +51,7 @@ static func half_for(kind: int, lane_w: float) -> float:
 ## How far either side of a hazard's middle a car at it touches it: its half-width and a
 ## share of the car's (hazards/reach).
 static func reach(h: Hazard) -> float:
-	return h.half + Cfg.CAR_WIDTH * 0.5 / Cfg.ROAD_WIDTH * Tuning.v("hazards/reach")
+	return h.half + Cfg.HALF_CAR * Tuning.v("hazards/reach")
 
 
 ## The live hazards a car at `x` is over in `segments` (the ones its nose entered this tick).

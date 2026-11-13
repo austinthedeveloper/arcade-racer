@@ -16,10 +16,12 @@ const TIMERS := [0, 1, 1]
 @export var timer := 1  ## the Settings.Clock it sets the timer option to
 @export var catch_up := true  ## a nitro charge back at each checkpoint in the last places (RC-16)
 @export var clock_bonus := 1.0  ## on each checkpoint's time bonus, after the timer option (RC-23)
+@export var crash_ease := 0.0  ## how much the player's crashes are spared (PlayerCar.crash_ease)
 
 
-static func make(pace: float, ease: float, boost: float, clock: int, nitro := true, bonus := 1.0) -> Difficulty:
+static func make(pace: float, ease: float, boost: float, clock: int, nitro := true, bonus := 1.0, crash := 0.0) -> Difficulty:
 	var d := Difficulty.new()
+	d.crash_ease = crash
 	d.rival_pace = pace
 	d.band_ease = ease
 	d.band_boost = boost
@@ -47,4 +49,5 @@ static func of(level: int) -> Difficulty:
 	var l := clampi(level, 0, Level.size() - 1)
 	var name: String = ["easy", "normal", "hard"][l]
 	return make(Tuning.v("difficulty/%s_pace" % name), Tuning.v("difficulty/%s_ease" % name),
-		Tuning.v("difficulty/%s_boost" % name), TIMERS[l], l != Level.HARD, Tuning.v("difficulty/%s_clock" % name))
+		Tuning.v("difficulty/%s_boost" % name), TIMERS[l], l != Level.HARD, Tuning.v("difficulty/%s_clock" % name),
+		Tuning.v("difficulty/%s_crash_ease" % name))
