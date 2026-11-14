@@ -74,6 +74,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Fixed
 
+- A rival that ran up behind a car stopped in the road (the player once the clock ran out)
+  could sit behind it for good: edging round it stopped exactly at touching distance, so it
+  was still held there. It now edges a little past and drives on (the nightly soak, Thunderhead).
 - A pedal set or wheel the game reads as a gamepad no longer holds the gas or the brake with a
   pedal at rest: its pedals count only once it's calibrated (F2), and never at rest.
 - The engine, tire squeal and wind no longer hang on after the finish: they fade out under

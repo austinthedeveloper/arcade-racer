@@ -354,6 +354,19 @@ func test_a_rival_stuck_behind_a_stopped_car_edges_round_it() -> void:
 	front.crash_time = 1.0
 	Rivals.resolve_contacts([back, front], t)
 	eq(back.x, 0.3, "a crashed car gets going again: waited for")
+	# Edged to exactly the reach it still touched, so it was stopped again every tick
+	var reach := Cfg.HALF_CAR * 2.0 * Tuning.v("crashes/hit_overlap")
+	front.crash_time = 0.0
+	back.x = 0.005 + reach - 1e-6  # (a hair inside it, as the soak's car was)
+	back.position = 1700.0
+	back.last_position = 1700.0
+	front.x = 0.005
+	for i in 30:
+		back.last_position = back.position
+		back.position += 10.0
+		back.speed = 600.0
+		Rivals.resolve_contacts([back, front], t)
+	check(absf(back.x - front.x) > reach + Rivals.SQUEEZE * 0.5, "edged clear of it, not to the touch (%.4f)" % absf(back.x - front.x))
 	front.crash_time = 0.0
 	front.speed = 5000.0
 	back.x = 0.3

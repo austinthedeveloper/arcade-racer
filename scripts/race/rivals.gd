@@ -212,10 +212,11 @@ static func resolve_contacts(racers: Array, track: Track) -> void:
 				back.bumped = true
 				# Held to a standstill behind a car stopped for good (not one crashed, which gets
 				# going again), it couldn't steer out, steering needs speed, and sat there for good
-				# (EQ-22's soak found one): it edges round instead
+				# (EQ-22's soak found one): it edges round instead, to a little past touching (edged
+				# to exactly the reach, it still touched, and sat there again: the 2026-11-14 soak)
 				if front.speed < STANDSTILL and front.crash_time <= 0.0:
 					var way := signf(back.x - front.x) if back.x != front.x else track.side()
-					back.x = move_toward(back.x, front.x + way * reach, SQUEEZE)
+					back.x = move_toward(back.x, front.x + way * (reach + AIDriver.LANE_CLEARANCE), SQUEEZE)
 			else:
 				var push := (reach - absf(a.x - b.x)) * 0.5
 				var side := 1.0 if a.x >= b.x else -1.0
