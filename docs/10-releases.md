@@ -124,7 +124,7 @@ their next visit.
   static website on, index and 404 page `index.html`, no public blob access). Costs cents a
   month at this traffic.
 - **Sign-in:** the Entra app `sundownrun-web-deploy` has *Storage Blob Data Contributor* on that
-  account and nothing else. GitHub signs in as it with OIDC: its federated credential trusts
+  account (and the role below on the custom domain's site). GitHub signs in as it with OIDC: its federated credential trusts
   `repo:austinthedeveloper@2235324/arcade-racer@1439840465:environment:web`, and the
   repository's `web` environment admits `v*` tags only. This repository's tokens name the
   owner and repository with their numeric IDs; a subject with the plain names
@@ -136,9 +136,33 @@ their next visit.
   script gzips the `.wasm` and `.js` itself.
 - **By hand:** `az login`, then `tools/deploy_web.sh build/release/SundownRun-<version>-web.zip`.
   Your own account needs the same role on the storage account; Austin's has it.
-- **Revisit when:** players want older versions (upload to `v/<version>/` as well), a custom
-  domain (Azure Front Door or a CNAME, which needs HTTPS through Front Door), or itch.io takes
-  over the web build.
+- **Revisit when:** players want older versions (upload to `v/<version>/` as well), or itch.io
+  takes over the web build.
+
+## Web: sundownrun.austinthedeveloper.com (2026-11-24)
+
+Azure Storage can't serve HTTPS on a custom domain without Front Door, so the address players
+get is an Azure Static Web App (Free plan), which can. The `web` job uploads to it with
+`tools/deploy_swa.sh` after the Storage upload. The Storage site stays up to date too: old links
+point there, and a browser save belongs to the address it was made on.
+
+- **Azure:** Static Web App `sundownrun`, resource group `sundownrun` (East US 2),
+  `icy-mud-0ea3f1a0f.4.azurestaticapps.net`. DNS is a CNAME to that at Acorn Host.
+- **Size:** Static Web Apps doesn't compress `.wasm`, so the deploy script adds `index.wasm.gz`
+  and `web/wasm_gzip.js`, which fetches it and unpacks it in the browser (a first load of about
+  38 MB instead of 67). The plain `.wasm` is there for browsers without `DecompressionStream`.
+  Every Free site on the subscription shares 100 GB of bandwidth a month.
+- **Sign-in:** the same `sundownrun-web-deploy` app, with the custom role
+  *Sundown Run site deploy* on the Static Web App, which may read its deployment token and nothing
+  else. Without it the web job stops at the custom domain, after the Storage upload. To set up:
+
+  ```sh
+  SITE=$(az staticwebapp show -n sundownrun -g sundownrun --query id -o tsv)
+  az role definition create --role-definition "{\"Name\": \"Sundown Run site deploy\", \"Description\": \"Read the sundownrun Static Web App's deployment token\", \"Actions\": [\"Microsoft.Web/staticSites/read\", \"Microsoft.Web/staticSites/listSecrets/action\"], \"AssignableScopes\": [\"${SITE%/providers/*}\"]}"
+  az role assignment create --assignee "$(az ad sp list --display-name sundownrun-web-deploy --query '[0].appId' -o tsv)" --role "Sundown Run site deploy" --scope "$SITE"
+  ```
+
+- **By hand:** `az login`, then `tools/deploy_swa.sh build/release/SundownRun-<version>-web.zip`.
 
 ### itch.io page draft
 

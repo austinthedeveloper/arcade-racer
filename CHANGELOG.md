@@ -9,6 +9,8 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Added
 
+- The Web game has its own address, https://sundownrun.austinthedeveloper.com/. The old one keeps
+  working and updating; progress saved there stays there.
 - Road hazards (RC-19): debris shed in a lane, cone rows closing one, black ice over Timberline's
   summit and deep puddles along Thunderhead. Debris bumps the car up and costs speed, cones fly
   off and slow you, a puddle drags at the tires, and the ice takes the steering and slides you
