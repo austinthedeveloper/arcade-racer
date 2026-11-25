@@ -127,6 +127,30 @@ func test_tag_deploys_the_web_build() -> void:
 	check(FileAccess.file_exists("res://tools/deploy_web.sh"), "tools/deploy_web.sh exists")
 
 
+## It also goes to the Static Web App behind the custom domain (tools/deploy_swa.sh), which
+## loads web/wasm_gzip.js before Godot's loader: the shell's script tag must be the one it
+## looks for, and the page must fetch the file it gzips.
+func test_tag_deploys_to_the_custom_domain() -> void:
+	var workflow := FileAccess.get_file_as_string("res://.github/workflows/release.yml")
+	var web := workflow.get_slice("\n  web:\n", 1)
+	check(web.contains("tools/deploy_swa.sh \"build/release/SundownRun-${{ needs.build.outputs.version }}-web.zip\""),
+		"deploys export.sh's web zip")
+	check(web.find("tools/deploy_web.sh") < web.find("tools/deploy_swa.sh"), "after the Storage site")
+	var deploy := FileAccess.get_file_as_string("res://tools/deploy_swa.sh")
+	var shell := FileAccess.get_file_as_string("res://web/shell.html")
+	var tag := "<script src=\"%s\"></script>"
+	check(shell.contains(tag % "$GODOT_URL"), "the shell loads the engine with a plain script tag")
+	check(deploy.contains(tag % "index.js"), "deploy_swa.sh puts its script before that tag, as exported")
+	check(deploy.contains("index.wasm.gz"), "it uploads the gzipped engine")
+	var js := FileAccess.get_file_as_string("res://web/wasm_gzip.js")
+	check(js.contains("'index.wasm.gz'") and js.contains("'index.wasm'"), "the page fetches it, or the plain one")
+	var config: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://web/staticwebapp.config.json"))
+	check(config is Dictionary, "the site's config is JSON")
+	if config is Dictionary:
+		eq(config["mimeTypes"][".wasm"], "application/wasm", "the plain engine's type")
+		eq(config["globalHeaders"]["Cache-Control"], "no-cache", "a new release shows at once")
+
+
 # --- Web load (EQ-23) ---------------------------------------------------------------------
 
 ## The Web build's .pck may not grow past this (bytes): every byte is downloaded before the

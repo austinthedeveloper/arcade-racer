@@ -63,7 +63,8 @@ python3 tools/announcer_script.py [--check]         # the announcer's voiceover 
 python3 tools/prep_announcer.py <recordings> [--dry-run]   # recorded vo_<id>.wav: trimmed, leveled, the said lines into assets/audio/sfx/
 python3 tools/check_sprites.py                      # rebuild every sprite and fail on a pixel that differs from the repo (CI; pinned libraries)
 tools/export.sh 0.1.0                               # Windows/macOS/Web zips in build/release (needs export templates)
-tools/deploy_web.sh build/release/SundownRun-0.4.0-web.zip   # the Web build to Azure (az login; a tag's release does it)
+tools/deploy_web.sh build/release/SundownRun-0.4.0-web.zip   # the Web build to the Azure Storage site (az login; a tag's release does it)
+tools/deploy_swa.sh build/release/SundownRun-0.4.0-web.zip   # and to sundownrun.austinthedeveloper.com (--prepare=DIR: only write the site there)
 ```
 
 The sprite tools share `tools/spritelib.py` and need `pip install -r tools/requirements.txt`. Their
