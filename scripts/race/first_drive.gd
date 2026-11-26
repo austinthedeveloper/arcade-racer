@@ -4,7 +4,10 @@ extends RefCounted
 ## prompt at a time, each when the road allows it (allowed), each cleared by doing it
 ## (cleared): hold the gas, steer, nitro on a straight, draft behind a truck, a power slide.
 ## A step whose moment hasn't come lets a later one go first, so a run with no truck in reach
-## still gets its slide. Every prompt cleared, or the race run to the end, and the first
+## still gets its slide. Kept out of the way: a prompt comes up at most first_drive/max_shows
+## times (one whose moment keeps passing is let go), never while a callout is up, and with
+## first_drive/gap seconds of plain racing between two. A cleared one says NICE! on its own
+## card for a moment rather than a callout of its own. Every prompt cleared, or the race run to the end, and the first
 ## drive is done; SKIP FIRST DRIVE on the pause menu skips it. Either way it never shows
 ## again (SaveData.first_drive). Its pacing is Tuning's "first_drive" area.
 ##
@@ -18,6 +21,7 @@ const STAGE := 0  # Palm Coast, into Stages
 ## What each prompt says, big, and the callout when it's cleared.
 const TEXT := ["HOLD THE GAS", "STEER", "NITRO ON THE STRAIGHT", "DRAFT THE TRUCK", "POWER SLIDE"]
 const CLEARED := "NICE!"
+const NICE_TIME := 0.8  # seconds a cleared prompt's card says NICE! before it goes
 const DONE_TEXT := "FIRST DRIVE DONE"
 const DONE_SUB := "The road is yours"
 
@@ -30,6 +34,10 @@ var held := 0.0  # seconds the current prompt's action has been kept up
 var shown_for := 0.0  # seconds the current prompt has been up
 var gap := 0.0  # seconds before the next prompt may come up
 var off_for := 0.0  # seconds the road hasn't allowed the current prompt
+var shows := {}  # Step -> times its prompt has come up
+## The step cleared last, and seconds since (the HUD's NICE!): -1 for none yet.
+var last_cleared := -1
+var since_cleared := 0.0
 
 
 ## Whether a race on `stage` starts as the first drive for the profile in `save_data`
@@ -46,6 +54,14 @@ static func count() -> int:
 ## Which number the current prompt is (1 up).
 func number() -> int:
 	return cleared.size() + 1
+
+
+## What the HUD's card shows: the prompt up, the one just cleared (saying NICE!) for
+## NICE_TIME, or -1 for no card.
+func card() -> int:
+	if current >= 0:
+		return current
+	return last_cleared if last_cleared >= 0 and since_cleared < NICE_TIME else -1
 
 
 ## The road and the car this tick, as `tick` reads it, from `race` (race.gd) and the input
@@ -66,6 +82,7 @@ static func look(race: Node, inp: DriveInput) -> Dictionary:
 		"straight": straight_ahead(track, p.position + Cfg.PLAYER_Z),
 		"bend": bend_ahead(track, p.position + Cfg.PLAYER_Z),
 		"big_ahead": big_ahead(track, p),
+		"quiet": race.callouts == null or race.callouts.current.is_empty(),
 	}
 
 
@@ -162,6 +179,7 @@ func tick(dt: float, v: Dictionary) -> int:
 		if s != current and gone(s, v):
 			left.erase(s)
 	gap = maxf(0.0, gap - dt)
+	since_cleared += dt
 	if current >= 0:
 		shown_for += dt
 		if doing(current, v):
@@ -173,14 +191,16 @@ func tick(dt: float, v: Dictionary) -> int:
 		# The moment passed (the straight ran out, the truck went by): it waits for the next.
 		off_for = 0.0 if allowed(current, v) or current == Step.GAS or current == Step.STEER else off_for + dt
 		if gone(current, v) or (shown_for >= Tuning.v("first_drive/min_show") and off_for >= Tuning.v("first_drive/withdraw")):
-			if gone(current, v):
+			# Gone, or up as often as it may: let go (the rest still come)
+			if gone(current, v) or shows.get(current, 0) >= Tuning.i("first_drive/max_shows"):
 				left.erase(current)
 			current = -1
 			gap = Tuning.v("first_drive/gap")
-	if current < 0 and gap <= 0.0:
+	if current < 0 and gap <= 0.0 and v.get("quiet", true):
 		for s in left:
 			if allowed(s, v):
 				current = s
+				shows[s] = shows.get(s, 0) + 1
 				held = 0.0
 				shown_for = 0.0
 				off_for = 0.0
@@ -194,6 +214,8 @@ func _clear() -> int:
 	var s := current
 	cleared.append(s)
 	left.erase(s)
+	last_cleared = s
+	since_cleared = 0.0
 	current = -1
 	gap = Tuning.v("first_drive/gap")
 	done = left.is_empty()
@@ -219,11 +241,11 @@ static func how(step: int, dev: int, profile: DeviceProfile) -> String:
 		Step.GAS:
 			return "Hold %s to get going" % gas
 		Step.STEER:
-			return "%s to steer round the traffic" % (rows.get("STEER", "Turn the wheel") if dev != ControlsCard.Device.WHEEL else "Turn the wheel")
+			return "%s to steer" % (rows.get("STEER", "Turn the wheel") if dev != ControlsCard.Device.WHEEL else "Turn the wheel")
 		Step.NITRO:
-			return "A straight! %s for a burst of nitro" % rows.get("NITRO", "NITRO")
+			return "A straight! %s for a burst" % rows.get("NITRO", "NITRO")
 		Step.DRAFT:
-			return "Tuck in right behind the truck to fill the slipstream"
+			return "Tuck in behind the truck to draft"
 		Step.SLIDE:
-			return "Into the bend: %s and steer hard at speed" % brake
+			return "Into the bend: %s and steer hard" % brake
 	return ""

@@ -9,7 +9,7 @@ const LOGO := "res://assets/sprites/ui/logo.png"
 const DEMO_LOGO_SCALE := 0.6
 const CALLOUT_Y := 120.0  # the middle of the callouts
 const FIRST_DRIVE_Y := 178.0  # the top of the first drive's prompt (MP-15), under the callouts
-const FIRST_DRIVE_SIZE := Vector2(340, 44)
+const FIRST_DRIVE_SIZE := Vector2(220, 33)  # (a strip over the road, not a panel across it)
 const STICKER_CARD := Rect2(12, 168, 176, 40)  # a new sticker's card (MP-12), left of the score tally
 const STICKER_CARD_TIME := 1.6  # seconds each new sticker's card shows, with more than one
 const LINE2_SIZE := 18  # a starburst's second headline (TIME EXTENDED under CHECKPOINT)
@@ -220,7 +220,8 @@ func _draw() -> void:
 	if not race.callouts.current.is_empty() and not race.results.visible and not watching_shown():
 		_draw_callout(race.callouts.current, Vector2(w / 2.0, CALLOUT_Y))
 	var fd: FirstDrive = race.first_drive
-	if fd != null and fd.current >= 0 and not race.paused:
+	# (under the callouts, clear of them; a new prompt waits for one to go, FirstDrive.look)
+	if fd != null and fd.card() >= 0 and not race.paused:
 		_draw_first_drive(fd, _element("first_drive"))
 		_done()
 	if Settings.subtitles:
@@ -311,17 +312,25 @@ static func tag_slide(age: float, shown: float) -> float:
 ## and how on the device in use. It grows in as it comes up.
 func _draw_first_drive(fd: FirstDrive, home: Rect2) -> void:
 	var w := home.get_center().x * 2.0
-	var k := clampf(fd.shown_for / 0.2, 0.0, 1.0)
+	var nice := fd.current < 0  # (the one just cleared: NICE!)
+	var k := 1.0 if nice else clampf(fd.shown_for / 0.2, 0.0, 1.0)
+	if nice:
+		k = clampf((FirstDrive.NICE_TIME - fd.since_cleared) / 0.2, 0.0, 1.0)
 	var size := home.size * Vector2(lerpf(0.85, 1.0, k), 1.0)
 	var r := Rect2(Vector2(w / 2.0 - size.x / 2.0, home.position.y), size)
-	draw_rect(r.grow(2), Color(GOLD, 0.8 * k))
-	draw_rect(r, Color(PALETTE["panel"], 0.85 * k))
-	draw_rect(Rect2(r.position, Vector2(4, r.size.y)), GOLD)
-	var tag := "FIRST DRIVE  %d/%d" % [fd.number(), FirstDrive.count()]
-	_text(r.position + Vector2(10, 11), tag, 8, Color(GOLD, k))
-	_text_centered(Vector2(w / 2.0, r.position.y + 25), FirstDrive.TEXT[fd.current], 16, Color(1, 1, 1, k))
+	var edge := Color("#5dff8a") if nice else GOLD
+	draw_rect(r.grow(1), Color(edge, 0.7 * k))
+	draw_rect(r, Color(PALETTE["panel"], 0.75 * k))
+	draw_rect(Rect2(r.position, Vector2(3, r.size.y)), Color(edge, k))
+	var step := fd.card()
+	var tag := "TIP %d/%d" % [fd.cleared.size() if nice else fd.number(), FirstDrive.count()]
+	_text(r.position + Vector2(7, 9), tag, 8, Color(edge, k))
+	if nice:
+		_text_centered(Vector2(w / 2.0, r.position.y + 21), FirstDrive.CLEARED, 14, Color(edge, k))
+		return
+	_text_centered(Vector2(w / 2.0, r.position.y + 17), FirstDrive.TEXT[step], 12, Color(1, 1, 1, k))
 	var dev := ControlsCard.device_now()
-	_text_centered(Vector2(w / 2.0, r.position.y + 39), FirstDrive.how(fd.current, dev, ControlsCard.profile_for(dev)), 9, Color(1, 1, 1, 0.8 * k))
+	_text_centered(Vector2(w / 2.0, r.position.y + 28), FirstDrive.how(step, dev, ControlsCard.profile_for(dev)), 8, Color(1, 1, 1, 0.8 * k))
 
 
 ## The connection dot (ON-12), top right of the time panel: green, amber or red for the

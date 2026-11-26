@@ -56,6 +56,12 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Changed
 
+- The first drive's tips (MP-15) keep out of the way: a slim strip instead of a panel across
+  the road, never brought up over a callout, at least six seconds of plain racing between two,
+  and a tip whose moment keeps passing (nitro on every straight) comes up twice at most. A
+  cleared tip says NICE! on its own strip rather than a starburst of its own.
+- WHO'S DRIVING is on Options > Accessibility, so the first start's question can be answered
+  again: KID, NEW or RACER (CUSTOM once an option it sets is changed).
 - The starting grid is strung out up the road, its cars in the outer lanes and holding them
   for a few seconds after GO, so a good launch no longer runs into the back of it and the race
   is a chase to the front. Rivals also look before moving over, and no longer steer into a car

@@ -238,8 +238,9 @@ func _tick() -> void:
 		1:
 			_check(_race.state == _race.State.RACING, "GO after the countdown")
 			_check(p.speed > 0.0, "holding gas moves the car")
-			_check(_race.first_drive != null and _race.first_drive.current == 0,
-				"a new profile's first race is the first drive: HOLD THE GAS up (MP-15)")
+			_check(_race.first_drive != null and (_race.first_drive.current == 0
+				or (_race.first_drive.current < 0 and not _race.callouts.current.is_empty())),
+				"a new profile's first race is the first drive: HOLD THE GAS up, or waiting out GO's callout (MP-15)")
 			_mark = p.x
 			_send("steer_left", true)
 			_next(40)

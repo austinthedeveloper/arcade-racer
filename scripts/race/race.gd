@@ -643,15 +643,13 @@ func pause_action(action: int) -> void:
 
 
 ## One tick of the first drive (MP-15) on `inp` (the input driven on): a cleared prompt
-## bursts NICE!, the last one FIRST DRIVE DONE. Every prompt cleared, or the race over (a
+## says NICE! on its card (Hud), the last one bursts FIRST DRIVE DONE. Every prompt cleared, or the race over (a
 ## finish, TIME UP), and it's done for good.
 func first_drive_tick(dt: float, inp: DriveInput) -> void:
 	if state == State.FINISHED or state == State.TIME_UP:
 		end_first_drive(false)
 		return
-	var step := first_drive.tick(dt, FirstDrive.look(self, inp))
-	if step >= 0:
-		callouts.push_message(FirstDrive.CLEARED, FirstDrive.TEXT[step], Callouts.SHOW_TIME)
+	first_drive.tick(dt, FirstDrive.look(self, inp))
 	if first_drive.done:
 		callouts.push_message(FirstDrive.DONE_TEXT, FirstDrive.DONE_SUB, 2.0)
 		end_first_drive(false)
