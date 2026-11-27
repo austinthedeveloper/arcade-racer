@@ -105,11 +105,13 @@ func test_the_longest_text_fits_at_every_scale() -> void:
 			# The first drive's prompts and how to do them on each device
 			var fd: Rect2 = lay["first_drive"]
 			var fe: float = e.call("first_drive")
+			var tip := UiText.width("TIP 5/5", _px(8, fe))
 			for step in FirstDrive.TEXT.size():
-				check(UiText.width(FirstDrive.TEXT[step], _px(16, fe)) <= fd.size.x - 8.0, label + "fits: " + FirstDrive.TEXT[step])
+				check(UiText.width(FirstDrive.TEXT[step], _px(12, fe)) + tip + 21.0 * fe <= fd.size.x, label + "fits by its tag: " + FirstDrive.TEXT[step])
 				for dev in ControlsCard.Device.size():
 					var how := FirstDrive.how(step, dev, ControlsCard.profile_for(dev))
-					check(UiText.width(how, _px(9, fe)) <= fd.size.x - 8.0, label + "fits: " + how)
+					check(UiText.width(how, _px(8, fe)) + 15.0 * fe <= fd.size.x, label + "fits: " + how)
+			check(fd.position.x < 10.0 * fe and fd.end.x < Cfg.SCREEN_W / 2.0, label + "the first drive's prompt down the left, off the middle")
 			# The stage intro card's name
 			var ie: float = e.call("intro")
 			for i in Stages.count():

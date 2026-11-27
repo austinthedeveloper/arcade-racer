@@ -8,8 +8,9 @@ extends Control
 const LOGO := "res://assets/sprites/ui/logo.png"
 const DEMO_LOGO_SCALE := 0.6
 const CALLOUT_Y := 120.0  # the middle of the callouts
-const FIRST_DRIVE_Y := 178.0  # the top of the first drive's prompt (MP-15), under the callouts
-const FIRST_DRIVE_SIZE := Vector2(220, 33)  # (a strip over the road, not a panel across it)
+## The first drive's prompt (MP-15): a strip down the left, under the place panel (where the
+## rival cards were before GO), off the road and clear of the callouts in the middle
+const FIRST_DRIVE_SIZE := Vector2(200, 33)
 const STICKER_CARD := Rect2(12, 168, 176, 40)  # a new sticker's card (MP-12), left of the score tally
 const STICKER_CARD_TIME := 1.6  # seconds each new sticker's card shows, with more than one
 const LINE2_SIZE := 18  # a starburst's second headline (TIME EXTENDED under CHECKPOINT)
@@ -39,7 +40,7 @@ const ANCHORS := {
 	"nitro": Vector2(1, 0), "power_up": Vector2(1, 0), "feed": Vector2(1, 0), "slipstream": Vector2(1, 1),
 	"speedo": Vector2(1, 1), "device": Vector2(0, 1), "subtitle": Vector2(0.5, 0), "tuned": Vector2(0.5, 0),
 	"cards": Vector2(0, 0), "radar": Vector2(0.5, 0.56), "intro": Vector2(1, 0), "now_playing": Vector2(0, 1),
-	"notice": Vector2(0.5, 0), "first_drive": Vector2(0.5, 0.5), "countdown": Vector2(0.5, 0),
+	"notice": Vector2(0.5, 0), "first_drive": Vector2(0, 0), "countdown": Vector2(0.5, 0),
 }
 const COUNTDOWN_SIZE := 64  # the 3, 2, 1 (big already: it stays this size at every UI scale)
 ## The HUD colors that carry meaning. Each state also differs in shape (the low clock beats
@@ -220,7 +221,7 @@ func _draw() -> void:
 	if not race.callouts.current.is_empty() and not race.results.visible and not watching_shown():
 		_draw_callout(race.callouts.current, Vector2(w / 2.0, CALLOUT_Y))
 	var fd: FirstDrive = race.first_drive
-	# (under the callouts, clear of them; a new prompt waits for one to go, FirstDrive.look)
+	# (down the left, clear of the callouts; a new prompt waits for one to go, FirstDrive.look)
 	if fd != null and fd.card() >= 0 and not race.paused:
 		_draw_first_drive(fd, _element("first_drive"))
 		_done()
@@ -308,29 +309,27 @@ static func tag_slide(age: float, shown: float) -> float:
 	return clampf(k, 0.0, 1.0)
 
 
-## The first drive's prompt (MP-15): FIRST DRIVE and which of how many, what to do, big,
-## and how on the device in use. It grows in as it comes up.
+## The first drive's prompt (MP-15), left-aligned in `home`: what to do, which tip of how
+## many top right, and how on the device in use under it. It grows in from the left edge.
 func _draw_first_drive(fd: FirstDrive, home: Rect2) -> void:
-	var w := home.get_center().x * 2.0
 	var nice := fd.current < 0  # (the one just cleared: NICE!)
 	var k := 1.0 if nice else clampf(fd.shown_for / 0.2, 0.0, 1.0)
 	if nice:
 		k = clampf((FirstDrive.NICE_TIME - fd.since_cleared) / 0.2, 0.0, 1.0)
-	var size := home.size * Vector2(lerpf(0.85, 1.0, k), 1.0)
-	var r := Rect2(Vector2(w / 2.0 - size.x / 2.0, home.position.y), size)
+	var r := Rect2(home.position, home.size * Vector2(lerpf(0.85, 1.0, k), 1.0))
 	var edge := Color("#5dff8a") if nice else GOLD
 	draw_rect(r.grow(1), Color(edge, 0.7 * k))
 	draw_rect(r, Color(PALETTE["panel"], 0.75 * k))
 	draw_rect(Rect2(r.position, Vector2(3, r.size.y)), Color(edge, k))
 	var step := fd.card()
 	var tag := "TIP %d/%d" % [fd.cleared.size() if nice else fd.number(), FirstDrive.count()]
-	_text(r.position + Vector2(7, 9), tag, 8, Color(edge, k))
+	_text(Vector2(r.end.x - 6 - UiText.width(tag, 8), r.position.y + 10), tag, 8, Color(edge, k))
 	if nice:
-		_text_centered(Vector2(w / 2.0, r.position.y + 21), FirstDrive.CLEARED, 14, Color(edge, k))
+		_text(r.position + Vector2(9, 22), FirstDrive.CLEARED, 14, Color(edge, k))
 		return
-	_text_centered(Vector2(w / 2.0, r.position.y + 17), FirstDrive.TEXT[step], 12, Color(1, 1, 1, k))
+	_text(r.position + Vector2(9, 14), FirstDrive.TEXT[step], 12, Color(1, 1, 1, k))
 	var dev := ControlsCard.device_now()
-	_text_centered(Vector2(w / 2.0, r.position.y + 28), FirstDrive.how(step, dev, ControlsCard.profile_for(dev)), 8, Color(1, 1, 1, 0.8 * k))
+	_text(r.position + Vector2(9, 27), FirstDrive.how(step, dev, ControlsCard.profile_for(dev)), 8, Color(1, 1, 1, 0.8 * k))
 
 
 ## The connection dot (ON-12), top right of the time panel: green, amber or red for the
@@ -487,9 +486,10 @@ static func _large_fixes(lay: Dictionary, touch: bool, _scale: float) -> void:
 	lay["subtitle"] = Rect2(w / 2.0 - one["subtitle"].size.x / 2.0, sub.position.y, one["subtitle"].size.x, sub.size.y)
 	# TUNED, at its own size, between the route bar and the nitro
 	lay["tuned"] = Rect2(Vector2(lay["progress"].end.x + gap, one["tuned"].position.y), one["tuned"].size)
-	# The bonus feed under the power-up slot, the first drive's prompt under that
+	# The bonus feed under the power-up slot
 	lay["feed"].position.y = lay["power_up"].end.y + 8.0
-	lay["first_drive"].position.y = lay["feed"].end.y + gap
+	# The first drive's prompt down the left column, under the place panel
+	lay["first_drive"].position = Vector2(lay["position"].position.x, lay["position"].end.y + gap)
 	# The countdown's number as it was; the stage intro card right of it
 	lay["countdown"] = one["countdown"]
 	lay["intro"].position.x = w - 6.0 - lay["intro"].size.x
@@ -508,6 +508,8 @@ static func _large_fixes(lay: Dictionary, touch: bool, _scale: float) -> void:
 		lay["notice"].position = Vector2(lay["now_playing"].position.x, lay["now_playing"].end.y + gap)
 		lay["cards"].position = Vector2(w - 8.0 - cards_size.x, lay["now_playing"].end.y + gap)
 		lay["intro"] = Rect2(Vector2(lay["position"].position.x + 4.0, lay["notice"].end.y + gap), StageIntro.CARD)
+		# and the first drive's prompt (wider than the left column) under the notice too
+		lay["first_drive"].position.y = maxf(lay["position"].end.y, lay["notice"].end.y) + gap
 		# and the countdown's number in the gap between the two
 		var count: Rect2 = lay["countdown"]
 		count.position = Vector2(roundf((lay["intro"].end.x + lay["cards"].position.x - count.size.x) / 2.0), lay["cards"].position.y + 30.0)
@@ -524,6 +526,7 @@ static func _layout_1x(touch: bool) -> Dictionary:
 		lay["device"] = Rect2()
 		lay["cards"] = Rect2(w / 2.0 - CARD_SIZE.x - 3, 150, CARD_SIZE.x * 2 + 6, 4 * (CARD_SIZE.y + CARD_GAP) - CARD_GAP)
 		lay["now_playing"] = Rect2(6, 118, 190, 28)  # (clear of the thumbs)
+		lay["first_drive"].position.y = lay["now_playing"].end.y + 4.0  # (under it, over the thumbs)
 		return lay
 	return {
 		"timer": Rect2(6, 6, 92, 58),
@@ -543,7 +546,7 @@ static func _layout_1x(touch: bool) -> Dictionary:
 		"intro": Rect2(Vector2(w - 14 - StageIntro.CARD.x, 76), StageIntro.CARD),
 		"now_playing": Rect2(6, 296, 190, 28),
 		"notice": Rect2(w / 2.0 - 72, 66, 144, 20),
-		"first_drive": Rect2(Vector2(w / 2.0 - FIRST_DRIVE_SIZE.x / 2.0, FIRST_DRIVE_Y), FIRST_DRIVE_SIZE),
+		"first_drive": Rect2(Vector2(6, 120), FIRST_DRIVE_SIZE),
 		"countdown": Rect2(w / 2.0 - 24, 86, 48, 46),  # 3, 2, 1 (its baseline 2 px up from the bottom)
 	}
 

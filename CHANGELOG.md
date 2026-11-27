@@ -56,8 +56,9 @@ the release workflow puts that section at the top of the GitHub Release notes
 
 ### Changed
 
-- The first drive's tips (MP-15) keep out of the way: a slim strip instead of a panel across
-  the road, never brought up over a callout, at least six seconds of plain racing between two,
+- The first drive's tips (MP-15) keep out of the way: a slim strip down the left, under the
+  place panel, instead of a panel across the road where the callouts go, never brought up over
+  a callout, at least six seconds of plain racing between two,
   and a tip whose moment keeps passing (nitro on every straight) comes up twice at most. A
   cleared tip says NICE! on its own strip rather than a starburst of its own.
 - WHO'S DRIVING is on Options > Accessibility, so the first start's question can be answered
