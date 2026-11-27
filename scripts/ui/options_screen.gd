@@ -11,7 +11,8 @@ extends MenuScreen
 
 enum Row { PAGE, AUTO_GAS, TRAFFIC, DIFFICULTY, TIMER, CARRY_TIME, POWER_UPS, UNLOCK_ALL, MUSIC, SFX, CALIBRATE, RESET_OPTIONS,
 	RESET_SAVE, SCREEN_SHAKE, FLASH, UNITS, FULLSCREEN, INTEGER_SCALE, VSYNC, SCANLINES, STEER_ASSIST, BRAKE_ASSIST, REMAP,
-	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE, RESTORE, CAMERA, CO_PILOT, PLAYTEST, UI_SCALE }
+	WHEEL, BACK, RADIO, SUBTITLES, GEARS, KEY_STEER_IN, KEY_STEER_OUT, REDUCE_MOTION, RUMBLE, RESTORE, CAMERA, CO_PILOT, PLAYTEST, UI_SCALE,
+	WHOS_DRIVING }
 enum Page { GAME, DISPLAY, AUDIO, CONTROLS, ACCESSIBILITY }
 
 const PAGE_NAMES := ["GAME", "DISPLAY", "AUDIO", "CONTROLS", "ACCESSIBILITY"]
@@ -22,7 +23,7 @@ const PAGE_ROWS := [
 	[Row.FULLSCREEN, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES, Row.UNITS, Row.CAMERA, Row.PLAYTEST],
 	[Row.MUSIC, Row.SFX, Row.RADIO],
 	[Row.CALIBRATE, Row.WHEEL, Row.REMAP, Row.KEY_STEER_IN, Row.KEY_STEER_OUT, Row.RUMBLE],
-	[Row.UI_SCALE, Row.SCREEN_SHAKE, Row.FLASH, Row.REDUCE_MOTION, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.CO_PILOT, Row.GEARS],
+	[Row.WHOS_DRIVING, Row.UI_SCALE, Row.SCREEN_SHAKE, Row.FLASH, Row.REDUCE_MOTION, Row.SUBTITLES, Row.STEER_ASSIST, Row.BRAKE_ASSIST, Row.CO_PILOT, Row.GEARS],
 ]
 ## Shown on a page with no rows yet.
 const PAGE_EMPTY := ["", "", "", "", ""]
@@ -31,7 +32,8 @@ const SLOTS := 12
 const LABELS := ["PAGE", "AUTO GAS", "TRAFFIC", "DIFFICULTY", "TIMER", "CARRY TIME", "POWER-UPS", "UNLOCK EVERYTHING", "MUSIC VOLUME", "SOUND FX VOLUME", "CALIBRATE WHEEL",
 	"RESET OPTIONS", "RESET SAVE DATA", "SCREEN SHAKE", "FLASHING", "SPEED UNITS",
 	"FULLSCREEN", "INTEGER SCALING", "V-SYNC", "SCANLINES", "STEERING ASSIST", "BRAKING ASSIST", "REMAP BUTTONS",
-	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE", "RESTORE BACKUP", "CAMERA VIEW", "CO-PILOT", "PLAYTEST LOG", "UI SCALE"]
+	"WHEEL SETTINGS", "BACK", "RADIO STATION", "SUBTITLES", "GEARS", "KEY STEERING IN", "KEY STEERING BACK", "REDUCE MOTION", "RUMBLE", "RESTORE BACKUP", "CAMERA VIEW", "CO-PILOT", "PLAYTEST LOG", "UI SCALE",
+	"WHO'S DRIVING"]
 const HELP := [
 	"Pick a page of options.",
 	"The car keeps the gas down, so you only steer. The brake still works.",
@@ -70,6 +72,7 @@ const HELP := [
 	"Steers for you, in your lane and round every bend. Steer to change lanes.",
 	"A note of each race (crashes, slow stretches) in the game's log folder. Never sent anywhere.",
 	"Bigger HUD and menu text, for a TV across the room or a small screen.",
+	"The question from the first start: KID, NEW or RACER sets the assists and difficulty to match.",
 ]
 ## The rows that show ON or OFF.
 const TOGGLES := [Row.AUTO_GAS, Row.CARRY_TIME, Row.POWER_UPS, Row.UNLOCK_ALL, Row.INTEGER_SCALE, Row.VSYNC, Row.SCANLINES,
@@ -262,6 +265,9 @@ func change(row: int, dir: int, wrap: bool) -> bool:
 			s.key_steer_out = _step(s.key_steer_out, dir, s.STEER_FEEL_NAMES.size(), wrap)
 		Row.UI_SCALE:
 			s.ui_scale = _step(s.ui_scale, dir, UiScale.Size.size(), wrap)
+		Row.WHOS_DRIVING:  # (AC-16's answers again; CUSTOM, changed since, steps to NEW)
+			var a := WhosDriving.answer_of(s)
+			WhosDriving.apply(WhosDriving.DEFAULT if a < 0 else _step(a, dir, WhosDriving.Answer.size(), wrap), s)
 		_:
 			return false
 	s.save()
@@ -274,6 +280,9 @@ static func value_text(row: int) -> String:
 	match row:
 		Row.TRAFFIC:
 			return s.TRAFFIC_NAMES[s.traffic]
+		Row.WHOS_DRIVING:
+			var a := WhosDriving.answer_of(s)
+			return WhosDriving.NAMES[a] if a >= 0 else "CUSTOM"
 		Row.DIFFICULTY:
 			return Difficulty.NAMES[s.difficulty]
 		Row.TIMER:

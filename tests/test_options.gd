@@ -806,11 +806,11 @@ func test_gears_option_saves_and_reaches_the_race() -> void:
 
 
 func test_ui_scale_option_saves_and_grows_the_menus_and_hud() -> void:
-	# AC-12: UI SCALE, first on the accessibility page
+	# AC-12: UI SCALE, on the accessibility page under WHO'S DRIVING
 	_clean()
 	var o := OptionsScreen.new()
 	o.go_to(OptionsScreen.Row.UI_SCALE)
-	eq([o.page, o.index], [OptionsScreen.Page.ACCESSIBILITY, 1], "the accessibility page's first row")
+	eq([o.page, o.index], [OptionsScreen.Page.ACCESSIBILITY, 2], "the accessibility page's second row")
 	check(OptionsScreen.PAGE_ROWS[o.page].size() + 2 <= OptionsScreen.SLOTS, "the page still fits the panel")
 	eq(OptionsScreen.value_text(OptionsScreen.Row.UI_SCALE), "NORMAL", "Normal by default")
 	eq(MenuScreen.px(12), 12, "menu text as laid out")
@@ -834,5 +834,28 @@ func test_ui_scale_option_saves_and_grows_the_menus_and_hud() -> void:
 	eq(MenuScreen.fit_size("OK", 10, 600.0), 10, "short text keeps its size")
 	o.change(OptionsScreen.Row.UI_SCALE, 1, true)
 	eq(Settings.ui_scale, UiScale.Size.NORMAL, "select wraps round to Normal")
+	o.free()
+	_clean()
+
+
+func test_whos_driving_can_be_answered_again() -> void:
+	_clean()
+	var o := OptionsScreen.new()
+	o.go_to(OptionsScreen.Row.WHOS_DRIVING)
+	eq(o.page, OptionsScreen.Page.ACCESSIBILITY, "on the accessibility page, with the assists it sets")
+	WhosDriving.apply(WhosDriving.Answer.NEW, Settings)
+	eq(OptionsScreen.value_text(OptionsScreen.Row.WHOS_DRIVING), "NEW", "shows the answer the options match")
+	o.change(OptionsScreen.Row.WHOS_DRIVING, 1, false)
+	eq(OptionsScreen.value_text(OptionsScreen.Row.WHOS_DRIVING), "RACER", "right: the next answer")
+	check(not Settings.steer_assist and not Settings.brake_assist, "its options set: no assists")
+	eq(Settings.difficulty, Difficulty.Level.NORMAL, "and Normal")
+	o.change(OptionsScreen.Row.WHOS_DRIVING, -1, false)
+	o.change(OptionsScreen.Row.WHOS_DRIVING, -1, false)
+	eq(OptionsScreen.value_text(OptionsScreen.Row.WHOS_DRIVING), "KID", "left twice: KID")
+	check(Settings.auto_gas and Settings.co_pilot, "auto gas and the co-pilot")
+	Settings.co_pilot = false
+	eq(OptionsScreen.value_text(OptionsScreen.Row.WHOS_DRIVING), "CUSTOM", "an option changed since: CUSTOM")
+	o.change(OptionsScreen.Row.WHOS_DRIVING, 1, false)
+	eq(OptionsScreen.value_text(OptionsScreen.Row.WHOS_DRIVING), "NEW", "stepping from CUSTOM: NEW")
 	o.free()
 	_clean()
